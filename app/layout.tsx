@@ -48,15 +48,22 @@ export default async function RootLayout({
           fontFamily: "serif",
         }}
       >
+        <style>{`
+          .app-shell-main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 28px 20px 60px;
+          }
+
+          @media (max-width: 760px) {
+            .app-shell-main {
+              padding: 20px 16px calc(env(safe-area-inset-bottom, 0px) + 108px);
+            }
+          }
+        `}</style>
         <AuthProvider initialUser={user} initialProfile={initialProfile}>
           <Header />
-          <main
-            style={{
-              maxWidth: 1600,
-              margin: "0 auto",
-              padding: "28px 20px 60px",
-            }}
-          >
+          <main className="app-shell-main">
             {children}
           </main>
         </AuthProvider>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import NotificationsBell from "./NotificationsBell";
@@ -206,7 +206,126 @@ function SearchResultCard({
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </svg>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5.5 9.5V21h13V9.5" />
+    </svg>
+  );
+}
+
+function DiaryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 4.5h11a1.5 1.5 0 0 1 1.5 1.5v13.5H7.5A1.5 1.5 0 0 0 6 21V4.5Z" />
+      <path d="M6 4.5A2.5 2.5 0 0 0 3.5 7V19A2 2 0 0 0 5.5 21H6" />
+      <path d="M9 8.5h6" />
+      <path d="M9 12h6" />
+    </svg>
+  );
+}
+
+function BookmarkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 4h10a1 1 0 0 1 1 1v16l-6-4-6 4V5a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
+function CompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m14.8 9.2-1.8 5.6-5.6 1.8 1.8-5.6 5.6-1.8Z" />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 19.5a7 7 0 0 1 14 0" />
+    </svg>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.04)",
+        color: "#f3f4f6",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Header() {
+  const pathname = usePathname();
   const router = useRouter();
   const {
     user,
@@ -225,6 +344,7 @@ export default function Header() {
   const [results, setResults] = useState<UniversalSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -272,8 +392,17 @@ export default function Header() {
 
   async function handleSignOut() {
     await signOut();
+    setMobileMenuOpen(false);
     router.refresh();
   }
+
+  const mobileNavItems = [
+    { href: "/", label: "Home", icon: <HomeIcon /> },
+    { href: "/diary", label: "Diary", icon: <DiaryIcon /> },
+    { href: "/watchlist", label: "Watchlist", icon: <BookmarkIcon /> },
+    { href: "/discover", label: "Discover", icon: <CompassIcon /> },
+    { href: user ? "/profile" : "/auth", label: "Profile", icon: <ProfileIcon /> },
+  ];
 
   return (
     <>
@@ -326,6 +455,18 @@ export default function Header() {
           height: 40px;
         }
 
+        .header-desktop-nav,
+        .header-desktop-account,
+        .header-desktop-search {
+          display: contents;
+        }
+
+        .mobile-topbar-actions,
+        .mobile-bottom-nav,
+        .mobile-account-sheet {
+          display: none;
+        }
+
         .header-search-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -360,47 +501,88 @@ export default function Header() {
           .header-shell {
             padding: 12px 16px;
             gap: 12px;
+            align-items: center;
+            flex-direction: row;
           }
 
           .header-left {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-          }
-
-          .header-nav {
-            overflow-x: auto;
-            gap: 8px;
-            padding-bottom: 2px;
-            scrollbar-width: none;
-          }
-
-          .header-nav::-webkit-scrollbar {
-            display: none;
-          }
-
-          .header-nav a {
-            white-space: nowrap;
-            padding: 10px 12px;
-            min-height: 40px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
+            width: auto;
+            flex: 1 1 auto;
+            min-width: 0;
           }
 
           .header-right {
+            display: none;
+          }
+
+          .header-desktop-nav {
+            display: none;
+          }
+
+          .mobile-topbar-actions {
+            display: flex;
+            align-items: center;
             gap: 8px;
+            flex-shrink: 0;
           }
 
-          .header-user-chip {
-            flex: 1 1 100%;
-            max-width: none;
+          .mobile-bottom-nav {
+            position: fixed;
+            left: 14px;
+            right: 14px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+            z-index: 45;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            padding: 8px;
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(10,10,10,0.94);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 18px 44px rgba(0,0,0,0.34);
           }
 
-          .header-search-trigger {
-            order: 3;
-            flex: 1 1 100%;
-            min-width: 100%;
+          .mobile-bottom-nav a {
+            min-height: 56px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #9ca3af;
+            font-size: 11px;
+            font-family: Arial, sans-serif;
+            letter-spacing: 0.02em;
+          }
+
+          .mobile-bottom-nav a.active {
+            color: white;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+          }
+
+          .mobile-account-sheet {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+          }
+
+          .mobile-account-card {
+            position: absolute;
+            top: 70px;
+            right: 16px;
+            width: min(320px, calc(100vw - 32px));
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(8,8,8,0.98) 100%);
+            box-shadow: 0 28px 70px rgba(0,0,0,0.42);
+            padding: 16px;
           }
 
           .header-search-grid {
@@ -411,10 +593,6 @@ export default function Header() {
         @media (max-width: 560px) {
           .header-shell {
             padding: 10px 14px;
-          }
-
-          .header-user-chip .header-user-copy-secondary {
-            display: none;
           }
         }
       `}</style>
@@ -444,7 +622,7 @@ export default function Header() {
               ReelShelf
             </Link>
 
-            <nav className="header-nav">
+            <nav className="header-nav header-desktop-nav">
               <Link
                 href="/movies"
                 style={{
@@ -547,7 +725,7 @@ export default function Header() {
             {user ? <NotificationsBell /> : null}
             {configured ? (
               user ? (
-                <div className="header-user-chip">
+                <div className="header-user-chip header-desktop-account">
                   <div
                     style={{
                       width: 32,
@@ -686,7 +864,7 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="header-search-trigger"
+              className="header-search-trigger header-desktop-search"
               style={{
                 height: 40,
                 background: "rgba(255,255,255,0.03)",
@@ -703,8 +881,256 @@ export default function Header() {
               Search movies, series, books...
             </button>
           </div>
+
+          <div className="mobile-topbar-actions">
+            <IconButton label="Search" onClick={() => setOpen(true)}>
+              <SearchIcon />
+            </IconButton>
+            {user ? <NotificationsBell /> : null}
+            <IconButton
+              label={user ? "Open account menu" : "Open account options"}
+              onClick={() => setMobileMenuOpen((current) => !current)}
+            >
+              {user ? (
+                avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName || handle || "Profile avatar"}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 999,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "Arial, sans-serif",
+                    }}
+                  >
+                    {getProfileInitials(profile)}
+                  </span>
+                )
+              ) : (
+                <MenuIcon />
+              )}
+            </IconButton>
+          </div>
         </div>
       </header>
+
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        {mobileNavItems.map((item) => {
+          const active =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname?.startsWith(`${item.href}/`);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={active ? "active" : undefined}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {mobileMenuOpen ? (
+        <div
+          className="mobile-account-sheet"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="mobile-account-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {user ? (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 999,
+                      overflow: "hidden",
+                      background:
+                        "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 60%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName || handle || "Profile avatar"}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          color: "rgba(255,255,255,0.7)",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          fontFamily: "Arial, sans-serif",
+                        }}
+                      >
+                        {getProfileInitials(profile)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "white",
+                        fontSize: 14,
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      {displayName || "ReelShelf member"}
+                    </p>
+                    <p
+                      style={{
+                        margin: "4px 0 0",
+                        color: "#7f7f7f",
+                        fontSize: 11,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      {syncing
+                        ? "Syncing…"
+                        : handle ||
+                          (needsProfileCompletion ? "Complete profile" : "Signed in")}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <Link
+                    href="/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    style={{
+                      textDecoration: "none",
+                      color: "white",
+                      minHeight: 44,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 14px",
+                      fontSize: 14,
+                      fontFamily: "Arial, sans-serif",
+                    }}
+                  >
+                    Open profile
+                  </Link>
+                  <Link
+                    href="/activity"
+                    onClick={() => setMobileMenuOpen(false)}
+                    style={{
+                      textDecoration: "none",
+                      color: "white",
+                      minHeight: 44,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 14px",
+                      fontSize: 14,
+                      fontFamily: "Arial, sans-serif",
+                    }}
+                  >
+                    Open activity
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    style={{
+                      minHeight: 44,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 14px",
+                      fontSize: 14,
+                      fontFamily: "Arial, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#d1d5db",
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  Sign in to sync your diary, saved lists, and social activity.
+                </p>
+                <Link
+                  href="/auth"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    textDecoration: "none",
+                    color: "black",
+                    minHeight: 44,
+                    borderRadius: 14,
+                    background: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {open && (
         <div
