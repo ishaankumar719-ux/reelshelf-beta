@@ -324,6 +324,43 @@ function IconButton({
   );
 }
 
+function SearchTriggerButton({
+  mobile = false,
+  onClick,
+}: {
+  mobile?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={!mobile ? "header-search-trigger header-desktop-search" : undefined}
+      style={{
+        height: mobile ? 40 : 42,
+        minWidth: mobile ? 98 : 280,
+        width: mobile ? "auto" : 320,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        color: "#a3a3a3",
+        borderRadius: 999,
+        padding: mobile ? "0 14px" : "0 16px",
+        fontSize: 12,
+        cursor: "pointer",
+        textAlign: "left",
+        fontFamily: "Arial, sans-serif",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        flexShrink: 0,
+      }}
+    >
+      <SearchIcon />
+      <span>{mobile ? "Search" : "Search films, series, books..."}</span>
+    </button>
+  );
+}
+
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -451,8 +488,8 @@ export default function Header() {
         }
 
         .header-search-trigger {
-          width: 230px;
-          height: 40px;
+          width: 320px;
+          height: 42px;
         }
 
         .header-desktop-nav,
@@ -491,9 +528,9 @@ export default function Header() {
           }
 
           .header-search-trigger {
-            flex: 1 1 220px;
+            flex: 1 1 320px;
             width: auto;
-            min-width: 180px;
+            min-width: 220px;
           }
         }
 
@@ -722,6 +759,7 @@ export default function Header() {
           </div>
 
           <div className="header-right">
+            <SearchTriggerButton onClick={() => setOpen(true)} />
             {user ? <NotificationsBell /> : null}
             {configured ? (
               user ? (
@@ -860,32 +898,10 @@ export default function Header() {
                 Account Setup
               </Link>
             )}
-
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="header-search-trigger header-desktop-search"
-              style={{
-                height: 40,
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#8f8f8f",
-                borderRadius: 999,
-                padding: "0 14px",
-                fontSize: 12,
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "Arial, sans-serif",
-              }}
-            >
-              Search movies, series, books...
-            </button>
           </div>
 
           <div className="mobile-topbar-actions">
-            <IconButton label="Search" onClick={() => setOpen(true)}>
-              <SearchIcon />
-            </IconButton>
+            <SearchTriggerButton mobile onClick={() => setOpen(true)} />
             {user ? <NotificationsBell /> : null}
             <IconButton
               label={user ? "Open account menu" : "Open account options"}
