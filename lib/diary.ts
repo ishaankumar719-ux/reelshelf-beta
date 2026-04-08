@@ -3,6 +3,7 @@ import {
   deleteDiaryEntryFromBackend,
   syncDiaryEntriesWithBackend,
   upsertDiaryEntryToBackend,
+  upsertDiaryEntriesToBackend,
 } from "./supabase/persistence";
 
 export type DiaryMovie = SavedMediaItem & {
@@ -14,6 +15,13 @@ export type DiaryMovie = SavedMediaItem & {
 };
 
 export type DiaryDraftMovie = SavedMediaItem;
+
+export type DiaryImportSummary = {
+  imported: number;
+  updated: number;
+  total: number;
+  duplicatesConsolidated: number;
+};
 
 type LegacyDiaryMovie = {
   id: string;
@@ -207,6 +215,89 @@ export function saveDiaryEntry(
 
   writeDiaryMovies(updated);
   void upsertDiaryEntryToBackend(nextEntry);
+}
+
+export async function importDiaryEntries(entries: DiaryMovie[]) {
+  if (typeof window === "undefined") {
+    return {
+      imported: 0,
+      updated: 0,
+      total: 0,
+      duplicatesConsolidated: 0,
+    } satisfies DiaryImportSummary;
+  }
+
+  const current = getDiaryMovies();
+  const merged = new Map<string, DiaryMovie>();
+  const existingKeys = new Set<string>();
+  let imported = 0;
+  let updated = 0;
+  let duplicatesConsolidated = 0;
+
+  for (const entry of current) {
+    const key = `${entry.mediaType}:${entry.id}`;
+    existingKeys.add(key);
+    merged.set(key, entry);
+  }
+
+  const nextEntriesToPersist = new Map<string, DiaryMovie>();
+
+  for (const rawEntry of entries) {
+    const normalized = normalizeDiaryMovie(rawEntry);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = `${normalized.mediaType}:${normalized.id}`;
+    const existing = merged.get(key);
+
+    if (!existing && !nextEntriesToPersist.has(key)) {
+      imported += 1;
+    } else if (!existing || nextEntriesToPersist.has(key)) {
+      duplicatesConsolidated += 1;
+    } else {
+      updated += 1;
+    }
+
+    if (existing) {
+      const existingSavedAt = new Date(existing.savedAt).getTime();
+      const nextSavedAt = new Date(normalized.savedAt).getTime();
+      const shouldReplace =
+        Number.isNaN(existingSavedAt) ||
+        (!Number.isNaN(nextSavedAt) && nextSavedAt >= existingSavedAt);
+
+      if (!shouldReplace) {
+        continue;
+      }
+    }
+
+    const nextEntry = {
+      ...normalized,
+      savedAt:
+        normalized.savedAt ||
+        existing?.savedAt ||
+        new Date().toISOString(),
+    };
+
+    merged.set(key, nextEntry);
+    nextEntriesToPersist.set(key, nextEntry);
+  }
+
+  const nextDiary = Array.from(merged.values()).sort(
+    (left, right) =>
+      new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime()
+  );
+
+  writeDiaryMovies(nextDiary);
+  await upsertDiaryEntriesToBackend(Array.from(nextEntriesToPersist.values()));
+
+  return {
+    imported,
+    updated,
+    total: nextDiary.length,
+    duplicatesConsolidated,
+  } satisfies DiaryImportSummary;
 }
 
 export function removeDiaryEntry(

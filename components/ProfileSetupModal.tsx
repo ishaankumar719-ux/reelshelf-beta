@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   getProfileInitials,
@@ -429,6 +430,27 @@ export default function ProfileSetupModal({
           >
             {saving ? "Saving profile..." : "Save Profile"}
           </button>
+
+          <div
+            style={{
+              marginTop: 14,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Link
+              href="/import/letterboxd"
+              style={{
+                color: "#d1d5db",
+                fontSize: 13,
+                lineHeight: 1.6,
+                textDecoration: "none",
+                fontFamily: "Arial, sans-serif",
+              }}
+            >
+              Import from Letterboxd instead
+            </Link>
+          </div>
         </form>
       </div>
     </div>

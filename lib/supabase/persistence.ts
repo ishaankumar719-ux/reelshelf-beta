@@ -233,6 +233,28 @@ export async function upsertDiaryEntryToBackend(entry: PersistedDiaryEntry) {
   });
 }
 
+export async function upsertDiaryEntriesToBackend(entries: PersistedDiaryEntry[]) {
+  if (entries.length === 0) {
+    return;
+  }
+
+  const client = createSupabaseBrowserClient();
+  const user = await getCurrentUser();
+
+  if (!client || !user) {
+    return;
+  }
+
+  await ensureProfile();
+
+  await client.from("diary_entries").upsert(
+    entries.map((entry) => mapDiaryEntryToRow(user.id, entry)),
+    {
+      onConflict: "user_id,media_type,media_id",
+    }
+  );
+}
+
 export async function deleteDiaryEntryFromBackend(id: string, mediaType: MediaType) {
   const client = createSupabaseBrowserClient();
   const user = await getCurrentUser();

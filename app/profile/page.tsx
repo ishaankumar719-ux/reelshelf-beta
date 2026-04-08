@@ -866,6 +866,66 @@ export default function ProfilePage() {
               Shape your public-facing shelf
             </h2>
 
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                flexWrap: "wrap",
+                padding: "14px 16px",
+                borderRadius: 18,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    letterSpacing: "-0.2px",
+                  }}
+                >
+                  Import from Letterboxd
+                </p>
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    color: "#9ca3af",
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  Upload your CSV export, preview the mapping, and add past logs to
+                  your ReelShelf diary.
+                </p>
+              </div>
+
+              <Link
+                href="/import/letterboxd"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: 40,
+                  padding: "0 16px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "white",
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontFamily: "Arial, sans-serif",
+                  flexShrink: 0,
+                }}
+              >
+                Open Import
+              </Link>
+            </div>
+
             <label style={{ display: "grid", gap: 10 }}>
               <span
                 style={{

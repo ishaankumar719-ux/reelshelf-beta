@@ -18,6 +18,10 @@ export function getMovieHrefFromTmdbId(tmdbId: number) {
 }
 
 export function normalizeMovieRouteId(id: string) {
+  if (/^letterboxd-[a-z0-9-]+-\d{4}$/i.test(id)) {
+    return id.toLowerCase();
+  }
+
   const localMovie = getLocalMovieByRouteId(id);
 
   if (localMovie) {

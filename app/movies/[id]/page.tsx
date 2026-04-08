@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
+import ImportedMovieDetailClient from "../../../components/ImportedMovieDetailClient";
 import TrackRecentView from "../../../components/TrackRecentView";
 import { localMovies } from "../../../lib/localMovies";
 import {
@@ -416,6 +417,10 @@ export default async function MovieDetailPage({
 
   if (normalizedId !== id) {
     redirect(`/movies/${normalizedId}`);
+  }
+
+  if (normalizedId.startsWith("letterboxd-")) {
+    return <ImportedMovieDetailClient movieId={normalizedId} />;
   }
 
   const localFilm = localMovies.find((film) => film.id === normalizedId);
