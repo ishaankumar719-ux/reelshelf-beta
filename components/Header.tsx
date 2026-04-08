@@ -277,6 +277,147 @@ export default function Header() {
 
   return (
     <>
+      <style>{`
+        .header-shell {
+          max-width: 1600px;
+          margin: 0 auto;
+          padding: 14px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 22px;
+          min-width: 0;
+        }
+
+        .header-nav {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          min-width: 0;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
+        .header-user-chip {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 4px 4px 4px 6px;
+          min-height: 44px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.03);
+          max-width: min(100%, 320px);
+        }
+
+        .header-search-trigger {
+          width: 230px;
+          height: 40px;
+        }
+
+        .header-search-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        @media (max-width: 1080px) {
+          .header-shell {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 14px;
+          }
+
+          .header-left,
+          .header-right {
+            width: 100%;
+          }
+
+          .header-right {
+            justify-content: space-between;
+            flex-wrap: wrap;
+          }
+
+          .header-search-trigger {
+            flex: 1 1 220px;
+            width: auto;
+            min-width: 180px;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .header-shell {
+            padding: 12px 16px;
+            gap: 12px;
+          }
+
+          .header-left {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .header-nav {
+            overflow-x: auto;
+            gap: 8px;
+            padding-bottom: 2px;
+            scrollbar-width: none;
+          }
+
+          .header-nav::-webkit-scrollbar {
+            display: none;
+          }
+
+          .header-nav a {
+            white-space: nowrap;
+            padding: 10px 12px;
+            min-height: 40px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+          }
+
+          .header-right {
+            gap: 8px;
+          }
+
+          .header-user-chip {
+            flex: 1 1 100%;
+            max-width: none;
+          }
+
+          .header-search-trigger {
+            order: 3;
+            flex: 1 1 100%;
+            min-width: 100%;
+          }
+
+          .header-search-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .header-shell {
+            padding: 10px 14px;
+          }
+
+          .header-user-chip .header-user-copy-secondary {
+            display: none;
+          }
+        }
+      `}</style>
       <header
         style={{
           position: "sticky",
@@ -287,24 +428,8 @@ export default function Header() {
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <div
-          style={{
-            maxWidth: 1600,
-            margin: "0 auto",
-            padding: "14px 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 24,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 22,
-            }}
-          >
+        <div className="header-shell">
+          <div className="header-left">
             <Link
               href="/"
               style={{
@@ -319,13 +444,7 @@ export default function Header() {
               ReelShelf
             </Link>
 
-            <nav
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-              }}
-            >
+            <nav className="header-nav">
               <Link
                 href="/movies"
                 style={{
@@ -424,29 +543,11 @@ export default function Header() {
             </nav>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexShrink: 0,
-            }}
-          >
+          <div className="header-right">
             {user ? <NotificationsBell /> : null}
             {configured ? (
               user ? (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "4px 4px 4px 6px",
-                    minHeight: 44,
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                  }}
-                >
+                <div className="header-user-chip">
                   <div
                     style={{
                       width: 32,
@@ -489,6 +590,7 @@ export default function Header() {
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div
+                      className="header-user-copy-primary"
                       style={{
                         color: "#f3f4f6",
                         fontSize: 12,
@@ -505,6 +607,7 @@ export default function Header() {
                           (needsProfileCompletion ? "Complete profile" : "Signed in")}
                     </div>
                     <div
+                      className="header-user-copy-secondary"
                       style={{
                         color: "#7f7f7f",
                         fontSize: 10,
@@ -583,9 +686,9 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setOpen(true)}
+              className="header-search-trigger"
               style={{
-                width: 230,
-                height: 36,
+                height: 40,
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.08)",
                 color: "#8f8f8f",
@@ -618,10 +721,10 @@ export default function Header() {
             paddingTop: 64,
           }}
         >
-          <div
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              width: "min(980px, calc(100vw - 40px))",
+            <div
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                width: "min(980px, calc(100vw - 40px))",
               borderRadius: 24,
               border: "1px solid rgba(255,255,255,0.08)",
               background:
@@ -629,13 +732,13 @@ export default function Header() {
               boxShadow: "0 30px 90px rgba(0,0,0,0.55)",
               overflow: "hidden",
             }}
-          >
-            <div
-              style={{
-                padding: 22,
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
-              }}
             >
+              <div
+                style={{
+                  padding: "20px clamp(16px, 3vw, 22px)",
+                  borderBottom: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
               <p
                 style={{
                   margin: 0,
@@ -650,25 +753,25 @@ export default function Header() {
                 Search the universe
               </p>
 
-              <input
-                autoFocus
-                value={query}
+                <input
+                  autoFocus
+                  value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search films, series and books..."
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  color: "white",
-                  fontSize: 28,
-                  letterSpacing: "-0.8px",
-                  fontFamily: "serif",
-                }}
-              />
-            </div>
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "white",
+                    fontSize: "clamp(22px, 6vw, 28px)",
+                    letterSpacing: "-0.8px",
+                    fontFamily: "serif",
+                  }}
+                />
+              </div>
 
-            <div style={{ padding: 22 }}>
+            <div style={{ padding: "20px clamp(16px, 3vw, 22px)" }}>
               <div
                 style={{
                   display: "flex",
@@ -746,13 +849,7 @@ export default function Header() {
                 </div>
               ) : null}
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 12,
-                }}
-              >
+              <div className="header-search-grid">
                 {filteredResults.length > 0 ? (
                   filteredResults.map((item) => (
                     <SearchResultCard

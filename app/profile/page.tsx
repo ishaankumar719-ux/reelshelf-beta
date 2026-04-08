@@ -710,6 +710,10 @@ export default function ProfilePage() {
           .profile-stat-grid {
             grid-template-columns: 1fr;
           }
+
+          .profile-recent-grid {
+            gap: 12px;
+          }
         }
       `}</style>
 
@@ -721,7 +725,7 @@ export default function ProfilePage() {
           border: "1px solid rgba(255,255,255,0.08)",
           background:
             "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 30%), radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 22%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-          padding: "34px 34px 30px",
+          padding: "clamp(20px, 5vw, 34px) clamp(18px, 5vw, 34px) clamp(20px, 5vw, 30px)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
           marginBottom: 22,
         }}
@@ -770,7 +774,7 @@ export default function ProfilePage() {
                 <h1
                   style={{
                     margin: "8px 0 0",
-                    fontSize: 58,
+                    fontSize: "clamp(2.4rem, 9vw, 58px)",
                     lineHeight: 0.96,
                     letterSpacing: "-2.4px",
                     fontWeight: 600,
@@ -784,7 +788,7 @@ export default function ProfilePage() {
                   style={{
                     margin: "14px 0 0",
                     color: "#c2c2c2",
-                    fontSize: 18,
+                    fontSize: "clamp(14px, 3.8vw, 18px)",
                     lineHeight: 1.65,
                     maxWidth: 720,
                   }}

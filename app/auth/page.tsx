@@ -120,14 +120,29 @@ export default function AuthPage() {
 
   return (
     <main style={{ padding: "18px 0 56px" }}>
+      <style>{`
+        .auth-grid {
+          max-width: 1120px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+          gap: 24px;
+        }
+
+        @media (max-width: 960px) {
+          .auth-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .auth-grid {
+            gap: 16px;
+          }
+        }
+      `}</style>
       <section
-        style={{
-          maxWidth: 1120,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1.05fr) minmax(360px, 0.95fr)",
-          gap: 24,
-        }}
+        className="auth-grid"
       >
         <div
           style={{
@@ -137,7 +152,7 @@ export default function AuthPage() {
             border: "1px solid rgba(255,255,255,0.08)",
             background:
               "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06), transparent 20%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-            padding: "34px 34px 30px",
+            padding: "clamp(22px, 5vw, 34px) clamp(20px, 5vw, 34px) clamp(22px, 5vw, 30px)",
             boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
           }}
         >
@@ -157,7 +172,7 @@ export default function AuthPage() {
           <h1
             style={{
               margin: 0,
-              fontSize: 56,
+              fontSize: "clamp(2.4rem, 8vw, 56px)",
               lineHeight: 0.98,
               letterSpacing: "-2.2px",
               fontWeight: 600,
@@ -171,7 +186,7 @@ export default function AuthPage() {
             style={{
               margin: "16px 0 0",
               color: "#c7c7c7",
-              fontSize: 18,
+              fontSize: "clamp(15px, 3.8vw, 18px)",
               lineHeight: 1.65,
               maxWidth: 760,
             }}
@@ -217,11 +232,11 @@ export default function AuthPage() {
             border: "1px solid rgba(255,255,255,0.08)",
             background:
               "linear-gradient(180deg, rgba(18,18,18,0.96) 0%, rgba(10,10,10,0.97) 100%)",
-            padding: 28,
+            padding: "clamp(20px, 5vw, 28px)",
             boxShadow: "0 24px 80px rgba(0,0,0,0.24)",
           }}
         >
-          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
             <ModeButton
               active={mode === "signin"}
               label="Sign In"
@@ -277,7 +292,7 @@ export default function AuthPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 style={{
-                  height: 46,
+                  height: 50,
                   borderRadius: 14,
                   border: "1px solid rgba(255,255,255,0.1)",
                   background: "rgba(255,255,255,0.03)",
@@ -306,7 +321,7 @@ export default function AuthPage() {
                 required
                 minLength={6}
                 style={{
-                  height: 46,
+                  height: 50,
                   borderRadius: 14,
                   border: "1px solid rgba(255,255,255,0.1)",
                   background: "rgba(255,255,255,0.03)",
@@ -336,6 +351,7 @@ export default function AuthPage() {
               type="submit"
               disabled={loading}
               style={{
+                minHeight: 46,
                 padding: "12px 18px",
                 borderRadius: 999,
                 background: "white",

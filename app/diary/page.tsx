@@ -163,6 +163,16 @@ export default function DiaryPage() {
             gap: 14px;
           }
         }
+
+        @media (max-width: 560px) {
+          .diary-feed {
+            gap: 14px;
+          }
+
+          .diary-card-shell {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
 
       <section
@@ -192,7 +202,7 @@ export default function DiaryPage() {
           <h1
             style={{
               margin: 0,
-              fontSize: 52,
+              fontSize: "clamp(2.35rem, 8vw, 52px)",
               lineHeight: 1,
               letterSpacing: "-1.8px",
               fontWeight: 500,
@@ -204,7 +214,7 @@ export default function DiaryPage() {
             style={{
               margin: "12px 0 0",
               color: "#a3a3a3",
-              fontSize: 15,
+              fontSize: "clamp(14px, 3.8vw, 15px)",
               lineHeight: 1.7,
               maxWidth: 660,
               fontFamily: "Arial, sans-serif",
@@ -390,7 +400,7 @@ export default function DiaryPage() {
               style={{
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 30,
-                padding: 18,
+                padding: "clamp(14px, 4vw, 18px)",
                 background:
                   "linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(8,8,8,0.96) 100%)",
                 boxShadow: "0 24px 60px rgba(0,0,0,0.28)",
@@ -636,7 +646,7 @@ export default function DiaryPage() {
                     <h2
                       style={{
                         margin: "0 0 8px",
-                        fontSize: 30,
+                        fontSize: "clamp(24px, 6vw, 30px)",
                         lineHeight: 1.04,
                         letterSpacing: "-1px",
                         fontWeight: 500,

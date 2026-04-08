@@ -78,12 +78,22 @@ export default function DiscoverShelvesClient({
             grid-template-columns: 1fr;
           }
 
+          .discover-rushmore {
+            gap: 8px;
+          }
+
           .discover-hero-controls {
             align-items: stretch;
           }
 
           .discover-count-pill {
             align-self: flex-start;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .discover-grid {
+            gap: 16px;
           }
         }
       `}</style>
@@ -96,7 +106,7 @@ export default function DiscoverShelvesClient({
           border: "1px solid rgba(255,255,255,0.08)",
           background:
             "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 85% 18%, rgba(255,255,255,0.06), transparent 22%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-          padding: "28px 30px 24px",
+          padding: "clamp(20px, 5vw, 28px) clamp(18px, 5vw, 30px) clamp(20px, 5vw, 24px)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
           marginBottom: 22,
         }}
@@ -117,7 +127,7 @@ export default function DiscoverShelvesClient({
         <h1
           style={{
             margin: 0,
-            fontSize: 52,
+            fontSize: "clamp(2.35rem, 8vw, 52px)",
             lineHeight: 0.98,
             letterSpacing: "-2px",
             fontWeight: 600,
@@ -131,7 +141,7 @@ export default function DiscoverShelvesClient({
           style={{
             margin: "14px 0 0",
             color: "#c7c7c7",
-            fontSize: 16,
+            fontSize: "clamp(14px, 3.8vw, 16px)",
             lineHeight: 1.64,
             maxWidth: 700,
           }}
@@ -220,7 +230,7 @@ export default function DiscoverShelvesClient({
                 />
                 <Link
                   href={href}
-                  style={{
+                style={{
                     display: "block",
                     padding: 20,
                     textDecoration: "none",

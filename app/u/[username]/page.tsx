@@ -198,6 +198,13 @@ export default async function PublicProfilePage({
             grid-template-columns: 1fr;
           }
         }
+
+        @media (max-width: 640px) {
+          .public-profile-rushmore,
+          .public-profile-recent {
+            gap: 12px;
+          }
+        }
       `}</style>
 
       <section
@@ -208,7 +215,7 @@ export default async function PublicProfilePage({
           border: "1px solid rgba(255,255,255,0.08)",
           background:
             "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 85% 18%, rgba(255,255,255,0.06), transparent 22%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-          padding: "34px 34px 30px",
+          padding: "clamp(20px, 5vw, 34px) clamp(18px, 5vw, 34px) clamp(20px, 5vw, 30px)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
           marginBottom: 24,
         }}
@@ -256,7 +263,7 @@ export default async function PublicProfilePage({
                 <h1
                   style={{
                     margin: "10px 0 0",
-                    fontSize: 62,
+                    fontSize: "clamp(2.4rem, 9vw, 62px)",
                     lineHeight: 0.95,
                     letterSpacing: "-2.6px",
                     fontWeight: 600,
@@ -270,7 +277,7 @@ export default async function PublicProfilePage({
                   style={{
                     margin: "16px 0 0",
                     color: "#c2c2c2",
-                    fontSize: 18,
+                    fontSize: "clamp(14px, 3.8vw, 18px)",
                     lineHeight: 1.7,
                     maxWidth: 720,
                   }}

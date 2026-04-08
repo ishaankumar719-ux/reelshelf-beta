@@ -208,7 +208,7 @@ function MediaCard({ item }: { item: DashboardItem }) {
       style={{
         textDecoration: "none",
         color: "inherit",
-        width: 188,
+        width: "min(188px, 43vw)",
         flexShrink: 0,
       }}
     >
@@ -326,7 +326,7 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
       style={{
         textDecoration: "none",
         color: "inherit",
-        width: 320,
+        width: "min(320px, 82vw)",
         flexShrink: 0,
       }}
     >
@@ -459,7 +459,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
   return (
     <article
       style={{
-        width: 372,
+        width: "min(372px, 88vw)",
         flexShrink: 0,
         display: "grid",
         gridTemplateColumns: "96px minmax(0, 1fr)",
@@ -908,6 +908,7 @@ export default function HomeDashboardClient({
           gap: 16px;
           overflow-x: auto;
           padding-bottom: 6px;
+          scroll-padding-left: 4px;
         }
 
         .home-hero-grid {
@@ -937,6 +938,14 @@ export default function HomeDashboardClient({
             grid-template-columns: 1fr;
           }
         }
+
+        @media (max-width: 720px) {
+          .home-row {
+            gap: 12px;
+            margin-right: -4px;
+            padding-right: 4px;
+          }
+        }
       `}</style>
 
       <section className="home-hero-grid">
@@ -948,7 +957,7 @@ export default function HomeDashboardClient({
             border: "1px solid rgba(255,255,255,0.08)",
             background:
               "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06), transparent 20%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-            padding: "30px 30px 26px",
+            padding: "clamp(20px, 5vw, 30px) clamp(18px, 5vw, 30px) clamp(20px, 5vw, 26px)",
             boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
           }}
         >
@@ -968,7 +977,7 @@ export default function HomeDashboardClient({
           <h1
             style={{
               margin: 0,
-              fontSize: 52,
+              fontSize: "clamp(2.35rem, 8vw, 52px)",
               lineHeight: 0.98,
               letterSpacing: "-2.4px",
               fontWeight: 600,
@@ -982,7 +991,7 @@ export default function HomeDashboardClient({
             style={{
               margin: "16px 0 0",
               color: "#c7c7c7",
-              fontSize: 17,
+              fontSize: "clamp(14px, 3.8vw, 17px)",
               lineHeight: 1.58,
               maxWidth: 760,
             }}

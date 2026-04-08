@@ -291,13 +291,26 @@ export default function ActivityFeedClient() {
         padding: "28px 0 84px",
       }}
     >
+      <style>{`
+        @media (max-width: 640px) {
+          .activity-header-actions {
+            width: 100%;
+            justify-items: stretch !important;
+          }
+
+          .activity-header-actions > * {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      `}</style>
       <section
         style={{
           borderRadius: 32,
           border: "1px solid rgba(255,255,255,0.08)",
           background:
             "radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 48%), linear-gradient(180deg, rgba(17,17,17,0.96) 0%, rgba(9,9,9,0.98) 100%)",
-          padding: "30px 28px",
+          padding: "clamp(20px, 5vw, 30px) clamp(18px, 5vw, 28px)",
         }}
       >
         <p
@@ -339,7 +352,7 @@ export default function ActivityFeedClient() {
               style={{
                 margin: "14px 0 0",
                 color: "#b3b3b3",
-                fontSize: 15,
+                fontSize: "clamp(14px, 3.8vw, 15px)",
                 lineHeight: 1.75,
                 maxWidth: 720,
                 fontFamily: "Arial, sans-serif",
@@ -350,6 +363,7 @@ export default function ActivityFeedClient() {
           </div>
 
           <div
+            className="activity-header-actions"
             style={{
               display: "grid",
               gap: 12,
