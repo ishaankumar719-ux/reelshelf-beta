@@ -1,3 +1,10 @@
+export type MountRushmoreMovie = {
+  title: string;
+  year: number | null;
+  subtitle: string | null;
+  poster: string | null;
+};
+
 export type UserProfile = {
   id: string;
   email: string | null;
@@ -8,6 +15,7 @@ export type UserProfile = {
   favouriteFilm: string | null;
   favouriteSeries: string | null;
   favouriteBook: string | null;
+  movieMountRushmore: MountRushmoreMovie[];
 };
 
 const USERNAME_PATTERN = /^[a-z0-9_]+$/;
@@ -100,4 +108,62 @@ export function getProfileInitials(profile: Pick<UserProfile, "displayName" | "u
 
 export function getPublicProfileHref(username: string) {
   return `/u/${encodeURIComponent(normalizeUsername(username))}`;
+}
+
+export function getEmptyMountRushmore(): MountRushmoreMovie[] {
+  return Array.from({ length: 4 }, () => ({
+    title: "",
+    year: null,
+    subtitle: null,
+    poster: null,
+  }));
+}
+
+export function normalizeMountRushmore(
+  value: unknown
+): MountRushmoreMovie[] {
+  const source = Array.isArray(value) ? value : [];
+
+  const normalized = source
+    .slice(0, 4)
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return {
+          title: "",
+          year: null,
+          subtitle: null,
+          poster: null,
+        } satisfies MountRushmoreMovie;
+      }
+
+      const maybeItem = item as {
+        title?: unknown;
+        year?: unknown;
+        subtitle?: unknown;
+        poster?: unknown;
+      };
+
+      const year =
+        typeof maybeItem.year === "number" && Number.isFinite(maybeItem.year)
+          ? maybeItem.year
+          : typeof maybeItem.year === "string" && maybeItem.year.trim()
+            ? Number(maybeItem.year)
+            : null;
+
+      return {
+        title:
+          typeof maybeItem.title === "string" ? maybeItem.title.trim() : "",
+        year: typeof year === "number" && Number.isFinite(year) ? year : null,
+        subtitle:
+          typeof maybeItem.subtitle === "string" && maybeItem.subtitle.trim()
+            ? maybeItem.subtitle.trim()
+            : null,
+        poster:
+          typeof maybeItem.poster === "string" && maybeItem.poster.trim()
+            ? maybeItem.poster.trim()
+            : null,
+      } satisfies MountRushmoreMovie;
+    });
+
+  return [...normalized, ...getEmptyMountRushmore()].slice(0, 4);
 }

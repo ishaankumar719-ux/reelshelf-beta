@@ -31,6 +31,9 @@ add column if not exists favourite_series text;
 alter table public.profiles
 add column if not exists favourite_book text;
 
+alter table public.profiles
+add column if not exists movie_mount_rushmore jsonb not null default '[]'::jsonb;
+
 create unique index if not exists profiles_username_unique_idx
 on public.profiles (username)
 where username is not null;
@@ -45,6 +48,10 @@ create table if not exists public.diary_entries (
   user_id uuid not null references auth.users (id) on delete cascade,
   media_id text not null,
   media_type text not null check (media_type in ('movie', 'tv', 'book')),
+  review_scope text not null default 'title' check (review_scope in ('title', 'show', 'season', 'episode')),
+  show_id text not null default '',
+  season_number integer not null default 0,
+  episode_number integer not null default 0,
   title text not null,
   poster text,
   year integer not null default 0,
@@ -58,8 +65,29 @@ create table if not exists public.diary_entries (
   favourite boolean not null default false,
   saved_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, media_type, media_id)
+  updated_at timestamptz not null default now()
+);
+
+alter table public.diary_entries
+add column if not exists review_scope text not null default 'title' check (review_scope in ('title', 'show', 'season', 'episode'));
+
+alter table public.diary_entries
+add column if not exists show_id text not null default '';
+
+alter table public.diary_entries
+add column if not exists season_number integer not null default 0;
+
+alter table public.diary_entries
+add column if not exists episode_number integer not null default 0;
+
+create unique index if not exists diary_entries_scope_unique_idx
+on public.diary_entries (
+  user_id,
+  media_type,
+  media_id,
+  review_scope,
+  season_number,
+  episode_number
 );
 
 create table if not exists public.saved_items (

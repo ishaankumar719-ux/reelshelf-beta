@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
+  getDiaryEntryKey,
   getDiaryMovies,
   removeDiaryEntry,
   saveDiaryDraft,
@@ -124,6 +125,10 @@ export default function DiaryPage() {
     saveDiaryDraft({
       id: movie.id,
       mediaType: movie.mediaType,
+      reviewScope: movie.reviewScope,
+      showId: movie.showId,
+      seasonNumber: movie.seasonNumber,
+      episodeNumber: movie.episodeNumber,
       title: movie.title,
       poster: movie.poster,
       year: movie.year,
@@ -136,7 +141,11 @@ export default function DiaryPage() {
   }
 
   function handleDelete(movie: DiaryMovie) {
-    removeDiaryEntry(movie.id, movie.mediaType);
+    removeDiaryEntry(movie.id, movie.mediaType, {
+      reviewScope: movie.reviewScope,
+      seasonNumber: movie.seasonNumber,
+      episodeNumber: movie.episodeNumber,
+    });
     setMovies(getDiaryMovies());
     setPendingDeleteKey(null);
   }
@@ -391,7 +400,7 @@ export default function DiaryPage() {
         <div className="diary-feed">
           {filteredMovies.map((movie) => (
             (() => {
-              const entryKey = `${movie.mediaType}-${movie.id}`;
+              const entryKey = getDiaryEntryKey(movie);
               const isConfirmingDelete = pendingDeleteKey === entryKey;
 
               return (

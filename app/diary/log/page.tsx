@@ -69,7 +69,11 @@ export default function DiaryLogPage() {
 
     setMovie(draft);
 
-    const existingEntry = getDiaryMovie(draft.id, draft.mediaType);
+    const existingEntry = getDiaryMovie(draft.id, draft.mediaType, {
+      reviewScope: draft.reviewScope,
+      seasonNumber: draft.seasonNumber,
+      episodeNumber: draft.episodeNumber,
+    });
 
     if (existingEntry) {
       setRatingInput(

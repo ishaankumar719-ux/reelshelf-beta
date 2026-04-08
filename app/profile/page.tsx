@@ -10,15 +10,27 @@ import {
   type DiaryMovie,
 } from "../../lib/diary";
 import { getMediaHref } from "../../lib/mediaRoutes";
-import { getProfileHandle, getProfileInitials } from "../../lib/profile";
+import {
+  getEmptyMountRushmore,
+  getProfileHandle,
+  getProfileInitials,
+  getPublicProfileHref,
+  type MountRushmoreMovie,
+} from "../../lib/profile";
 
 type ProfileTab = "movie" | "tv" | "book";
+type MountRushmoreDraft = {
+  title: string;
+  year: string;
+  subtitle: string;
+  poster: string;
+};
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
       style={{
-        margin: "0 0 10px",
+        margin: 0,
         color: "#7f7f7f",
         fontSize: 11,
         letterSpacing: "0.22em",
@@ -43,8 +55,8 @@ function Pill({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        minHeight: 36,
-        padding: "8px 14px",
+        minHeight: 34,
+        padding: "7px 13px",
         borderRadius: 999,
         border:
           tone === "highlight"
@@ -55,129 +67,12 @@ function Pill({
             ? "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)"
             : "rgba(255,255,255,0.03)",
         color: "white",
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: "Arial, sans-serif",
-        letterSpacing: "-0.1px",
       }}
     >
       {children}
     </span>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string | number;
-  detail: string;
-}) {
-  return (
-    <div
-      style={{
-        padding: "20px 20px 18px",
-        borderRadius: 22,
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.02) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 14px 34px rgba(0,0,0,0.14)",
-      }}
-    >
-      <p
-        style={{
-          margin: 0,
-          color: "#8f8f8f",
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: "0.14em",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        {label}
-      </p>
-
-      <h3
-        style={{
-          margin: "10px 0 0",
-          fontSize: 32,
-          fontWeight: 600,
-          letterSpacing: "-1px",
-        }}
-      >
-        {value}
-      </h3>
-
-      <p
-        style={{
-          margin: "8px 0 0",
-          color: "#9ca3af",
-          fontSize: 13,
-          lineHeight: 1.55,
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        {detail}
-      </p>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        height: 38,
-        padding: "0 15px",
-        borderRadius: 999,
-        border: active
-          ? "1px solid rgba(255,255,255,0.18)"
-          : "1px solid rgba(255,255,255,0.08)",
-        background: active ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.03)",
-        color: active ? "white" : "#9ca3af",
-        fontSize: 12,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function LinkPill({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        height: 40,
-        padding: "0 16px",
-        borderRadius: 999,
-        background: "white",
-        color: "black",
-        textDecoration: "none",
-        fontSize: 14,
-        fontWeight: 600,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      {children}
-    </Link>
   );
 }
 
@@ -193,15 +88,15 @@ function IdentityAvatar({
   return (
     <div
       style={{
-        width: 104,
-        height: 104,
+        width: 112,
+        height: 112,
         borderRadius: 999,
         overflow: "hidden",
         flexShrink: 0,
         background:
           "radial-gradient(circle at top, rgba(255,255,255,0.09), transparent 60%), linear-gradient(180deg, #161616 0%, #090909 100%)",
         border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 18px 44px rgba(0,0,0,0.28)",
+        boxShadow: "0 20px 48px rgba(0,0,0,0.3)",
       }}
     >
       {avatarUrl ? (
@@ -223,7 +118,7 @@ function IdentityAvatar({
             display: "grid",
             placeItems: "center",
             color: "rgba(255,255,255,0.76)",
-            fontSize: 30,
+            fontSize: 32,
             fontWeight: 700,
             fontFamily: "Arial, sans-serif",
           }}
@@ -235,48 +130,54 @@ function IdentityAvatar({
   );
 }
 
-function ProfileIdentityField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function LinkPill({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <div
+    <Link
+      href={href}
       style={{
-        minWidth: 0,
-        borderRadius: 18,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(255,255,255,0.03)",
-        padding: "14px 16px",
+        display: "inline-flex",
+        alignItems: "center",
+        height: 40,
+        padding: "0 16px",
+        borderRadius: 999,
+        background: "white",
+        color: "black",
+        textDecoration: "none",
+        fontSize: 13,
+        fontWeight: 600,
+        fontFamily: "Arial, sans-serif",
       }}
     >
-      <p
-        style={{
-          margin: 0,
-          color: "#7f7f7f",
-          fontSize: 10,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          margin: "8px 0 0",
-          color: "white",
-          fontSize: 16,
-          lineHeight: 1.4,
-          letterSpacing: "-0.2px",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        {value}
-      </p>
-    </div>
+      {children}
+    </Link>
+  );
+}
+
+function GhostLinkPill({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        height: 40,
+        padding: "0 16px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "white",
+        textDecoration: "none",
+        fontSize: 13,
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -324,16 +225,105 @@ function FavouriteField({
   );
 }
 
+function TabButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        height: 38,
+        padding: "0 15px",
+        borderRadius: 999,
+        border: active
+          ? "1px solid rgba(255,255,255,0.18)"
+          : "1px solid rgba(255,255,255,0.08)",
+        background: active ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.03)",
+        color: active ? "white" : "#9ca3af",
+        fontSize: 12,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        fontFamily: "Arial, sans-serif",
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatLine({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 20,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
+        padding: "18px 18px 16px",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          color: "#8f8f8f",
+          fontSize: 10,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        {label}
+      </p>
+      <h3
+        style={{
+          margin: "10px 0 0",
+          fontSize: 32,
+          lineHeight: 1,
+          letterSpacing: "-1px",
+          fontWeight: 600,
+        }}
+      >
+        {value}
+      </h3>
+      <p
+        style={{
+          margin: "8px 0 0",
+          color: "#9ca3af",
+          fontSize: 13,
+          lineHeight: 1.6,
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        {detail}
+      </p>
+    </div>
+  );
+}
+
 function getTabMeta(tab: ProfileTab) {
   if (tab === "movie") {
     return {
       label: "Films",
       singular: "film",
       creatorLabel: "Directors",
-      ctaHref: "/movies",
-      ctaLabel: "Browse films",
       emptyLabel: "No film insights yet",
-      emptyBody: "Log films in your diary to build out your cinematic profile.",
+      emptyBody: "Log films in your diary to bring your cinematic taste into focus.",
     };
   }
 
@@ -342,10 +332,8 @@ function getTabMeta(tab: ProfileTab) {
       label: "Series",
       singular: "series",
       creatorLabel: "Creators",
-      ctaHref: "/series",
-      ctaLabel: "Browse series",
       emptyLabel: "No series insights yet",
-      emptyBody: "Start logging series to see your television taste take shape.",
+      emptyBody: "Start logging series to build a sharper TV identity.",
     };
   }
 
@@ -353,10 +341,8 @@ function getTabMeta(tab: ProfileTab) {
     label: "Books",
     singular: "book",
     creatorLabel: "Authors",
-    ctaHref: "/books",
-    ctaLabel: "Browse books",
     emptyLabel: "No book insights yet",
-    emptyBody: "Log books in your diary to build out your reading profile.",
+    emptyBody: "Log books to turn this page into a real reading portrait.",
   };
 }
 
@@ -422,7 +408,7 @@ function getTopGenres(entries: DiaryMovie[]) {
 
       return a[0].localeCompare(b[0]);
     })
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([name, count]) => `${name} · ${count}`);
 }
 
@@ -432,7 +418,7 @@ function getRecentEntries(entries: DiaryMovie[]) {
     .slice(0, 4);
 }
 
-function getInsightDetails(entries: DiaryMovie[], meta: ReturnType<typeof getTabMeta>) {
+function getInsightDetails(entries: DiaryMovie[]) {
   const ratedEntries = getRatedEntries(entries);
   const favouriteCount = entries.filter((entry) => entry.favourite).length;
   const reviewedCount = entries.filter((entry) => entry.review.trim()).length;
@@ -450,41 +436,25 @@ function getInsightDetails(entries: DiaryMovie[], meta: ReturnType<typeof getTab
     topGenres,
     highestRated,
     latestLogged,
-    stats: [
-      {
-        label: `${meta.label} logged`,
-        value: entries.length,
-        detail:
-          entries.length === 0
-            ? `No ${meta.label.toLowerCase()} logged yet.`
-            : `${reviewedCount} review${reviewedCount === 1 ? "" : "s"} written across your ${meta.label.toLowerCase()} diary.`,
-      },
-      {
-        label: "Average rating",
-        value: formatAverageRating(entries),
-        detail:
-          ratedEntries.length === 0
-            ? `Rate ${meta.label.toLowerCase()} entries to surface an average.`
-            : `Calculated from ${ratedEntries.length} rated ${meta.label.toLowerCase()}.`,
-      },
-      {
-        label: "Favourites",
-        value: favouriteCount,
-        detail:
-          favouriteCount === 0
-            ? `No favourite ${meta.singular} marked yet.`
-            : `${favouriteCount} ${meta.singular}${favouriteCount === 1 ? "" : "s"} marked as a favourite.`,
-      },
-      {
-        label: `Top ${meta.creatorLabel.toLowerCase()}`,
-        value: topCreators[0]?.name || "—",
-        detail:
-          topCreators[0]
-            ? `${topCreators[0].count} logged ${meta.singular}${topCreators[0].count === 1 ? "" : "s"} from this ${meta.creatorLabel.toLowerCase().slice(0, -1)}.`
-            : `No ${meta.creatorLabel.toLowerCase()} data available yet.`,
-      },
-    ],
   };
+}
+
+function toDraftMountRushmore(items: MountRushmoreMovie[]): MountRushmoreDraft[] {
+  return items.map((item) => ({
+    title: item.title || "",
+    year: item.year ? String(item.year) : "",
+    subtitle: item.subtitle || "",
+    poster: item.poster || "",
+  }));
+}
+
+function toSavedMountRushmore(items: MountRushmoreDraft[]): MountRushmoreMovie[] {
+  return items.map((item) => ({
+    title: item.title.trim(),
+    year: item.year.trim() ? Number(item.year.trim()) || null : null,
+    subtitle: item.subtitle.trim() || null,
+    poster: item.poster.trim() || null,
+  }));
 }
 
 export default function ProfilePage() {
@@ -497,8 +467,12 @@ export default function ProfilePage() {
     profile?.favouriteSeries || ""
   );
   const [favouriteBook, setFavouriteBook] = useState(profile?.favouriteBook || "");
+  const [mountRushmore, setMountRushmore] = useState<MountRushmoreDraft[]>(
+    toDraftMountRushmore(profile?.movieMountRushmore || getEmptyMountRushmore())
+  );
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMessage, setDetailsMessage] = useState<string | null>(null);
+
   const handle = getProfileHandle(profile);
   const identityLabel = displayName || handle || "ReelShelf Profile";
   const identityInitials = getProfileInitials(profile);
@@ -508,11 +482,15 @@ export default function ProfilePage() {
     setFavouriteFilm(profile?.favouriteFilm || "");
     setFavouriteSeries(profile?.favouriteSeries || "");
     setFavouriteBook(profile?.favouriteBook || "");
+    setMountRushmore(
+      toDraftMountRushmore(profile?.movieMountRushmore || getEmptyMountRushmore())
+    );
   }, [
     profile?.bio,
     profile?.favouriteBook,
     profile?.favouriteFilm,
     profile?.favouriteSeries,
+    profile?.movieMountRushmore,
   ]);
 
   useEffect(() => {
@@ -530,7 +508,14 @@ export default function ProfilePage() {
 
   const currentEntries = entriesByType[tab];
   const meta = getTabMeta(tab);
-  const insights = getInsightDetails(currentEntries, meta);
+  const insights = getInsightDetails(currentEntries);
+
+  const recentFavourites = useMemo(() => {
+    return [...diaryEntries]
+      .filter((entry) => entry.favourite)
+      .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())
+      .slice(0, 6);
+  }, [diaryEntries]);
 
   async function handleSaveDetails(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -542,713 +527,621 @@ export default function ProfilePage() {
       favouriteFilm,
       favouriteSeries,
       favouriteBook,
+      movieMountRushmore: toSavedMountRushmore(mountRushmore),
     });
 
     setSavingDetails(false);
     setDetailsMessage(error || "Profile details saved.");
   }
 
-  if (diaryEntries.length === 0) {
-    return (
-      <main
-        style={{
-          maxWidth: 1120,
-          margin: "0 auto",
-          padding: "28px 20px 80px",
-        }}
-      >
-        <section
-          style={{
-            borderRadius: 28,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background:
-              "linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-            padding: "34px 34px 30px",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
-          }}
-        >
-          <SectionLabel>Profile</SectionLabel>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 18,
-              alignItems: "center",
-              flexWrap: "wrap",
-              marginBottom: 20,
-            }}
-          >
-            <IdentityAvatar
-              avatarUrl={profile?.avatarUrl ?? null}
-              label={identityLabel}
-              initials={identityInitials}
-            />
-
-            <div>
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: 42,
-                  lineHeight: 1,
-                  letterSpacing: "-1.6px",
-                  fontWeight: 600,
-                }}
-              >
-                {identityLabel}
-              </h1>
-
-              <p
-                style={{
-                  margin: "10px 0 0",
-                  color: "#9ca3af",
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  fontFamily: "Arial, sans-serif",
-                }}
-              >
-                {handle || "Finish your profile identity to prepare for public shelves."}
-              </p>
-            </div>
-          </div>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 52,
-              lineHeight: 1,
-              letterSpacing: "-2px",
-              fontWeight: 600,
-            }}
-          >
-            No profile data yet
-          </h2>
-
-          <p
-            style={{
-              marginTop: 16,
-              color: "#c2c2c2",
-              fontSize: 19,
-              lineHeight: 1.6,
-              maxWidth: 700,
-            }}
-          >
-            Start logging films, series, or books in your diary and ReelShelf
-            will build separate insights for each part of your taste.
-          </p>
-
-          <div style={{ marginTop: 22, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <LinkPill href="/movies">Browse films</LinkPill>
-            <LinkPill href="/series">Browse series</LinkPill>
-            <LinkPill href="/books">Browse books</LinkPill>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
   return (
-    <main
-      style={{
-        maxWidth: 1120,
-        margin: "0 auto",
-        padding: "28px 20px 80px",
-      }}
-    >
+    <main style={{ padding: "10px 0 72px" }}>
       <style>{`
-        .profile-hero-grid {
+        .profile-page-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+          gap: 24px;
+        }
+
+        .profile-hero-shell {
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
           gap: 22px;
-          align-items: start;
         }
 
-        .profile-stat-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
-          margin-bottom: 22px;
+        .profile-identity-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 18px;
+          flex-wrap: wrap;
         }
 
-        .profile-panel-grid {
-          display: grid;
-          grid-template-columns: 1.1fr 0.9fr;
-          gap: 20px;
-          margin-bottom: 22px;
-        }
-
-        .profile-recent-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
-        }
-
-        .profile-favourite-grid {
+        .profile-detail-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px;
-          margin-top: 22px;
+        }
+
+        .rushmore-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .profile-favourites-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .profile-taste-shell {
+          display: grid;
+          grid-template-columns: minmax(300px, 0.88fr) minmax(0, 1.12fr);
+          gap: 24px;
+          align-items: start;
+        }
+
+        .taste-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        @media (min-width: 980px) {
+          .rushmore-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 980px) {
-          .profile-hero-grid,
-          .profile-stat-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .profile-panel-grid,
-          .profile-recent-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .profile-favourite-grid {
+          .profile-hero-shell,
+          .profile-taste-shell,
+          .profile-favourites-grid {
             grid-template-columns: 1fr;
           }
         }
 
-        @media (max-width: 640px) {
-          .profile-hero-grid,
-          .profile-stat-grid {
+        @media (max-width: 760px) {
+          .profile-detail-grid,
+          .taste-stat-grid {
             grid-template-columns: 1fr;
-          }
-
-          .profile-recent-grid {
-            gap: 12px;
           }
         }
       `}</style>
 
-      <section
+      <form
+        onSubmit={handleSaveDetails}
         style={{
-          position: "relative",
-          overflow: "hidden",
-          borderRadius: 28,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 30%), radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 22%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-          padding: "clamp(20px, 5vw, 34px) clamp(18px, 5vw, 34px) clamp(20px, 5vw, 30px)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
-          marginBottom: 22,
+          maxWidth: 1200,
+          margin: "0 auto",
+          display: "grid",
+          gap: 24,
         }}
       >
-        <SectionLabel>Profile</SectionLabel>
-
-        <div className="profile-hero-grid">
-          <div>
-            <div
-              style={{
-                display: "flex",
-                gap: 22,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div
-                style={{
-                  position: "relative",
-                  padding: 6,
-                  borderRadius: 999,
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%)",
-                }}
-              >
+        <section
+          style={{
+            borderRadius: 32,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 24%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
+            boxShadow: "0 30px 90px rgba(0,0,0,0.32)",
+            padding: "24px 24px 26px",
+          }}
+        >
+          <div className="profile-hero-shell">
+            <div style={{ display: "grid", gap: 20 }}>
+              <div className="profile-identity-row">
                 <IdentityAvatar
                   avatarUrl={profile?.avatarUrl ?? null}
                   label={identityLabel}
                   initials={identityInitials}
                 />
+
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <SectionLabel>Profile Hero</SectionLabel>
+                  <h1
+                    style={{
+                      margin: "8px 0 0",
+                      fontSize: "clamp(38px, 6vw, 64px)",
+                      lineHeight: 0.96,
+                      letterSpacing: "-2.2px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {identityLabel}
+                  </h1>
+
+                  <p
+                    style={{
+                      margin: "10px 0 0",
+                      color: "#9ca3af",
+                      fontSize: 15,
+                      lineHeight: 1.7,
+                      fontFamily: "Arial, sans-serif",
+                    }}
+                  >
+                    {handle || "Pick a public-facing identity for your shelf."}
+                  </p>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      marginTop: 18,
+                    }}
+                  >
+                    {profile?.username ? (
+                      <LinkPill href={getPublicProfileHref(profile.username)}>
+                        View Public Profile
+                      </LinkPill>
+                    ) : null}
+                    <GhostLinkPill href="/import/letterboxd">
+                      Import from Letterboxd
+                    </GhostLinkPill>
+                  </div>
+                </div>
               </div>
 
-              <div style={{ minWidth: 0, flex: 1 }}>
+              <label style={{ display: "grid", gap: 10 }}>
+                <span
+                  style={{
+                    color: "#d1d5db",
+                    fontSize: 11,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  Bio
+                </span>
+                <textarea
+                  value={bio}
+                  onChange={(event) => setBio(event.target.value)}
+                  placeholder="Write a short note about your taste, obsessions, or the mood of your shelf."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    borderRadius: 20,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.035)",
+                    color: "white",
+                    padding: "16px 16px",
+                    fontSize: 15,
+                    lineHeight: 1.7,
+                    outline: "none",
+                    resize: "vertical",
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                />
+              </label>
+            </div>
+
+            <div
+              style={{
+                borderRadius: 26,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.025) 100%)",
+                padding: 20,
+                display: "grid",
+                gap: 16,
+                alignContent: "start",
+              }}
+            >
+              <SectionLabel>Shelf Details</SectionLabel>
+
+              <div className="profile-detail-grid">
+                <FavouriteField
+                  label="Favourite Film"
+                  value={favouriteFilm}
+                  placeholder="In the Mood for Love"
+                  onChange={setFavouriteFilm}
+                />
+                <FavouriteField
+                  label="Favourite Series"
+                  value={favouriteSeries}
+                  placeholder="The Sopranos"
+                  onChange={setFavouriteSeries}
+                />
+                <FavouriteField
+                  label="Favourite Book"
+                  value={favouriteBook}
+                  placeholder="The Secret History"
+                  onChange={setFavouriteBook}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                {favouriteFilm ? <Pill tone="highlight">{favouriteFilm}</Pill> : null}
+                {favouriteSeries ? <Pill>{favouriteSeries}</Pill> : null}
+                {favouriteBook ? <Pill>{favouriteBook}</Pill> : null}
+              </div>
+
+              {detailsMessage ? (
                 <p
                   style={{
                     margin: 0,
-                    color: "#9ca3af",
+                    color:
+                      detailsMessage === "Profile details saved."
+                        ? "#c7c7c7"
+                        : "#fca5a5",
                     fontSize: 13,
                     lineHeight: 1.6,
                     fontFamily: "Arial, sans-serif",
                   }}
                 >
-                  {handle || "ReelShelf member"}
+                  {detailsMessage}
                 </p>
+              ) : null}
 
-                <h1
-                  style={{
-                    margin: "8px 0 0",
-                    fontSize: "clamp(2.4rem, 9vw, 58px)",
-                    lineHeight: 0.96,
-                    letterSpacing: "-2.4px",
-                    fontWeight: 600,
-                    maxWidth: 760,
-                  }}
-                >
-                  {identityLabel}
-                </h1>
-
-                <p
-                  style={{
-                    margin: "14px 0 0",
-                    color: "#c2c2c2",
-                    fontSize: "clamp(14px, 3.8vw, 18px)",
-                    lineHeight: 1.65,
-                    maxWidth: 720,
-                  }}
-                >
-                  {profile?.bio?.trim()
-                    ? profile.bio
-                    : "Curate the shelves that define you, shape your public identity, and turn your private taste into something worth sharing."}
-                </p>
-              </div>
+              <button
+                type="submit"
+                disabled={savingDetails}
+                style={{
+                  height: 46,
+                  borderRadius: 999,
+                  border: "none",
+                  background: "white",
+                  color: "black",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: "Arial, sans-serif",
+                  cursor: savingDetails ? "wait" : "pointer",
+                  opacity: savingDetails ? 0.7 : 1,
+                }}
+              >
+                {savingDetails ? "Saving..." : "Save Profile"}
+              </button>
             </div>
+          </div>
+        </section>
 
-            <div className="profile-favourite-grid">
-              <ProfileIdentityField
-                label="Favourite Film"
-                value={profile?.favouriteFilm || "Not set yet"}
-              />
-              <ProfileIdentityField
-                label="Favourite Series"
-                value={profile?.favouriteSeries || "Not set yet"}
-              />
-              <ProfileIdentityField
-                label="Favourite Book"
-                value={profile?.favouriteBook || "Not set yet"}
-              />
+        <section
+          style={{
+            borderRadius: 28,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
+            padding: "22px 22px 24px",
+            display: "grid",
+            gap: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <SectionLabel>Movie Mount Rushmore</SectionLabel>
+              <h2
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: "clamp(28px, 4vw, 42px)",
+                  lineHeight: 1,
+                  letterSpacing: "-1.2px",
+                  fontWeight: 600,
+                }}
+              >
+                The four films that define your shelf.
+              </h2>
             </div>
 
             <p
               style={{
-                margin: "18px 0 0",
-                color: "#c2c2c2",
-                fontSize: 18,
-                lineHeight: 1.55,
-                maxWidth: 760,
+                margin: 0,
+                maxWidth: 360,
+                color: "#9ca3af",
+                fontSize: 14,
+                lineHeight: 1.7,
+                fontFamily: "Arial, sans-serif",
               }}
             >
-              Explore how your diary shifts across films, series, and books, from
-              favourites to the creators and authors you keep returning to.
+              Curate a deliberate top four. Add poster URLs plus a short subtitle to
+              make the page feel ready for sharing.
             </p>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                marginTop: 22,
-              }}
-            >
-              <TabButton active={tab === "movie"} label="Films" onClick={() => setTab("movie")} />
-              <TabButton active={tab === "tv"} label="Series" onClick={() => setTab("tv")} />
-              <TabButton active={tab === "book"} label="Books" onClick={() => setTab("book")} />
-            </div>
           </div>
 
-          <form
-            onSubmit={handleSaveDetails}
+          <div className="rushmore-grid">
+            {mountRushmore.map((item, index) => (
+              <article
+                key={`rushmore-${index}`}
+                style={{
+                  borderRadius: 24,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    aspectRatio: "2 / 3",
+                    background:
+                      "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
+                  }}
+                >
+                  {item.poster ? (
+                    <img
+                      src={item.poster}
+                      alt={item.title || `Mount Rushmore pick ${index + 1}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "grid",
+                        placeItems: "center",
+                        padding: 20,
+                        textAlign: "center",
+                        color: "rgba(255,255,255,0.72)",
+                        fontSize: 16,
+                        lineHeight: 1.5,
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      Pick {index + 1}
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.28) 36%, rgba(0,0,0,0.02) 68%, rgba(0,0,0,0.02) 100%)",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 14,
+                      right: 14,
+                      bottom: 14,
+                    }}
+                  >
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 18,
+                        lineHeight: 1.08,
+                        letterSpacing: "-0.5px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.title || "Untitled pick"}
+                    </h3>
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        color: "rgba(255,255,255,0.78)",
+                        fontSize: 12,
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      {item.year || "Year"}{item.subtitle ? ` · ${item.subtitle}` : ""}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 14,
+                    display: "grid",
+                    gap: 10,
+                  }}
+                >
+                  <input
+                    value={item.title}
+                    onChange={(event) => {
+                      const next = [...mountRushmore];
+                      next[index] = { ...item, title: event.target.value };
+                      setMountRushmore(next);
+                    }}
+                    placeholder="Film title"
+                    style={{
+                      width: "100%",
+                      height: 42,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.035)",
+                      color: "white",
+                      padding: "0 12px",
+                      fontSize: 14,
+                      outline: "none",
+                    }}
+                  />
+
+                  <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: 10 }}>
+                    <input
+                      value={item.year}
+                      onChange={(event) => {
+                        const next = [...mountRushmore];
+                        next[index] = {
+                          ...item,
+                          year: event.target.value.replace(/[^0-9]/g, "").slice(0, 4),
+                        };
+                        setMountRushmore(next);
+                      }}
+                      placeholder="Year"
+                      inputMode="numeric"
+                      style={{
+                        width: "100%",
+                        height: 42,
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.035)",
+                        color: "white",
+                        padding: "0 12px",
+                        fontSize: 14,
+                        outline: "none",
+                      }}
+                    />
+
+                    <input
+                      value={item.subtitle}
+                      onChange={(event) => {
+                        const next = [...mountRushmore];
+                        next[index] = { ...item, subtitle: event.target.value };
+                        setMountRushmore(next);
+                      }}
+                      placeholder="Optional subtitle"
+                      style={{
+                        width: "100%",
+                        height: 42,
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.035)",
+                        color: "white",
+                        padding: "0 12px",
+                        fontSize: 14,
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+
+                  <input
+                    value={item.poster}
+                    onChange={(event) => {
+                      const next = [...mountRushmore];
+                      next[index] = { ...item, poster: event.target.value };
+                      setMountRushmore(next);
+                    }}
+                    placeholder="Poster image URL"
+                    style={{
+                      width: "100%",
+                      height: 42,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.035)",
+                      color: "white",
+                      padding: "0 12px",
+                      fontSize: 14,
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section
+          style={{
+            borderRadius: 28,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.02) 100%)",
+            padding: "22px 22px 24px",
+            display: "grid",
+            gap: 18,
+          }}
+        >
+          <div
             style={{
-              borderRadius: 24,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-              padding: 22,
-              display: "grid",
-              gap: 14,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "end",
             }}
           >
-            <SectionLabel>Profile Notes</SectionLabel>
-            <h2
+            <div>
+              <SectionLabel>Recent Favourites</SectionLabel>
+              <h2
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: "clamp(28px, 4vw, 40px)",
+                  lineHeight: 1,
+                  letterSpacing: "-1.2px",
+                  fontWeight: 600,
+                }}
+              >
+                The titles you keep returning to.
+              </h2>
+            </div>
+            <p
               style={{
-                margin: "0 0 4px",
-                fontSize: 28,
-                fontWeight: 600,
-                letterSpacing: "-0.8px",
+                margin: 0,
+                maxWidth: 360,
+                color: "#9ca3af",
+                fontSize: 14,
+                lineHeight: 1.7,
+                fontFamily: "Arial, sans-serif",
               }}
             >
-              Shape your public-facing shelf
-            </h2>
+              Pulled from favourite diary entries across films, series, and books.
+            </p>
+          </div>
 
+          {recentFavourites.length === 0 ? (
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 14,
-                flexWrap: "wrap",
-                padding: "14px 16px",
-                borderRadius: 18,
+                borderRadius: 22,
                 border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.03)",
+                background: "rgba(255,255,255,0.025)",
+                padding: "24px 22px",
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <p
-                  style={{
-                    margin: 0,
-                    color: "white",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    letterSpacing: "-0.2px",
-                  }}
-                >
-                  Import from Letterboxd
-                </p>
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    color: "#9ca3af",
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
-                  }}
-                >
-                  Upload your CSV export, preview the mapping, and add past logs to
-                  your ReelShelf diary.
-                </p>
-              </div>
-
-              <Link
-                href="/import/letterboxd"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: 40,
-                  padding: "0 16px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "white",
-                  textDecoration: "none",
-                  fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
-                  flexShrink: 0,
-                }}
-              >
-                Open Import
-              </Link>
-            </div>
-
-            <label style={{ display: "grid", gap: 10 }}>
-              <span
-                style={{
-                  color: "#d1d5db",
-                  fontSize: 11,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
-                }}
-              >
-                Bio
-              </span>
-              <textarea
-                value={bio}
-                onChange={(event) => setBio(event.target.value)}
-                placeholder="Write a short note about your taste, obsessions, or the mood of your shelves."
-                rows={5}
-                style={{
-                  width: "100%",
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.035)",
-                  color: "white",
-                  padding: "14px 16px",
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  outline: "none",
-                  resize: "vertical",
-                  fontFamily: "Arial, sans-serif",
-                }}
-              />
-            </label>
-
-            <FavouriteField
-              label="Favourite Film"
-              value={favouriteFilm}
-              placeholder="In the Mood for Love"
-              onChange={setFavouriteFilm}
-            />
-            <FavouriteField
-              label="Favourite Series"
-              value={favouriteSeries}
-              placeholder="The Sopranos"
-              onChange={setFavouriteSeries}
-            />
-            <FavouriteField
-              label="Favourite Book"
-              value={favouriteBook}
-              placeholder="The Secret History"
-              onChange={setFavouriteBook}
-            />
-
-            {detailsMessage ? (
               <p
                 style={{
                   margin: 0,
-                  color: detailsMessage === "Profile details saved." ? "#c7c7c7" : "#fca5a5",
-                  fontSize: 13,
-                  lineHeight: 1.6,
+                  color: "#a1a1aa",
+                  fontSize: 15,
+                  lineHeight: 1.7,
                   fontFamily: "Arial, sans-serif",
                 }}
               >
-                {detailsMessage}
+                Mark diary entries as favourites and this section will turn into a
+                richer snapshot of your current obsessions.
               </p>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={savingDetails}
-              style={{
-                marginTop: 4,
-                height: 46,
-                borderRadius: 999,
-                border: "none",
-                background: "white",
-                color: "black",
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: "Arial, sans-serif",
-                cursor: savingDetails ? "wait" : "pointer",
-                opacity: savingDetails ? 0.7 : 1,
-              }}
-            >
-              {savingDetails ? "Saving..." : "Save Profile Notes"}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="profile-stat-grid">
-        {insights.stats.map((stat) => (
-          <StatCard
-            key={stat.label}
-            label={stat.label}
-            value={stat.value}
-            detail={stat.detail}
-          />
-        ))}
-      </section>
-
-      {currentEntries.length === 0 ? (
-        <section
-          style={{
-            borderRadius: 24,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.02)",
-            padding: 24,
-          }}
-        >
-          <SectionLabel>{meta.label}</SectionLabel>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 30,
-              fontWeight: 600,
-              letterSpacing: "-1px",
-            }}
-          >
-            {meta.emptyLabel}
-          </h2>
-          <p
-            style={{
-              margin: "14px 0 0",
-              color: "#c2c2c2",
-              fontSize: 18,
-              lineHeight: 1.6,
-              maxWidth: 680,
-            }}
-          >
-            {meta.emptyBody}
-          </p>
-
-          <div style={{ marginTop: 20 }}>
-            <LinkPill href={meta.ctaHref}>{meta.ctaLabel}</LinkPill>
-          </div>
-        </section>
-      ) : (
-        <>
-          <section className="profile-panel-grid">
-            <div
-              style={{
-                borderRadius: 24,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 100%)",
-                padding: 24,
-              }}
-            >
-              <SectionLabel>Patterns</SectionLabel>
-              <h2
-                style={{
-                  margin: "0 0 16px",
-                  fontSize: 28,
-                  fontWeight: 600,
-                  letterSpacing: "-0.8px",
-                }}
-              >
-                What defines your {meta.label.toLowerCase()} taste
-              </h2>
-
-              <div
-                style={{
-                  display: "grid",
-                  gap: 12,
-                }}
-              >
-                <Pill tone="highlight">
-                  {insights.ratedEntries.length} rated {meta.label.toLowerCase()}
-                </Pill>
-                <Pill>
-                  {insights.reviewedCount} written review
-                  {insights.reviewedCount === 1 ? "" : "s"}
-                </Pill>
-                <Pill>
-                  {insights.favouriteCount} favourite
-                  {insights.favouriteCount === 1 ? "" : "s"} marked
-                </Pill>
-                <Pill>
-                  Highest rated:{" "}
-                  {insights.highestRated && typeof insights.highestRated.rating === "number"
-                    ? `${insights.highestRated.title} (${insights.highestRated.rating.toFixed(1)})`
-                    : "—"}
-                </Pill>
-                <Pill>
-                  Latest log:{" "}
-                  {insights.latestLogged
-                    ? `${insights.latestLogged.title} · ${formatLoggedDate(insights.latestLogged.savedAt)}`
-                    : "—"}
-                </Pill>
-                {insights.topGenres.length > 0 ? (
-                  <Pill>Top genres: {insights.topGenres.join(" · ")}</Pill>
-                ) : null}
-              </div>
             </div>
-
-            <div
-              style={{
-                borderRadius: 24,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 100%)",
-                padding: 24,
-              }}
-            >
-              <SectionLabel>{meta.creatorLabel}</SectionLabel>
-              <h2
-                style={{
-                  margin: "0 0 16px",
-                  fontSize: 28,
-                  fontWeight: 600,
-                  letterSpacing: "-0.8px",
-                }}
-              >
-                Names you keep returning to
-              </h2>
-
-              {insights.topCreators.length > 0 ? (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {insights.topCreators.map((creator, index) => (
-                    <div
-                      key={creator.name}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 14,
-                        padding: "14px 16px",
-                        borderRadius: 18,
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        background:
-                          index === 0
-                            ? "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.035) 100%)"
-                            : "rgba(255,255,255,0.02)",
-                      }}
-                    >
-                      <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#7f7f7f",
-                            fontSize: 10,
-                            letterSpacing: "0.18em",
-                            textTransform: "uppercase",
-                            fontFamily: "Arial, sans-serif",
-                          }}
-                        >
-                          {index === 0 ? "Most logged" : `#${index + 1}`}
-                        </p>
-                        <h3
-                          style={{
-                            margin: "6px 0 0",
-                            fontSize: 18,
-                            lineHeight: 1.2,
-                            letterSpacing: "-0.3px",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {creator.name}
-                        </h3>
-                      </div>
-
-                      <Pill tone={index === 0 ? "highlight" : "default"}>
-                        {creator.count} log{creator.count === 1 ? "" : "s"}
-                      </Pill>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Pill>No creator data yet</Pill>
-              )}
-            </div>
-      </section>
-
-      <div style={{ marginBottom: 22 }}>
-        <GamificationWidgets variant="profile" />
-      </div>
-
-      <section
-        style={{
-          borderRadius: 24,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 100%)",
-              padding: 24,
-            }}
-          >
-            <SectionLabel>Recent Activity</SectionLabel>
-            <h2
-              style={{
-                margin: "0 0 16px",
-                fontSize: 28,
-                fontWeight: 600,
-                letterSpacing: "-0.8px",
-              }}
-            >
-              Recently logged {meta.label.toLowerCase()}
-            </h2>
-
-            <div className="profile-recent-grid">
-              {getRecentEntries(currentEntries).map((entry) => (
+          ) : (
+            <div className="profile-favourites-grid">
+              {recentFavourites.map((entry) => (
                 <Link
-                  key={`${entry.mediaType}-${entry.id}`}
+                  key={`${entry.mediaType}:${entry.id}`}
                   href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
-                  style={{ textDecoration: "none", color: "inherit" }}
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
                 >
                   <article
                     style={{
-                      height: "100%",
-                      borderRadius: 20,
+                      borderRadius: 22,
                       border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.02)",
-                      padding: 12,
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
+                      overflow: "hidden",
+                      height: "100%",
                     }}
                   >
                     <div
                       style={{
                         position: "relative",
                         aspectRatio: "2 / 3",
-                        borderRadius: 14,
-                        overflow: "hidden",
                         background:
                           "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-                        marginBottom: 10,
                       }}
                     >
                       {entry.poster ? (
@@ -1258,59 +1151,469 @@ export default function ProfilePage() {
                           style={{
                             width: "100%",
                             height: "100%",
-                            display: "block",
                             objectFit: "cover",
+                            display: "block",
                           }}
                         />
                       ) : null}
-                    </div>
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "linear-gradient(to top, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.24) 44%, rgba(0,0,0,0.02) 70%, rgba(0,0,0,0.02) 100%)",
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 12,
+                          right: 12,
+                          bottom: 12,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          alignItems: "end",
+                        }}
+                      >
+                        <div>
+                          <h3
+                            style={{
+                              margin: 0,
+                              fontSize: 18,
+                              lineHeight: 1.08,
+                              letterSpacing: "-0.4px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {entry.title}
+                          </h3>
+                          <p
+                            style={{
+                              margin: "6px 0 0",
+                              color: "rgba(255,255,255,0.74)",
+                              fontSize: 12,
+                              fontFamily: "Arial, sans-serif",
+                            }}
+                          >
+                            {entry.year || "—"} · {entry.mediaType === "movie" ? "Film" : entry.mediaType === "tv" ? "Series" : "Book"}
+                          </p>
+                        </div>
 
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 16,
-                        lineHeight: 1.2,
-                        letterSpacing: "-0.3px",
-                      }}
-                    >
-                      {entry.title}
-                    </h3>
-
-                    <p
-                      style={{
-                        margin: "6px 0 0",
-                        color: "#9ca3af",
-                        fontSize: 13,
-                        lineHeight: 1.55,
-                        fontFamily: "Arial, sans-serif",
-                      }}
-                    >
-                      {entry.year}
-                      {entry.director ? ` · ${entry.director}` : ""}
-                    </p>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        flexWrap: "wrap",
-                        marginTop: 10,
-                      }}
-                    >
-                      <Pill>
-                        {typeof entry.rating === "number"
-                          ? `${entry.rating.toFixed(1)} ★`
-                          : "No rating"}
-                      </Pill>
-                      <Pill>{formatLoggedDate(entry.savedAt)}</Pill>
+                        {entry.rating !== null ? (
+                          <span
+                            style={{
+                              flexShrink: 0,
+                              color: "white",
+                              fontSize: 14,
+                              fontWeight: 600,
+                              fontFamily: "Arial, sans-serif",
+                            }}
+                          >
+                            {entry.rating.toFixed(1)} ★
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </article>
                 </Link>
               ))}
             </div>
-          </section>
-        </>
-      )}
+          )}
+        </section>
+
+        <section className="profile-taste-shell">
+          <div style={{ display: "grid", gap: 24 }}>
+            <GamificationWidgets variant="profile" />
+          </div>
+
+          <div
+            style={{
+              borderRadius: 28,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
+              padding: "22px 22px 24px",
+              display: "grid",
+              gap: 18,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "end",
+              }}
+            >
+              <div>
+                <SectionLabel>Stats and Taste DNA</SectionLabel>
+                <h2
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: "clamp(28px, 4vw, 42px)",
+                    lineHeight: 1,
+                    letterSpacing: "-1.2px",
+                    fontWeight: 600,
+                  }}
+                >
+                  A sharper read on how your taste is evolving.
+                </h2>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <TabButton active={tab === "movie"} label="Films" onClick={() => setTab("movie")} />
+                <TabButton active={tab === "tv"} label="Series" onClick={() => setTab("tv")} />
+                <TabButton active={tab === "book"} label="Books" onClick={() => setTab("book")} />
+              </div>
+            </div>
+
+            {currentEntries.length === 0 ? (
+              <div
+                style={{
+                  borderRadius: 22,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.025)",
+                  padding: "24px 22px",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#a1a1aa",
+                    fontSize: 15,
+                    lineHeight: 1.7,
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  <strong style={{ color: "white" }}>{meta.emptyLabel}.</strong>{" "}
+                  {meta.emptyBody}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="taste-stat-grid">
+                  <StatLine
+                    label={`${meta.label} logged`}
+                    value={currentEntries.length}
+                    detail={`${insights.reviewedCount} review${insights.reviewedCount === 1 ? "" : "s"} written in this lane.`}
+                  />
+                  <StatLine
+                    label="Average rating"
+                    value={formatAverageRating(currentEntries)}
+                    detail={`Calculated from ${insights.ratedEntries.length} rated ${meta.label.toLowerCase()}.`}
+                  />
+                  <StatLine
+                    label="Favourites"
+                    value={insights.favouriteCount}
+                    detail={`${insights.favouriteCount} ${meta.singular}${insights.favouriteCount === 1 ? "" : "s"} currently marked as a favourite.`}
+                  />
+                  <StatLine
+                    label={`Top ${meta.creatorLabel.toLowerCase()}`}
+                    value={insights.topCreators[0]?.name || "—"}
+                    detail={
+                      insights.topCreators[0]
+                        ? `${insights.topCreators[0].count} logged ${meta.singular}${insights.topCreators[0].count === 1 ? "" : "s"} from this ${meta.creatorLabel.toLowerCase().slice(0, -1)}.`
+                        : `No ${meta.creatorLabel.toLowerCase()} data yet.`
+                    }
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 14,
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  }}
+                >
+                  <div
+                    style={{
+                      borderRadius: 22,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "18px 18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#8f8f8f",
+                        fontSize: 10,
+                        letterSpacing: "0.16em",
+                        textTransform: "uppercase",
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      Highest Rated
+                    </p>
+                    <h3
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 24,
+                        letterSpacing: "-0.8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {insights.highestRated?.title || "—"}
+                    </h3>
+                    <p
+                      style={{
+                        margin: "8px 0 0",
+                        color: "#c7c7c7",
+                        fontSize: 14,
+                        lineHeight: 1.65,
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      {insights.highestRated?.rating !== null &&
+                      insights.highestRated?.rating !== undefined
+                        ? `${insights.highestRated.rating.toFixed(1)} ★`
+                        : "No rating yet"}
+                      {insights.highestRated?.year ? ` · ${insights.highestRated.year}` : ""}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      borderRadius: 22,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "18px 18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#8f8f8f",
+                        fontSize: 10,
+                        letterSpacing: "0.16em",
+                        textTransform: "uppercase",
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      Latest Logged
+                    </p>
+                    <h3
+                      style={{
+                        margin: "10px 0 0",
+                        fontSize: 24,
+                        letterSpacing: "-0.8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {insights.latestLogged?.title || "—"}
+                    </h3>
+                    <p
+                      style={{
+                        margin: "8px 0 0",
+                        color: "#c7c7c7",
+                        fontSize: 14,
+                        lineHeight: 1.65,
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      {insights.latestLogged
+                        ? formatLoggedDate(insights.latestLogged.savedAt)
+                        : "No logs yet"}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 14,
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  }}
+                >
+                  <div
+                    style={{
+                      borderRadius: 22,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "18px 18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#8f8f8f",
+                        fontSize: 10,
+                        letterSpacing: "0.16em",
+                        textTransform: "uppercase",
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      Top {meta.creatorLabel}
+                    </p>
+                    <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                      {insights.topCreators.length > 0 ? (
+                        insights.topCreators.map((creator) => (
+                          <div
+                            key={creator.name}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 10,
+                              color: "#d1d5db",
+                              fontSize: 14,
+                              fontFamily: "Arial, sans-serif",
+                            }}
+                          >
+                            <span>{creator.name}</span>
+                            <span style={{ color: "#8f8f8f" }}>{creator.count}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#8f8f8f",
+                            fontSize: 14,
+                            fontFamily: "Arial, sans-serif",
+                          }}
+                        >
+                          No creator data yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      borderRadius: 22,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "18px 18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#8f8f8f",
+                        fontSize: 10,
+                        letterSpacing: "0.16em",
+                        textTransform: "uppercase",
+                        fontFamily: "Arial, sans-serif",
+                      }}
+                    >
+                      Dominant Genres
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        marginTop: 12,
+                      }}
+                    >
+                      {insights.topGenres.length > 0 ? (
+                        insights.topGenres.map((genre) => <Pill key={genre}>{genre}</Pill>)
+                      ) : (
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#8f8f8f",
+                            fontSize: 14,
+                            fontFamily: "Arial, sans-serif",
+                          }}
+                        >
+                          No genre data yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    borderRadius: 22,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                    padding: "18px 18px 16px",
+                    display: "grid",
+                    gap: 12,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#8f8f8f",
+                      fontSize: 10,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      fontFamily: "Arial, sans-serif",
+                    }}
+                  >
+                    Recent {meta.label}
+                  </p>
+
+                  {getRecentEntries(currentEntries).map((entry) => (
+                    <Link
+                      key={`${entry.mediaType}:${entry.id}`}
+                      href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        alignItems: "center",
+                        textDecoration: "none",
+                        color: "inherit",
+                        padding: "10px 0",
+                        borderTop: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "white",
+                            fontSize: 15,
+                            lineHeight: 1.45,
+                            fontFamily: "Arial, sans-serif",
+                          }}
+                        >
+                          {entry.title}
+                        </p>
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            color: "#8f8f8f",
+                            fontSize: 12,
+                            fontFamily: "Arial, sans-serif",
+                          }}
+                        >
+                          {formatLoggedDate(entry.savedAt)}
+                          {entry.director ? ` · ${entry.director}` : ""}
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          color: "white",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          fontFamily: "Arial, sans-serif",
+                        }}
+                      >
+                        {entry.rating !== null ? `${entry.rating.toFixed(1)} ★` : "—"}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      </form>
     </main>
   );
 }

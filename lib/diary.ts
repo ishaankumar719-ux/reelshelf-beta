@@ -1,4 +1,4 @@
-import type { MediaType, SavedMediaItem } from "./media";
+import type { DiaryReviewScope, MediaType, SavedMediaItem } from "./media";
 import {
   deleteDiaryEntryFromBackend,
   syncDiaryEntriesWithBackend,
@@ -26,6 +26,10 @@ export type DiaryImportSummary = {
 type LegacyDiaryMovie = {
   id: string;
   mediaType?: MediaType;
+  reviewScope?: DiaryReviewScope;
+  showId?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
   title: string;
   year: number;
   poster?: string;
@@ -39,6 +43,22 @@ type LegacyDiaryMovie = {
 const STORAGE_KEY = "reelshelf-diary";
 const DRAFT_STORAGE_KEY = "reelshelf-diary-draft";
 const DIARY_EVENT = "reelshelf:diary-updated";
+
+export function getDiaryEntryKey(entry: {
+  id: string;
+  mediaType: MediaType;
+  reviewScope?: DiaryReviewScope;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}) {
+  return [
+    entry.mediaType,
+    entry.id,
+    entry.reviewScope || (entry.mediaType === "tv" ? "show" : "title"),
+    entry.seasonNumber || 0,
+    entry.episodeNumber || 0,
+  ].join(":");
+}
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -78,6 +98,26 @@ function normalizeDiaryMovie(
     id: movie.id,
     mediaType:
       "mediaType" in movie && movie.mediaType ? movie.mediaType : "movie",
+    reviewScope:
+      "reviewScope" in movie && movie.reviewScope
+        ? movie.reviewScope
+        : ("mediaType" in movie && movie.mediaType === "tv")
+          ? "show"
+          : "title",
+    showId:
+      "showId" in movie && typeof movie.showId === "string"
+        ? movie.showId
+        : ("mediaType" in movie && movie.mediaType === "tv")
+          ? movie.id
+          : undefined,
+    seasonNumber:
+      "seasonNumber" in movie && typeof movie.seasonNumber === "number"
+        ? movie.seasonNumber
+        : undefined,
+    episodeNumber:
+      "episodeNumber" in movie && typeof movie.episodeNumber === "number"
+        ? movie.episodeNumber
+        : undefined,
     title: movie.title,
     poster: movie.poster,
     year: Number(movie.year) || 0,
@@ -125,8 +165,7 @@ export function getDiaryMovies(): DiaryMovie[] {
     const deduped = normalized.filter(
       (movie, index, array) =>
         array.findIndex(
-          (candidate) =>
-            candidate.id === movie.id && candidate.mediaType === movie.mediaType
+          (candidate) => getDiaryEntryKey(candidate) === getDiaryEntryKey(movie)
         ) === index
     );
 
@@ -142,9 +181,25 @@ export function getDiaryMovies(): DiaryMovie[] {
   }
 }
 
-export function getDiaryMovie(id: string, mediaType: MediaType = "movie") {
+export function getDiaryMovie(
+  id: string,
+  mediaType: MediaType = "movie",
+  options?: {
+    reviewScope?: DiaryReviewScope;
+    seasonNumber?: number;
+    episodeNumber?: number;
+  }
+) {
   return getDiaryMovies().find(
-    (movie) => movie.id === id && movie.mediaType === mediaType
+    (movie) =>
+      getDiaryEntryKey(movie) ===
+      getDiaryEntryKey({
+        id,
+        mediaType,
+        reviewScope: options?.reviewScope,
+        seasonNumber: options?.seasonNumber,
+        episodeNumber: options?.episodeNumber,
+      })
   );
 }
 
@@ -184,7 +239,7 @@ export function clearDiaryDraft() {
 
 export function saveDiaryEntry(
   movie: DiaryDraftMovie & {
-    rating: number;
+    rating: number | null;
     review: string;
     watchedDate: string;
     favourite: boolean;
@@ -193,8 +248,9 @@ export function saveDiaryEntry(
   if (typeof window === "undefined") return;
 
   const current = getDiaryMovies();
+  const entryKey = getDiaryEntryKey(movie);
   const existingEntry = current.find(
-    (entry) => entry.id === movie.id && entry.mediaType === movie.mediaType
+    (entry) => getDiaryEntryKey(entry) === entryKey
   );
   const nextEntry: DiaryMovie = {
     ...movie,
@@ -208,8 +264,7 @@ export function saveDiaryEntry(
   const updated = [
     nextEntry,
     ...current.filter(
-      (entry) =>
-        !(entry.id === movie.id && entry.mediaType === movie.mediaType)
+      (entry) => getDiaryEntryKey(entry) !== entryKey
     ),
   ];
 
@@ -229,14 +284,12 @@ export async function importDiaryEntries(entries: DiaryMovie[]) {
 
   const current = getDiaryMovies();
   const merged = new Map<string, DiaryMovie>();
-  const existingKeys = new Set<string>();
   let imported = 0;
   let updated = 0;
   let duplicatesConsolidated = 0;
 
   for (const entry of current) {
-    const key = `${entry.mediaType}:${entry.id}`;
-    existingKeys.add(key);
+    const key = getDiaryEntryKey(entry);
     merged.set(key, entry);
   }
 
@@ -249,7 +302,7 @@ export async function importDiaryEntries(entries: DiaryMovie[]) {
       continue;
     }
 
-    const key = `${normalized.mediaType}:${normalized.id}`;
+    const key = getDiaryEntryKey(normalized);
     const existing = merged.get(key);
 
     if (!existing && !nextEntriesToPersist.has(key)) {
@@ -302,17 +355,29 @@ export async function importDiaryEntries(entries: DiaryMovie[]) {
 
 export function removeDiaryEntry(
   id: string,
-  mediaType: MediaType = "movie"
+  mediaType: MediaType = "movie",
+  options?: {
+    reviewScope?: DiaryReviewScope;
+    seasonNumber?: number;
+    episodeNumber?: number;
+  }
 ) {
   if (typeof window === "undefined") return;
 
   const current = getDiaryMovies();
+  const targetKey = getDiaryEntryKey({
+    id,
+    mediaType,
+    reviewScope: options?.reviewScope,
+    seasonNumber: options?.seasonNumber,
+    episodeNumber: options?.episodeNumber,
+  });
   const updated = current.filter(
-    (entry) => !(entry.id === id && entry.mediaType === mediaType)
+    (entry) => getDiaryEntryKey(entry) !== targetKey
   );
 
   writeDiaryMovies(updated);
-  void deleteDiaryEntryFromBackend(id, mediaType);
+  void deleteDiaryEntryFromBackend(id, mediaType, options);
 }
 
 export async function syncDiaryWithBackend() {

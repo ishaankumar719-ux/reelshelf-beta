@@ -14,12 +14,14 @@ import type { UserProfile } from "../lib/profile";
 import {
   getProfileDisplayName,
   getProfileHandle,
+  normalizeMountRushmore,
   isProfileComplete,
   normalizeDisplayName,
   normalizeUsername,
   validateDisplayName,
   validateUsername,
 } from "../lib/profile";
+import type { MountRushmoreMovie } from "../lib/profile";
 import {
   clearDiaryDataForSignOut,
   syncDiaryWithBackend,
@@ -41,6 +43,7 @@ type SaveProfileDetailsValues = {
   favouriteFilm: string;
   favouriteSeries: string;
   favouriteBook: string;
+  movieMountRushmore: MountRushmoreMovie[];
 };
 
 type AuthContextValue = {
@@ -90,7 +93,7 @@ async function fetchProfileForUser(user: User | null) {
   const { data, error } = await client
     .from("profiles")
     .select(
-      "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+      "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -114,6 +117,7 @@ async function fetchProfileForUser(user: User | null) {
       favouriteFilm: data?.favourite_film ?? null,
       favouriteSeries: data?.favourite_series ?? null,
       favouriteBook: data?.favourite_book ?? null,
+      movieMountRushmore: normalizeMountRushmore(data?.movie_mount_rushmore),
     } satisfies UserProfile,
     error: null,
   } as const;
@@ -441,7 +445,7 @@ export function AuthProvider({
                 .update(payload)
                 .eq("id", user.id)
                 .select(
-                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
                 )
                 .single()
             : supabase
@@ -451,7 +455,7 @@ export function AuthProvider({
                   ...payload,
                 })
                 .select(
-                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
                 )
                 .single();
 
@@ -480,6 +484,9 @@ export function AuthProvider({
               savedProfile.favourite_series ?? profile?.favouriteSeries ?? null,
             favouriteBook:
               savedProfile.favourite_book ?? profile?.favouriteBook ?? null,
+            movieMountRushmore: normalizeMountRushmore(
+              savedProfile.movie_mount_rushmore ?? profile?.movieMountRushmore
+            ),
           });
 
           return null;
@@ -508,6 +515,7 @@ export function AuthProvider({
           favourite_film: values.favouriteFilm.trim() || null,
           favourite_series: values.favouriteSeries.trim() || null,
           favourite_book: values.favouriteBook.trim() || null,
+          movie_mount_rushmore: normalizeMountRushmore(values.movieMountRushmore),
           updated_at: new Date().toISOString(),
         };
 
@@ -516,7 +524,7 @@ export function AuthProvider({
           .update(payload)
           .eq("id", user.id)
           .select(
-            "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+            "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
           )
           .single();
 
@@ -535,6 +543,9 @@ export function AuthProvider({
           favouriteFilm: savedProfile.favourite_film ?? null,
           favouriteSeries: savedProfile.favourite_series ?? null,
           favouriteBook: savedProfile.favourite_book ?? null,
+          movieMountRushmore: normalizeMountRushmore(
+            savedProfile.movie_mount_rushmore
+          ),
         });
 
         return null;

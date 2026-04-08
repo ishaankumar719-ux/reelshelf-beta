@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient as createSupabaseBrowserClient } from "./client";
-import type { MediaType, SavedMediaItem } from "../media";
+import type { DiaryReviewScope, MediaType, SavedMediaItem } from "../media";
 
 export type PersistedDiaryEntry = SavedMediaItem & {
   rating: number | null;
@@ -19,6 +19,10 @@ type DiaryRow = {
   user_id: string;
   media_id: string;
   media_type: MediaType;
+  review_scope: DiaryReviewScope;
+  show_id: string;
+  season_number: number;
+  episode_number: number;
   title: string;
   poster: string | null;
   year: number;
@@ -48,15 +52,32 @@ type SavedItemRow = {
   added_at: string;
 };
 
+function getDiaryEntryKey(entry: {
+  id: string;
+  mediaType: MediaType;
+  reviewScope?: DiaryReviewScope;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}) {
+  return [
+    entry.mediaType,
+    entry.id,
+    entry.reviewScope || (entry.mediaType === "tv" ? "show" : "title"),
+    entry.seasonNumber || 0,
+    entry.episodeNumber || 0,
+  ].join(":");
+}
+
 function mergeByLatest<T extends { id: string; mediaType: MediaType }>(
   left: T[],
   right: T[],
-  getTimestamp: (entry: T) => string
+  getTimestamp: (entry: T) => string,
+  getKey?: (entry: T) => string
 ) {
   const merged = new Map<string, T>();
 
   for (const entry of [...left, ...right]) {
-    const key = `${entry.mediaType}:${entry.id}`;
+    const key = getKey ? getKey(entry) : `${entry.mediaType}:${entry.id}`;
     const current = merged.get(key);
 
     if (!current) {
@@ -114,6 +135,10 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     user_id: userId,
     media_id: entry.id,
     media_type: entry.mediaType,
+    review_scope: entry.reviewScope || (entry.mediaType === "tv" ? "show" : "title"),
+    show_id: entry.showId || (entry.mediaType === "tv" ? entry.id : ""),
+    season_number: entry.seasonNumber || 0,
+    episode_number: entry.episodeNumber || 0,
     title: entry.title,
     poster: entry.poster || null,
     year: Number(entry.year) || 0,
@@ -134,6 +159,10 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
   return {
     id: row.media_id,
     mediaType: row.media_type,
+    reviewScope: row.review_scope,
+    showId: row.show_id || undefined,
+    seasonNumber: row.season_number || undefined,
+    episodeNumber: row.episode_number || undefined,
     title: row.title,
     poster: row.poster || undefined,
     year: Number(row.year) || 0,
@@ -205,13 +234,21 @@ export async function syncDiaryEntriesWithBackend(localEntries: PersistedDiaryEn
     .order("saved_at", { ascending: false });
 
   const remoteEntries = ((data || []) as DiaryRow[]).map(mapRowToDiaryEntry);
-  const merged = mergeByLatest(localEntries, remoteEntries, (entry) => entry.savedAt)
+  const merged = mergeByLatest(
+    localEntries,
+    remoteEntries,
+    (entry) => entry.savedAt,
+    getDiaryEntryKey
+  )
     .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
 
   if (merged.length > 0) {
     await client.from("diary_entries").upsert(
       merged.map((entry) => mapDiaryEntryToRow(user.id, entry)),
-      { onConflict: "user_id,media_type,media_id" }
+      {
+        onConflict:
+          "user_id,media_type,media_id,review_scope,season_number,episode_number",
+      }
     );
   }
 
@@ -229,7 +266,8 @@ export async function upsertDiaryEntryToBackend(entry: PersistedDiaryEntry) {
   await ensureProfile();
 
   await client.from("diary_entries").upsert(mapDiaryEntryToRow(user.id, entry), {
-    onConflict: "user_id,media_type,media_id",
+    onConflict:
+      "user_id,media_type,media_id,review_scope,season_number,episode_number",
   });
 }
 
@@ -250,12 +288,21 @@ export async function upsertDiaryEntriesToBackend(entries: PersistedDiaryEntry[]
   await client.from("diary_entries").upsert(
     entries.map((entry) => mapDiaryEntryToRow(user.id, entry)),
     {
-      onConflict: "user_id,media_type,media_id",
+      onConflict:
+        "user_id,media_type,media_id,review_scope,season_number,episode_number",
     }
   );
 }
 
-export async function deleteDiaryEntryFromBackend(id: string, mediaType: MediaType) {
+export async function deleteDiaryEntryFromBackend(
+  id: string,
+  mediaType: MediaType,
+  options?: {
+    reviewScope?: DiaryReviewScope;
+    seasonNumber?: number;
+    episodeNumber?: number;
+  }
+) {
   const client = createSupabaseBrowserClient();
   const user = await getCurrentUser();
 
@@ -268,7 +315,10 @@ export async function deleteDiaryEntryFromBackend(id: string, mediaType: MediaTy
     .delete()
     .eq("user_id", user.id)
     .eq("media_id", id)
-    .eq("media_type", mediaType);
+    .eq("media_type", mediaType)
+    .eq("review_scope", options?.reviewScope || (mediaType === "tv" ? "show" : "title"))
+    .eq("season_number", options?.seasonNumber || 0)
+    .eq("episode_number", options?.episodeNumber || 0);
 }
 
 export async function syncSavedItemsWithBackend(localEntries: PersistedSavedItem[]) {

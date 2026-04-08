@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
+import SeriesReviewPanel from "../../../components/SeriesReviewPanel";
 import TrackRecentView from "../../../components/TrackRecentView";
 import { getTMDBPosterUrl } from "../../../lib/posters";
 import { getLocalSeriesByRouteId } from "../../../lib/localSeries";
@@ -13,10 +14,12 @@ import {
 } from "../../../lib/seriesRoutes";
 import {
   getTVDetails,
+  getTVSeasonDetails,
   getTVRecommendations,
   getTVWatchProviders,
   type TMDBTVDetails,
   type TMDBTVRecommendation,
+  type TMDBTVSeasonDetails,
 } from "../../../lib/tmdb";
 
 type Provider = {
@@ -699,6 +702,7 @@ function SeriesDetailContent({
   seasonsLabel,
   runtimeLabel,
   actionSeries,
+  seasons,
   flatrate,
   rent,
   buy,
@@ -723,6 +727,21 @@ function SeriesDetailContent({
     runtime?: number;
     voteAverage?: number;
   };
+  seasons: Array<{
+    seasonNumber: number;
+    name: string;
+    overview: string;
+    posterUrl?: string;
+    airDate?: string;
+    episodes: Array<{
+      id: number;
+      name: string;
+      overview: string;
+      airDate?: string;
+      episodeNumber: number;
+      runtime?: number | null;
+    }>;
+  }>;
   flatrate: Provider[];
   rent: Provider[];
   buy: Provider[];
@@ -764,6 +783,13 @@ function SeriesDetailContent({
           marginTop: 34,
         }}
       >
+        {seasons.length > 0 ? (
+          <SeriesReviewPanel
+            series={actionSeries}
+            creator={creator}
+            seasons={seasons}
+          />
+        ) : null}
         <WatchSection flatrate={flatrate} rent={rent} buy={buy} />
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
@@ -777,6 +803,43 @@ function SeriesDetailContent({
       </div>
     </main>
   );
+}
+
+function parseSeasonFallbackCount(label?: string) {
+  const match = label?.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+async function loadSeasonDetails(
+  tmdbId: number,
+  seasonCount: number
+) {
+  if (!seasonCount || seasonCount < 1) {
+    return [];
+  }
+
+  const seasonNumbers = Array.from({ length: seasonCount }, (_, index) => index + 1);
+  const seasonResponses = await Promise.all(
+    seasonNumbers.map((seasonNumber) => getTVSeasonDetails(tmdbId, seasonNumber))
+  );
+
+  return seasonResponses
+    .filter((season): season is TMDBTVSeasonDetails => Boolean(season))
+    .map((season) => ({
+      seasonNumber: season.season_number,
+      name: season.name || `Season ${season.season_number}`,
+      overview: season.overview || "",
+      posterUrl: getTMDBPosterUrl(season.poster_path) || undefined,
+      airDate: season.air_date || undefined,
+      episodes: (season.episodes || []).map((episode) => ({
+        id: episode.id,
+        name: episode.name || `Episode ${episode.episode_number}`,
+        overview: episode.overview || "",
+        airDate: episode.air_date || undefined,
+        episodeNumber: episode.episode_number,
+        runtime: episode.runtime ?? null,
+      })),
+    }));
 }
 
 export default async function SeriesDetailPage({
@@ -819,6 +882,10 @@ export default async function SeriesDetailPage({
     const seasonCount = details?.number_of_seasons ?? null;
     const episodeRuntime = details?.episode_run_time?.[0] ?? null;
     const posterUrl = getTMDBPosterUrl(localShow.posterPath ?? localShow.poster);
+    const seasons = await loadSeasonDetails(
+      localShow.tmdbId,
+      seasonCount || parseSeasonFallbackCount(localShow.seasons)
+    );
 
     return (
       <SeriesDetailContent
@@ -841,6 +908,7 @@ export default async function SeriesDetailPage({
           runtime: episodeRuntime || undefined,
           voteAverage: undefined,
         }}
+        seasons={seasons}
         flatrate={flatrate}
         rent={rent}
         buy={buy}
@@ -871,6 +939,7 @@ export default async function SeriesDetailPage({
   const seasonCount = show.number_of_seasons ?? null;
   const episodeRuntime = show.episode_run_time?.[0] ?? null;
   const posterUrl = getTMDBPosterUrl(show.poster_path);
+  const seasons = await loadSeasonDetails(tmdbId, seasonCount || 0);
   const ukProviders = providers?.results?.GB;
   const flatrate = ukProviders?.flatrate || [];
   const rent = ukProviders?.rent || [];
@@ -897,6 +966,7 @@ export default async function SeriesDetailPage({
         runtime: episodeRuntime || undefined,
         voteAverage: undefined,
       }}
+      seasons={seasons}
       flatrate={flatrate}
       rent={rent}
       buy={buy}

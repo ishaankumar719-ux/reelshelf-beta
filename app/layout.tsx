@@ -1,6 +1,6 @@
 import Header from "../components/Header";
 import { AuthProvider } from "../components/AuthProvider";
-import type { UserProfile } from "../lib/profile";
+import { normalizeMountRushmore, type UserProfile } from "../lib/profile";
 import { createClient } from "../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function RootLayout({
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+        "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -35,6 +35,7 @@ export default async function RootLayout({
       favouriteFilm: data?.favourite_film ?? null,
       favouriteSeries: data?.favourite_series ?? null,
       favouriteBook: data?.favourite_book ?? null,
+      movieMountRushmore: normalizeMountRushmore(data?.movie_mount_rushmore),
     };
   }
 

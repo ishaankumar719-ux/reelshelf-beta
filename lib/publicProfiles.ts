@@ -1,6 +1,6 @@
 import { getMediaHref } from "./mediaRoutes";
 import type { MediaType } from "./media";
-import type { UserProfile } from "./profile";
+import { normalizeMountRushmore, type UserProfile } from "./profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getFollowCounts } from "./follows";
 
@@ -50,6 +50,7 @@ type ProfileRow = {
   favourite_film: string | null;
   favourite_series: string | null;
   favourite_book: string | null;
+  movie_mount_rushmore: unknown;
 };
 
 type DiaryRow = {
@@ -78,6 +79,7 @@ function mapProfileRow(row: ProfileRow): UserProfile {
     favouriteFilm: row.favourite_film,
     favouriteSeries: row.favourite_series,
     favouriteBook: row.favourite_book,
+    movieMountRushmore: normalizeMountRushmore(row.movie_mount_rushmore),
   };
 }
 
@@ -111,7 +113,7 @@ export async function getPublicProfileByUsername(
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
     )
     .eq("username", normalizedUsername)
     .maybeSingle();
@@ -230,7 +232,7 @@ export async function getDiscoverProfiles(
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book"
+      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
     )
     .not("username", "is", null)
     .order("updated_at", { ascending: false })

@@ -133,6 +133,7 @@ function SuggestionCard({
     favouriteFilm: suggestion.featuredFilm,
     favouriteSeries: null,
     favouriteBook: null,
+    movieMountRushmore: [],
   });
   const label = suggestion.displayName || handle || "ReelShelf profile";
   const initials = getProfileInitials({
