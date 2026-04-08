@@ -7,6 +7,8 @@ import { createClient } from "../../../lib/supabase/server";
 import { getPublicProfileByUsername } from "../../../lib/publicProfiles";
 import { getProfileHandle, getProfileInitials } from "../../../lib/profile";
 
+export const dynamic = "force-dynamic";
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p

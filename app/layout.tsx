@@ -3,6 +3,8 @@ import { AuthProvider } from "../components/AuthProvider";
 import type { UserProfile } from "../lib/profile";
 import { createClient } from "../lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: {

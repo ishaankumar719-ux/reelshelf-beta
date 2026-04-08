@@ -2,6 +2,8 @@ import DiscoverShelvesClient from "../../components/DiscoverShelvesClient";
 import { getDiscoverProfiles } from "../../lib/publicProfiles";
 import { createClient } from "../../lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function DiscoverPage() {
   const supabase = await createClient();
 
