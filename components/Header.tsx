@@ -530,12 +530,12 @@ export default function Header() {
             position: fixed;
             left: 14px;
             right: 14px;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
             z-index: 45;
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 8px;
-            padding: 8px;
+            padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
             border-radius: 22px;
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(10,10,10,0.94);

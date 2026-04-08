@@ -945,6 +945,11 @@ export default function HomeDashboardClient({
             margin-right: -4px;
             padding-right: 4px;
           }
+
+          .home-hero-grid {
+            gap: 16px;
+            margin-bottom: 20px;
+          }
         }
       `}</style>
 
@@ -957,13 +962,13 @@ export default function HomeDashboardClient({
             border: "1px solid rgba(255,255,255,0.08)",
             background:
               "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06), transparent 20%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-            padding: "clamp(20px, 5vw, 30px) clamp(18px, 5vw, 30px) clamp(20px, 5vw, 26px)",
+            padding: "clamp(18px, 4.5vw, 30px) clamp(18px, 5vw, 30px) clamp(16px, 4.5vw, 26px)",
             boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
           }}
         >
           <p
             style={{
-              margin: "0 0 12px",
+              margin: "0 0 10px",
               color: "#7f7f7f",
               fontSize: 11,
               letterSpacing: "0.24em",
@@ -977,8 +982,8 @@ export default function HomeDashboardClient({
           <h1
             style={{
               margin: 0,
-              fontSize: "clamp(2.35rem, 8vw, 52px)",
-              lineHeight: 0.98,
+              fontSize: "clamp(2.1rem, 7vw, 52px)",
+              lineHeight: 0.96,
               letterSpacing: "-2.4px",
               fontWeight: 600,
               maxWidth: 720,
@@ -989,10 +994,10 @@ export default function HomeDashboardClient({
 
           <p
             style={{
-              margin: "16px 0 0",
+              margin: "12px 0 0",
               color: "#c7c7c7",
               fontSize: "clamp(14px, 3.8vw, 17px)",
-              lineHeight: 1.58,
+              lineHeight: 1.52,
               maxWidth: 760,
             }}
           >
@@ -1005,7 +1010,7 @@ export default function HomeDashboardClient({
               display: "flex",
               gap: 12,
               flexWrap: "wrap",
-              marginTop: 26,
+              marginTop: 20,
             }}
           >
             <Link
@@ -1054,7 +1059,7 @@ export default function HomeDashboardClient({
             border: "1px solid rgba(255,255,255,0.08)",
             background:
               "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.96) 100%)",
-            padding: 22,
+            padding: "clamp(16px, 4vw, 22px)",
             boxShadow: "0 24px 80px rgba(0,0,0,0.24)",
           }}
         >
@@ -1071,7 +1076,7 @@ export default function HomeDashboardClient({
             At a glance
           </p>
 
-          <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             {[
               {
                 label: "Diary entries",
@@ -1095,7 +1100,7 @@ export default function HomeDashboardClient({
                   borderRadius: 20,
                   border: "1px solid rgba(255,255,255,0.08)",
                   background: "rgba(255,255,255,0.03)",
-                  padding: "16px 18px",
+                  padding: "14px 16px",
                 }}
               >
                 <p
@@ -1112,8 +1117,8 @@ export default function HomeDashboardClient({
                 </p>
                 <h2
                   style={{
-                    margin: "8px 0 0",
-                    fontSize: 34,
+                    margin: "6px 0 0",
+                    fontSize: "clamp(26px, 6vw, 34px)",
                     lineHeight: 1,
                     letterSpacing: "-1px",
                     fontWeight: 600,
@@ -1123,10 +1128,10 @@ export default function HomeDashboardClient({
                 </h2>
                 <p
                   style={{
-                    margin: "8px 0 0",
+                    margin: "6px 0 0",
                     color: "#a7a7a7",
-                    fontSize: 13,
-                    lineHeight: 1.6,
+                    fontSize: 12,
+                    lineHeight: 1.5,
                     fontFamily: "Arial, sans-serif",
                   }}
                 >

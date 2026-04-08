@@ -57,7 +57,7 @@ export default async function RootLayout({
 
           @media (max-width: 760px) {
             .app-shell-main {
-              padding: 20px 16px calc(env(safe-area-inset-bottom, 0px) + 108px);
+              padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 86px);
             }
           }
         `}</style>
