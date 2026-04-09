@@ -1,4 +1,5 @@
 export type MountRushmoreMovie = {
+  tmdbId?: number | null;
   title: string;
   year: number | null;
   subtitle: string | null;
@@ -112,6 +113,7 @@ export function getPublicProfileHref(username: string) {
 
 export function getEmptyMountRushmore(): MountRushmoreMovie[] {
   return Array.from({ length: 4 }, () => ({
+    tmdbId: null,
     title: "",
     year: null,
     subtitle: null,
@@ -129,6 +131,7 @@ export function normalizeMountRushmore(
     .map((item) => {
       if (!item || typeof item !== "object") {
         return {
+          tmdbId: null,
           title: "",
           year: null,
           subtitle: null,
@@ -138,6 +141,7 @@ export function normalizeMountRushmore(
 
       const maybeItem = item as {
         title?: unknown;
+        tmdbId?: unknown;
         year?: unknown;
         subtitle?: unknown;
         poster?: unknown;
@@ -150,7 +154,15 @@ export function normalizeMountRushmore(
             ? Number(maybeItem.year)
             : null;
 
+      const tmdbId =
+        typeof maybeItem.tmdbId === "number" && Number.isFinite(maybeItem.tmdbId)
+          ? maybeItem.tmdbId
+          : typeof maybeItem.tmdbId === "string" && maybeItem.tmdbId.trim()
+            ? Number(maybeItem.tmdbId)
+            : null;
+
       return {
+        tmdbId: typeof tmdbId === "number" && Number.isFinite(tmdbId) ? tmdbId : null,
         title:
           typeof maybeItem.title === "string" ? maybeItem.title.trim() : "",
         year: typeof year === "number" && Number.isFinite(year) ? year : null,

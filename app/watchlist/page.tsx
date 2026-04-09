@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { MediaCard } from "../../src/components/ui/MediaCard";
 import {
   getWatchlist,
   getWatchlistHref,
@@ -136,63 +137,13 @@ export default function WatchlistPage() {
                 href={getWatchlistHref(movie.id, movie.mediaType)}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div
-                  style={{
-                    position: "relative",
-                    aspectRatio: "2 / 3",
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    background:
-                      "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    marginBottom: 12,
-                  }}
-                >
-                  {movie.poster ? (
-                    <img
-                      src={movie.poster}
-                      alt={movie.title}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
-                    />
-                  ) : null}
-                </div>
-
-                <h2
-                  style={{
-                    margin: "0 0 6px",
-                    fontSize: 19,
-                    lineHeight: 1.15,
-                    letterSpacing: "-0.5px",
-                    fontWeight: 500,
-                    color: "white",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    minHeight: 44,
-                  }}
-                >
-                  {movie.title}
-                </h2>
-
-                <p
-                  style={{
-                    margin: "0 0 10px",
-                    color: "#9ca3af",
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                    fontFamily: "Arial, sans-serif",
-                    minHeight: 38,
-                  }}
-                >
-                  {movie.year || "—"}
-                  {movie.director ? ` · ${movie.director}` : ""}
-                </p>
+                <MediaCard
+                  title={movie.title}
+                  year={movie.year || "—"}
+                  posterUrl={movie.poster}
+                  mediaType={movie.mediaType === "movie" ? "film" : "series"}
+                  size="md"
+                />
               </Link>
 
               <div

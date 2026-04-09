@@ -1,11 +1,19 @@
+import { getPosterUrl } from "../src/lib/tmdb-image";
+
 export function getTMDBPosterUrl(posterPath?: string | null) {
-  if (!posterPath) {
-    return null;
+  return getPosterUrl(posterPath, "w500");
+}
+
+export function getFirstPosterUrl(
+  ...posterCandidates: Array<string | null | undefined>
+) {
+  for (const candidate of posterCandidates) {
+    const url = getPosterUrl(candidate, "w500");
+
+    if (url) {
+      return url;
+    }
   }
 
-  if (posterPath.startsWith("http://") || posterPath.startsWith("https://")) {
-    return posterPath;
-  }
-
-  return `https://image.tmdb.org/t/p/w500/${posterPath.replace(/^\/+/, "")}`;
+  return null;
 }

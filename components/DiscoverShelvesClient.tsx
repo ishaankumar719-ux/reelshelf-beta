@@ -452,16 +452,45 @@ export default function DiscoverShelvesClient({
                                   style={{
                                     position: "absolute",
                                     inset: 0,
-                                    display: "grid",
-                                    placeItems: "center",
-                                    color: "rgba(255,255,255,0.45)",
-                                    fontSize: 11,
-                                    letterSpacing: "0.14em",
-                                    textTransform: "uppercase",
-                                    fontFamily: "Arial, sans-serif",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "space-between",
+                                    padding: 10,
+                                    background:
+                                      "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
                                   }}
                                 >
-                                  Film
+                                  <span
+                                    style={{
+                                      color: "rgba(255,255,255,0.36)",
+                                      fontSize: 8,
+                                      letterSpacing: "0.22em",
+                                      textTransform: "uppercase",
+                                      fontFamily: "Arial, sans-serif",
+                                    }}
+                                  >
+                                    ReelShelf
+                                  </span>
+                                  <div
+                                    style={{
+                                      alignSelf: "flex-start",
+                                      minWidth: 28,
+                                      height: 28,
+                                      padding: "0 10px",
+                                      borderRadius: 999,
+                                      border: "1px solid rgba(255,255,255,0.08)",
+                                      background: "rgba(255,255,255,0.04)",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: "rgba(255,255,255,0.58)",
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      fontFamily: "Arial, sans-serif",
+                                    }}
+                                  >
+                                    {film?.title ? film.title.slice(0, 1).toUpperCase() : "+"}
+                                  </div>
                                 </div>
                               )}
                             </div>

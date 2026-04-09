@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { MediaCard as SharedMediaCard } from "../../src/components/ui/MediaCard";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
@@ -45,6 +46,24 @@ function getActivityType(entry: FriendsActivityEntry) {
   if (entry.review.trim()) return "reviewed";
   if (typeof entry.rating === "number") return "rated";
   return "logged";
+}
+
+function getSeriesScopeBadge(entry: FriendsActivityEntry) {
+  if (entry.mediaType !== "tv") return null;
+
+  if (entry.reviewScope === "season" && entry.seasonNumber) {
+    return `S${entry.seasonNumber} review`;
+  }
+
+  if (entry.reviewScope === "episode" && entry.seasonNumber && entry.episodeNumber) {
+    return `S${entry.seasonNumber} E${entry.episodeNumber} review`;
+  }
+
+  if (entry.reviewScope === "show") {
+    return "Show review";
+  }
+
+  return null;
 }
 
 function formatRecencyLabel(date: string) {
@@ -154,6 +173,24 @@ function EmptyRow({
   );
 }
 
+function MediaCard({ item }: { item: DashboardItem }) {
+  const mediaType =
+    item.mediaType === "movie" ? "film" : item.mediaType === "tv" ? "series" : "book";
+
+  return (
+    <div style={{ width: "min(188px, 43vw)", flexShrink: 0 }}>
+      <SharedMediaCard
+        title={item.title}
+        year={item.year || "—"}
+        posterUrl={item.poster}
+        mediaType={mediaType}
+        size="md"
+        href={item.href}
+      />
+    </div>
+  );
+}
+
 function CardFallback({ label }: { label: string }) {
   return (
     <div
@@ -198,124 +235,6 @@ function CardFallback({ label }: { label: string }) {
         {label}
       </div>
     </div>
-  );
-}
-
-function MediaCard({ item }: { item: DashboardItem }) {
-  return (
-    <Link
-      href={item.href}
-      style={{
-        textDecoration: "none",
-        color: "inherit",
-        width: "min(188px, 43vw)",
-        flexShrink: 0,
-      }}
-    >
-      <article
-        style={{
-          borderRadius: 20,
-          overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(180deg, rgba(20,20,20,0.96) 0%, rgba(10,10,10,0.96) 100%)",
-          boxShadow: "0 18px 44px rgba(0,0,0,0.28)",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            aspectRatio: "2 / 3",
-            background:
-              "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-          }}
-        >
-          {item.poster ? (
-            <img
-              src={item.poster}
-              alt={item.title}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-          ) : (
-            <CardFallback label={item.mediaType === "book" ? "B" : "R"} />
-          )}
-
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 38%, rgba(0,0,0,0.08) 68%, rgba(0,0,0,0.03) 100%)",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              top: 12,
-              left: 12,
-              padding: "7px 10px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.34)",
-              color: "white",
-              fontSize: 10,
-              lineHeight: 1,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {getMediaBadgeLabel(item.mediaType)}
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 14,
-              right: 14,
-              bottom: 14,
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 18,
-                lineHeight: 1.12,
-                letterSpacing: "-0.5px",
-                fontWeight: 600,
-                color: "white",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {item.title}
-            </h3>
-
-            <p
-              style={{
-                margin: "7px 0 0",
-                color: "rgba(255,255,255,0.76)",
-                fontSize: 12,
-                lineHeight: 1.5,
-                fontFamily: "Arial, sans-serif",
-                minHeight: 34,
-              }}
-            >
-              {item.year || "—"}
-              {item.subtitle ? ` · ${item.subtitle}` : ""}
-            </p>
-          </div>
-        </div>
-      </article>
-    </Link>
   );
 }
 
@@ -664,17 +583,47 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
             ) : null}
           </div>
 
-          <h3
+          <div
             style={{
-              margin: 0,
-              fontSize: 19,
-              lineHeight: 1.18,
-              letterSpacing: "-0.5px",
-              fontWeight: 500,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            {entry.title}
-          </h3>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 19,
+                lineHeight: 1.18,
+                letterSpacing: "-0.5px",
+                fontWeight: 500,
+              }}
+            >
+              {entry.title}
+            </h3>
+
+            {getSeriesScopeBadge(entry) ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  minHeight: 24,
+                  padding: "0 8px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(45, 212, 191, 0.18)",
+                  background: "rgba(45, 212, 191, 0.09)",
+                  color: "#d5fffb",
+                  fontSize: 9,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                {getSeriesScopeBadge(entry)}
+              </span>
+            ) : null}
+          </div>
 
           <p
             style={{

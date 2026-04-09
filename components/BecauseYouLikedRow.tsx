@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { MediaCard } from "../src/components/ui/MediaCard";
 import {
   getDiaryMovies,
   subscribeToDiary,
@@ -72,167 +73,21 @@ function getLocalCandidates(mediaType: MediaType): RecommendationItem[] {
   }));
 }
 
-function CardFallback({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: 14,
-        background:
-          "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
-      }}
-    >
-      <span
-        style={{
-          color: "rgba(255,255,255,0.36)",
-          fontSize: 10,
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        ReelShelf
-      </span>
-      <div
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.04)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.58)",
-          fontSize: 14,
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
-
 function RecommendationCard({ item }: { item: RecommendationItem }) {
+  const mediaType =
+    item.mediaType === "movie" ? "film" : item.mediaType === "tv" ? "series" : "book";
+
   return (
-    <Link
-      href={item.href}
-      style={{
-        textDecoration: "none",
-        color: "inherit",
-        width: 184,
-        flexShrink: 0,
-      }}
-    >
-      <article
-        style={{
-          borderRadius: 20,
-          overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(180deg, rgba(20,20,20,0.96) 0%, rgba(10,10,10,0.96) 100%)",
-          boxShadow: "0 18px 44px rgba(0,0,0,0.24)",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            aspectRatio: "2 / 3",
-            background:
-              "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-          }}
-        >
-          {item.poster ? (
-            <img
-              src={item.poster}
-              alt={item.title}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-          ) : (
-            <CardFallback label={item.mediaType === "book" ? "B" : "R"} />
-          )}
-
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 38%, rgba(0,0,0,0.08) 68%, rgba(0,0,0,0.03) 100%)",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              top: 12,
-              left: 12,
-              padding: "7px 10px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.34)",
-              color: "white",
-              fontSize: 10,
-              lineHeight: 1,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {getMediaBadgeLabel(item.mediaType)}
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 14,
-              right: 14,
-              bottom: 14,
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 18,
-                lineHeight: 1.12,
-                letterSpacing: "-0.5px",
-                fontWeight: 600,
-                color: "white",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {item.title}
-            </h3>
-
-            <p
-              style={{
-                margin: "7px 0 0",
-                color: "rgba(255,255,255,0.76)",
-                fontSize: 12,
-                lineHeight: 1.5,
-                fontFamily: "Arial, sans-serif",
-                minHeight: 34,
-              }}
-            >
-              {item.year || "—"}
-              {item.subtitle ? ` · ${item.subtitle}` : ""}
-            </p>
-          </div>
-        </div>
-      </article>
-    </Link>
+    <div style={{ width: 184, flexShrink: 0 }}>
+      <MediaCard
+        title={item.title}
+        year={item.year || "—"}
+        posterUrl={item.poster}
+        mediaType={mediaType}
+        size="md"
+        href={item.href}
+      />
+    </div>
   );
 }
 

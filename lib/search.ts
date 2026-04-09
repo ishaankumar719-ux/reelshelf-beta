@@ -3,7 +3,7 @@ import { getBookHrefFromRouteId } from "./bookRoutes";
 import { localBooks } from "./localBooks";
 import { getLocalMovieByTmdbId, localMovies } from "./localMovies";
 import { getMovieHrefFromRouteId, getMovieHrefFromTmdbId } from "./movieRoutes";
-import { getTMDBPosterUrl } from "./posters";
+import { getFirstPosterUrl, getTMDBPosterUrl } from "./posters";
 import { getLocalSeriesByTmdbId, localSeries } from "./localSeries";
 import {
   getSeriesHrefFromRouteId,
@@ -20,10 +20,22 @@ export type UniversalSearchResult = {
   title: string;
   year: string;
   poster: string | null;
+  posterPath?: string | null;
+  tmdbId?: number | null;
   mediaType: SearchMediaType;
   href: string;
   subtitle?: string;
 };
+
+function toPosterPath(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.startsWith("http")) {
+    const match = value.match(/\/t\/p\/(?:w\d+|original)(\/.+)$/);
+    return match?.[1] ?? null;
+  }
+
+  return value;
+}
 
 function normalizeText(value: string) {
   return value.toLowerCase().trim();
@@ -60,7 +72,9 @@ function searchLocalMovies(query: string): UniversalSearchResult[] {
       id: `movie-local-${movie.id}`,
       title: movie.title,
       year: movie.year,
-      poster: movie.poster,
+      poster: getFirstPosterUrl(movie.poster),
+      posterPath: toPosterPath(movie.poster),
+      tmdbId: typeof movie.tmdbId === "number" ? movie.tmdbId : null,
       mediaType: "movie" as const,
       href: getMovieHrefFromRouteId(movie.id),
       subtitle: movie.director,
@@ -76,6 +90,8 @@ function searchLocalSeries(query: string): UniversalSearchResult[] {
       title: series.title,
       year: series.year,
       poster: getTMDBPosterUrl(series.posterPath ?? series.poster),
+      posterPath: toPosterPath(series.posterPath ?? series.poster),
+      tmdbId: typeof series.tmdbId === "number" ? series.tmdbId : null,
       mediaType: "tv" as const,
       href: getSeriesHrefFromRouteId(series.id),
       subtitle: series.creator,
@@ -112,7 +128,9 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
         id: `movie-${item.id}`,
         title: item.title,
         year: item.release_date ? item.release_date.slice(0, 4) : "—",
-        poster: getTMDBPosterUrl(item.poster_path),
+        poster: getFirstPosterUrl(item.poster_path, localMovie?.poster),
+        posterPath: item.poster_path || toPosterPath(localMovie?.poster),
+        tmdbId: item.id,
         mediaType: "movie" as const,
         href: localMovie
           ? getMovieHrefFromRouteId(localMovie.id)
@@ -130,7 +148,9 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
         id: `tv-${item.id}`,
         title: item.name,
         year: item.first_air_date ? item.first_air_date.slice(0, 4) : "—",
-        poster: getTMDBPosterUrl(item.poster_path),
+        poster: getFirstPosterUrl(item.poster_path, localTV?.posterPath, localTV?.poster),
+        posterPath: item.poster_path || toPosterPath(localTV?.posterPath ?? localTV?.poster),
+        tmdbId: item.id,
         mediaType: "tv" as const,
         href: localTV
           ? getSeriesHrefFromRouteId(localTV.id)

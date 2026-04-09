@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { saveDiaryDraft, saveDiaryEntry, getDiaryMovies, removeDiaryEntry, subscribeToDiary, type DiaryMovie } from "../lib/diary";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "./AuthProvider";
+import ReviewForm from "../src/components/reviews/ReviewForm";
+import { getAllShowReviews } from "../src/lib/reviews";
+import type { Review } from "../src/types/reviews";
 
 type SeriesReviewSeason = {
   seasonNumber: number;
@@ -31,796 +36,580 @@ type SeriesActionItem = {
   voteAverage?: number;
 };
 
-type ReviewTarget =
-  | {
-      type: "season";
-      season: SeriesReviewSeason;
-    }
-  | {
-      type: "episode";
-      season: SeriesReviewSeason;
-      episode: SeriesReviewSeason["episodes"][number];
-    };
+type SeriesReviewPanelProps = {
+  tmdbId: number;
+  series: SeriesActionItem;
+  creator: string;
+  seasons: SeriesReviewSeason[];
+};
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString(undefined, {
+type ReviewBundle = {
+  showReview: Review | null;
+  seasonReviews: Review[];
+  episodeReviews: Review[];
+};
+
+type ActiveTab = "show" | "seasons" | "episodes";
+
+function formatDateLabel(value?: string) {
+  if (!value) return "Date unknown";
+
+  return new Date(value).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
 }
 
-function averageRating(entries: DiaryMovie[]) {
-  const rated = entries.filter((entry) => typeof entry.rating === "number");
-
-  if (rated.length === 0) {
-    return null;
+function getScopeBadge(review: Review | null) {
+  if (!review) return null;
+  if (review.review_scope === "season") {
+    return `Season ${review.season_number}`;
   }
-
-  const average =
-    rated.reduce((sum, entry) => sum + (entry.rating || 0), 0) / rated.length;
-
-  return Number(average.toFixed(1));
+  if (review.review_scope === "episode") {
+    return `S${review.season_number} E${review.episode_number}`;
+  }
+  return "Show review";
 }
 
-function ReviewModal({
-  open,
-  target,
-  series,
-  creator,
-  onClose,
-}: {
-  open: boolean;
-  target: ReviewTarget | null;
-  series: SeriesActionItem;
-  creator: string;
-  onClose: () => void;
-}) {
-  const [entries, setEntries] = useState<DiaryMovie[]>([]);
-  const [ratingInput, setRatingInput] = useState("");
-  const [review, setReview] = useState("");
-  const [watchedDate, setWatchedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [favourite, setFavourite] = useState(false);
+function getSeasonAverageRating(reviews: Review[]) {
+  const rated = reviews.filter((review) => typeof review.rating === "number");
 
-  useEffect(() => {
-    setEntries(getDiaryMovies());
-    return subscribeToDiary(() => setEntries(getDiaryMovies()));
-  }, []);
-
-  const existingEntry = useMemo(() => {
-    if (!target) return null;
-
-    return entries.find((entry) => {
-      if (entry.mediaType !== "tv" || entry.id !== series.id) {
-        return false;
-      }
-
-      if (target.type === "season") {
-        return entry.reviewScope === "season" && entry.seasonNumber === target.season.seasonNumber;
-      }
-
-      return (
-        entry.reviewScope === "episode" &&
-        entry.seasonNumber === target.season.seasonNumber &&
-        entry.episodeNumber === target.episode.episodeNumber
-      );
-    });
-  }, [entries, series.id, target]);
-
-  useEffect(() => {
-    if (!open || !target) {
-      return;
-    }
-
-    setRatingInput(
-      typeof existingEntry?.rating === "number"
-        ? existingEntry.rating.toFixed(1)
-        : ""
-    );
-    setReview(existingEntry?.review || "");
-    setWatchedDate(
-      existingEntry?.watchedDate || new Date().toISOString().slice(0, 10)
-    );
-    setFavourite(existingEntry?.favourite || false);
-  }, [existingEntry, open, target]);
-
-  if (!open || !target) {
+  if (!rated.length) {
     return null;
   }
 
-  const title =
-    target.type === "season"
-      ? `${series.title} • ${target.season.name}`
-      : `${series.title} • S${target.season.seasonNumber}E${target.episode.episodeNumber} · ${target.episode.name}`;
+  return Number(
+    (rated.reduce((sum, review) => sum + (review.rating || 0), 0) / rated.length).toFixed(1)
+  );
+}
 
-  function handleSave(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+function getSeasonReviewLookup(reviews: Review[]) {
+  return new Map(reviews.map((review) => [review.season_number || 0, review]));
+}
 
-    if (!target) {
-      return;
-    }
-
-    const rating = ratingInput.trim()
-      ? Number(Math.min(10, Math.max(0, Number(ratingInput.replace(",", ".")))).toFixed(1))
-      : null;
-
-    const reviewScope = target.type;
-    const seasonNumber = target.season.seasonNumber;
-    const episodeNumber =
-      target.type === "episode" ? target.episode.episodeNumber : undefined;
-
-    saveDiaryEntry({
-      ...series,
-      id: series.id,
-      mediaType: "tv",
-      showId: series.id,
-      reviewScope,
-      seasonNumber,
-      episodeNumber,
-      title,
-      director: creator,
-      rating,
+function getEpisodeReviewLookup(reviews: Review[]) {
+  return new Map(
+    reviews.map((review) => [
+      `${review.season_number || 0}:${review.episode_number || 0}`,
       review,
-      watchedDate,
-      favourite,
-    });
-
-    onClose();
-  }
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 90,
-        display: "grid",
-        placeItems: "center",
-        padding: 18,
-        background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(14px)",
-      }}
-    >
-      <form
-        onSubmit={handleSave}
-        style={{
-          width: "min(560px, 100%)",
-          borderRadius: 28,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "radial-gradient(circle at top left, rgba(255,255,255,0.06), transparent 26%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(8,8,8,0.98) 100%)",
-          boxShadow: "0 28px 80px rgba(0,0,0,0.4)",
-          padding: 22,
-          display: "grid",
-          gap: 16,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <p
-              style={{
-                margin: 0,
-                color: "#7f7f7f",
-                fontSize: 11,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
-              }}
-            >
-              {target.type === "season" ? "Season Review" : "Episode Review"}
-            </p>
-            <h3
-              style={{
-                margin: "8px 0 0",
-                fontSize: 28,
-                lineHeight: 1.08,
-                letterSpacing: "-0.8px",
-                fontWeight: 600,
-              }}
-            >
-              {title}
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-          <label style={{ display: "grid", gap: 10 }}>
-            <span style={{ color: "#d1d5db", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
-              Rating
-            </span>
-            <input
-              value={ratingInput}
-              onChange={(event) => setRatingInput(event.target.value)}
-              placeholder="8.7"
-              inputMode="decimal"
-              style={{
-                width: "100%",
-                height: 46,
-                borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.035)",
-                color: "white",
-                padding: "0 14px",
-                fontSize: 15,
-                outline: "none",
-              }}
-            />
-          </label>
-
-          <label style={{ display: "grid", gap: 10 }}>
-            <span style={{ color: "#d1d5db", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
-              Watched Date
-            </span>
-            <input
-              type="date"
-              value={watchedDate}
-              onChange={(event) => setWatchedDate(event.target.value)}
-              style={{
-                width: "100%",
-                height: 46,
-                borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.035)",
-                color: "white",
-                padding: "0 14px",
-                fontSize: 15,
-                outline: "none",
-              }}
-            />
-          </label>
-        </div>
-
-        <label style={{ display: "grid", gap: 10 }}>
-          <span style={{ color: "#d1d5db", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>
-            Review
-          </span>
-          <textarea
-            value={review}
-            onChange={(event) => setReview(event.target.value)}
-            rows={5}
-            placeholder="What landed, what didn’t, and why?"
-            style={{
-              width: "100%",
-              borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.035)",
-              color: "white",
-              padding: "14px 16px",
-              fontSize: 15,
-              lineHeight: 1.7,
-              outline: "none",
-              resize: "vertical",
-              fontFamily: "Arial, sans-serif",
-            }}
-          />
-        </label>
-
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            color: "#d1d5db",
-            fontSize: 14,
-            fontFamily: "Arial, sans-serif",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={favourite}
-            onChange={(event) => setFavourite(event.target.checked)}
-          />
-          Mark as favourite
-        </label>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button
-            type="submit"
-            style={{
-              height: 46,
-              padding: "0 16px",
-              borderRadius: 999,
-              border: "none",
-              background: "white",
-              color: "black",
-              fontSize: 14,
-              fontWeight: 600,
-              fontFamily: "Arial, sans-serif",
-              cursor: "pointer",
-            }}
-          >
-            Save Review
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              height: 46,
-              padding: "0 16px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.03)",
-              color: "white",
-              fontSize: 14,
-              fontFamily: "Arial, sans-serif",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+    ])
   );
 }
 
 export default function SeriesReviewPanel({
+  tmdbId,
   series,
   creator,
   seasons,
-}: {
-  series: SeriesActionItem;
-  creator: string;
-  seasons: SeriesReviewSeason[];
-}) {
-  const [entries, setEntries] = useState<DiaryMovie[]>([]);
-  const [activeTarget, setActiveTarget] = useState<ReviewTarget | null>(null);
+}: SeriesReviewPanelProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<ActiveTab>("show");
+  const [reviewBundle, setReviewBundle] = useState<ReviewBundle>({
+    showReview: null,
+    seasonReviews: [],
+    episodeReviews: [],
+  });
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [selectedSeason, setSelectedSeason] = useState<number>(
+    Number(searchParams.get("s")) || seasons[0]?.seasonNumber || 1
+  );
+  const [openSeason, setOpenSeason] = useState<number | null>(
+    Number(searchParams.get("season")) || null
+  );
+  const [openEpisode, setOpenEpisode] = useState<{
+    seasonNumber: number;
+    episodeNumber: number;
+  } | null>(
+    searchParams.get("s") && searchParams.get("e")
+      ? {
+          seasonNumber: Number(searchParams.get("s")),
+          episodeNumber: Number(searchParams.get("e")),
+        }
+      : null
+  );
+
+  const seasonRefs = useRef(new Map<number, HTMLDivElement | null>());
+  const episodeRefs = useRef(new Map<string, HTMLDivElement | null>());
 
   useEffect(() => {
-    setEntries(getDiaryMovies());
-    return subscribeToDiary(() => setEntries(getDiaryMovies()));
-  }, []);
+    let cancelled = false;
 
-  const tvEntries = useMemo(
-    () => entries.filter((entry) => entry.mediaType === "tv" && (entry.showId || entry.id) === series.id),
-    [entries, series.id]
-  );
+    async function loadReviews() {
+      if (!user?.id) {
+        if (!cancelled) {
+          setReviewBundle({
+            showReview: null,
+            seasonReviews: [],
+            episodeReviews: [],
+          });
+          setLoadingReviews(false);
+        }
+        return;
+      }
 
-  const showReview = tvEntries.find(
-    (entry) => entry.reviewScope === "show" || (!entry.reviewScope && entry.id === series.id)
-  );
-
-  function handleQuickShowReview() {
-    saveDiaryDraft({
-      ...series,
-      reviewScope: "show",
-      showId: series.id,
-    });
-    window.location.href = "/diary/log";
-  }
-
-  function toggleEpisodeWatched(season: SeriesReviewSeason, episode: SeriesReviewSeason["episodes"][number]) {
-    const existing = tvEntries.find(
-      (entry) =>
-        entry.reviewScope === "episode" &&
-        entry.seasonNumber === season.seasonNumber &&
-        entry.episodeNumber === episode.episodeNumber
-    );
-
-    if (existing) {
-      removeDiaryEntry(series.id, "tv", {
-        reviewScope: "episode",
-        seasonNumber: season.seasonNumber,
-        episodeNumber: episode.episodeNumber,
+      setLoadingReviews(true);
+      const bundle = await getAllShowReviews(user.id, tmdbId, {
+        aliases: [series.id, `tmdb-${tmdbId}`],
       });
-      return;
+
+      if (!cancelled) {
+        setReviewBundle(bundle);
+        setLoadingReviews(false);
+      }
     }
 
-    saveDiaryEntry({
-      ...series,
-      id: series.id,
-      mediaType: "tv",
-      showId: series.id,
-      reviewScope: "episode",
-      seasonNumber: season.seasonNumber,
-      episodeNumber: episode.episodeNumber,
-      title: `${series.title} • S${season.seasonNumber}E${episode.episodeNumber} · ${episode.name}`,
-      director: creator,
-      rating: null,
-      review: "",
-      watchedDate: new Date().toISOString().slice(0, 10),
-      favourite: false,
-    });
+    void loadReviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [series.id, tmdbId, user?.id]);
+
+  useEffect(() => {
+    const seasonParam = Number(searchParams.get("season")) || null;
+    const selectedSeasonParam = Number(searchParams.get("s")) || seasons[0]?.seasonNumber || 1;
+    const episodeParam = Number(searchParams.get("e")) || null;
+
+    setSelectedSeason(selectedSeasonParam);
+    setOpenSeason(seasonParam);
+    setOpenEpisode(
+      selectedSeasonParam && episodeParam
+        ? {
+            seasonNumber: selectedSeasonParam,
+            episodeNumber: episodeParam,
+          }
+        : null
+    );
+
+    if (seasonParam) {
+      setActiveTab("seasons");
+    } else if (selectedSeasonParam && episodeParam) {
+      setActiveTab("episodes");
+    }
+  }, [searchParams, seasons]);
+
+  useEffect(() => {
+    if (openSeason) {
+      seasonRefs.current.get(openSeason)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }
+  }, [openSeason]);
+
+  useEffect(() => {
+    if (openEpisode) {
+      episodeRefs.current
+        .get(`${openEpisode.seasonNumber}:${openEpisode.episodeNumber}`)
+        ?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+    }
+  }, [openEpisode]);
+
+  const seasonReviewLookup = useMemo(
+    () => getSeasonReviewLookup(reviewBundle.seasonReviews),
+    [reviewBundle.seasonReviews]
+  );
+  const episodeReviewLookup = useMemo(
+    () => getEpisodeReviewLookup(reviewBundle.episodeReviews),
+    [reviewBundle.episodeReviews]
+  );
+  const activeSeason = seasons.find((season) => season.seasonNumber === selectedSeason) || seasons[0];
+
+  function updateSearchParams(next: {
+    season?: number | null;
+    selectedSeason?: number | null;
+    episode?: number | null;
+  }) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (typeof next.season === "number" && next.season > 0) {
+      params.set("season", String(next.season));
+    } else if (next.season === null) {
+      params.delete("season");
+    }
+
+    if (typeof next.selectedSeason === "number" && next.selectedSeason > 0) {
+      params.set("s", String(next.selectedSeason));
+    } else if (next.selectedSeason === null) {
+      params.delete("s");
+    }
+
+    if (typeof next.episode === "number" && next.episode > 0) {
+      params.set("e", String(next.episode));
+    } else if (next.episode === null) {
+      params.delete("e");
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function handleShowReviewSaved(review: Review | null) {
+    setReviewBundle((current) => ({
+      ...current,
+      showReview: review,
+    }));
+  }
+
+  function handleSeasonReviewSaved(seasonNumber: number, review: Review | null) {
+    setReviewBundle((current) => ({
+      ...current,
+      seasonReviews: review
+        ? [...current.seasonReviews.filter((entry) => entry.season_number !== seasonNumber), review]
+        : current.seasonReviews.filter((entry) => entry.season_number !== seasonNumber),
+    }));
+  }
+
+  function handleEpisodeReviewSaved(
+    seasonNumber: number,
+    episodeNumber: number,
+    review: Review | null
+  ) {
+    setReviewBundle((current) => ({
+      ...current,
+      episodeReviews: review
+        ? [
+            ...current.episodeReviews.filter(
+              (entry) =>
+                !(
+                  entry.season_number === seasonNumber &&
+                  entry.episode_number === episodeNumber
+                )
+            ),
+            review,
+          ]
+        : current.episodeReviews.filter(
+            (entry) =>
+              !(
+                entry.season_number === seasonNumber &&
+                entry.episode_number === episodeNumber
+              )
+          ),
+    }));
   }
 
   return (
     <section
       style={{
-        borderRadius: 28,
+        padding: 24,
+        borderRadius: 26,
         border: "1px solid rgba(255,255,255,0.08)",
         background:
-          "linear-gradient(180deg, rgba(18,18,18,0.96) 0%, rgba(10,10,10,0.96) 100%)",
-        boxShadow: "0 20px 64px rgba(0,0,0,0.24)",
-        padding: 22,
-        display: "grid",
-        gap: 20,
+          "linear-gradient(180deg, rgba(18,18,18,0.94) 0%, rgba(10,10,10,0.94) 100%)",
+        boxShadow: "0 18px 60px rgba(0,0,0,0.22)",
       }}
     >
-      <style>{`
-        .series-review-top {
-          display: grid;
-          gap: 16px;
-          grid-template-columns: minmax(0, 1fr);
-        }
-
-        .series-season-grid {
-          display: grid;
-          gap: 18px;
-        }
-
-        .series-episode-list {
-          display: grid;
-          gap: 10px;
-        }
-
-        .series-episode-item {
-          display: grid;
-          gap: 12px;
-          grid-template-columns: auto 1fr auto;
-          align-items: center;
-          padding: 14px;
-          border-radius: 18px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.03);
-        }
-
-        @media (max-width: 760px) {
-          .series-episode-item {
-            grid-template-columns: 1fr;
-            align-items: start;
-          }
-        }
-      `}</style>
-
-      <div className="series-review-top">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-            alignItems: "end",
-          }}
-        >
+      <div className="flex flex-col gap-4 border-b border-white/8 pb-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p
-              style={{
-                margin: 0,
-                color: "#7f7f7f",
-                fontSize: 11,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
-              }}
-            >
-              Episode Journal
+            <p className="text-[10px] uppercase tracking-[0.26em] text-white/35">
+              Review layers
             </p>
-            <h2
-              style={{
-                margin: "8px 0 0",
-                fontSize: "clamp(28px, 4vw, 40px)",
-                lineHeight: 1,
-                letterSpacing: "-1px",
-                fontWeight: 600,
-              }}
-            >
-              Track seasons, episodes, and full-show reactions.
+            <h2 className="mt-3 text-[28px] font-medium tracking-[-0.03em] text-white/92">
+              Track the show, each season, and the moments that land hardest
             </h2>
+            <p className="mt-3 max-w-[760px] text-sm leading-6 text-white/54">
+              Keep one overall take on the series, then zoom into the seasons and episodes that changed the way you felt about it.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleQuickShowReview}
-            style={{
-              height: 42,
-              padding: "0 16px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
-              color: "white",
-              fontSize: 13,
-              fontFamily: "Arial, sans-serif",
-              cursor: "pointer",
-            }}
-          >
-            {showReview ? "Edit show review" : "Review full series"}
-          </button>
+          {loadingReviews ? (
+            <span className="text-sm text-white/42">Loading your reviews…</span>
+          ) : reviewBundle.showReview ? (
+            <span className="inline-flex h-10 items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 text-[11px] uppercase tracking-[0.18em] text-emerald-100">
+              {getScopeBadge(reviewBundle.showReview)}
+            </span>
+          ) : null}
         </div>
 
-        <div
-          style={{
-            borderRadius: 22,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.03)",
-            padding: 18,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              color: "#8f8f8f",
-              fontSize: 10,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            Show-Level Review
-          </p>
-          <h3
-            style={{
-              margin: "10px 0 0",
-              fontSize: 24,
-              letterSpacing: "-0.6px",
-              fontWeight: 600,
-            }}
-          >
-            {showReview?.rating !== null && showReview?.rating !== undefined
-              ? `${showReview.rating.toFixed(1)} ★`
-              : "No series rating yet"}
-          </h3>
-          <p
-            style={{
-              margin: "8px 0 0",
-              color: "#c7c7c7",
-              fontSize: 14,
-              lineHeight: 1.7,
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {showReview?.review?.trim()
-              ? showReview.review
-              : "Use the full-series review entry point to log an overall take on the show."}
-          </p>
-          {showReview ? (
-            <p
-              style={{
-                margin: "10px 0 0",
-                color: "#8f8f8f",
-                fontSize: 12,
-                fontFamily: "Arial, sans-serif",
-              }}
+        <div className="flex flex-wrap gap-2">
+          {([
+            { id: "show", label: "Show" },
+            { id: "seasons", label: "Seasons" },
+            { id: "episodes", label: "Episodes" },
+          ] as Array<{ id: ActiveTab; label: string }>).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex h-10 items-center rounded-full px-4 text-[11px] uppercase tracking-[0.18em] transition ${
+                activeTab === tab.id
+                  ? "border border-white/12 bg-white text-black"
+                  : "border border-white/10 bg-white/[0.04] text-white/72"
+              }`}
             >
-              Watched {formatDate(showReview.watchedDate)}
-            </p>
-          ) : null}
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="series-season-grid">
-        {seasons.map((season) => {
-          const seasonEpisodeEntries = tvEntries.filter(
-            (entry) =>
-              entry.reviewScope === "episode" &&
-              entry.seasonNumber === season.seasonNumber
-          );
-          const watchedCount = seasonEpisodeEntries.length;
-          const average = averageRating(seasonEpisodeEntries);
-          const seasonReview = tvEntries.find(
-            (entry) =>
-              entry.reviewScope === "season" &&
-              entry.seasonNumber === season.seasonNumber
-          );
+      <div className="mt-6">
+        {activeTab === "show" ? (
+          <div className="grid gap-4">
+            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 sm:p-5">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-white/34">Overall series review</p>
+              <h3 className="mt-3 text-xl font-medium tracking-[-0.03em] text-white/90">
+                {series.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-white/50">
+                Capture your big-picture take on the full run.
+              </p>
+            </div>
+            <ReviewForm
+              mediaId={tmdbId}
+              mediaType="series"
+              scope="show"
+              initialReview={reviewBundle.showReview}
+              onSaved={handleShowReviewSaved}
+              title={series.title}
+              year={series.year}
+              creator={creator}
+              aliases={[series.id, `tmdb-${tmdbId}`]}
+            />
+          </div>
+        ) : null}
 
-          return (
-            <article
-              key={season.seasonNumber}
-              style={{
-                borderRadius: 24,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  padding: 18,
-                  display: "grid",
-                  gap: 16,
-                }}
-              >
+        {activeTab === "seasons" ? (
+          <div className="grid gap-4">
+            {seasons.map((season) => {
+              const seasonReview = seasonReviewLookup.get(season.seasonNumber) || null;
+              const seasonEpisodeReviews = reviewBundle.episodeReviews.filter(
+                (review) => review.season_number === season.seasonNumber
+              );
+              const averageRating = getSeasonAverageRating(seasonEpisodeReviews);
+              const watchedCount = seasonEpisodeReviews.length;
+              const isOpen = openSeason === season.seasonNumber;
+
+              return (
                 <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 14,
-                    alignItems: "start",
-                    flexWrap: "wrap",
+                  key={season.seasonNumber}
+                  ref={(node) => {
+                    seasonRefs.current.set(season.seasonNumber, node);
                   }}
+                  className={`rounded-[22px] border ${
+                    isOpen
+                      ? "border-emerald-400/30 bg-emerald-400/[0.05]"
+                      : "border-white/8 bg-white/[0.03]"
+                  } p-4 sm:p-5`}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 26,
-                        lineHeight: 1.06,
-                        letterSpacing: "-0.8px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {season.name}
-                    </h3>
-                    <p
-                      style={{
-                        margin: "8px 0 0",
-                        color: "#9ca3af",
-                        fontSize: 14,
-                        lineHeight: 1.7,
-                        fontFamily: "Arial, sans-serif",
-                        maxWidth: 720,
-                      }}
-                    >
-                      {season.overview || "No season overview available."}
-                    </p>
-                  </div>
-
                   <button
                     type="button"
-                    onClick={() => setActiveTarget({ type: "season", season })}
-                    style={{
-                      height: 40,
-                      padding: "0 14px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.04)",
-                      color: "white",
-                      fontSize: 13,
-                      fontFamily: "Arial, sans-serif",
-                      cursor: "pointer",
-                      flexShrink: 0,
+                    onClick={() => {
+                      const nextOpen = isOpen ? null : season.seasonNumber;
+                      setOpenSeason(nextOpen);
+                      updateSearchParams({
+                        season: nextOpen,
+                        selectedSeason: null,
+                        episode: null,
+                      });
                     }}
+                    className="flex w-full items-start gap-4 text-left"
                   >
-                    {seasonReview ? "Edit season review" : "Review season"}
-                  </button>
-                </div>
+                    <div className="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-xl border border-white/8 bg-[#0d0d18]">
+                      {season.posterUrl ? (
+                        <Image
+                          src={season.posterUrl}
+                          alt={season.name}
+                          fill
+                          sizes="72px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.22em] text-white/30">
+                          S{season.seasonNumber}
+                        </div>
+                      )}
+                    </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#e5e7eb", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
-                    Progress {watchedCount}/{season.episodes.length}
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#e5e7eb", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
-                    Episode Avg {average !== null ? `${average.toFixed(1)} ★` : "—"}
-                  </span>
-                  {seasonReview ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "#e5e7eb", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
-                      Season Review {seasonReview.rating !== null ? `${seasonReview.rating.toFixed(1)} ★` : "Logged"}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-medium text-white/90">{season.name}</h3>
+                        {seasonReview ? (
+                          <span className="inline-flex h-7 items-center rounded-full border border-white/12 bg-white/[0.06] px-3 text-[10px] uppercase tracking-[0.16em] text-white/65">
+                            {seasonReview.rating ? `${(seasonReview.rating / 2).toFixed(1)} ★` : "Review saved"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex h-7 items-center rounded-full border border-white/10 bg-white/[0.03] px-3 text-[10px] uppercase tracking-[0.16em] text-white/42">
+                            Add review
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-white/46">
+                        {season.episodes.length} episodes
+                        {season.airDate ? ` · ${season.airDate.slice(0, 4)}` : ""}
+                        {averageRating ? ` · Avg episode score ${(averageRating / 2).toFixed(1)} ★` : ""}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-white/54">
+                        {season.overview || "No season overview available yet."}
+                      </p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.16em] text-white/34">
+                        Watched progress {watchedCount}/{season.episodes.length}
+                      </p>
+                    </div>
+
+                    <span className="text-xl text-white/40">{isOpen ? "−" : "+"}</span>
+                  </button>
+
+                  {isOpen ? (
+                    <div className="mt-4 border-t border-white/8 pt-4">
+                      <ReviewForm
+                        mediaId={tmdbId}
+                        mediaType="series"
+                        scope="season"
+                        seasonNumber={season.seasonNumber}
+                        initialReview={seasonReview}
+                        onSaved={(review) =>
+                          handleSeasonReviewSaved(season.seasonNumber, review)
+                        }
+                        title={`${series.title} • ${season.name}`}
+                        year={season.airDate ? Number(season.airDate.slice(0, 4)) : series.year}
+                        creator={creator}
+                        aliases={[series.id, `tmdb-${tmdbId}`]}
+                      />
+                    </div>
                   ) : null}
                 </div>
+              );
+            })}
+          </div>
+        ) : null}
 
-                <div className="series-episode-list">
-                  {season.episodes.map((episode) => {
-                    const episodeEntry = seasonEpisodeEntries.find(
-                      (entry) => entry.episodeNumber === episode.episodeNumber
-                    );
+        {activeTab === "episodes" && activeSeason ? (
+          <div className="grid gap-5">
+            <div className="flex flex-wrap gap-2">
+              {seasons.map((season) => (
+                <button
+                  key={season.seasonNumber}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSeason(season.seasonNumber);
+                    setOpenEpisode(null);
+                    updateSearchParams({
+                      season: null,
+                      selectedSeason: season.seasonNumber,
+                      episode: null,
+                    });
+                  }}
+                  className={`inline-flex h-10 items-center rounded-full px-4 text-[11px] uppercase tracking-[0.18em] ${
+                    selectedSeason === season.seasonNumber
+                      ? "border border-white/12 bg-white text-black"
+                      : "border border-white/10 bg-white/[0.04] text-white/72"
+                  }`}
+                >
+                  S{season.seasonNumber}
+                </button>
+              ))}
+            </div>
 
-                    return (
-                      <div className="series-episode-item" key={episode.id}>
-                        <button
-                          type="button"
-                          onClick={() => toggleEpisodeWatched(season, episode)}
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 999,
-                            border: episodeEntry
-                              ? "1px solid rgba(255,255,255,0.18)"
-                              : "1px solid rgba(255,255,255,0.1)",
-                            background: episodeEntry
-                              ? "rgba(255,255,255,0.12)"
-                              : "rgba(255,255,255,0.03)",
-                            color: "white",
-                            cursor: "pointer",
-                            fontSize: 16,
-                          }}
-                        >
-                          {episodeEntry ? "✓" : "○"}
-                        </button>
+            <div className="grid gap-3">
+              {activeSeason.episodes.map((episode) => {
+                const key = `${activeSeason.seasonNumber}:${episode.episodeNumber}`;
+                const review = episodeReviewLookup.get(key) || null;
+                const isOpen =
+                  openEpisode?.seasonNumber === activeSeason.seasonNumber &&
+                  openEpisode?.episodeNumber === episode.episodeNumber;
 
-                        <div style={{ minWidth: 0 }}>
-                          <p
-                            style={{
-                              margin: 0,
-                              color: "white",
-                              fontSize: 15,
-                              lineHeight: 1.5,
-                              fontFamily: "Arial, sans-serif",
-                            }}
-                          >
-                            S{season.seasonNumber}E{episode.episodeNumber} · {episode.name}
+                return (
+                  <div
+                    key={key}
+                    ref={(node) => {
+                      episodeRefs.current.set(key, node);
+                    }}
+                    className={`rounded-[20px] border ${
+                      isOpen
+                        ? "border-emerald-400/30 bg-emerald-400/[0.05]"
+                        : "border-white/8 bg-white/[0.03]"
+                    } p-4`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextOpen = isOpen
+                          ? null
+                          : {
+                              seasonNumber: activeSeason.seasonNumber,
+                              episodeNumber: episode.episodeNumber,
+                            };
+                        setOpenEpisode(nextOpen);
+                        updateSearchParams({
+                          season: null,
+                          selectedSeason: activeSeason.seasonNumber,
+                          episode: nextOpen?.episodeNumber ?? null,
+                        });
+                      }}
+                      className="flex w-full items-start justify-between gap-4 text-left"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-white/34">
+                            S{activeSeason.seasonNumber} E{episode.episodeNumber}
+                          </span>
+                          {review ? (
+                            <span className="inline-flex h-6 items-center rounded-full border border-white/12 bg-white/[0.06] px-2.5 text-[10px] uppercase tracking-[0.14em] text-white/64">
+                              {review.rating ? `${(review.rating / 2).toFixed(1)} ★` : "Saved"}
+                            </span>
+                          ) : null}
+                        </div>
+                        <h3 className="mt-2 text-base font-medium text-white/90">{episode.name}</h3>
+                        <p className="mt-2 text-sm text-white/48">
+                          {formatDateLabel(episode.airDate)}
+                          {episode.runtime ? ` · ${episode.runtime} min` : ""}
+                        </p>
+                      </div>
+                      <span className="text-sm uppercase tracking-[0.16em] text-white/38">
+                        {review ? "Edit" : "+ rate"}
+                      </span>
+                    </button>
+
+                    {isOpen ? (
+                      <div className="mt-4 border-t border-white/8 pt-4">
+                        <div className="mb-3">
+                          <p className="text-xs uppercase tracking-[0.16em] text-white/34">
+                            {episode.airDate ? formatDateLabel(episode.airDate) : "Air date unknown"}
                           </p>
-                          <p
-                            style={{
-                              margin: "6px 0 0",
-                              color: "#8f8f8f",
-                              fontSize: 12,
-                              lineHeight: 1.6,
-                              fontFamily: "Arial, sans-serif",
-                            }}
-                          >
-                            {episode.airDate ? formatDate(episode.airDate) : "Unknown air date"}
-                            {typeof episode.runtime === "number"
-                              ? ` · ${episode.runtime} min`
-                              : ""}
-                            {episodeEntry?.rating !== null &&
-                            episodeEntry?.rating !== undefined
-                              ? ` · ${episodeEntry.rating.toFixed(1)} ★`
-                              : ""}
-                          </p>
-                          {episodeEntry?.review?.trim() ? (
-                            <p
-                              style={{
-                                margin: "8px 0 0",
-                                color: "#c7c7c7",
-                                fontSize: 13,
-                                lineHeight: 1.7,
-                                fontFamily: "Arial, sans-serif",
-                              }}
-                            >
-                              {episodeEntry.review}
+                          {episode.overview ? (
+                            <p className="mt-2 text-sm leading-6 text-white/52">
+                              {episode.overview}
                             </p>
                           ) : null}
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveTarget({ type: "episode", season, episode })
+                        <ReviewForm
+                          mediaId={tmdbId}
+                          mediaType="series"
+                          scope="episode"
+                          seasonNumber={activeSeason.seasonNumber}
+                          episodeNumber={episode.episodeNumber}
+                          initialReview={review}
+                          onSaved={(savedReview) =>
+                            handleEpisodeReviewSaved(
+                              activeSeason.seasonNumber,
+                              episode.episodeNumber,
+                              savedReview
+                            )
                           }
-                          style={{
-                            height: 38,
-                            padding: "0 14px",
-                            borderRadius: 999,
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            background: "rgba(255,255,255,0.04)",
-                            color: "white",
-                            fontSize: 13,
-                            fontFamily: "Arial, sans-serif",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {episodeEntry ? "Edit" : "Review"}
-                        </button>
+                          compact
+                          title={`${series.title} • S${activeSeason.seasonNumber}E${episode.episodeNumber} · ${episode.name}`}
+                          year={episode.airDate ? Number(episode.airDate.slice(0, 4)) : series.year}
+                          creator={creator}
+                          aliases={[series.id, `tmdb-${tmdbId}`]}
+                        />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </article>
-          );
-        })}
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
-
-      <ReviewModal
-        open={Boolean(activeTarget)}
-        target={activeTarget}
-        series={series}
-        creator={creator}
-        onClose={() => setActiveTarget(null)}
-      />
     </section>
   );
 }

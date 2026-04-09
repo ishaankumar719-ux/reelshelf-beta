@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { MediaCard } from "../../../src/components/ui/MediaCard";
+import { getPosterUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
 import SeriesReviewPanel from "../../../components/SeriesReviewPanel";
 import TrackRecentView from "../../../components/TrackRecentView";
-import { getTMDBPosterUrl } from "../../../lib/posters";
 import { getLocalSeriesByRouteId } from "../../../lib/localSeries";
 import {
   getSeriesHrefFromTmdbId,
@@ -123,7 +124,7 @@ function ProviderBadge({
       }}
     >
       <img
-        src={`https://image.tmdb.org/t/p/w92${logoPath}`}
+        src={getTmdbImageUrl(logoPath, "w154") || undefined}
         alt={name}
         style={{
           width: 32,
@@ -157,80 +158,16 @@ function RecommendationCard({
   posterPath: string | null;
 }) {
   return (
-    <Link
-      href={getSeriesHrefFromTmdbId(id)}
-      style={{
-        textDecoration: "none",
-        color: "white",
-        width: 180,
-        flexShrink: 0,
-      }}
-    >
-      <div
-        style={{
-          position: "relative",
-          width: 180,
-          aspectRatio: "2 / 3",
-          borderRadius: 16,
-          overflow: "hidden",
-          background:
-            "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
-        }}
-      >
-        {posterPath ? (
-          <Image
-            src={`https://image.tmdb.org/t/p/w500${posterPath}`}
-            alt={title}
-            fill
-            sizes="180px"
-            style={{ objectFit: "cover" }}
-          />
-        ) : null}
-
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.35) 38%, rgba(0,0,0,0.05) 65%, rgba(0,0,0,0.02) 100%)",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            left: 12,
-            right: 12,
-            bottom: 12,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: 16,
-              lineHeight: 1.1,
-              letterSpacing: "-0.4px",
-              fontWeight: 600,
-            }}
-          >
-            {title}
-          </h3>
-
-          <p
-            style={{
-              margin: "6px 0 0",
-              color: "rgba(255,255,255,0.75)",
-              fontSize: 12,
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {year}
-          </p>
-        </div>
-      </div>
-    </Link>
+    <div style={{ width: 180, flexShrink: 0 }}>
+      <MediaCard
+        title={title}
+        year={year}
+        posterPath={posterPath}
+        mediaType="series"
+        size="md"
+        href={getSeriesHrefFromTmdbId(id)}
+      />
+    </div>
   );
 }
 
@@ -561,7 +498,52 @@ function SeriesHero({
             sizes="(max-width: 900px) 100vw, 320px"
             style={{ objectFit: "cover" }}
           />
-        ) : null}
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: 18,
+              background:
+                "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
+            }}
+          >
+            <span
+              style={{
+                color: "rgba(255,255,255,0.38)",
+                fontSize: 10,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                fontFamily: "Arial, sans-serif",
+              }}
+            >
+              ReelShelf
+            </span>
+            <div
+              style={{
+                alignSelf: "flex-start",
+                minWidth: 48,
+                height: 48,
+                padding: "0 16px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.04)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(255,255,255,0.62)",
+                fontSize: 15,
+                fontWeight: 600,
+                fontFamily: "Arial, sans-serif",
+              }}
+            >
+              TV
+            </div>
+          </div>
+        )}
 
         <div
           style={{
@@ -702,6 +684,7 @@ function SeriesDetailContent({
   seasonsLabel,
   runtimeLabel,
   actionSeries,
+  tmdbId,
   seasons,
   flatrate,
   rent,
@@ -727,6 +710,7 @@ function SeriesDetailContent({
     runtime?: number;
     voteAverage?: number;
   };
+  tmdbId: number;
   seasons: Array<{
     seasonNumber: number;
     name: string;
@@ -785,6 +769,7 @@ function SeriesDetailContent({
       >
         {seasons.length > 0 ? (
           <SeriesReviewPanel
+            tmdbId={tmdbId}
             series={actionSeries}
             creator={creator}
             seasons={seasons}
@@ -829,7 +814,7 @@ async function loadSeasonDetails(
       seasonNumber: season.season_number,
       name: season.name || `Season ${season.season_number}`,
       overview: season.overview || "",
-      posterUrl: getTMDBPosterUrl(season.poster_path) || undefined,
+      posterUrl: getPosterUrl(season.poster_path, "w500") || undefined,
       airDate: season.air_date || undefined,
       episodes: (season.episodes || []).map((episode) => ({
         id: episode.id,
@@ -881,7 +866,7 @@ export default async function SeriesDetailPage({
     const genreNames = getGenreNames(details);
     const seasonCount = details?.number_of_seasons ?? null;
     const episodeRuntime = details?.episode_run_time?.[0] ?? null;
-    const posterUrl = getTMDBPosterUrl(localShow.posterPath ?? localShow.poster);
+    const posterUrl = getPosterUrl(localShow.posterPath ?? localShow.poster, "w500");
     const seasons = await loadSeasonDetails(
       localShow.tmdbId,
       seasonCount || parseSeasonFallbackCount(localShow.seasons)
@@ -908,6 +893,7 @@ export default async function SeriesDetailPage({
           runtime: episodeRuntime || undefined,
           voteAverage: undefined,
         }}
+        tmdbId={localShow.tmdbId}
         seasons={seasons}
         flatrate={flatrate}
         rent={rent}
@@ -938,7 +924,7 @@ export default async function SeriesDetailPage({
   const showYear = show.first_air_date ? show.first_air_date.slice(0, 4) : "—";
   const seasonCount = show.number_of_seasons ?? null;
   const episodeRuntime = show.episode_run_time?.[0] ?? null;
-  const posterUrl = getTMDBPosterUrl(show.poster_path);
+  const posterUrl = getPosterUrl(show.poster_path, "w500");
   const seasons = await loadSeasonDetails(tmdbId, seasonCount || 0);
   const ukProviders = providers?.results?.GB;
   const flatrate = ukProviders?.flatrate || [];
@@ -966,6 +952,7 @@ export default async function SeriesDetailPage({
         runtime: episodeRuntime || undefined,
         voteAverage: undefined,
       }}
+      tmdbId={tmdbId}
       seasons={seasons}
       flatrate={flatrate}
       rent={rent}

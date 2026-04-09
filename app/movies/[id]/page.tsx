@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { MediaCard } from "../../../src/components/ui/MediaCard";
+import { getPosterUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
@@ -73,7 +75,7 @@ function ProviderBadge({
       }}
     >
       <img
-        src={`https://image.tmdb.org/t/p/w92${logoPath}`}
+        src={getTmdbImageUrl(logoPath, "w154") || undefined}
         alt={name}
         style={{
           width: 32,
@@ -107,80 +109,16 @@ function RecommendationCard({
   posterPath: string | null;
 }) {
   return (
-    <Link
-      href={getMovieHrefFromTmdbId(id)}
-      style={{
-        textDecoration: "none",
-        color: "white",
-        width: 180,
-        flexShrink: 0,
-      }}
-    >
-      <div
-        style={{
-          position: "relative",
-          width: 180,
-          aspectRatio: "2 / 3",
-          borderRadius: 16,
-          overflow: "hidden",
-          background:
-            "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
-        }}
-      >
-        {posterPath ? (
-          <Image
-            src={`https://image.tmdb.org/t/p/w500${posterPath}`}
-            alt={title}
-            fill
-            sizes="180px"
-            style={{ objectFit: "cover" }}
-          />
-        ) : null}
-
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.35) 38%, rgba(0,0,0,0.05) 65%, rgba(0,0,0,0.02) 100%)",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            left: 12,
-            right: 12,
-            bottom: 12,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: 16,
-              lineHeight: 1.1,
-              letterSpacing: "-0.4px",
-              fontWeight: 600,
-            }}
-          >
-            {title}
-          </h3>
-
-          <p
-            style={{
-              margin: "6px 0 0",
-              color: "rgba(255,255,255,0.75)",
-              fontSize: 12,
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {year}
-          </p>
-        </div>
-      </div>
-    </Link>
+    <div style={{ width: 180, flexShrink: 0 }}>
+      <MediaCard
+        title={title}
+        year={year}
+        posterPath={posterPath}
+        mediaType="film"
+        size="md"
+        href={getMovieHrefFromTmdbId(id)}
+      />
+    </div>
   );
 }
 
@@ -600,9 +538,7 @@ export default async function MovieDetailPage({
           id: `tmdb-${movie.id}`,
           mediaType: "movie",
           title: movieTitle,
-          poster: moviePosterPath
-            ? `https://image.tmdb.org/t/p/w500${moviePosterPath}`
-            : undefined,
+          poster: getPosterUrl(moviePosterPath, "w500") || undefined,
           year: movieReleaseDate ? Number(movieReleaseDate.slice(0, 4)) : 0,
           director,
           genres: [],
@@ -633,13 +569,58 @@ export default async function MovieDetailPage({
         >
           {moviePosterPath ? (
             <Image
-              src={`https://image.tmdb.org/t/p/w500${moviePosterPath}`}
+              src={getPosterUrl(moviePosterPath, "w500") || ""}
               alt={movieTitle}
               fill
               sizes="300px"
               style={{ objectFit: "cover" }}
             />
-          ) : null}
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                padding: 18,
+                background:
+                  "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
+              }}
+            >
+              <span
+                style={{
+                  color: "rgba(255,255,255,0.38)",
+                  fontSize: 10,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                ReelShelf
+              </span>
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  minWidth: 48,
+                  height: 48,
+                  padding: "0 16px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.04)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "rgba(255,255,255,0.62)",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                FILM
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -699,9 +680,7 @@ export default async function MovieDetailPage({
               id: `tmdb-${movie.id}`,
               title: movieTitle,
               year: movieReleaseDate ? Number(movieReleaseDate.slice(0, 4)) : 0,
-              poster: moviePosterPath
-                ? `https://image.tmdb.org/t/p/w500${moviePosterPath}`
-                : undefined,
+              poster: getPosterUrl(moviePosterPath, "w500") || undefined,
               director,
               genres: [],
               runtime: movieRuntime || undefined,

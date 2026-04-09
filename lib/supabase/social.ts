@@ -19,6 +19,9 @@ export type FriendsActivityEntry = {
   poster: string | null;
   year: number;
   creator: string | null;
+  reviewScope?: "title" | "show" | "season" | "episode";
+  seasonNumber?: number | null;
+  episodeNumber?: number | null;
   rating: number | null;
   review: string;
   savedAt: string;
@@ -445,7 +448,7 @@ export async function getFriendsActivity() {
       client
         .from("diary_entries")
         .select(
-          "user_id, media_id, media_type, title, poster, year, creator, rating, review, saved_at"
+          "user_id, media_id, media_type, review_scope, season_number, episode_number, title, poster, year, creator, rating, review, saved_at"
         )
         .in("user_id", followedIds)
         .order("saved_at", { ascending: false })
@@ -491,6 +494,9 @@ export async function getFriendsActivity() {
       poster: row.poster ?? null,
       year: Number(row.year) || 0,
       creator: row.creator ?? null,
+      reviewScope: row.review_scope ?? "title",
+      seasonNumber: row.season_number ?? null,
+      episodeNumber: row.episode_number ?? null,
       rating: typeof row.rating === "number" ? row.rating : null,
       review: row.review || "",
       savedAt: row.saved_at,

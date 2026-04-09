@@ -23,6 +23,12 @@ alter table public.profiles
 add column if not exists bio text;
 
 alter table public.profiles
+add column if not exists website_url text;
+
+alter table public.profiles
+add column if not exists is_public boolean not null default true;
+
+alter table public.profiles
 add column if not exists favourite_film text;
 
 alter table public.profiles
@@ -61,11 +67,25 @@ create table if not exists public.diary_entries (
   vote_average numeric,
   rating numeric,
   review text not null default '',
+  contains_spoilers boolean not null default false,
   watched_date date not null,
   favourite boolean not null default false,
   saved_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.mount_rushmore (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  position int check (position between 1 and 4) not null,
+  media_id int,
+  media_type text check (media_type in ('film','series')),
+  title text,
+  year text,
+  poster_path text,
+  created_at timestamptz default now(),
+  unique (user_id, position)
 );
 
 alter table public.diary_entries
@@ -80,6 +100,9 @@ add column if not exists season_number integer not null default 0;
 alter table public.diary_entries
 add column if not exists episode_number integer not null default 0;
 
+alter table public.diary_entries
+add column if not exists contains_spoilers boolean not null default false;
+
 create unique index if not exists diary_entries_scope_unique_idx
 on public.diary_entries (
   user_id,
@@ -88,6 +111,20 @@ on public.diary_entries (
   review_scope,
   season_number,
   episode_number
+);
+
+alter table public.diary_entries
+drop constraint if exists diary_entries_tv_show_scope_numbers_check;
+
+alter table public.diary_entries
+add constraint diary_entries_tv_show_scope_numbers_check
+check (
+  media_type <> 'tv'
+  or (
+    (review_scope = 'show' and season_number = 0 and episode_number = 0)
+    or (review_scope = 'season' and season_number >= 1 and episode_number = 0)
+    or (review_scope = 'episode' and season_number >= 1 and episode_number >= 1)
+  )
 );
 
 create table if not exists public.saved_items (
@@ -162,6 +199,7 @@ create table if not exists public.weekly_challenge_progress (
 );
 
 alter table public.profiles enable row level security;
+alter table public.mount_rushmore enable row level security;
 alter table public.diary_entries enable row level security;
 alter table public.saved_items enable row level security;
 alter table public.followers enable row level security;
@@ -184,6 +222,19 @@ create policy "Users can update own profile"
 on public.profiles
 for update
 using (auth.uid() = id);
+
+drop policy if exists "Users can read any rushmore" on public.mount_rushmore;
+create policy "Users can read any rushmore"
+on public.mount_rushmore
+for select
+using (true);
+
+drop policy if exists "Users can manage their own rushmore" on public.mount_rushmore;
+create policy "Users can manage their own rushmore"
+on public.mount_rushmore
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 
 drop policy if exists "Public can view shared profiles" on public.profiles;
 create policy "Public can view shared profiles"

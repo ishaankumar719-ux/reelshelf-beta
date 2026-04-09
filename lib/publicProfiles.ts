@@ -47,6 +47,7 @@ type ProfileRow = {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  is_public?: boolean | null;
   favourite_film: string | null;
   favourite_series: string | null;
   favourite_book: string | null;
@@ -232,9 +233,10 @@ export async function getDiscoverProfiles(
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
+      "id, username, display_name, avatar_url, bio, is_public, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
     )
     .not("username", "is", null)
+    .eq("is_public", true)
     .order("updated_at", { ascending: false })
     .limit(36);
 

@@ -1,7 +1,8 @@
-import Header from "../components/Header";
 import { AuthProvider } from "../components/AuthProvider";
 import { normalizeMountRushmore, type UserProfile } from "../lib/profile";
 import { createClient } from "../lib/supabase/server";
+import AppNav from "../src/components/layout/AppNav";
+import GlobalSearch from "../src/components/layout/GlobalSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,8 @@ export default async function RootLayout({
           }
         `}</style>
         <AuthProvider initialUser={user} initialProfile={initialProfile}>
-          <Header />
+          <AppNav />
+          <GlobalSearch />
           <main className="app-shell-main">
             {children}
           </main>

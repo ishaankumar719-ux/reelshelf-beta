@@ -35,6 +35,24 @@ function getMediaBadgeLabel(mediaType: MediaType) {
   return "BOOK";
 }
 
+function getTvScopeBadge(movie: DiaryMovie) {
+  if (movie.mediaType !== "tv") return null;
+
+  if (movie.reviewScope === "season" && movie.seasonNumber) {
+    return `S${movie.seasonNumber} review`;
+  }
+
+  if (movie.reviewScope === "episode" && movie.seasonNumber && movie.episodeNumber) {
+    return `S${movie.seasonNumber} E${movie.episodeNumber} review`;
+  }
+
+  if (movie.reviewScope === "show") {
+    return "Show review";
+  }
+
+  return null;
+}
+
 function sortByNewest(entries: DiaryMovie[]) {
   return [...entries].sort(
     (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
@@ -652,17 +670,49 @@ export default function DiaryPage() {
                       </div>
                     </div>
 
-                    <h2
+                    <div
                       style={{
-                        margin: "0 0 8px",
-                        fontSize: "clamp(24px, 6vw, 30px)",
-                        lineHeight: 1.04,
-                        letterSpacing: "-1px",
-                        fontWeight: 500,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 8,
                       }}
                     >
-                      {movie.title}
-                    </h2>
+                      <h2
+                        style={{
+                          margin: 0,
+                          fontSize: "clamp(24px, 6vw, 30px)",
+                          lineHeight: 1.04,
+                          letterSpacing: "-1px",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {movie.title}
+                      </h2>
+
+                      {getTvScopeBadge(movie) ? (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            height: 28,
+                            padding: "0 10px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(45, 212, 191, 0.2)",
+                            background: "rgba(45, 212, 191, 0.1)",
+                            color: "#d5fffb",
+                            fontSize: 10,
+                            letterSpacing: "0.14em",
+                            textTransform: "uppercase",
+                            fontFamily: "Arial, sans-serif",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {getTvScopeBadge(movie)}
+                        </span>
+                      ) : null}
+                    </div>
 
                     <p
                       style={{
