@@ -1,21 +1,34 @@
 alter table public.diary_entries
-add column if not exists contains_spoilers boolean not null default false;
+  alter column review_scope set default 'show';
 
 update public.diary_entries
-set review_scope = 'show'
-where media_type = 'tv'
-  and review_scope = 'title';
+  set review_scope = 'show'
+  where review_scope = 'title';
 
 alter table public.diary_entries
-drop constraint if exists diary_entries_tv_show_scope_numbers_check;
+  alter column season_number drop not null,
+  alter column season_number drop default,
+  alter column episode_number drop not null,
+  alter column episode_number drop default;
 
-alter table public.diary_entries
-add constraint diary_entries_tv_show_scope_numbers_check
-check (
-  media_type <> 'tv'
-  or (
-    (review_scope = 'show' and season_number = 0 and episode_number = 0)
-    or (review_scope = 'season' and season_number >= 1 and episode_number = 0)
-    or (review_scope = 'episode' and season_number >= 1 and episode_number >= 1)
-  )
-);
+update public.diary_entries
+  set season_number = null, episode_number = null
+  where review_scope = 'show';
+
+update public.diary_entries
+  set episode_number = null
+  where review_scope = 'season' and episode_number = 0;
+
+drop index if exists public.diary_entries_scope_unique_idx;
+
+create unique index if not exists diary_entries_unique_show
+  on public.diary_entries (user_id, media_id)
+  where review_scope = 'show';
+
+create unique index if not exists diary_entries_unique_season
+  on public.diary_entries (user_id, media_id, season_number)
+  where review_scope = 'season';
+
+create unique index if not exists diary_entries_unique_episode
+  on public.diary_entries (user_id, media_id, season_number, episode_number)
+  where review_scope = 'episode';

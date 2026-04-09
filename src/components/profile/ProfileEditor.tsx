@@ -91,7 +91,6 @@ async function uploadAvatar(userId: string, file: File) {
 export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const router = useRouter()
   const { profile: authProfile } = useAuth()
-  const profileUsername = authProfile?.username || ""
 
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "success" | "error">("idle")
@@ -239,6 +238,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const websiteError = validateWebsite(websiteUrl)
   const normalizedUsernameValue = normalizeUsername(username)
   const normalizedDisplayNameValue = normalizeDisplayName(displayName)
+  const publicProfileHref = normalizedUsernameValue ? `/u/${encodeURIComponent(normalizedUsernameValue)}` : "/"
   const canSave =
     normalizedUsernameValue.length >= 3 &&
     normalizedDisplayNameValue.length >= 2 &&
@@ -287,44 +287,69 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     try {
       const finalAvatarUrl = avatarFile ? await uploadAvatar(userId, avatarFile) : avatarUrl
 
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        username: normalizedUsernameValue,
-        display_name: normalizedDisplayNameValue || null,
-        avatar_url: finalAvatarUrl,
-        bio: bio.trim() || null,
-        favourite_film: favouriteFilm.trim() || null,
-        favourite_series: favouriteSeries.trim() || null,
-        favourite_book: favouriteBook.trim() || null,
-        website_url: websiteUrl.trim() || null,
-        is_public: isPublic,
-        updated_at: new Date().toISOString(),
-      })
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          username: normalizedUsernameValue,
+          display_name: normalizedDisplayNameValue || null,
+          avatar_url: finalAvatarUrl,
+          bio: bio.trim() || null,
+          favourite_film: favouriteFilm.trim() || null,
+          favourite_series: favouriteSeries.trim() || null,
+          favourite_book: favouriteBook.trim() || null,
+          website_url: websiteUrl.trim() || null,
+          is_public: isPublic,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId)
 
       if (profileError) {
         throw profileError
       }
 
-      const { error: upsertRushmoreError } = await supabase.from("mount_rushmore").upsert(
-        rushmore.map((slot) => ({
-          user_id: userId,
-          position: slot.position,
-          media_id: slot.media_id,
-          media_type: slot.media_type,
-          title: slot.title,
-          year: slot.year,
-          poster_path: slot.poster_path,
-        })),
-        { onConflict: "user_id,position" }
-      )
+      const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
+      const clearedPositions = rushmore
+        .filter((slot) => slot.media_id === null)
+        .map((slot) => slot.position)
 
-      if (upsertRushmoreError) {
-        throw upsertRushmoreError
+      if (clearedPositions.length > 0) {
+        const { error: deleteRushmoreError } = await supabase
+          .from("mount_rushmore")
+          .delete()
+          .eq("user_id", userId)
+          .in("position", clearedPositions)
+
+        if (deleteRushmoreError) {
+          throw deleteRushmoreError
+        }
+      }
+
+      if (filledSlots.length > 0) {
+        const { error: upsertRushmoreError } = await supabase.from("mount_rushmore").upsert(
+          filledSlots.map((slot) => ({
+            user_id: userId,
+            position: slot.position,
+            media_id: slot.media_id,
+            media_type: slot.media_type,
+            title: slot.title,
+            year: slot.year,
+            poster_path: slot.poster_path,
+          })),
+          { onConflict: "user_id,position" }
+        )
+
+        if (upsertRushmoreError) {
+          throw upsertRushmoreError
+        }
       }
 
       setSaveState("success")
       setSaveMessage("Profile updated.")
-      router.push(`/u/${encodeURIComponent(normalizedUsernameValue)}`)
+      setAvatarUrl(finalAvatarUrl)
+      setOriginalUsername(normalizedUsernameValue)
+      setAvatarFile(null)
+      setAvatarPreviewUrl(null)
+      router.push(publicProfileHref)
       router.refresh()
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not save your profile."
@@ -339,19 +364,17 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
         <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-[0.26em] text-white/38">Profile settings</p>
-            <h1 className="mt-3 text-[28px] font-medium tracking-[-0.03em] text-white/92 sm:text-[34px]">
-              Shape your ReelShelf identity
-            </h1>
+            <h1 className="mt-3 text-[28px] font-medium tracking-[-0.03em] text-white/92 sm:text-[34px]">Edit profile</h1>
             <p className="mt-3 max-w-[720px] text-sm leading-6 text-white/55">
-              Keep the editing experience private and functional here. Your public shelf stays cinematic on the showcase route.
+              Your changes appear on your public profile at {normalizedUsernameValue ? publicProfileHref : "/u/[username]"}.
             </p>
           </div>
           <div className="flex gap-2">
             <Link
-              href={profileUsername ? `/u/${encodeURIComponent(profileUsername)}` : "/"}
+              href={publicProfileHref}
               className="inline-flex h-10 items-center rounded-full border border-white/10 px-4 text-[11px] uppercase tracking-[0.16em] text-white/70"
             >
-              Cancel
+              View profile
             </Link>
             <Link
               href="/import/letterboxd"
@@ -423,10 +446,10 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                     {saveState === "saving" ? "Saving…" : "Save changes"}
                   </button>
                   <Link
-                    href={profileUsername ? `/u/${encodeURIComponent(profileUsername)}` : "/"}
+                    href={publicProfileHref}
                     className="inline-flex h-11 items-center justify-center rounded-full border border-white/10 px-5 text-[11px] uppercase tracking-[0.18em] text-white/78"
                   >
-                    View showcase
+                    Cancel
                   </Link>
                 </div>
               </section>
@@ -451,9 +474,11 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                     <span className="text-xs uppercase tracking-[0.18em] text-white/40">Username</span>
                     <input
                       value={username}
-                      onChange={(event) => setUsername(event.target.value.slice(0, 30))}
+                      onChange={(event) => setUsername(normalizeUsername(event.target.value).slice(0, 30))}
                       className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-[#0c0d14] px-4 text-sm text-white outline-none placeholder:text-white/25"
                       placeholder="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
                     />
                     <span className="mt-2 block text-[11px] text-white/34">
                       {usernameStatus === "checking"
@@ -497,7 +522,10 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
 
               <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5 sm:p-6">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-white/34">Shelf details</p>
-                <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <p className="mt-2 max-w-[640px] text-sm leading-6 text-white/50">
+                  These favourite picks help shape your public profile whenever your Mount Rushmore is still empty.
+                </p>
+                <div className="mt-5 grid gap-4 lg:grid-cols-3">
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.18em] text-white/40">Favourite film</span>
                     <input
@@ -533,7 +561,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.24em] text-white/34">Mount Rushmore</p>
                     <p className="mt-2 text-sm leading-6 text-white/52">
-                      Pick four defining films or series. Posters, title, year, and TMDB metadata fill automatically when you select a result.
+                      Pick four defining films or series. Search, select, and let ReelShelf fill the poster, title, year, and TMDB details automatically.
                     </p>
                   </div>
                 </div>
@@ -548,7 +576,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                   <div>
                     <p className="text-sm font-medium text-white/86">{isPublic ? "Public profile" : "Private profile"}</p>
                     <p className="mt-1 text-sm leading-6 text-white/48">
-                      Private shelves stay out of discovery. Followers can still keep up with your profile if they already know it.
+                      Private profiles stay out of discovery and username search. Your public link still updates here when you are ready to share it.
                     </p>
                   </div>
                   <button

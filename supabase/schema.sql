@@ -54,10 +54,10 @@ create table if not exists public.diary_entries (
   user_id uuid not null references auth.users (id) on delete cascade,
   media_id text not null,
   media_type text not null check (media_type in ('movie', 'tv', 'book')),
-  review_scope text not null default 'title' check (review_scope in ('title', 'show', 'season', 'episode')),
+  review_scope text not null default 'show' check (review_scope in ('title', 'show', 'season', 'episode')),
   show_id text not null default '',
-  season_number integer not null default 0,
-  episode_number integer not null default 0,
+  season_number integer,
+  episode_number integer,
   title text not null,
   poster text,
   year integer not null default 0,
@@ -89,43 +89,45 @@ create table if not exists public.mount_rushmore (
 );
 
 alter table public.diary_entries
-add column if not exists review_scope text not null default 'title' check (review_scope in ('title', 'show', 'season', 'episode'));
+add column if not exists review_scope text not null default 'show' check (review_scope in ('title', 'show', 'season', 'episode'));
 
 alter table public.diary_entries
 add column if not exists show_id text not null default '';
 
 alter table public.diary_entries
-add column if not exists season_number integer not null default 0;
+add column if not exists season_number integer;
 
 alter table public.diary_entries
-add column if not exists episode_number integer not null default 0;
+add column if not exists episode_number integer;
 
 alter table public.diary_entries
 add column if not exists contains_spoilers boolean not null default false;
 
-create unique index if not exists diary_entries_scope_unique_idx
-on public.diary_entries (
-  user_id,
-  media_type,
-  media_id,
-  review_scope,
-  season_number,
-  episode_number
-);
+update public.diary_entries
+set review_scope = 'show'
+where review_scope = 'title';
 
-alter table public.diary_entries
-drop constraint if exists diary_entries_tv_show_scope_numbers_check;
+update public.diary_entries
+set season_number = null, episode_number = null
+where review_scope = 'show';
 
-alter table public.diary_entries
-add constraint diary_entries_tv_show_scope_numbers_check
-check (
-  media_type <> 'tv'
-  or (
-    (review_scope = 'show' and season_number = 0 and episode_number = 0)
-    or (review_scope = 'season' and season_number >= 1 and episode_number = 0)
-    or (review_scope = 'episode' and season_number >= 1 and episode_number >= 1)
-  )
-);
+update public.diary_entries
+set episode_number = null
+where review_scope = 'season' and episode_number = 0;
+
+drop index if exists public.diary_entries_scope_unique_idx;
+
+create unique index if not exists diary_entries_unique_show
+  on public.diary_entries (user_id, media_id)
+  where review_scope = 'show';
+
+create unique index if not exists diary_entries_unique_season
+  on public.diary_entries (user_id, media_id, season_number)
+  where review_scope = 'season';
+
+create unique index if not exists diary_entries_unique_episode
+  on public.diary_entries (user_id, media_id, season_number, episode_number)
+  where review_scope = 'episode';
 
 create table if not exists public.saved_items (
   id uuid primary key default gen_random_uuid(),

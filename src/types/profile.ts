@@ -45,3 +45,46 @@ export interface MediaShelfItem {
   title: string
   poster_path: string | null
 }
+
+export interface PublicProfileStats {
+  films: number
+  series: number
+  reviews: number
+  avg_rating: number | null
+  followers: number
+  following: number
+}
+
+export interface PublicProfileActivityItem {
+  id: string
+  title: string
+  media_type: "movie" | "tv"
+  year: number | null
+  poster: string | null
+  rating: number | null
+  watched_date: string | null
+  review_scope: "show" | "season" | "episode" | null
+}
+
+export interface PublicProfileTopRatedItem {
+  title: string
+  poster: string | null
+  rating: number | null
+}
+
+export interface PublicProfileShowcaseData {
+  id: string
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+  bio: string | null
+  website_url: string | null
+  created_at: string
+  favourite_film: string | null
+  favourite_series: string | null
+  favourite_book: string | null
+  mount_rushmore: MountRushmoreSlot[]
+  recent_activity: PublicProfileActivityItem[]
+  stats: PublicProfileStats
+  highest_rated: PublicProfileTopRatedItem[]
+}
