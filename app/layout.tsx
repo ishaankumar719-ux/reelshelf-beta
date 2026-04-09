@@ -1,3 +1,4 @@
+import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
 import { normalizeMountRushmore, type UserProfile } from "../lib/profile";
 import { createClient } from "../lib/supabase/server";
@@ -11,6 +12,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Root cause recovery: the app shell lost its global stylesheet import,
+  // which disabled Tailwind utilities across every route and let raw browser
+  // defaults leak through the entire UI.
   const supabase = await createClient();
   const {
     data: { user },
