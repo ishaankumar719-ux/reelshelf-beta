@@ -194,6 +194,7 @@ export default function MountRushmoreEditor({
 
   function handleSelect(result: RushmoreSearchResult) {
     if (activePosition === null) return
+    console.log("[RUSHMORE] Slot selected:", activePosition, result.title)
 
     const nextSlots = slots.map((slot) =>
       slot.position === activePosition

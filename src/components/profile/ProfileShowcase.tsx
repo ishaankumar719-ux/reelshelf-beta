@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { getPosterUrl } from "@/src/lib/tmdb-image"
@@ -62,20 +61,30 @@ function HeroAvatar({
       className="relative h-[72px] w-[72px] overflow-hidden rounded-full border border-white/10 shadow-[0_18px_45px_rgba(0,0,0,0.36)]"
       style={{ background: `linear-gradient(180deg, ${bgColor}, rgba(10,10,20,0.92))` }}
     >
-      {avatarUrl && !imgError ? (
-        <Image
+      {avatarUrl ? (
+        <img
           src={avatarUrl}
           alt={displayName || username}
-          fill
-          sizes="72px"
-          className="object-cover"
-          onError={() => setImgError(true)}
+          onError={(event) => {
+            setImgError(true)
+            event.currentTarget.style.display = "none"
+            event.currentTarget.nextElementSibling?.removeAttribute("style")
+          }}
+          style={{
+            width: "72px",
+            height: "72px",
+            borderRadius: "50%",
+            objectFit: "cover",
+            display: imgError ? "none" : "block",
+          }}
         />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-lg font-semibold tracking-[0.08em] text-white/92">
-          {initials}
-        </div>
-      )}
+      ) : null}
+      <div
+        className="h-full w-full items-center justify-center text-lg font-semibold tracking-[0.08em] text-white/92"
+        style={{ display: avatarUrl && !imgError ? "none" : "flex" }}
+      >
+        {initials}
+      </div>
     </div>
   )
 }
@@ -99,12 +108,10 @@ function PosterTile({
     <div className={width}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-white/8 bg-[#10111c]">
         {src && !imgError ? (
-          <Image
+          <img
             src={src}
             alt={alt}
-            fill
-            sizes="(max-width: 768px) 40vw, 220px"
-            className="object-cover"
+            className="h-full w-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -127,12 +134,10 @@ function ActivityCard({ item }: { item: PublicProfileActivityItem }) {
     <div className="w-20 shrink-0">
       <div className="group relative aspect-[2/3] overflow-hidden rounded-xl border border-white/8 bg-[#10111c]">
         {item.poster && !imgError ? (
-          <Image
+          <img
             src={item.poster}
             alt={item.title}
-            fill
-            sizes="80px"
-            className="object-cover"
+            className="h-full w-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (

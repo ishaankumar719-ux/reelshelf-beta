@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, type ChangeEvent } from "react"
@@ -78,6 +77,7 @@ async function uploadAvatar(userId: string, file: File) {
   }
 
   const path = `${userId}/avatar.${getAvatarExtension(file)}`
+  console.log("[AVATAR] Uploading avatar to path:", path)
   const { error } = await supabase.storage.from("avatars").upload(path, file, {
     upsert: true,
     contentType: file.type || undefined,
@@ -88,7 +88,18 @@ async function uploadAvatar(userId: string, file: File) {
   }
 
   const { data } = supabase.storage.from("avatars").getPublicUrl(path)
-  return `${data.publicUrl}?v=${Date.now()}`
+  const avatarUrl = `${data.publicUrl}?v=${Date.now()}`
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", userId)
+
+  if (profileError) {
+    throw profileError
+  }
+
+  console.log("[AVATAR] Public URL:", avatarUrl)
+  return avatarUrl
 }
 
 export default function ProfileEditor({ userId }: ProfileEditorProps) {
@@ -108,9 +119,9 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const [favouriteBook, setFavouriteBook] = useState("")
   const [isPublic, setIsPublic] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
   const [rushmore, setRushmore] = useState<MountRushmoreSlot[]>(emptyRushmoreSlots)
+  const [originalRushmore, setOriginalRushmore] = useState<MountRushmoreSlot[]>(emptyRushmoreSlots)
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
   const [originalUsername, setOriginalUsername] = useState("")
   const [loadedProfile, setLoadedProfile] = useState<OwnerProfileSettings | null>(null)
@@ -165,6 +176,21 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       const settings = (data || {}) as Partial<OwnerProfileSettings>
       const authUser = authData.user
       const loadedUsername = settings.username || authProfile?.username || ""
+      console.log("[PROFILE LOAD] Returned row:", data || null)
+      console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
+      const normalizedRushmore = emptyRushmoreSlots().map((slot) => {
+        const existing = (rushmoreRows || []).find((row) => row.position === slot.position)
+        return existing
+          ? {
+              position: slot.position,
+              media_id: existing.media_id,
+              media_type: existing.media_type,
+              title: existing.title,
+              year: existing.year,
+              poster_path: existing.poster_path,
+            }
+          : slot
+      })
 
       setLoadedProfile({
         id: settings.id || userId,
@@ -192,21 +218,8 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       setFavouriteBook(settings.favourite_book || authProfile?.favouriteBook || "")
       setWebsiteUrl(settings.website_url || "")
       setIsPublic(settings.is_public ?? true)
-      setRushmore(
-        emptyRushmoreSlots().map((slot) => {
-          const existing = (rushmoreRows || []).find((row) => row.position === slot.position)
-          return existing
-            ? {
-                position: slot.position,
-                media_id: existing.media_id,
-                media_type: existing.media_type,
-                title: existing.title,
-                year: existing.year,
-                poster_path: existing.poster_path,
-              }
-            : slot
-        })
-      )
+      setRushmore(normalizedRushmore)
+      setOriginalRushmore(normalizedRushmore)
       setIsBootstrapping(false)
     }
 
@@ -291,13 +304,31 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       return
     }
 
-    if (avatarPreviewUrl) {
-      URL.revokeObjectURL(avatarPreviewUrl)
-    }
+    setSaveState("saving")
+    setSaveMessage(null)
 
-    const previewUrl = URL.createObjectURL(file)
-    setAvatarFile(file)
-    setAvatarPreviewUrl(previewUrl)
+    try {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl)
+      }
+
+      const previewUrl = URL.createObjectURL(file)
+      setAvatarPreviewUrl(previewUrl)
+      const nextAvatarUrl = await uploadAvatar(userId, file)
+      setAvatarUrl(nextAvatarUrl)
+      URL.revokeObjectURL(previewUrl)
+      setAvatarPreviewUrl(null)
+      setLoadedProfile((current) => (current ? { ...current, avatar_url: nextAvatarUrl } : current))
+      setSaveState("success")
+      setSaveMessage("Avatar updated.")
+    } catch (error) {
+      console.error("[AVATAR] Error:", error)
+      const message = error instanceof Error ? error.message : "Could not upload your avatar."
+      setSaveState("error")
+      setSaveMessage(message)
+    } finally {
+      event.target.value = ""
+    }
   }
 
   async function handleSave() {
@@ -319,41 +350,46 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     setSaveMessage(null)
 
     try {
-      const finalAvatarUrl = avatarFile ? await uploadAvatar(userId, avatarFile) : avatarUrl
+      const payload = {
+        display_name: normalizedDisplayNameValue || null,
+        username: normalizedUsernameValue || null,
+        bio: bio.trim() || null,
+        website_url: websiteUrl.trim() || null,
+        is_public: isPublic,
+        favourite_film: favouriteFilm.trim() || null,
+        favourite_series: favouriteSeries.trim() || null,
+        favourite_book: favouriteBook.trim() || null,
+      }
+      console.log("[PROFILE SAVE] Payload:", payload)
 
-      const { error: profileError } = await supabase
+      const { data: savedProfileRow, error: profileError } = await supabase
         .from("profiles")
-        .update({
-          username: normalizedUsernameValue,
-          display_name: normalizedDisplayNameValue || null,
-          avatar_url: finalAvatarUrl,
-          bio: bio.trim() || null,
-          favourite_film: favouriteFilm.trim() || null,
-          favourite_series: favouriteSeries.trim() || null,
-          favourite_book: favouriteBook.trim() || null,
-          website_url: websiteUrl.trim() || null,
-          is_public: isPublic,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq("id", userId)
+        .select("id, email, created_at, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, website_url, is_public")
+        .single()
 
       if (profileError) {
+        console.error("[PROFILE SAVE] Error:", profileError)
         throw profileError
       }
+      console.log("[PROFILE SAVE] Returned row:", savedProfileRow)
 
       const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
-      const clearedPositions = rushmore
-        .filter((slot) => slot.media_id === null)
+      const removedPositions = originalRushmore
+        .filter((slot) => slot.media_id !== null)
+        .filter((originalSlot) => !filledSlots.find((slot) => slot.position === originalSlot.position))
         .map((slot) => slot.position)
 
-      if (clearedPositions.length > 0) {
+      if (removedPositions.length > 0) {
         const { error: deleteRushmoreError } = await supabase
           .from("mount_rushmore")
           .delete()
           .eq("user_id", userId)
-          .in("position", clearedPositions)
+          .in("position", removedPositions)
 
         if (deleteRushmoreError) {
+          console.error("[RUSHMORE SAVE] Error:", deleteRushmoreError)
           throw deleteRushmoreError
         }
       }
@@ -373,16 +409,20 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
         )
 
         if (upsertRushmoreError) {
+          console.error("[RUSHMORE SAVE] Error:", upsertRushmoreError)
           throw upsertRushmoreError
         }
+
+        console.log("[RUSHMORE SAVE] Saved", filledSlots.length, "slots")
+      } else {
+        console.log("[RUSHMORE SAVE] Saved", 0, "slots")
       }
 
       setSaveState("success")
       setSaveMessage("Profile updated.")
-      setAvatarUrl(finalAvatarUrl)
       setOriginalUsername(normalizedUsernameValue)
-      setAvatarFile(null)
-      setAvatarPreviewUrl(null)
+      setOriginalRushmore(rushmore)
+      setLoadedProfile(savedProfileRow)
       router.push(publicProfileHref)
       router.refresh()
     } catch (error) {
@@ -463,18 +503,28 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                 <div className="mt-4 flex items-center gap-4">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-[linear-gradient(180deg,#1a2438_0%,#261336_100%)]">
                     {avatarPreviewUrl || avatarUrl ? (
-                      <Image
+                      <img
                         src={avatarPreviewUrl || avatarUrl || ""}
                         alt={avatarLabel}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none"
+                          event.currentTarget.nextElementSibling?.removeAttribute("style")
+                        }}
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          borderRadius: "9999px",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
                       />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-white/90">
-                        {getInitials(avatarLabel)}
-                      </div>
-                    )}
+                    ) : null}
+                    <div
+                      className="h-full w-full items-center justify-center text-lg font-semibold text-white/90"
+                      style={{ display: avatarPreviewUrl || avatarUrl ? "none" : "flex" }}
+                    >
+                      {getInitials(avatarLabel)}
+                    </div>
                   </div>
                   <div className="min-w-0">
                     <label className="inline-flex cursor-pointer items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-white/82">
