@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { searchMedia } from "@/src/lib/searchMedia"
 
 export interface SearchResult {
   id: number
@@ -60,30 +61,25 @@ export function useSearch(): UseSearchReturn {
       setError(null)
 
       try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(query)}&types=film,series,book&limit=7`,
-          {
-            signal: controller.signal,
-            cache: "no-store",
-          }
-        )
+        const payload = await searchMedia(query, {
+          types: "film,series,book",
+          limit: 7,
+          signal: controller.signal,
+        })
 
-        if (!response.ok) {
-          throw new Error("Search failed.")
-        }
-
-        const payload = (await response.json()) as SearchApiResponse
-
-        setResults([
+        const nextResults = [
           ...(payload.films || []).slice(0, 3),
           ...(payload.series || []).slice(0, 2),
           ...(payload.books || []).slice(0, 2),
-        ])
+        ]
+        console.log("[SEARCH] Results being set:", nextResults)
+        setResults(nextResults)
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") {
           return
         }
 
+        console.log("[SEARCH] Results being set:", [])
         setResults([])
         setError(fetchError instanceof Error ? fetchError.message : "Search failed.")
       } finally {

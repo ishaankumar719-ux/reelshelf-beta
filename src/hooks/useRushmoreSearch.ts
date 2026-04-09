@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { searchMedia } from "@/src/lib/searchMedia"
 
 export interface RushmoreSearchResult {
   media_id: number
@@ -80,28 +81,22 @@ export function useRushmoreSearch(): UseRushmoreSearchReturn {
       setIsLoading(true)
 
       try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(query)}&type=both&limit=6`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error("Could not search TMDB.")
-        }
-
-        const payload = (await response.json()) as SearchApiResponse
+        const payload = await searchMedia(query, {
+          type: "both",
+          limit: 6,
+          signal: controller.signal,
+        })
         const films = (payload.films || []).map(mapFilmResult)
         const series = (payload.series || []).map(mapSeriesResult)
         const merged = [...films, ...series].slice(0, 6)
+        console.log("[SEARCH] Results being set:", merged)
         setResults(merged)
       } catch (error) {
         if ((error as Error).name === "AbortError") {
           return
         }
 
+        console.log("[SEARCH] Results being set:", [])
         setResults([])
       } finally {
         if (!controller.signal.aborted) {

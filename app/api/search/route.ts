@@ -8,7 +8,7 @@ import { getLocalSeriesByTmdbId } from "@/lib/localSeries"
 import { getSeriesHrefFromTmdbId } from "@/lib/seriesRoutes"
 import type { SearchResult } from "@/src/hooks/useSearch"
 
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
+const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY
 const TMDB_BASE = "https://api.themoviedb.org/3"
 
 type SearchApiResponse = {
@@ -38,7 +38,10 @@ function hasType(types: Set<string>, type: SearchType) {
 }
 
 async function searchFilms(query: string, page: number, limit: number): Promise<SearchResult[]> {
-  if (!TMDB_API_KEY) return []
+  if (!TMDB_API_KEY) {
+    console.error("[SEARCH API] TMDB_API_KEY is not set")
+    return []
+  }
 
   const response = await fetch(
     `${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`,
@@ -56,6 +59,9 @@ async function searchFilms(query: string, page: number, limit: number): Promise<
     }>
   }
 
+  console.log("[SEARCH API] TMDB raw results count:", data.results?.length || 0)
+  console.log("[SEARCH API] First result:", data.results?.[0] || null)
+
   return (data.results || []).slice(0, limit).map((item) => {
     const localMovie = getLocalMovieByTmdbId(item.id)
     return {
@@ -71,7 +77,10 @@ async function searchFilms(query: string, page: number, limit: number): Promise<
 }
 
 async function searchSeries(query: string, page: number, limit: number): Promise<SearchResult[]> {
-  if (!TMDB_API_KEY) return []
+  if (!TMDB_API_KEY) {
+    console.error("[SEARCH API] TMDB_API_KEY is not set")
+    return []
+  }
 
   const response = await fetch(
     `${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`,
@@ -88,6 +97,9 @@ async function searchSeries(query: string, page: number, limit: number): Promise
       poster_path?: string | null
     }>
   }
+
+  console.log("[SEARCH API] TMDB raw results count:", data.results?.length || 0)
+  console.log("[SEARCH API] First result:", data.results?.[0] || null)
 
   return (data.results || []).slice(0, limit).map((item) => {
     const localSeries = getLocalSeriesByTmdbId(item.id)
@@ -127,6 +139,7 @@ async function searchBooks(query: string, page: number, limit: number): Promise<
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get("q")?.trim() || ""
+  console.log("[SEARCH API] Query param:", searchParams.get("q"))
   const typeParam = searchParams.get("type")?.trim() || ""
   const typesParam =
     typeParam === "both"
