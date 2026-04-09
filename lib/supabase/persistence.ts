@@ -263,6 +263,9 @@ export async function upsertDiaryEntryToBackend(entry: PersistedDiaryEntry) {
     return;
   }
 
+  console.log("[ReelShelf] Diary insert — auth.uid():", user.id);
+  console.log("[ReelShelf] Diary insert — email:", user.email);
+
   await ensureProfile();
 
   await client.from("diary_entries").upsert(mapDiaryEntryToRow(user.id, entry), {

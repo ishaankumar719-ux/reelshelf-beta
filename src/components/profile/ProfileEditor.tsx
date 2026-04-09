@@ -15,8 +15,11 @@ interface ProfileEditorProps {
 }
 
 type OwnerProfileSettings = {
-  username: string
-  display_name: string
+  id: string
+  email: string | null
+  created_at: string | null
+  username: string | null
+  display_name: string | null
   avatar_url: string | null
   bio: string
   favourite_film: string
@@ -110,6 +113,9 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const [rushmore, setRushmore] = useState<MountRushmoreSlot[]>(emptyRushmoreSlots)
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
   const [originalUsername, setOriginalUsername] = useState("")
+  const [loadedProfile, setLoadedProfile] = useState<OwnerProfileSettings | null>(null)
+  const [debugAuthUser, setDebugAuthUser] = useState<{ id: string | null; email: string | null } | null>(null)
+  const [debugDiaryCount, setDebugDiaryCount] = useState<number | null>(null)
 
   useEffect(() => {
     const supabase = createSupabaseClient()
@@ -124,10 +130,16 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     let cancelled = false
 
     async function load() {
-      const [{ data, error }, { data: rushmoreRows, error: rushmoreError }] = await Promise.all([
+      const [
+        { data: authData },
+        { data, error },
+        { data: rushmoreRows, error: rushmoreError },
+        { count: diaryCount, error: diaryCountError },
+      ] = await Promise.all([
+        client.auth.getUser(),
         client
           .from("profiles")
-          .select("username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, website_url, is_public")
+          .select("id, email, created_at, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, website_url, is_public")
           .eq("id", userId)
           .maybeSingle(),
         client
@@ -135,20 +147,41 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
           .select("position, media_id, media_type, title, year, poster_path")
           .eq("user_id", userId)
           .order("position", { ascending: true }),
+        client
+          .from("diary_entries")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId),
       ])
 
       if (cancelled) return
 
-      if (error || rushmoreError) {
+      if (error || rushmoreError || diaryCountError) {
         setSaveState("error")
-        setSaveMessage(error?.message || rushmoreError?.message || "Could not load your profile settings.")
+        setSaveMessage(error?.message || rushmoreError?.message || diaryCountError?.message || "Could not load your profile settings.")
         setIsBootstrapping(false)
         return
       }
 
       const settings = (data || {}) as Partial<OwnerProfileSettings>
+      const authUser = authData.user
       const loadedUsername = settings.username || authProfile?.username || ""
 
+      setLoadedProfile({
+        id: settings.id || userId,
+        email: settings.email || null,
+        created_at: settings.created_at || null,
+        username: settings.username || null,
+        display_name: settings.display_name || null,
+        avatar_url: settings.avatar_url || null,
+        bio: settings.bio || "",
+        favourite_film: settings.favourite_film || "",
+        favourite_series: settings.favourite_series || "",
+        favourite_book: settings.favourite_book || "",
+        website_url: settings.website_url || "",
+        is_public: settings.is_public ?? true,
+      })
+      setDebugAuthUser({ id: authUser?.id || null, email: authUser?.email || null })
+      setDebugDiaryCount(typeof diaryCount === "number" ? diaryCount : 0)
       setUsername(loadedUsername)
       setOriginalUsername(loadedUsername)
       setDisplayName(settings.display_name || authProfile?.displayName || "")
@@ -239,6 +272,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const normalizedUsernameValue = normalizeUsername(username)
   const normalizedDisplayNameValue = normalizeDisplayName(displayName)
   const publicProfileHref = normalizedUsernameValue ? `/u/${encodeURIComponent(normalizedUsernameValue)}` : "/"
+  const isEmptyShellProfile = loadedProfile?.username === null && loadedProfile?.display_name === null
   const canSave =
     normalizedUsernameValue.length >= 3 &&
     normalizedDisplayNameValue.length >= 2 &&
@@ -396,6 +430,24 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
             }`}
           >
             {saveMessage}
+          </div>
+        ) : null}
+
+        {isEmptyShellProfile ? (
+          <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-4 text-sm leading-6 text-amber-100">
+            You appear to be signed in with a new account that has no data. If you have an existing account, sign out and sign back in with your original email address.
+          </div>
+        ) : null}
+
+        {process.env.NODE_ENV === "development" ? (
+          <div className="mt-5 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-4 text-sm leading-6 text-sky-100">
+            <p>Auth UID: {debugAuthUser?.id || "(none)"}</p>
+            <p>Auth email: {debugAuthUser?.email || "(none)"}</p>
+            <p>Profile row id: {loadedProfile?.id || "(none)"}</p>
+            <p>Profile username: {loadedProfile?.username ?? "(none)"}</p>
+            <p>Profile email: {loadedProfile?.email ?? "(none)"}</p>
+            <p>Profile created_at: {loadedProfile?.created_at ?? "(none)"}</p>
+            <p>Diary entries owned by this session: {debugDiaryCount ?? 0}</p>
           </div>
         ) : null}
 
