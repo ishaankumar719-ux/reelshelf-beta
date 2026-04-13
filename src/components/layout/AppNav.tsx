@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import NotificationsBell from "@/components/NotificationsBell"
 import { useAuth } from "@/components/AuthProvider"
+import AccountDropdown from "@/components/layout/AccountDropdown"
 
 const desktopLinks = [
   { href: "/movies", label: "Films" },
@@ -35,24 +36,54 @@ function NavAvatar({
   const initial = getNavAvatarInitial(displayName, username)
   const showImage = Boolean(avatarUrl) && !imgError
 
+  useEffect(() => {
+    setImgError(false)
+  }, [avatarUrl])
+
+  useEffect(() => {
+    console.log("[NAV AVATAR] branch:", showImage ? "image" : "initials", "| avatarUrl:", avatarUrl)
+  }, [showImage, avatarUrl])
+
   if (showImage) {
     return (
       <img
         src={avatarUrl ?? ""}
         alt={displayName ?? username ?? "Profile"}
-        className="h-9 w-9 rounded-full object-cover border-[1.5px] border-white/15 transition-[border-color,box-shadow] duration-200 group-hover:border-white/45 group-hover:ring-[3px] group-hover:ring-white/10"
-        onError={() => setImgError(true)}
+        className="block h-9 w-9 shrink-0 rounded-full object-cover"
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1.5px solid rgba(255,255,255,0.15)",
+          display: "block",
+          flexShrink: 0,
+        }}
+        onError={() => {
+          console.log("[NAV AVATAR] image load failed, switching to initials")
+          setImgError(true)
+        }}
       />
     )
   }
 
   return (
     <div
-      className="flex h-9 w-9 select-none items-center justify-center rounded-full border-[1.5px] border-white/15 text-sm font-medium text-white/90 transition-[border-color,box-shadow] duration-200 group-hover:border-white/45 group-hover:ring-[3px] group-hover:ring-white/10"
+      className="flex h-9 w-9 shrink-0 select-none items-center justify-center rounded-full"
       style={{
+        width: "36px",
+        height: "36px",
+        borderRadius: "50%",
         background: "linear-gradient(135deg, #534AB7, #1D9E75)",
+        border: "1.5px solid rgba(255,255,255,0.15)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "rgba(255,255,255,0.9)",
         fontSize: "14px",
         fontWeight: 500,
+        flexShrink: 0,
+        userSelect: "none",
       }}
     >
       {initial}
@@ -64,6 +95,15 @@ export default function AppNav() {
   const pathname = usePathname()
   const { user, profile, avatarUrl } = useAuth()
   const profileHref = profile?.username ? `/u/${encodeURIComponent(profile.username)}` : user ? "/settings/profile" : "/auth"
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
+  useEffect(() => {
+    console.log("[NAV AVATAR] avatar_url received:", avatarUrl)
+  }, [avatarUrl])
+
+  useEffect(() => {
+    setDropdownOpen(false)
+  }, [pathname])
 
   return (
     <>
@@ -92,17 +132,43 @@ export default function AppNav() {
           <div className="flex items-center gap-2">
             <div className="hidden md:block">{user ? <NotificationsBell /> : null}</div>
             {user ? (
-              <Link
-                href={profileHref}
-                className="group inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full no-underline"
-                aria-label="Open profile"
-              >
-                <NavAvatar
-                  avatarUrl={avatarUrl}
-                  displayName={profile?.displayName}
-                  username={profile?.username}
-                />
-              </Link>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log("[NAV DROPDOWN] toggling, was:", dropdownOpen)
+                    setDropdownOpen((previous) => !previous)
+                  }}
+                  aria-label="Open account menu"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    borderRadius: "50%",
+                    transition: "box-shadow 0.2s ease",
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.1)"
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.boxShadow = "none"
+                  }}
+                >
+                  <NavAvatar
+                    avatarUrl={avatarUrl}
+                    displayName={profile?.displayName}
+                    username={profile?.username}
+                  />
+                </button>
+
+                {dropdownOpen ? (
+                  <AccountDropdown
+                    username={profile?.username ?? null}
+                    onClose={() => setDropdownOpen(false)}
+                  />
+                ) : null}
+              </div>
             ) : (
               <Link href="/auth" className="text-[13px] text-white/78 no-underline">
                 Sign in
