@@ -15,6 +15,8 @@ const desktopLinks = [
   { href: "/watchlist", label: "Watchlist" },
 ] as const
 
+let cachedProfile: { avatarUrl: string | null; initial: string } | null = null
+
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
@@ -25,68 +27,81 @@ function getNavAvatarInitial(displayName: string | null | undefined, username: s
 
 function NavAvatar({
   avatarUrl,
-  displayName,
-  username,
+  initial,
+  profileLoaded,
 }: {
   avatarUrl: string | null
-  displayName: string | null | undefined
-  username: string | null | undefined
+  initial: string
+  profileLoaded: boolean
 }) {
   const [imgError, setImgError] = useState(false)
-  const initial = getNavAvatarInitial(displayName, username)
-  const showImage = Boolean(avatarUrl) && !imgError
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const showImage = profileLoaded && Boolean(avatarUrl) && !imgError
 
   useEffect(() => {
     setImgError(false)
+    setImgLoaded(false)
   }, [avatarUrl])
 
   useEffect(() => {
     console.log("[NAV AVATAR] branch:", showImage ? "image" : "initials", "| avatarUrl:", avatarUrl)
   }, [showImage, avatarUrl])
 
-  if (showImage) {
-    return (
-      <img
-        src={avatarUrl ?? ""}
-        alt={displayName ?? username ?? "Profile"}
-        className="block h-9 w-9 shrink-0 rounded-full object-cover"
+  return (
+    <div
+      className="relative h-9 w-9 shrink-0"
+      style={{ width: "36px", height: "36px", flexShrink: 0 }}
+    >
+      <style>{`
+        @keyframes navAvatarPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+      <div
+        className="flex h-9 w-9 select-none items-center justify-center rounded-full"
         style={{
           width: "36px",
           height: "36px",
           borderRadius: "50%",
-          objectFit: "cover",
+          background: "linear-gradient(135deg, #534AB7, #1D9E75)",
           border: "1.5px solid rgba(255,255,255,0.15)",
-          display: "block",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "rgba(255,255,255,0.9)",
+          fontSize: "14px",
+          fontWeight: 500,
           flexShrink: 0,
+          userSelect: "none",
+          animation: profileLoaded ? "none" : "navAvatarPulse 1.5s ease-in-out infinite",
         }}
-        onError={() => {
-          console.log("[NAV AVATAR] image load failed, switching to initials")
-          setImgError(true)
-        }}
-      />
-    )
-  }
-
-  return (
-    <div
-      className="flex h-9 w-9 shrink-0 select-none items-center justify-center rounded-full"
-      style={{
-        width: "36px",
-        height: "36px",
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #534AB7, #1D9E75)",
-        border: "1.5px solid rgba(255,255,255,0.15)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "rgba(255,255,255,0.9)",
-        fontSize: "14px",
-        fontWeight: 500,
-        flexShrink: 0,
-        userSelect: "none",
-      }}
-    >
-      {initial}
+      >
+        {initial}
+      </div>
+      {showImage ? (
+        <img
+          src={avatarUrl ?? ""}
+          alt="Profile"
+          className="absolute inset-0 block h-9 w-9 rounded-full object-cover"
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            objectFit: "cover",
+            border: "1.5px solid rgba(255,255,255,0.15)",
+            display: "block",
+            flexShrink: 0,
+            opacity: imgLoaded ? 1 : 0,
+            transition: "opacity 0.2s ease",
+          }}
+          onLoad={() => setImgLoaded(true)}
+          onError={() => {
+            console.log("[NAV AVATAR] image load failed, switching to initials")
+            setImgError(true)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -96,10 +111,44 @@ export default function AppNav() {
   const { user, profile, avatarUrl } = useAuth()
   const profileHref = profile?.username ? `/u/${encodeURIComponent(profile.username)}` : user ? "/settings/profile" : "/auth"
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(cachedProfile?.avatarUrl ?? null)
+  const [initial, setInitial] = useState<string>(cachedProfile?.initial ?? "R")
+  const [profileLoaded, setProfileLoaded] = useState(Boolean(cachedProfile))
 
   useEffect(() => {
-    console.log("[NAV AVATAR] avatar_url received:", avatarUrl)
-  }, [avatarUrl])
+    if (!user) {
+      cachedProfile = null
+      setResolvedAvatarUrl(null)
+      setInitial("R")
+      setProfileLoaded(false)
+      return
+    }
+
+    if (cachedProfile) {
+      setResolvedAvatarUrl(cachedProfile.avatarUrl)
+      setInitial(cachedProfile.initial)
+      setProfileLoaded(true)
+    }
+
+    const nextInitial = getNavAvatarInitial(profile?.displayName, profile?.username)
+    const nextAvatarUrl = avatarUrl ?? null
+
+    setInitial(nextInitial)
+
+    if (profile?.username || profile?.displayName || nextAvatarUrl) {
+      cachedProfile = {
+        avatarUrl: nextAvatarUrl,
+        initial: nextInitial,
+      }
+
+      setResolvedAvatarUrl(nextAvatarUrl)
+      setProfileLoaded(true)
+      console.log("[NAV AVATAR] profile loaded:", {
+        username: profile?.username ?? null,
+        hasAvatar: !!nextAvatarUrl,
+      })
+    }
+  }, [user, profile?.displayName, profile?.username, avatarUrl])
 
   useEffect(() => {
     setDropdownOpen(false)
@@ -156,9 +205,9 @@ export default function AppNav() {
                   }}
                 >
                   <NavAvatar
-                    avatarUrl={avatarUrl}
-                    displayName={profile?.displayName}
-                    username={profile?.username}
+                    avatarUrl={resolvedAvatarUrl}
+                    initial={initial}
+                    profileLoaded={profileLoaded}
                   />
                 </button>
 
