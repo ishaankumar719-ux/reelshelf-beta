@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, type ChangeEvent } from "react"
 import { useAuth } from "@/components/AuthProvider"
+import { PROFILE_SELECT } from "@/lib/queries"
 import { normalizeDisplayName, normalizeUsername } from "@/lib/profile"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import MountRushmoreEditor from "@/src/components/profile/MountRushmoreEditor"
@@ -148,11 +149,14 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
         { count: diaryCount, error: diaryCountError },
       ] = await Promise.all([
         client.auth.getUser(),
-        client
-          .from("profiles")
-          .select("id, email, created_at, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, website_url, is_public")
-          .eq("id", userId)
-          .maybeSingle(),
+        (() => {
+          console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
+          return client
+            .from("profiles")
+            .select(PROFILE_SELECT)
+            .eq("id", userId)
+            .maybeSingle()
+        })(),
         client
           .from("mount_rushmore")
           .select("position, media_id, media_type, title, year, poster_path")
@@ -176,7 +180,8 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       const settings = (data || {}) as Partial<OwnerProfileSettings>
       const authUser = authData.user
       const loadedUsername = settings.username || authProfile?.username || ""
-      console.log("[PROFILE LOAD] Returned row:", data || null)
+      console.log("[PROFILE LOAD] row:", data || null)
+      console.log("[PROFILE LOAD] error:", "none")
       console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
       const normalizedRushmore = emptyRushmoreSlots().map((slot) => {
         const existing = (rushmoreRows || []).find((row) => row.position === slot.position)
@@ -366,8 +371,9 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
         .from("profiles")
         .update(payload)
         .eq("id", userId)
-        .select("id, email, created_at, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, website_url, is_public")
+        .select(PROFILE_SELECT)
         .single()
+      const typedSavedProfileRow = (savedProfileRow || null) as unknown as OwnerProfileSettings | null
 
       if (profileError) {
         console.error("[PROFILE SAVE] Error:", profileError)
@@ -422,7 +428,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       setSaveMessage("Profile updated.")
       setOriginalUsername(normalizedUsernameValue)
       setOriginalRushmore(rushmore)
-      setLoadedProfile(savedProfileRow)
+      setLoadedProfile(typedSavedProfileRow)
       router.push(publicProfileHref)
       router.refresh()
     } catch (error) {

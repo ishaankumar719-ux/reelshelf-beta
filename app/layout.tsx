@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
-import { normalizeMountRushmore, type UserProfile } from "../lib/profile";
+import type { UserProfile } from "../lib/profile";
+import { PROFILE_SELECT } from "../lib/queries";
 import { createClient } from "../lib/supabase/server";
 import AppNav from "../src/components/layout/AppNav";
 import GlobalSearch from "../src/components/layout/GlobalSearch";
@@ -22,25 +23,52 @@ export default async function RootLayout({
   let initialProfile: UserProfile | null = null;
 
   if (supabase && user) {
-    const { data } = await supabase
+    console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
+    const { data, error } = await supabase
       .from("profiles")
-      .select(
-        "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-      )
+      .select(PROFILE_SELECT)
       .eq("id", user.id)
       .maybeSingle();
 
+    if (error) {
+      console.error("[PROFILE QUERY] error:", error.message, "| hint:", error.hint)
+    } else {
+      console.log("[PROFILE QUERY] returned fields:", Object.keys(data ?? {}))
+    }
+    const typedProfile = (data || null) as
+      | {
+          email?: string | null
+          username?: string | null
+          display_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          website_url?: string | null
+          is_public?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+          favourite_film?: string | null
+          favourite_series?: string | null
+          favourite_book?: string | null
+        }
+      | null
+    console.log("[NAV PROFILE] avatar_url:", typedProfile?.avatar_url ?? null)
+    console.log("[NAV PROFILE] error:", error?.message ?? "none")
+
     initialProfile = {
       id: user.id,
-      email: data?.email ?? user.email ?? null,
-      username: data?.username ?? null,
-      displayName: data?.display_name ?? null,
-      avatarUrl: data?.avatar_url ?? null,
-      bio: data?.bio ?? null,
-      favouriteFilm: data?.favourite_film ?? null,
-      favouriteSeries: data?.favourite_series ?? null,
-      favouriteBook: data?.favourite_book ?? null,
-      movieMountRushmore: normalizeMountRushmore(data?.movie_mount_rushmore),
+      email: typedProfile?.email ?? user.email ?? null,
+      username: typedProfile?.username ?? null,
+      displayName: typedProfile?.display_name ?? null,
+      avatarUrl: typedProfile?.avatar_url ?? null,
+      bio: typedProfile?.bio ?? null,
+      websiteUrl: typedProfile?.website_url ?? null,
+      isPublic: typedProfile?.is_public ?? true,
+      createdAt: typedProfile?.created_at ?? null,
+      updatedAt: typedProfile?.updated_at ?? null,
+      favouriteFilm: typedProfile?.favourite_film ?? null,
+      favouriteSeries: typedProfile?.favourite_series ?? null,
+      favouriteBook: typedProfile?.favourite_book ?? null,
+      movieMountRushmore: [],
     };
   }
 

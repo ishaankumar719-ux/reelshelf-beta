@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { DIARY_SELECT } from "@/lib/queries"
+import { DIARY_SELECT, PROFILE_SELECT } from "@/lib/queries"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
 
@@ -58,12 +58,32 @@ export default async function PublicProfilePage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data: profileRow } = await supabase
+  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
+  const { data: profileRowData, error: profileError } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, bio, website_url, created_at, favourite_film, favourite_series, favourite_book, is_public")
+    .select(PROFILE_SELECT)
     .eq("username", normalizedUsername)
     .limit(1)
     .maybeSingle()
+
+  const profileRow = (profileRowData || null) as
+    | {
+        id: string
+        username: string | null
+        display_name: string | null
+        avatar_url: string | null
+        bio: string | null
+        website_url: string | null
+        created_at: string
+        favourite_film: string | null
+        favourite_series: string | null
+        favourite_book: string | null
+        is_public: boolean
+      }
+    | null
+
+  console.log("[SHOWCASE LOAD] profile:", profileRow?.username ?? null)
+  console.log("[SHOWCASE LOAD] error:", profileError?.message ?? "none")
 
   if (!profileRow) {
     return <ProfileShowcase profile={null} isOwner={false} />
@@ -128,7 +148,7 @@ export default async function PublicProfilePage({
 
   const profile: PublicProfileShowcaseData = {
     id: profileRow.id,
-    username: profileRow.username,
+    username: profileRow.username ?? normalizedUsername,
     display_name: profileRow.display_name,
     avatar_url: profileRow.avatar_url,
     bio: profileRow.bio,

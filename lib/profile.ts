@@ -13,6 +13,10 @@ export type UserProfile = {
   displayName: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  websiteUrl?: string | null;
+  isPublic?: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   favouriteFilm: string | null;
   favouriteSeries: string | null;
   favouriteBook: string | null;

@@ -14,7 +14,6 @@ import type { UserProfile } from "../lib/profile";
 import {
   getProfileDisplayName,
   getProfileHandle,
-  normalizeMountRushmore,
   isProfileComplete,
   normalizeDisplayName,
   normalizeUsername,
@@ -30,6 +29,7 @@ import {
   clearWatchlistDataForSignOut,
   syncWatchlistWithBackend,
 } from "../lib/watchlist";
+import { PROFILE_SELECT } from "../lib/queries";
 import ProfileSetupModal from "./ProfileSetupModal";
 
 type SaveProfileValues = {
@@ -90,13 +90,37 @@ async function fetchProfileForUser(user: User | null) {
     } as const;
   }
 
+  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
   const { data, error } = await client
     .from("profiles")
-    .select(
-      "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-    )
+    .select(PROFILE_SELECT)
     .eq("id", user.id)
     .maybeSingle();
+
+  const typedProfile = (data || null) as
+    | {
+        email?: string | null
+        username?: string | null
+        display_name?: string | null
+        avatar_url?: string | null
+        bio?: string | null
+        website_url?: string | null
+        is_public?: boolean | null
+        created_at?: string | null
+        updated_at?: string | null
+        favourite_film?: string | null
+        favourite_series?: string | null
+        favourite_book?: string | null
+      }
+    | null
+
+  if (error) {
+    console.error("[PROFILE QUERY] error:", error.message, "| hint:", error.hint);
+  } else {
+    console.log("[PROFILE QUERY] returned fields:", Object.keys(data ?? {}));
+    console.log("[NAV PROFILE] avatar_url:", typedProfile?.avatar_url ?? null);
+    console.log("[NAV PROFILE] error:", "none");
+  }
 
   if (error) {
     logSupabaseProfileError("fetch profile", error);
@@ -107,18 +131,22 @@ async function fetchProfileForUser(user: User | null) {
   }
 
   return {
-    profile: {
-      id: user.id,
-      email: data?.email ?? user.email ?? null,
-      username: data?.username ?? null,
-      displayName: data?.display_name ?? null,
-      avatarUrl: data?.avatar_url ?? null,
-      bio: data?.bio ?? null,
-      favouriteFilm: data?.favourite_film ?? null,
-      favouriteSeries: data?.favourite_series ?? null,
-      favouriteBook: data?.favourite_book ?? null,
-      movieMountRushmore: normalizeMountRushmore(data?.movie_mount_rushmore),
-    } satisfies UserProfile,
+      profile: {
+        id: user.id,
+        email: typedProfile?.email ?? user.email ?? null,
+        username: typedProfile?.username ?? null,
+        displayName: typedProfile?.display_name ?? null,
+        avatarUrl: typedProfile?.avatar_url ?? null,
+        bio: typedProfile?.bio ?? null,
+        websiteUrl: typedProfile?.website_url ?? null,
+        isPublic: typedProfile?.is_public ?? true,
+        createdAt: typedProfile?.created_at ?? null,
+        updatedAt: typedProfile?.updated_at ?? null,
+        favouriteFilm: typedProfile?.favourite_film ?? null,
+        favouriteSeries: typedProfile?.favourite_series ?? null,
+        favouriteBook: typedProfile?.favourite_book ?? null,
+        movieMountRushmore: [],
+      } satisfies UserProfile,
     error: null,
   } as const;
 }
@@ -428,6 +456,7 @@ export function AuthProvider({
             updated_at: new Date().toISOString(),
           };
 
+          console.log("[PROFILE QUERY] select string:", "id");
           const { data: existingProfile, error: existingProfileError } = await supabase
             .from("profiles")
             .select("id")
@@ -439,14 +468,13 @@ export function AuthProvider({
             return existingProfileError.message || "Could not load your profile.";
           }
 
+          console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
           const saveQuery = existingProfile?.id
             ? supabase
                 .from("profiles")
                 .update(payload)
                 .eq("id", user.id)
-                .select(
-                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-                )
+                .select(PROFILE_SELECT)
                 .single()
             : supabase
                 .from("profiles")
@@ -454,12 +482,33 @@ export function AuthProvider({
                   id: user.id,
                   ...payload,
                 })
-                .select(
-                  "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-                )
+                .select(PROFILE_SELECT)
                 .single();
 
           const { data: savedProfile, error: saveError } = await saveQuery;
+          const typedSavedProfile = (savedProfile || null) as
+            | {
+                id: string
+                email?: string | null
+                username?: string | null
+                display_name?: string | null
+                avatar_url?: string | null
+                bio?: string | null
+                website_url?: string | null
+                is_public?: boolean | null
+                created_at?: string | null
+                updated_at?: string | null
+                favourite_film?: string | null
+                favourite_series?: string | null
+                favourite_book?: string | null
+              }
+            | null
+
+          if (saveError) {
+            console.error("[PROFILE QUERY] error:", saveError.message, "| hint:", saveError.hint);
+          } else {
+            console.log("[PROFILE QUERY] returned fields:", Object.keys(savedProfile ?? {}));
+          }
 
           if (saveError) {
             if (saveError.code === "23505") {
@@ -472,21 +521,23 @@ export function AuthProvider({
           }
 
           setProfile({
-            id: savedProfile.id,
-            email: savedProfile.email ?? user.email ?? null,
-            username: savedProfile.username ?? username,
-            displayName: savedProfile.display_name ?? displayName,
-            avatarUrl: savedProfile.avatar_url ?? avatarUrl,
-            bio: savedProfile.bio ?? profile?.bio ?? null,
+            id: typedSavedProfile?.id ?? user.id,
+            email: typedSavedProfile?.email ?? user.email ?? null,
+            username: typedSavedProfile?.username ?? username,
+            displayName: typedSavedProfile?.display_name ?? displayName,
+            avatarUrl: typedSavedProfile?.avatar_url ?? avatarUrl,
+            bio: typedSavedProfile?.bio ?? profile?.bio ?? null,
+            websiteUrl: typedSavedProfile?.website_url ?? profile?.websiteUrl ?? null,
+            isPublic: typedSavedProfile?.is_public ?? profile?.isPublic ?? true,
+            createdAt: typedSavedProfile?.created_at ?? profile?.createdAt ?? null,
+            updatedAt: typedSavedProfile?.updated_at ?? profile?.updatedAt ?? null,
             favouriteFilm:
-              savedProfile.favourite_film ?? profile?.favouriteFilm ?? null,
+              typedSavedProfile?.favourite_film ?? profile?.favouriteFilm ?? null,
             favouriteSeries:
-              savedProfile.favourite_series ?? profile?.favouriteSeries ?? null,
+              typedSavedProfile?.favourite_series ?? profile?.favouriteSeries ?? null,
             favouriteBook:
-              savedProfile.favourite_book ?? profile?.favouriteBook ?? null,
-            movieMountRushmore: normalizeMountRushmore(
-              savedProfile.movie_mount_rushmore ?? profile?.movieMountRushmore
-            ),
+              typedSavedProfile?.favourite_book ?? profile?.favouriteBook ?? null,
+            movieMountRushmore: profile?.movieMountRushmore ?? [],
           });
 
           return null;
@@ -515,18 +566,39 @@ export function AuthProvider({
           favourite_film: values.favouriteFilm.trim() || null,
           favourite_series: values.favouriteSeries.trim() || null,
           favourite_book: values.favouriteBook.trim() || null,
-          movie_mount_rushmore: normalizeMountRushmore(values.movieMountRushmore),
           updated_at: new Date().toISOString(),
         };
 
+        console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
         const { data: savedProfile, error: saveError } = await supabase
           .from("profiles")
           .update(payload)
           .eq("id", user.id)
-          .select(
-            "id, email, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-          )
+          .select(PROFILE_SELECT)
           .single();
+        const typedSavedProfile = (savedProfile || null) as
+          | {
+              id: string
+              email?: string | null
+              username?: string | null
+              display_name?: string | null
+              avatar_url?: string | null
+              bio?: string | null
+              website_url?: string | null
+              is_public?: boolean | null
+              created_at?: string | null
+              updated_at?: string | null
+              favourite_film?: string | null
+              favourite_series?: string | null
+              favourite_book?: string | null
+            }
+          | null
+
+        if (saveError) {
+          console.error("[PROFILE QUERY] error:", saveError.message, "| hint:", saveError.hint);
+        } else {
+          console.log("[PROFILE QUERY] returned fields:", Object.keys(savedProfile ?? {}));
+        }
 
         if (saveError) {
           logSupabaseProfileError("save profile details", saveError);
@@ -534,18 +606,20 @@ export function AuthProvider({
         }
 
         setProfile({
-          id: savedProfile.id,
-          email: savedProfile.email ?? user.email ?? null,
-          username: savedProfile.username ?? profile?.username ?? null,
-          displayName: savedProfile.display_name ?? profile?.displayName ?? null,
-          avatarUrl: savedProfile.avatar_url ?? profile?.avatarUrl ?? null,
-          bio: savedProfile.bio ?? null,
-          favouriteFilm: savedProfile.favourite_film ?? null,
-          favouriteSeries: savedProfile.favourite_series ?? null,
-          favouriteBook: savedProfile.favourite_book ?? null,
-          movieMountRushmore: normalizeMountRushmore(
-            savedProfile.movie_mount_rushmore
-          ),
+          id: typedSavedProfile?.id ?? user.id,
+          email: typedSavedProfile?.email ?? user.email ?? null,
+          username: typedSavedProfile?.username ?? profile?.username ?? null,
+          displayName: typedSavedProfile?.display_name ?? profile?.displayName ?? null,
+          avatarUrl: typedSavedProfile?.avatar_url ?? profile?.avatarUrl ?? null,
+          bio: typedSavedProfile?.bio ?? null,
+          websiteUrl: typedSavedProfile?.website_url ?? profile?.websiteUrl ?? null,
+          isPublic: typedSavedProfile?.is_public ?? profile?.isPublic ?? true,
+          createdAt: typedSavedProfile?.created_at ?? profile?.createdAt ?? null,
+          updatedAt: typedSavedProfile?.updated_at ?? profile?.updatedAt ?? null,
+          favouriteFilm: typedSavedProfile?.favourite_film ?? null,
+          favouriteSeries: typedSavedProfile?.favourite_series ?? null,
+          favouriteBook: typedSavedProfile?.favourite_book ?? null,
+          movieMountRushmore: profile?.movieMountRushmore ?? [],
         });
 
         return null;

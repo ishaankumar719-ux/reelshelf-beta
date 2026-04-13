@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { normalizeUsername } from "@/lib/profile"
-import { DIARY_SELECT } from "@/lib/queries"
+import { DIARY_SELECT, PROFILE_SELECT } from "@/lib/queries"
 import type {
   ActivityItem,
   MediaShelfItem,
@@ -136,11 +136,18 @@ export function useProfileData(username: string): {
         data: { user },
       } = await supabase.auth.getUser()
 
+      console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
       const { data: profileRow, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, bio, is_public, created_at")
+        .select(PROFILE_SELECT)
         .eq("username", normalized)
         .maybeSingle()
+
+      if (profileError) {
+        console.error("[PROFILE QUERY] error:", profileError.message, "| hint:", profileError.hint)
+      } else {
+        console.log("[PROFILE QUERY] returned fields:", Object.keys(profileRow ?? {}))
+      }
 
       if (profileError) {
         if (!cancelled) {
@@ -160,7 +167,7 @@ export function useProfileData(username: string): {
         return
       }
 
-      const typedProfile = profileRow as ProfileRow
+      const typedProfile = profileRow as unknown as ProfileRow
       const isOwner = user?.id === typedProfile.id
 
       let isFollower = false

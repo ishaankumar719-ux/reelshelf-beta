@@ -23,3 +23,8 @@ export const DIARY_SELECT = `
   episode_number,
   contains_spoilers
 `.replace(/\s+/g, " ").trim()
+
+export const PROFILE_SELECT =
+  "id, email, username, display_name, avatar_url, bio, " +
+  "favourite_film, favourite_series, favourite_book, " +
+  "website_url, is_public, created_at, updated_at"

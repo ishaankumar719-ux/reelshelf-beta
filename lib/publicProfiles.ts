@@ -1,9 +1,9 @@
 import { getMediaHref } from "./mediaRoutes";
 import type { MediaType } from "./media";
-import { normalizeMountRushmore, type UserProfile } from "./profile";
+import type { UserProfile } from "./profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getFollowCounts } from "./follows";
-import { DIARY_SELECT } from "./queries";
+import { DIARY_SELECT, PROFILE_SELECT } from "./queries";
 
 export type PublicDiaryEntry = {
   entryId: string;
@@ -52,7 +52,10 @@ type ProfileRow = {
   favourite_film: string | null;
   favourite_series: string | null;
   favourite_book: string | null;
-  movie_mount_rushmore: unknown;
+  website_url?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  email?: string | null;
 };
 
 type DiaryRow = {
@@ -78,10 +81,13 @@ function mapProfileRow(row: ProfileRow): UserProfile {
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
     bio: row.bio,
+    websiteUrl: row.website_url ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
     favouriteFilm: row.favourite_film,
     favouriteSeries: row.favourite_series,
     favouriteBook: row.favourite_book,
-    movieMountRushmore: normalizeMountRushmore(row.movie_mount_rushmore),
+    movieMountRushmore: [],
   };
 }
 
@@ -112,13 +118,18 @@ export async function getPublicProfileByUsername(
 ): Promise<PublicProfileData | null> {
   const normalizedUsername = username.trim().toLowerCase();
 
+  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
-    .select(
-      "id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-    )
+    .select(PROFILE_SELECT)
     .eq("username", normalizedUsername)
     .maybeSingle();
+
+  if (profileError) {
+    console.error("[PROFILE QUERY] error:", profileError.message, "| hint:", profileError.hint);
+  } else {
+    console.log("[PROFILE QUERY] returned fields:", Object.keys(profileRow ?? {}));
+  }
 
   if (profileError) {
     console.error("[ReelShelf public profile] load profile failed", profileError);
@@ -129,18 +140,20 @@ export async function getPublicProfileByUsername(
     return null;
   }
 
+  const typedProfileRow = profileRow as unknown as ProfileRow;
+
   const { data: diaryRows, error: diaryError } = await supabase
     .from("diary_entries")
     .select(DIARY_SELECT)
-    .eq("user_id", profileRow.id)
+    .eq("user_id", typedProfileRow.id)
     .order("saved_at", { ascending: false })
     .limit(12);
 
   if (diaryError) {
     console.error("[ReelShelf public profile] load diary failed", diaryError);
-    const counts = await getFollowCounts(supabase, profileRow.id);
+    const counts = await getFollowCounts(supabase, typedProfileRow.id);
     return {
-      profile: mapProfileRow(profileRow as ProfileRow),
+      profile: mapProfileRow(typedProfileRow),
       recentEntries: [],
       mountRushmore: [],
       counts,
@@ -200,10 +213,10 @@ export async function getPublicProfileByUsername(
     })
     .slice(0, 4);
 
-  const counts = await getFollowCounts(supabase, profileRow.id);
+  const counts = await getFollowCounts(supabase, typedProfileRow.id);
 
   return {
-    profile: mapProfileRow(profileRow as ProfileRow),
+    profile: mapProfileRow(typedProfileRow),
     recentEntries: hydratedRecentEntries,
     mountRushmore,
     counts,
@@ -213,22 +226,27 @@ export async function getPublicProfileByUsername(
 export async function getDiscoverProfiles(
   supabase: SupabaseClient
 ): Promise<DiscoverProfileCardData[]> {
+  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select(
-      "id, username, display_name, avatar_url, bio, is_public, favourite_film, favourite_series, favourite_book, movie_mount_rushmore"
-    )
+    .select(PROFILE_SELECT)
     .not("username", "is", null)
     .eq("is_public", true)
     .order("updated_at", { ascending: false })
     .limit(36);
 
   if (profileError) {
+    console.error("[PROFILE QUERY] error:", profileError.message, "| hint:", profileError.hint);
+  } else {
+    console.log("[PROFILE QUERY] returned fields:", Object.keys(profileRows?.[0] ?? {}));
+  }
+
+  if (profileError) {
     console.error("[ReelShelf discover] load profiles failed", profileError);
     return [];
   }
 
-  const typedProfiles = (profileRows || []) as ProfileRow[];
+  const typedProfiles = ((profileRows || []) as unknown) as ProfileRow[];
 
   if (typedProfiles.length === 0) {
     return [];
