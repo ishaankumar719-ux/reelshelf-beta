@@ -3,6 +3,7 @@ import type { MediaType } from "./media";
 import { normalizeMountRushmore, type UserProfile } from "./profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getFollowCounts } from "./follows";
+import { DIARY_SELECT } from "./queries";
 
 export type PublicDiaryEntry = {
   entryId: string;
@@ -130,9 +131,7 @@ export async function getPublicProfileByUsername(
 
   const { data: diaryRows, error: diaryError } = await supabase
     .from("diary_entries")
-    .select(
-      "id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, saved_at"
-    )
+    .select(DIARY_SELECT)
     .eq("user_id", profileRow.id)
     .order("saved_at", { ascending: false })
     .limit(12);
@@ -148,21 +147,19 @@ export async function getPublicProfileByUsername(
     };
   }
 
-  const recentEntries = ((diaryRows || []) as DiaryRow[]).map(mapDiaryRow);
+  console.log("[DIARY QUERY] returned rows:", diaryRows?.length ?? 0)
+
+  const recentEntries = (((diaryRows || []) as unknown) as DiaryRow[]).map(mapDiaryRow);
 
   const entryIds = recentEntries.map((entry) => entry.entryId);
   const likeCounts = new Map<string, number>();
   const commentCounts = new Map<string, number>();
 
   if (entryIds.length > 0) {
-    const [{ data: likeRows, error: likeError }, { data: commentRows, error: commentError }] =
+    const [{ data: likeRows, error: likeError }] =
       await Promise.all([
         supabase
           .from("diary_entry_likes")
-          .select("diary_entry_id")
-          .in("diary_entry_id", entryIds),
-        supabase
-          .from("diary_entry_comments")
           .select("diary_entry_id")
           .in("diary_entry_id", entryIds),
       ]);
@@ -171,24 +168,10 @@ export async function getPublicProfileByUsername(
       console.error("[ReelShelf public profile] load entry likes failed", likeError);
     }
 
-    if (commentError) {
-      console.error(
-        "[ReelShelf public profile] load entry comments failed",
-        commentError
-      );
-    }
-
     for (const row of likeRows || []) {
       likeCounts.set(
         row.diary_entry_id,
         (likeCounts.get(row.diary_entry_id) || 0) + 1
-      );
-    }
-
-    for (const row of commentRows || []) {
-      commentCounts.set(
-        row.diary_entry_id,
-        (commentCounts.get(row.diary_entry_id) || 0) + 1
       );
     }
   }
@@ -257,9 +240,7 @@ export async function getDiscoverProfiles(
     await Promise.all([
       supabase
         .from("diary_entries")
-        .select(
-          "id, user_id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, saved_at"
-        )
+        .select(DIARY_SELECT)
         .in("user_id", userIds)
         .order("saved_at", { ascending: false }),
       supabase.from("followers").select("following_id").in("following_id", userIds),
@@ -270,9 +251,11 @@ export async function getDiscoverProfiles(
     console.error("[ReelShelf discover] load diary previews failed", diaryError);
   }
 
+  console.log("[DIARY QUERY] returned rows:", diaryRows?.length ?? 0)
+
   const diaryByUser = new Map<string, PublicDiaryEntry[]>();
 
-  for (const row of ((diaryRows || []) as (DiaryRow & { user_id: string })[])) {
+  for (const row of (((diaryRows || []) as unknown) as (DiaryRow & { user_id: string })[])) {
     const current = diaryByUser.get(row.user_id) || [];
     current.push(
       mapDiaryRow({

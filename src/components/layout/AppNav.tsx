@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
 import NotificationsBell from "@/components/NotificationsBell"
 import { useAuth } from "@/components/AuthProvider"
-import { getProfileInitials } from "@/lib/profile"
 
 const desktopLinks = [
   { href: "/movies", label: "Films" },
@@ -16,6 +16,48 @@ const desktopLinks = [
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function getNavAvatarInitial(displayName: string | null | undefined, username: string | null | undefined) {
+  return (displayName ?? username ?? "R").trim().charAt(0).toUpperCase() || "R"
+}
+
+function NavAvatar({
+  avatarUrl,
+  displayName,
+  username,
+}: {
+  avatarUrl: string | null
+  displayName: string | null | undefined
+  username: string | null | undefined
+}) {
+  const [imgError, setImgError] = useState(false)
+  const initial = getNavAvatarInitial(displayName, username)
+  const showImage = Boolean(avatarUrl) && !imgError
+
+  if (showImage) {
+    return (
+      <img
+        src={avatarUrl ?? ""}
+        alt={displayName ?? username ?? "Profile"}
+        className="h-9 w-9 rounded-full object-cover border-[1.5px] border-white/15 transition-[border-color,box-shadow] duration-200 group-hover:border-white/45 group-hover:ring-[3px] group-hover:ring-white/10"
+        onError={() => setImgError(true)}
+      />
+    )
+  }
+
+  return (
+    <div
+      className="flex h-9 w-9 select-none items-center justify-center rounded-full border-[1.5px] border-white/15 text-sm font-medium text-white/90 transition-[border-color,box-shadow] duration-200 group-hover:border-white/45 group-hover:ring-[3px] group-hover:ring-white/10"
+      style={{
+        background: "linear-gradient(135deg, #534AB7, #1D9E75)",
+        fontSize: "14px",
+        fontWeight: 500,
+      }}
+    >
+      {initial}
+    </div>
+  )
 }
 
 export default function AppNav() {
@@ -52,14 +94,14 @@ export default function AppNav() {
             {user ? (
               <Link
                 href={profileHref}
-                className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.05] text-[11px] font-semibold text-white/85 no-underline"
+                className="group inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full no-underline"
                 aria-label="Open profile"
               >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile avatar" className="h-full w-full object-cover" />
-                ) : (
-                  <span>{getProfileInitials(profile)}</span>
-                )}
+                <NavAvatar
+                  avatarUrl={avatarUrl}
+                  displayName={profile?.displayName}
+                  username={profile?.username}
+                />
               </Link>
             ) : (
               <Link href="/auth" className="text-[13px] text-white/78 no-underline">

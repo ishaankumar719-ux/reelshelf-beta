@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { DIARY_SELECT } from "@/lib/queries"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
 
@@ -24,10 +25,20 @@ function normalizeRushmoreSlots(rows: Array<{
     }))
 }
 
-function parseRating(value: string | null) {
-  if (!value) return null
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : null
+function normalizeRating(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+type ShowcaseDiaryRow = {
+  id: string
+  title: string
+  media_type: "movie" | "tv" | "book"
+  year: number | null
+  poster: string | null
+  rating: number | null
+  watched_date: string | null
+  review_scope: "show" | "season" | "episode" | "title" | null
+  review: string | null
 }
 
 export default async function PublicProfilePage({
@@ -74,14 +85,14 @@ export default async function PublicProfilePage({
       .order("position", { ascending: true }),
     supabase
       .from("diary_entries")
-      .select("id, title, media_type, year, poster, rating, watched_date, review_scope")
+      .select(DIARY_SELECT)
       .eq("user_id", profileRow.id)
       .eq("review_scope", "show")
       .order("watched_date", { ascending: false })
       .limit(12),
     supabase
       .from("diary_entries")
-      .select("title, media_type, poster, rating, review")
+      .select(DIARY_SELECT)
       .eq("user_id", profileRow.id)
       .eq("review_scope", "show"),
     supabase
@@ -94,12 +105,13 @@ export default async function PublicProfilePage({
       .eq("follower_id", profileRow.id),
   ])
 
-  const statsSource = statsRows || []
+  const statsSource = ((statsRows || []) as unknown) as ShowcaseDiaryRow[]
+  const recentActivityRows = ((recentRows || []) as unknown) as ShowcaseDiaryRow[]
   const films = statsSource.filter((entry) => entry.media_type === "movie").length
   const series = statsSource.filter((entry) => entry.media_type === "tv").length
   const reviews = statsSource.filter((entry) => (entry.review || "").trim().length > 0).length
   const ratings = statsSource
-    .map((entry) => parseRating(entry.rating))
+    .map((entry) => normalizeRating(entry.rating))
     .filter((value): value is number => typeof value === "number")
   const avgRating = ratings.length > 0 ? Number((ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1)) : null
 
@@ -108,7 +120,7 @@ export default async function PublicProfilePage({
     .map((entry) => ({
       title: entry.title,
       poster: entry.poster,
-      rating: parseRating(entry.rating),
+      rating: normalizeRating(entry.rating),
     }))
     .filter((entry) => entry.rating !== null)
     .sort((a, b) => (b.rating || 0) - (a.rating || 0))
@@ -126,16 +138,18 @@ export default async function PublicProfilePage({
     favourite_series: profileRow.favourite_series,
     favourite_book: profileRow.favourite_book,
     mount_rushmore: normalizeRushmoreSlots(rushmoreRows || []),
-    recent_activity: (recentRows || []).map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      media_type: entry.media_type,
-      year: typeof entry.year === "number" ? entry.year : null,
-      poster: entry.poster,
-      rating: parseRating(entry.rating),
-      watched_date: entry.watched_date,
-      review_scope: entry.review_scope,
-    })),
+    recent_activity: recentActivityRows
+      .filter((entry): entry is ShowcaseDiaryRow & { media_type: "movie" | "tv" } => entry.media_type === "movie" || entry.media_type === "tv")
+      .map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        media_type: entry.media_type,
+        year: typeof entry.year === "number" ? entry.year : null,
+        poster: entry.poster,
+        rating: normalizeRating(entry.rating),
+        watched_date: entry.watched_date,
+        review_scope: entry.review_scope === "title" ? "show" : entry.review_scope,
+      })),
     stats: {
       films,
       series,

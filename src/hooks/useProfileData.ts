@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { normalizeUsername } from "@/lib/profile"
+import { DIARY_SELECT } from "@/lib/queries"
 import type {
   ActivityItem,
   MediaShelfItem,
@@ -197,7 +198,7 @@ export function useProfileData(username: string): {
           .order("position", { ascending: true }),
         supabase
           .from("diary_entries")
-          .select("id, media_id, media_type, review_scope, title, poster, rating, review, favourite, saved_at")
+          .select(DIARY_SELECT)
           .eq("user_id", typedProfile.id)
           .order("saved_at", { ascending: false })
           .limit(48),
@@ -241,7 +242,7 @@ export function useProfileData(username: string): {
         }
       }
 
-      const activityRows = ((diaryRows || []) as DiaryRow[])
+      const activityRows = (((diaryRows || []) as unknown) as DiaryRow[])
       const recentActivity: ActivityItem[] = activityRows.slice(0, 8).map((row) => ({
         id: row.id,
         media_id: extractNumericMediaId(row.media_id),

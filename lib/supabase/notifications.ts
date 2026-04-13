@@ -4,6 +4,7 @@ import { createClient as createSupabaseBrowserClient } from "./client";
 import { getMediaHref } from "../mediaRoutes";
 import { getPublicProfileHref } from "../profile";
 import type { MediaType } from "../media";
+import { DIARY_SELECT } from "../queries";
 
 export type ReelShelfNotificationType =
   | "new_follower"
@@ -372,7 +373,7 @@ export async function getNotifications() {
         .eq("follower_id", currentUserId),
       client
         .from("diary_entries")
-        .select("id, user_id, media_id, media_type, title, poster, year, creator, rating, review, favourite, saved_at")
+        .select(DIARY_SELECT)
         .eq("user_id", currentUserId)
         .order("saved_at", { ascending: false })
         .limit(32),
@@ -395,125 +396,37 @@ export async function getNotifications() {
 
   const followedIds = (followingRows || []).map((row) => row.following_id).filter(Boolean);
   const followerIds = (incomingFollowers || []).map((row) => row.follower_id).filter(Boolean);
-  const ownDiaryEntries = (ownDiaryRows || []) as DiaryRow[];
+  const ownDiaryEntries = ((ownDiaryRows || []) as unknown) as DiaryRow[];
   const ownDiaryEntryIds = ownDiaryEntries.map((row) => row.id);
 
-  let ownCommentRows: CommentRow[] = [];
-  let ownCommentError: { message?: string } | null = null;
-
-  if (currentUserId) {
-    const response = await client
-      .from("diary_entry_comments")
-      .select("id, diary_entry_id, parent_comment_id, user_id, body, created_at")
-      .eq("user_id", currentUserId)
-      .order("created_at", { ascending: false })
-      .limit(48);
-
-    ownCommentRows = ((response.data || []) as CommentRow[]).filter(Boolean);
-    ownCommentError = response.error;
-  }
-
-  if (ownCommentError) {
-    console.error(
-      "[ReelShelf notifications] load own comments failed",
-      ownCommentError
-    );
-  }
+  console.log("[DIARY QUERY] returned rows:", ownDiaryRows?.length ?? 0)
 
   let likeRows: LikeRow[] = [];
   let likeError: { message?: string } | null = null;
   let commentRows: CommentRow[] = [];
   let replyRows: CommentRow[] = [];
-  let commentsError: { message?: string } | null = null;
-  let replyEntryRows: DiaryRow[] = [];
-  let replyEntryError: { message?: string } | null = null;
 
-  if (ownDiaryEntryIds.length > 0 || ownCommentRows.length > 0) {
-    const ownCommentIds = ownCommentRows.map((row) => row.id);
-    const [likesResponse, commentsResponse] = await Promise.all([
-      ownDiaryEntryIds.length > 0
-        ? client
-            .from("diary_entry_likes")
-            .select("diary_entry_id, user_id, created_at")
-            .in("diary_entry_id", ownDiaryEntryIds)
-            .order("created_at", { ascending: false })
-            .limit(18)
-        : Promise.resolve({ data: [], error: null }),
-      ownDiaryEntryIds.length > 0 || ownCommentIds.length > 0
-        ? client
-            .from("diary_entry_comments")
-            .select("id, diary_entry_id, parent_comment_id, user_id, body, created_at")
-            .or(
-              [
-                ownDiaryEntryIds.length > 0
-                  ? `and(parent_comment_id.is.null,diary_entry_id.in.(${ownDiaryEntryIds.join(",")}))`
-                  : null,
-                ownCommentIds.length > 0
-                  ? `parent_comment_id.in.(${ownCommentIds.join(",")})`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(",")
-            )
-            .order("created_at", { ascending: false })
-            .limit(24)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  if (ownDiaryEntryIds.length > 0) {
+    const likesResponse = await client
+      .from("diary_entry_likes")
+      .select("diary_entry_id, user_id, created_at")
+      .in("diary_entry_id", ownDiaryEntryIds)
+      .order("created_at", { ascending: false })
+      .limit(18)
 
     likeRows = ((likesResponse.data || []) as LikeRow[]).filter(
       (row) => row.user_id !== currentUserId
     );
     likeError = likesResponse.error;
-
-    const allCommentRows = ((commentsResponse.data || []) as CommentRow[]).filter(
-      (row) => row.user_id !== currentUserId
-    );
-    const ownCommentIdSet = new Set(ownCommentIds);
-    commentRows = allCommentRows.filter((row) => !row.parent_comment_id);
-    replyRows = allCommentRows.filter(
-      (row) => row.parent_comment_id && ownCommentIdSet.has(row.parent_comment_id)
-    );
-    commentsError = commentsResponse.error;
   }
 
   if (likeError) {
     console.error("[ReelShelf notifications] load likes failed", likeError);
   }
 
-  if (commentsError) {
-    console.error("[ReelShelf notifications] load comments failed", commentsError);
-  }
-
   const ownDiaryMap = new Map<string, DiaryRow>(
     ownDiaryEntries.map((row) => [row.id, row] as const)
   );
-
-  const replyEntryIds = Array.from(
-    new Set(
-      replyRows
-        .map((row) => row.diary_entry_id)
-        .filter((entryId) => !ownDiaryMap.has(entryId))
-    )
-  );
-
-  if (replyEntryIds.length > 0) {
-    const response = await client
-      .from("diary_entries")
-      .select(
-        "id, user_id, media_id, media_type, title, poster, year, creator, rating, review, favourite, saved_at"
-      )
-      .in("id", replyEntryIds);
-
-    replyEntryRows = ((response.data || []) as DiaryRow[]).filter(Boolean);
-    replyEntryError = response.error;
-  }
-
-  if (replyEntryError) {
-    console.error(
-      "[ReelShelf notifications] load reply entry context failed",
-      replyEntryError
-    );
-  }
 
   const likerIds = likeRows.map((row) => row.user_id).filter(Boolean);
   const commenterIds = [...commentRows, ...replyRows].map((row) => row.user_id).filter(Boolean);
@@ -539,14 +452,12 @@ export async function getNotifications() {
   if (followedIds.length > 0) {
     const response = await client
       .from("diary_entries")
-      .select(
-        "id, user_id, media_id, media_type, title, poster, year, creator, rating, review, favourite, saved_at"
-      )
+      .select(DIARY_SELECT)
       .in("user_id", followedIds)
       .order("saved_at", { ascending: false })
       .limit(36);
 
-    diaryRows = ((response.data || []) as DiaryRow[]).filter(Boolean);
+    diaryRows = (((response.data || []) as unknown) as DiaryRow[]).filter(Boolean);
     diaryError = response.error;
   }
 
@@ -562,9 +473,6 @@ export async function getNotifications() {
     profileRows.map((row) => [row.id, row] as const)
   );
   const notificationEntryMap = new Map<string, DiaryRow>(ownDiaryMap);
-  for (const row of replyEntryRows) {
-    notificationEntryMap.set(row.id, row);
-  }
 
   const notifications: ReelShelfNotification[] = [];
 

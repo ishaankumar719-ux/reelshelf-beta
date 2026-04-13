@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient as createSupabaseBrowserClient } from "./client";
+import { DIARY_SELECT } from "../queries";
 
 export type ReelShelfBadgeId =
   | "first_entry"
@@ -131,7 +132,7 @@ export async function syncAndLoadGamificationStats() {
 
   const { data: diaryRows, error: diaryError } = await client
     .from("diary_entries")
-    .select("id, saved_at, review")
+    .select(DIARY_SELECT)
     .eq("user_id", user.id)
     .order("saved_at", { ascending: false });
 
@@ -140,38 +141,24 @@ export async function syncAndLoadGamificationStats() {
     return EMPTY_STATS;
   }
 
-  const typedDiaryRows = ((diaryRows || []) as DiaryEntryRow[]).filter(Boolean);
+  console.log("[DIARY QUERY] returned rows:", diaryRows?.length ?? 0)
+
+  const typedDiaryRows = (((diaryRows || []) as unknown) as DiaryEntryRow[]).filter(Boolean);
   const diaryEntryIds = typedDiaryRows.map((row) => row.id);
 
   let likesReceived = 0;
   let commentsReceived = 0;
 
   if (diaryEntryIds.length > 0) {
-    const [{ data: likeRows, error: likeError }, { data: commentRows, error: commentError }] =
-      await Promise.all([
-        client
-          .from("diary_entry_likes")
-          .select("user_id")
-          .in("diary_entry_id", diaryEntryIds),
-        client
-          .from("diary_entry_comments")
-          .select("user_id")
-          .in("diary_entry_id", diaryEntryIds),
-      ]);
+    const { data: likeRows, error: likeError } = await client
+      .from("diary_entry_likes")
+      .select("user_id")
+      .in("diary_entry_id", diaryEntryIds);
 
     if (likeError) {
       console.error("[ReelShelf gamification] load likes received failed", likeError);
     } else {
       likesReceived = (likeRows || []).filter((row) => row.user_id !== user.id).length;
-    }
-
-    if (commentError) {
-      console.error(
-        "[ReelShelf gamification] load comments received failed",
-        commentError
-      );
-    } else {
-      commentsReceived = (commentRows || []).filter((row) => row.user_id !== user.id).length;
     }
   }
 
@@ -187,26 +174,6 @@ export async function syncAndLoadGamificationStats() {
     commentsReceived,
   });
   const updatedAt = new Date().toISOString();
-
-  const payload = {
-    user_id: user.id,
-    current_streak: currentStreak,
-    longest_streak: longestStreak,
-    total_entries: totalEntries,
-    review_count: reviewCount,
-    likes_received: likesReceived,
-    comments_received: commentsReceived,
-    badges,
-    updated_at: updatedAt,
-  };
-
-  const { error: upsertError } = await client
-    .from("user_gamification")
-    .upsert(payload, { onConflict: "user_id" });
-
-  if (upsertError) {
-    console.error("[ReelShelf gamification] upsert stats failed", upsertError);
-  }
 
   return {
     currentStreak,

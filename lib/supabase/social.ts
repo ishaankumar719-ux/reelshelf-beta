@@ -5,6 +5,7 @@ import { getMediaHref } from "../mediaRoutes";
 import type { MediaType } from "../media";
 import { getDiaryMovies, type DiaryMovie } from "../diary";
 import { getPublicProfileHref } from "../profile";
+import { DIARY_SELECT } from "../queries";
 
 const FOLLOW_EVENT = "reelshelf:follows-updated";
 
@@ -268,9 +269,7 @@ export async function getPeopleToFollow(limit = 6) {
     await Promise.all([
       client
         .from("diary_entries")
-        .select(
-          "user_id, media_id, media_type, title, poster, creator, genres, rating, favourite, saved_at"
-        )
+        .select(DIARY_SELECT)
         .in("user_id", candidateIds)
         .order("saved_at", { ascending: false })
         .limit(360),
@@ -285,7 +284,7 @@ export async function getPeopleToFollow(limit = 6) {
     );
   }
 
-  const diaryRows = (candidateDiaryResponse.data || []) as SuggestionDiaryRow[];
+  const diaryRows = ((candidateDiaryResponse.data || []) as unknown) as SuggestionDiaryRow[];
   const diaryByUser = new Map<string, SuggestionDiaryRow[]>();
 
   for (const row of diaryRows) {
@@ -447,9 +446,7 @@ export async function getFriendsActivity() {
     await Promise.all([
       client
         .from("diary_entries")
-        .select(
-          "user_id, media_id, media_type, review_scope, season_number, episode_number, title, poster, year, creator, rating, review, saved_at"
-        )
+        .select(DIARY_SELECT)
         .in("user_id", followedIds)
         .order("saved_at", { ascending: false })
         .limit(12),
@@ -480,7 +477,21 @@ export async function getFriendsActivity() {
     ])
   );
 
-  return (diaryRows || []).map((row) => {
+  return (((diaryRows || []) as unknown) as Array<{
+    user_id: string;
+    media_id: string;
+    media_type: MediaType;
+    review_scope?: "title" | "show" | "season" | "episode";
+    season_number?: number | null;
+    episode_number?: number | null;
+    title: string;
+    poster: string | null;
+    year: number;
+    creator: string | null;
+    rating: number | null;
+    review: string | null;
+    saved_at: string;
+  }>).map((row) => {
     const owner = profileMap.get(row.user_id);
 
     return {

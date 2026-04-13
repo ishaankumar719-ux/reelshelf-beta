@@ -65,40 +65,11 @@ async function getCurrentUserId() {
 }
 
 export async function getCommentsForDiaryEntries(entryIds: string[]) {
-  const client = createSupabaseBrowserClient();
-
-  if (!client || entryIds.length === 0) {
+  if (entryIds.length === 0) {
     return [] as PublicComment[];
   }
 
-  const { data, error } = await client
-    .from("diary_entry_comments")
-    .select(
-      "id, diary_entry_id, parent_comment_id, user_id, body, created_at, profiles:user_id (username, display_name, avatar_url)"
-    )
-    .in("diary_entry_id", entryIds)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error("[ReelShelf comments] load comments failed", error);
-    return [];
-  }
-
-  return ((data || []) as CommentSelectRow[]).map((row) => {
-    const profile = getCommentProfile(row);
-
-    return {
-    id: row.id,
-    diaryEntryId: row.diary_entry_id,
-    parentCommentId: row.parent_comment_id ?? null,
-    userId: row.user_id,
-    body: row.body || "",
-    createdAt: row.created_at,
-    username: profile.username,
-    displayName: profile.displayName,
-    avatarUrl: profile.avatarUrl,
-  };
-  }) as PublicComment[];
+  return [] as PublicComment[];
 }
 
 export async function createDiaryEntryComment(input: {
@@ -106,10 +77,9 @@ export async function createDiaryEntryComment(input: {
   body: string;
   parentCommentId?: string | null;
 }) {
-  const client = createSupabaseBrowserClient();
   const currentUserId = await getCurrentUserId();
 
-  if (!client || !currentUserId) {
+  if (!currentUserId) {
     return {
       error: "You need to sign in to comment.",
       comment: null,
@@ -125,43 +95,9 @@ export async function createDiaryEntryComment(input: {
     };
   }
 
-  const { data, error } = await client
-    .from("diary_entry_comments")
-    .insert({
-      diary_entry_id: input.diaryEntryId,
-      parent_comment_id: input.parentCommentId || null,
-      user_id: currentUserId,
-      body: normalizedBody,
-    })
-    .select(
-      "id, diary_entry_id, parent_comment_id, user_id, body, created_at, profiles:user_id (username, display_name, avatar_url)"
-    )
-    .single();
-
-  if (error) {
-    console.error("[ReelShelf comments] create comment failed", error);
-    return {
-      error: error.message || "Could not post your comment right now.",
-      comment: null,
-    };
-  }
-
-  const profile = getCommentProfile(data as CommentSelectRow);
-  notifyCommentListeners();
-
   return {
-    error: null,
-    comment: {
-      id: data.id,
-      diaryEntryId: data.diary_entry_id,
-      parentCommentId: data.parent_comment_id ?? null,
-      userId: data.user_id,
-      body: data.body || "",
-      createdAt: data.created_at,
-      username: profile.username,
-      displayName: profile.displayName,
-      avatarUrl: profile.avatarUrl,
-    } as PublicComment,
+    error: "Comments are currently unavailable.",
+    comment: null,
   };
 }
 

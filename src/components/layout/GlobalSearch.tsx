@@ -22,6 +22,7 @@ function resolveHref(result: SearchResult) {
 }
 
 export default function GlobalSearch() {
+  console.log("[SEARCH] GlobalSearch rendered")
   const pathname = usePathname()
   const router = useRouter()
   const { query, setQuery, results, isLoading, clear } = useSearch()
@@ -145,10 +146,16 @@ export default function GlobalSearch() {
     if (!normalized) return
 
     addQuery(normalized)
+    console.log("[SEARCH] navigation start, query:", normalized)
     router.push(`/search?q=${encodeURIComponent(normalized)}`)
     setIsDesktopOpen(false)
     setIsMobileOpen(false)
     setActiveIndex(-1)
+  }
+
+  function handleInputChange(value: string) {
+    console.log("[SEARCH] raw input value:", value)
+    setQuery(value)
   }
 
   function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -227,7 +234,7 @@ export default function GlobalSearch() {
               <div className="flex-1">
                 <SearchInput
                   value={query}
-                  onChange={setQuery}
+                  onChange={handleInputChange}
                   onKeyDown={handleInputKeyDown}
                   inputRef={inputRef}
                   autoFocus
@@ -271,7 +278,7 @@ export default function GlobalSearch() {
           <div ref={desktopShellRef} className="w-full max-w-[320px] min-w-[240px]">
             <SearchInput
               value={query}
-              onChange={setQuery}
+              onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
               onFocus={() => setIsDesktopOpen(true)}
               inputRef={inputRef}

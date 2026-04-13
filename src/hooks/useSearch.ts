@@ -59,6 +59,7 @@ export function useSearch(): UseSearchReturn {
     const timeoutId = window.setTimeout(async () => {
       setIsLoading(true)
       setError(null)
+      console.log("[SEARCH] request start:", query)
 
       try {
         const payload = await searchMedia(query, {
@@ -97,7 +98,10 @@ export function useSearch(): UseSearchReturn {
 
   return {
     query,
-    setQuery,
+    setQuery: (value) => {
+      console.log("[SEARCH] setQuery called with:", value)
+      setQuery(value)
+    },
     results,
     isLoading,
     error,

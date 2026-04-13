@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient as createSupabaseBrowserClient } from "./client";
+import { DIARY_SELECT } from "../queries";
 
 export type WeeklyChallengeId =
   | "log_three_entries"
@@ -206,12 +207,11 @@ export async function syncAndLoadWeeklyChallenges() {
     diaryResponse,
     likesGivenResponse,
     likesThisWeekResponse,
-    commentsWrittenResponse,
     publicProfilesResponse,
   ] = await Promise.all([
     client
       .from("diary_entries")
-      .select("id, user_id, review, saved_at")
+      .select(DIARY_SELECT)
       .gte("saved_at", weekStartTimestamp)
       .lt("saved_at", weekEndTimestamp)
       .order("saved_at", { ascending: false }),
@@ -224,12 +224,6 @@ export async function syncAndLoadWeeklyChallenges() {
     client
       .from("diary_entry_likes")
       .select("diary_entry_id, user_id, created_at")
-      .gte("created_at", weekStartTimestamp)
-      .lt("created_at", weekEndTimestamp),
-    client
-      .from("diary_entry_comments")
-      .select("diary_entry_id, user_id, created_at")
-      .eq("user_id", user.id)
       .gte("created_at", weekStartTimestamp)
       .lt("created_at", weekEndTimestamp),
     client
@@ -247,20 +241,16 @@ export async function syncAndLoadWeeklyChallenges() {
   if (likesThisWeekResponse.error) {
     console.error("[ReelShelf weekly] load weekly likes failed", likesThisWeekResponse.error);
   }
-  if (commentsWrittenResponse.error) {
-    console.error(
-      "[ReelShelf weekly] load comments written failed",
-      commentsWrittenResponse.error
-    );
-  }
   if (publicProfilesResponse.error) {
     console.error("[ReelShelf weekly] load profiles failed", publicProfilesResponse.error);
   }
 
-  const diaryRows = ((diaryResponse.data || []) as DiaryWeekRow[]).filter(Boolean);
+  console.log("[DIARY QUERY] returned rows:", diaryResponse.data?.length ?? 0)
+
+  const diaryRows = (((diaryResponse.data || []) as unknown) as DiaryWeekRow[]).filter(Boolean);
   const likesGivenRows = ((likesGivenResponse.data || []) as LikeWeekRow[]).filter(Boolean);
   const likesThisWeekRows = ((likesThisWeekResponse.data || []) as LikeWeekRow[]).filter(Boolean);
-  const commentsWrittenRows = (commentsWrittenResponse.data || []).filter(Boolean);
+  const commentsWrittenRows: Array<{ diary_entry_id: string }> = [];
   const profileRows = ((publicProfilesResponse.data || []) as ProfileRow[]).filter(Boolean);
   const profileMap = new Map<string, ProfileRow>(
     profileRows.map((row) => [row.id, row] as const)
@@ -277,7 +267,7 @@ export async function syncAndLoadWeeklyChallenges() {
   if (interactedEntryIds.length > 0) {
     const { data: interactionRows, error: interactionError } = await client
       .from("diary_entries")
-      .select("id, review")
+      .select(DIARY_SELECT)
       .in("id", interactedEntryIds);
 
     if (interactionError) {
@@ -286,7 +276,7 @@ export async function syncAndLoadWeeklyChallenges() {
         interactionError
       );
     } else {
-      for (const row of (interactionRows || []) as EntryReviewRow[]) {
+      for (const row of (((interactionRows || []) as unknown) as EntryReviewRow[])) {
         interactionReviewMap.set(row.id, row);
       }
     }
@@ -348,25 +338,6 @@ export async function syncAndLoadWeeklyChallenges() {
       likedEntry.user_id,
       (likedReviewerCounts.get(likedEntry.user_id) || 0) + 1
     );
-  }
-
-  const payload = {
-    user_id: user.id,
-    week_start: weekStartIso,
-    entries_logged: entriesLogged,
-    reviews_written: reviewsWritten,
-    likes_given: likesGiven,
-    comments_written: commentsWritten,
-    completed_challenges: completedChallengeIds,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error: upsertError } = await client
-    .from("weekly_challenge_progress")
-    .upsert(payload, { onConflict: "user_id,week_start" });
-
-  if (upsertError) {
-    console.error("[ReelShelf weekly] upsert progress failed", upsertError);
   }
 
   return {

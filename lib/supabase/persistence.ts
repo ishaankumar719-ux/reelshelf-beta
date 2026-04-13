@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseBrowserClient } from "./client";
 import type { DiaryReviewScope, MediaType, SavedMediaItem } from "../media";
+import { DIARY_SELECT } from "../queries";
 
 export type PersistedDiaryEntry = SavedMediaItem & {
   rating: number | null;
@@ -229,11 +230,11 @@ export async function syncDiaryEntriesWithBackend(localEntries: PersistedDiaryEn
 
   const { data } = await client
     .from("diary_entries")
-    .select("*")
+    .select(DIARY_SELECT)
     .eq("user_id", user.id)
     .order("saved_at", { ascending: false });
 
-  const remoteEntries = ((data || []) as DiaryRow[]).map(mapRowToDiaryEntry);
+  const remoteEntries = (((data || []) as unknown) as DiaryRow[]).map(mapRowToDiaryEntry);
   const merged = mergeByLatest(
     localEntries,
     remoteEntries,

@@ -8,6 +8,7 @@ import TrackRecentView from "./TrackRecentView";
 import { useAuth } from "./AuthProvider";
 import { getDiaryMovie, type DiaryMovie } from "../lib/diary";
 import { createClient as createSupabaseBrowserClient } from "../lib/supabase/client";
+import { DIARY_SELECT } from "../lib/queries";
 
 type ImportedMovieRow = {
   media_id: string;
@@ -71,9 +72,7 @@ export default function ImportedMovieDetailClient({
 
       const { data, error } = await client
         .from("diary_entries")
-        .select(
-          "media_id, title, poster, year, creator, review, rating, watched_date, favourite, saved_at"
-        )
+        .select(DIARY_SELECT)
         .eq("user_id", user.id)
         .eq("media_type", "movie")
         .eq("media_id", movieId)
@@ -88,7 +87,7 @@ export default function ImportedMovieDetailClient({
         return;
       }
 
-      const row = data as ImportedMovieRow;
+      const row = data as unknown as ImportedMovieRow;
       setMovie({
         id: row.media_id,
         mediaType: "movie",

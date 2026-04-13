@@ -1,6 +1,7 @@
 "use client"
 
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { DIARY_SELECT } from "@/lib/queries"
 import type { Review, ReviewScope, UpsertReviewInput } from "@/src/types/reviews"
 
 type DiaryReviewRow = {
@@ -105,9 +106,7 @@ export async function upsertReview(
       onConflict:
         "user_id,media_type,media_id,review_scope,season_number,episode_number",
     })
-    .select(
-      "id, user_id, media_id, media_type, review_scope, season_number, episode_number, rating, review, contains_spoilers, watched_date, created_at, updated_at"
-    )
+    .select(DIARY_SELECT)
     .maybeSingle()
 
   if (error) {
@@ -115,7 +114,7 @@ export async function upsertReview(
   }
 
   return {
-    data: data ? mapRowToReview(data as DiaryReviewRow) : null,
+    data: data ? mapRowToReview((data as unknown) as DiaryReviewRow) : null,
     error: null,
   }
 }
@@ -137,9 +136,7 @@ export async function getReview(
   const candidates = buildMediaIdCandidates(mediaId, options?.aliases)
   const { data, error } = await supabase
     .from("diary_entries")
-    .select(
-      "id, user_id, media_id, media_type, review_scope, season_number, episode_number, rating, review, contains_spoilers, watched_date, created_at, updated_at"
-    )
+    .select(DIARY_SELECT)
     .eq("user_id", userId)
     .eq("media_type", "tv")
     .in("media_id", candidates)
@@ -153,7 +150,7 @@ export async function getReview(
     return null
   }
 
-  return mapRowToReview(data[0] as DiaryReviewRow)
+  return mapRowToReview((data[0] as unknown) as DiaryReviewRow)
 }
 
 export async function getAllShowReviews(
@@ -178,9 +175,7 @@ export async function getAllShowReviews(
   const candidates = buildMediaIdCandidates(mediaId, options?.aliases)
   const { data, error } = await supabase
     .from("diary_entries")
-    .select(
-      "id, user_id, media_id, media_type, review_scope, season_number, episode_number, rating, review, contains_spoilers, watched_date, created_at, updated_at"
-    )
+    .select(DIARY_SELECT)
     .eq("user_id", userId)
     .eq("media_type", "tv")
     .in("media_id", candidates)
@@ -197,7 +192,7 @@ export async function getAllShowReviews(
     }
   }
 
-  const reviews = (data as DiaryReviewRow[]).map(mapRowToReview)
+  const reviews = ((data as unknown) as DiaryReviewRow[]).map(mapRowToReview)
 
   return {
     showReview: reviews.find((review) => review.review_scope === "show") || null,
@@ -251,7 +246,7 @@ export async function getShowAverageRating(mediaId: number): Promise<number | nu
 
   const { data, error } = await supabase
     .from("diary_entries")
-    .select("rating")
+    .select(DIARY_SELECT)
     .eq("media_type", "tv")
     .eq("media_id", String(mediaId))
     .eq("review_scope", "show")
@@ -261,7 +256,7 @@ export async function getShowAverageRating(mediaId: number): Promise<number | nu
     return null
   }
 
-  const ratings = data
+  const ratings = (((data || []) as unknown) as Array<{ rating: number | null }>)
     .map((row) => (typeof row.rating === "number" ? row.rating : null))
     .filter((value): value is number => value !== null)
 
