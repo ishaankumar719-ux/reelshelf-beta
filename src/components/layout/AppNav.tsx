@@ -15,8 +15,6 @@ const desktopLinks = [
   { href: "/watchlist", label: "Watchlist" },
 ] as const
 
-let cachedProfile: { avatarUrl: string | null; initial: string } | null = null
-
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
@@ -28,80 +26,61 @@ function getNavAvatarInitial(displayName: string | null | undefined, username: s
 function NavAvatar({
   avatarUrl,
   initial,
-  profileLoaded,
 }: {
   avatarUrl: string | null
   initial: string
-  profileLoaded: boolean
 }) {
   const [imgError, setImgError] = useState(false)
-  const [imgLoaded, setImgLoaded] = useState(false)
-  const showImage = profileLoaded && Boolean(avatarUrl) && !imgError
+  const showImage = !!avatarUrl && !imgError
 
   useEffect(() => {
     setImgError(false)
-    setImgLoaded(false)
   }, [avatarUrl])
 
-  useEffect(() => {
-    console.log("[NAV AVATAR] branch:", showImage ? "image" : "initials", "| avatarUrl:", avatarUrl)
-  }, [showImage, avatarUrl])
+  console.log("[NAV AVATAR] avatarUrl:", avatarUrl)
+  console.log("[NAV AVATAR] imgError:", imgError)
+  console.log("[NAV AVATAR] branch:", showImage ? "IMAGE" : "INITIALS")
 
-  return (
+  return showImage ? (
+    <img
+      src={avatarUrl}
+      alt="Profile"
+      width={36}
+      height={36}
+      style={{
+        width: "36px",
+        height: "36px",
+        borderRadius: "50%",
+        objectFit: "cover",
+        border: "1.5px solid rgba(255,255,255,0.15)",
+        display: "block",
+        flexShrink: 0,
+      }}
+      onLoad={() => console.log("[NAV AVATAR] onLoad fired")}
+      onError={() => {
+        console.log("[NAV AVATAR] onError fired — switching to initials")
+        setImgError(true)
+      }}
+    />
+  ) : (
     <div
-      className="relative h-9 w-9 shrink-0"
-      style={{ width: "36px", height: "36px", flexShrink: 0 }}
+      style={{
+        width: "36px",
+        height: "36px",
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #534AB7, #1D9E75)",
+        border: "1.5px solid rgba(255,255,255,0.15)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "rgba(255,255,255,0.9)",
+        fontSize: "14px",
+        fontWeight: 500,
+        userSelect: "none",
+        flexShrink: 0,
+      }}
     >
-      <style>{`
-        @keyframes navAvatarPulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
-        }
-      `}</style>
-      <div
-        className="flex h-9 w-9 select-none items-center justify-center rounded-full"
-        style={{
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #534AB7, #1D9E75)",
-          border: "1.5px solid rgba(255,255,255,0.15)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.9)",
-          fontSize: "14px",
-          fontWeight: 500,
-          flexShrink: 0,
-          userSelect: "none",
-          animation: profileLoaded ? "none" : "navAvatarPulse 1.5s ease-in-out infinite",
-        }}
-      >
-        {initial}
-      </div>
-      {showImage ? (
-        <img
-          src={avatarUrl ?? ""}
-          alt="Profile"
-          className="absolute inset-0 block h-9 w-9 rounded-full object-cover"
-          style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "50%",
-            objectFit: "cover",
-            border: "1.5px solid rgba(255,255,255,0.15)",
-            display: "block",
-            flexShrink: 0,
-            opacity: imgLoaded ? 1 : 0,
-            transition: "opacity 0.2s ease",
-          }}
-          onLoad={() => setImgLoaded(true)}
-          onError={() => {
-            console.log("[NAV AVATAR] image load failed, switching to initials")
-            setImgError(true)
-          }}
-        />
-      ) : null}
+      {initial}
     </div>
   )
 }
@@ -111,44 +90,14 @@ export default function AppNav() {
   const { user, profile, avatarUrl } = useAuth()
   const profileHref = profile?.username ? `/u/${encodeURIComponent(profile.username)}` : user ? "/settings/profile" : "/auth"
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(cachedProfile?.avatarUrl ?? null)
-  const [initial, setInitial] = useState<string>(cachedProfile?.initial ?? "R")
-  const [profileLoaded, setProfileLoaded] = useState(Boolean(cachedProfile))
+  const initial = getNavAvatarInitial(profile?.displayName, profile?.username)
 
   useEffect(() => {
-    if (!user) {
-      cachedProfile = null
-      setResolvedAvatarUrl(null)
-      setInitial("R")
-      setProfileLoaded(false)
-      return
-    }
-
-    if (cachedProfile) {
-      setResolvedAvatarUrl(cachedProfile.avatarUrl)
-      setInitial(cachedProfile.initial)
-      setProfileLoaded(true)
-    }
-
-    const nextInitial = getNavAvatarInitial(profile?.displayName, profile?.username)
-    const nextAvatarUrl = avatarUrl ?? null
-
-    setInitial(nextInitial)
-
-    if (profile?.username || profile?.displayName || nextAvatarUrl) {
-      cachedProfile = {
-        avatarUrl: nextAvatarUrl,
-        initial: nextInitial,
-      }
-
-      setResolvedAvatarUrl(nextAvatarUrl)
-      setProfileLoaded(true)
-      console.log("[NAV AVATAR] profile loaded:", {
-        username: profile?.username ?? null,
-        hasAvatar: !!nextAvatarUrl,
-      })
-    }
-  }, [user, profile?.displayName, profile?.username, avatarUrl])
+    console.log("[NAV AVATAR] profile loaded:", {
+      username: profile?.username ?? null,
+      hasAvatar: !!avatarUrl,
+    })
+  }, [profile?.username, avatarUrl])
 
   useEffect(() => {
     setDropdownOpen(false)
@@ -205,9 +154,8 @@ export default function AppNav() {
                   }}
                 >
                   <NavAvatar
-                    avatarUrl={resolvedAvatarUrl}
+                    avatarUrl={avatarUrl}
                     initial={initial}
-                    profileLoaded={profileLoaded}
                   />
                 </button>
 
