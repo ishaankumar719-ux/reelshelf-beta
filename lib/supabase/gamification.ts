@@ -149,17 +149,33 @@ export async function syncAndLoadGamificationStats() {
   let likesReceived = 0;
   let commentsReceived = 0;
 
+  console.log("[GAMIFICATION] likes-received query starting");
+
   if (diaryEntryIds.length > 0) {
-    const { data: likeRows, error: likeError } = await client
+    const { count, error: likeError } = await client
       .from("diary_entry_likes")
-      .select("user_id")
-      .in("diary_entry_id", diaryEntryIds);
+      .select("id", { count: "exact", head: true })
+      .in("diary_entry_id", diaryEntryIds.length > 0 ? diaryEntryIds : ["no-match"]);
+
+    console.log("[GAMIFICATION] result:", {
+      data: null,
+      error: likeError,
+      count: count ?? 0,
+    });
 
     if (likeError) {
-      console.error("[ReelShelf gamification] load likes received failed", likeError);
+      console.error("[GAMIFICATION] likes received count:", 0, "error:", likeError.message);
     } else {
-      likesReceived = (likeRows || []).filter((row) => row.user_id !== user.id).length;
+      likesReceived = count ?? 0;
+      console.log("[GAMIFICATION] likes received count:", likesReceived, "error:", "none");
     }
+  } else {
+    console.log("[GAMIFICATION] result:", {
+      data: null,
+      error: null,
+      count: 0,
+    });
+    console.log("[GAMIFICATION] likes received count:", 0, "error:", "none");
   }
 
   const totalEntries = typedDiaryRows.length;
