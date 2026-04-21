@@ -20,6 +20,8 @@ type ImportedMovieRow = {
   rating: number | null;
   watched_date: string;
   favourite: boolean;
+  rewatch?: boolean | null;
+  contains_spoilers?: boolean | null;
   saved_at: string;
 };
 
@@ -102,6 +104,8 @@ export default function ImportedMovieDetailClient({
         review: row.review || "",
         watchedDate: row.watched_date,
         favourite: row.favourite,
+        rewatch: Boolean(row.rewatch),
+        containsSpoilers: Boolean(row.contains_spoilers),
         savedAt: row.saved_at,
       });
       setNotFound(false);

@@ -9,6 +9,8 @@ export type PersistedDiaryEntry = SavedMediaItem & {
   review: string;
   watchedDate: string;
   favourite: boolean;
+  rewatch: boolean;
+  containsSpoilers: boolean;
   savedAt: string;
 };
 
@@ -22,8 +24,8 @@ type DiaryRow = {
   media_type: MediaType;
   review_scope: DiaryReviewScope;
   show_id: string;
-  season_number: number;
-  episode_number: number;
+  season_number: number | null;
+  episode_number: number | null;
   title: string;
   poster: string | null;
   year: number;
@@ -35,6 +37,8 @@ type DiaryRow = {
   review: string;
   watched_date: string;
   favourite: boolean;
+  rewatch: boolean;
+  contains_spoilers: boolean;
   saved_at: string;
 };
 
@@ -138,8 +142,8 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     media_type: entry.mediaType,
     review_scope: entry.reviewScope || (entry.mediaType === "tv" ? "show" : "title"),
     show_id: entry.showId || (entry.mediaType === "tv" ? entry.id : ""),
-    season_number: entry.seasonNumber || 0,
-    episode_number: entry.episodeNumber || 0,
+    season_number: entry.seasonNumber || null,
+    episode_number: entry.episodeNumber || null,
     title: entry.title,
     poster: entry.poster || null,
     year: Number(entry.year) || 0,
@@ -152,6 +156,8 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     review: entry.review,
     watched_date: entry.watchedDate,
     favourite: entry.favourite,
+    rewatch: entry.rewatch ?? false,
+    contains_spoilers: entry.containsSpoilers ?? false,
     saved_at: entry.savedAt,
   };
 }
@@ -162,8 +168,8 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     mediaType: row.media_type,
     reviewScope: row.review_scope,
     showId: row.show_id || undefined,
-    seasonNumber: row.season_number || undefined,
-    episodeNumber: row.episode_number || undefined,
+    seasonNumber: row.season_number ?? undefined,
+    episodeNumber: row.episode_number ?? undefined,
     title: row.title,
     poster: row.poster || undefined,
     year: Number(row.year) || 0,
@@ -176,6 +182,8 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     review: row.review || "",
     watchedDate: row.watched_date,
     favourite: row.favourite,
+    rewatch: row.rewatch ?? false,
+    containsSpoilers: row.contains_spoilers ?? false,
     savedAt: row.saved_at,
   };
 }

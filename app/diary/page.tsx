@@ -16,17 +16,48 @@ import { getMediaHref } from "../../lib/mediaRoutes";
 
 type FilterType = "all" | "favourites" | "highest-rated" | "recent";
 type MediaFilterType = "all" | MediaType;
+type TimeGroup = "Today" | "Yesterday" | "This week" | "Earlier";
+
+function getTimeGroup(watchedDate: string): TimeGroup {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+
+  const date = new Date(watchedDate);
+  date.setHours(0, 0, 0, 0);
+
+  if (date >= today) return "Today";
+  if (date >= yesterday) return "Yesterday";
+  if (date >= weekAgo) return "This week";
+  return "Earlier";
+}
 
 function formatDiaryDate(date: string) {
-  return new Date(date).toLocaleDateString(undefined, {
-    year: "numeric",
+  const value = new Date(date);
+  const now = new Date();
+  const includeYear = value.getFullYear() !== now.getFullYear();
+
+  return value.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
   });
 }
 
-function formatDiaryRating(rating: number | null) {
-  return typeof rating === "number" ? `${rating.toFixed(1)} ★` : "No rating";
+function getRatingNumber(rating: DiaryMovie["rating"] | string | null | undefined) {
+  if (typeof rating === "number") {
+    return rating;
+  }
+
+  if (typeof rating === "string" && rating.trim()) {
+    const parsed = Number.parseFloat(rating);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
 }
 
 function getMediaBadgeLabel(mediaType: MediaType) {
@@ -55,20 +86,20 @@ function getTvScopeBadge(movie: DiaryMovie) {
 
 function sortByNewest(entries: DiaryMovie[]) {
   return [...entries].sort(
-    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+    (a, b) => new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime()
   );
 }
 
 function sortByHighestRated(entries: DiaryMovie[]) {
   return [...entries].sort((a, b) => {
-    const left = typeof a.rating === "number" ? a.rating : -1;
-    const right = typeof b.rating === "number" ? b.rating : -1;
+    const left = getRatingNumber(a.rating) ?? -1;
+    const right = getRatingNumber(b.rating) ?? -1;
 
     if (right !== left) {
       return right - left;
     }
 
-    return new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime();
+    return new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime();
   });
 }
 
@@ -136,6 +167,21 @@ export default function DiaryPage() {
     return sortByNewest(mediaFilteredMovies);
   }, [filter, mediaFilter, movies]);
 
+  const groupedMovies = useMemo(() => {
+    const groups: Record<TimeGroup, DiaryMovie[]> = {
+      Today: [],
+      Yesterday: [],
+      "This week": [],
+      Earlier: [],
+    };
+
+    for (const movie of filteredMovies) {
+      groups[getTimeGroup(movie.watchedDate)].push(movie);
+    }
+
+    return groups;
+  }, [filteredMovies]);
+
   const isEmpty = movies.length === 0;
   const isFilteredEmpty = !isEmpty && filteredMovies.length === 0;
 
@@ -173,31 +219,30 @@ export default function DiaryPage() {
       <style>{`
         .diary-feed {
           display: grid;
-          gap: 18px;
+          gap: 24px;
           max-width: 1020px;
         }
 
-        .diary-card-shell {
-          display: grid;
-          grid-template-columns: 128px minmax(0, 1fr);
-          gap: 20px;
-          align-items: start;
-        }
-
-        @media (max-width: 720px) {
-          .diary-card-shell {
-            grid-template-columns: 96px minmax(0, 1fr);
-            gap: 14px;
-          }
+        .diary-group-label {
+          position: sticky;
+          top: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: rgba(5, 5, 5, 0.92);
+          border: 0.5px solid rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.36);
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          font-family: Arial, sans-serif;
         }
 
         @media (max-width: 560px) {
           .diary-feed {
-            gap: 14px;
-          }
-
-          .diary-card-shell {
-            grid-template-columns: 1fr;
+            gap: 16px;
           }
         }
       `}</style>
@@ -296,26 +341,10 @@ export default function DiaryPage() {
           marginBottom: 14,
         }}
       >
-        <FilterButton
-          active={mediaFilter === "all"}
-          label="All"
-          onClick={() => setMediaFilter("all")}
-        />
-        <FilterButton
-          active={mediaFilter === "movie"}
-          label="Films"
-          onClick={() => setMediaFilter("movie")}
-        />
-        <FilterButton
-          active={mediaFilter === "tv"}
-          label="Series"
-          onClick={() => setMediaFilter("tv")}
-        />
-        <FilterButton
-          active={mediaFilter === "book"}
-          label="Books"
-          onClick={() => setMediaFilter("book")}
-        />
+        <FilterButton active={mediaFilter === "all"} label="All" onClick={() => setMediaFilter("all")} />
+        <FilterButton active={mediaFilter === "movie"} label="Films" onClick={() => setMediaFilter("movie")} />
+        <FilterButton active={mediaFilter === "tv"} label="Series" onClick={() => setMediaFilter("tv")} />
+        <FilterButton active={mediaFilter === "book"} label="Books" onClick={() => setMediaFilter("book")} />
       </section>
 
       <section
@@ -326,21 +355,9 @@ export default function DiaryPage() {
           marginBottom: 24,
         }}
       >
-        <FilterButton
-          active={filter === "recent" || filter === "all"}
-          label="Recent"
-          onClick={() => setFilter("recent")}
-        />
-        <FilterButton
-          active={filter === "favourites"}
-          label="Favourites"
-          onClick={() => setFilter("favourites")}
-        />
-        <FilterButton
-          active={filter === "highest-rated"}
-          label="Highest Rated"
-          onClick={() => setFilter("highest-rated")}
-        />
+        <FilterButton active={filter === "recent" || filter === "all"} label="Recent" onClick={() => setFilter("recent")} />
+        <FilterButton active={filter === "favourites"} label="Favourites" onClick={() => setFilter("favourites")} />
+        <FilterButton active={filter === "highest-rated"} label="Highest Rated" onClick={() => setFilter("highest-rated")} />
       </section>
 
       {isEmpty ? (
@@ -403,446 +420,284 @@ export default function DiaryPage() {
             padding: 26,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              color: "#d1d5db",
-              fontSize: 17,
-              lineHeight: 1.6,
-            }}
-          >
+          <p style={{ margin: 0, color: "#d1d5db", fontSize: 17, lineHeight: 1.6 }}>
             No entries match this filter yet.
           </p>
         </section>
       ) : (
         <div className="diary-feed">
-          {filteredMovies.map((movie) => (
-            (() => {
-              const entryKey = getDiaryEntryKey(movie);
-              const isConfirmingDelete = pendingDeleteKey === entryKey;
-
-              return (
-            <article
-              key={entryKey}
-              style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 30,
-                padding: "clamp(14px, 4vw, 18px)",
-                background:
-                  "linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(8,8,8,0.96) 100%)",
-                boxShadow: "0 24px 60px rgba(0,0,0,0.28)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    minHeight: 16,
-                    color: "#9ca3af",
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                    fontFamily: "Arial, sans-serif",
-                  }}
-                >
-                  {isConfirmingDelete
-                    ? "Delete this diary entry?"
-                    : null}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {isConfirmingDelete ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(movie)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          background: "rgba(255,255,255,0.12)",
-                          color: "white",
-                          fontSize: 11,
-                          lineHeight: 1,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteKey(null)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          background: "rgba(255,255,255,0.04)",
-                          color: "#e5e7eb",
-                          fontSize: 11,
-                          lineHeight: 1,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(movie)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          background: "rgba(255,255,255,0.04)",
-                          color: "#e5e7eb",
-                          fontSize: 11,
-                          lineHeight: 1,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteKey(entryKey)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          background: "rgba(255,255,255,0.04)",
-                          color: "#f3caca",
-                          fontSize: 11,
-                          lineHeight: 1,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <Link
-                href={getMediaHref({ id: movie.id, mediaType: movie.mediaType })}
-                style={{ textDecoration: "none", color: "inherit", display: "block" }}
-              >
-                <div className="diary-card-shell">
-                  <div
-                    style={{
-                      position: "relative",
-                      aspectRatio: "2 / 3",
-                      borderRadius: 20,
-                      overflow: "hidden",
-                      background:
-                        "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      boxShadow: "0 16px 30px rgba(0,0,0,0.3)",
-                    }}
-                  >
-                    {movie.poster ? (
-                      <img
-                        src={movie.poster}
-                        alt={movie.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    ) : null}
+          {(Object.entries(groupedMovies) as Array<[TimeGroup, DiaryMovie[]]>).map(
+            ([groupLabel, groupEntries]) =>
+              groupEntries.length > 0 ? (
+                <section key={groupLabel}>
+                  <div className="diary-group-label">
+                    {groupLabel} · {groupEntries.length}{" "}
+                    {groupEntries.length === 1 ? "entry" : "entries"}
                   </div>
 
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "start",
-                        gap: 14,
-                        marginBottom: 12,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span
+                  <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                    {groupEntries.map((movie) => {
+                      const entryKey = getDiaryEntryKey(movie);
+                      const isConfirmingDelete = pendingDeleteKey === entryKey;
+                      const ratingNum = getRatingNumber(movie.rating);
+                      const reviewSnippet =
+                        movie.review.length > 120
+                          ? `${movie.review.slice(0, 120)}…`
+                          : movie.review;
+
+                      return (
+                        <article
+                          key={entryKey}
                           style={{
-                            color: "#7f7f7f",
-                            fontSize: 10,
-                            letterSpacing: "0.18em",
-                            textTransform: "uppercase",
-                            fontFamily: "Arial, sans-serif",
+                            background: "rgba(255,255,255,0.03)",
+                            border: "0.5px solid rgba(255,255,255,0.08)",
+                            borderRadius: 12,
+                            padding: 12,
                           }}
                         >
-                          Diary Entry
-                        </span>
+                          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <Link
+                              href={getMediaHref({ id: movie.id, mediaType: movie.mediaType })}
+                              style={{ textDecoration: "none", color: "inherit", flexShrink: 0 }}
+                            >
+                              <div
+                                style={{
+                                  width: 52,
+                                  height: 78,
+                                  borderRadius: 10,
+                                  overflow: "hidden",
+                                  background: "#1a1a2e",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {movie.poster ? (
+                                  <img
+                                    src={movie.poster}
+                                    alt={movie.title}
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                      display: "block",
+                                    }}
+                                  />
+                                ) : (
+                                  <span style={{ color: "#d4d4d8", fontWeight: 600 }}>
+                                    {movie.title.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
 
-                        <span
-                          style={{
-                            padding: "7px 11px",
-                            borderRadius: 999,
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "#e5e7eb",
-                            fontSize: 11,
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            fontFamily: "Arial, sans-serif",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {getMediaBadgeLabel(movie.mediaType)}
-                        </span>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "flex-start",
+                                  gap: 12,
+                                }}
+                              >
+                                <div style={{ minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: 8,
+                                      alignItems: "center",
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <Link
+                                      href={getMediaHref({ id: movie.id, mediaType: movie.mediaType })}
+                                      style={{ textDecoration: "none", color: "inherit" }}
+                                    >
+                                      <h2
+                                        style={{
+                                          margin: 0,
+                                          color: "rgba(255,255,255,0.85)",
+                                          fontSize: 14,
+                                          fontWeight: 600,
+                                          lineHeight: 1.3,
+                                        }}
+                                      >
+                                        {movie.title}
+                                      </h2>
+                                    </Link>
+                                    <span
+                                      style={{
+                                        padding: "3px 8px",
+                                        borderRadius: 999,
+                                        background: "rgba(255,255,255,0.05)",
+                                        border: "0.5px solid rgba(255,255,255,0.1)",
+                                        color: "rgba(255,255,255,0.56)",
+                                        fontSize: 10,
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                      }}
+                                    >
+                                      {getMediaBadgeLabel(movie.mediaType)}
+                                    </span>
+                                    {movie.favourite ? (
+                                      <span style={{ color: "#f59e0b", fontSize: 13 }}>♥</span>
+                                    ) : null}
+                                    {getTvScopeBadge(movie) ? (
+                                      <span
+                                        style={{
+                                          padding: "3px 8px",
+                                          borderRadius: 999,
+                                          background: "rgba(20,184,166,0.12)",
+                                          border: "0.5px solid rgba(45,212,191,0.22)",
+                                          color: "#83f1de",
+                                          fontSize: 10,
+                                        }}
+                                      >
+                                        {getTvScopeBadge(movie)}
+                                      </span>
+                                    ) : null}
+                                  </div>
 
-                        {movie.favourite ? (
-                          <span
-                            style={{
-                              padding: "7px 11px",
-                              borderRadius: 999,
-                              background:
-                                "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 100%)",
-                              border: "1px solid rgba(255,255,255,0.14)",
-                              color: "white",
-                              fontSize: 11,
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                              fontFamily: "Arial, sans-serif",
-                              lineHeight: 1,
-                            }}
-                          >
-                            Favourite
-                          </span>
-                        ) : null}
-                      </div>
+                                  {ratingNum !== null ? (
+                                    <p
+                                      style={{
+                                        margin: "8px 0 0",
+                                        color: "rgba(255,255,255,0.82)",
+                                        fontSize: 13,
+                                      }}
+                                    >
+                                      ★ {(ratingNum / 2).toFixed(1)}
+                                    </p>
+                                  ) : null}
 
-                      <div
-                        style={{
-                          padding: "10px 14px",
-                          borderRadius: 999,
-                          background:
-                            "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          color: "white",
-                          fontSize: 24,
-                          lineHeight: 1,
-                          letterSpacing: "-0.8px",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatDiaryRating(movie.rating)}
-                      </div>
-                    </div>
+                                  {reviewSnippet ? (
+                                    <p
+                                      style={{
+                                        margin: "8px 0 0",
+                                        color: "rgba(255,255,255,0.68)",
+                                        fontSize: 13,
+                                        lineHeight: 1.55,
+                                      }}
+                                    >
+                                      {reviewSnippet}
+                                    </p>
+                                  ) : null}
 
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        gap: 10,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <h2
-                        style={{
-                          margin: 0,
-                          fontSize: "clamp(24px, 6vw, 30px)",
-                          lineHeight: 1.04,
-                          letterSpacing: "-1px",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {movie.title}
-                      </h2>
+                                  <div
+                                    style={{
+                                      marginTop: 10,
+                                      display: "flex",
+                                      gap: 8,
+                                      flexWrap: "wrap",
+                                      alignItems: "center",
+                                      color: "rgba(255,255,255,0.45)",
+                                      fontSize: 12,
+                                    }}
+                                  >
+                                    <span>{formatDiaryDate(movie.watchedDate)}</span>
+                                    {movie.rewatch ? (
+                                      <span
+                                        style={{
+                                          padding: "3px 8px",
+                                          borderRadius: 999,
+                                          background: "rgba(245,158,11,0.14)",
+                                          border: "0.5px solid rgba(245,158,11,0.24)",
+                                          color: "#f8c16d",
+                                        }}
+                                      >
+                                        Rewatch
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
 
-                      {getTvScopeBadge(movie) ? (
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            height: 28,
-                            padding: "0 10px",
-                            borderRadius: 999,
-                            border: "1px solid rgba(45, 212, 191, 0.2)",
-                            background: "rgba(45, 212, 191, 0.1)",
-                            color: "#d5fffb",
-                            fontSize: 10,
-                            letterSpacing: "0.14em",
-                            textTransform: "uppercase",
-                            fontFamily: "Arial, sans-serif",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {getTvScopeBadge(movie)}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <p
-                      style={{
-                        margin: "0 0 16px",
-                        color: "#9ca3af",
-                        fontSize: 14,
-                        lineHeight: 1.6,
-                        fontFamily: "Arial, sans-serif",
-                      }}
-                    >
-                      {movie.year || "—"}
-                      {movie.director ? ` · ${movie.director}` : ""}
-                    </p>
-
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 10,
-                        marginBottom: 16,
-                        padding: "10px 12px",
-                        borderRadius: 16,
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#7f7f7f",
-                          fontSize: 10,
-                          letterSpacing: "0.18em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                        }}
-                      >
-                        Watched
-                      </span>
-                      <span
-                        style={{
-                          color: "#f3f4f6",
-                          fontSize: 14,
-                          fontFamily: "Arial, sans-serif",
-                        }}
-                      >
-                        {formatDiaryDate(movie.watchedDate)}
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
-                        borderRadius: 22,
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        background:
-                          "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-                        padding: "16px 18px",
-                        marginBottom: 16,
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: 0,
-                          marginBottom: 10,
-                          color: "#7f7f7f",
-                          fontSize: 10,
-                          letterSpacing: "0.18em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                        }}
-                      >
-                        Review
-                      </p>
-                      <p
-                        style={{
-                          margin: 0,
-                          color: "#dfdfdf",
-                          fontSize: 15,
-                          lineHeight: 1.8,
-                          fontFamily: "Georgia, serif",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 5,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {movie.review || "No written review yet."}
-                      </p>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        paddingTop: 12,
-                        borderTop: "1px solid rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: 0,
-                          color: "#7f7f7f",
-                          fontSize: 12,
-                          fontFamily: "Arial, sans-serif",
-                        }}
-                      >
-                        Saved {formatDiaryDate(movie.savedAt)}
-                      </p>
-
-                      <p
-                        style={{
-                          margin: 0,
-                          color: "#d1d5db",
-                          fontSize: 12,
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
-                        }}
-                      >
-                        Open details
-                      </p>
-                    </div>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  {isConfirmingDelete ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDelete(movie)}
+                                        style={{
+                                          padding: "7px 10px",
+                                          borderRadius: 999,
+                                          border: "1px solid rgba(255,255,255,0.12)",
+                                          background: "rgba(255,255,255,0.12)",
+                                          color: "white",
+                                          fontSize: 10,
+                                          letterSpacing: "0.1em",
+                                          textTransform: "uppercase",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Confirm
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setPendingDeleteKey(null)}
+                                        style={{
+                                          padding: "7px 10px",
+                                          borderRadius: 999,
+                                          border: "1px solid rgba(255,255,255,0.12)",
+                                          background: "rgba(255,255,255,0.04)",
+                                          color: "#e5e7eb",
+                                          fontSize: 10,
+                                          letterSpacing: "0.1em",
+                                          textTransform: "uppercase",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEdit(movie)}
+                                        style={{
+                                          padding: "7px 10px",
+                                          borderRadius: 999,
+                                          border: "1px solid rgba(255,255,255,0.12)",
+                                          background: "rgba(255,255,255,0.04)",
+                                          color: "#e5e7eb",
+                                          fontSize: 10,
+                                          letterSpacing: "0.1em",
+                                          textTransform: "uppercase",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setPendingDeleteKey(entryKey)}
+                                        style={{
+                                          padding: "7px 10px",
+                                          borderRadius: 999,
+                                          border: "1px solid rgba(255,255,255,0.12)",
+                                          background: "rgba(255,255,255,0.04)",
+                                          color: "#f3caca",
+                                          fontSize: 10,
+                                          letterSpacing: "0.1em",
+                                          textTransform: "uppercase",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
-                </div>
-              </Link>
-            </article>
-              );
-            })()
-          ))}
+                </section>
+              ) : null
+          )}
         </div>
       )}
     </main>

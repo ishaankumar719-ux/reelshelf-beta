@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
+import { DiaryLogProvider } from "../hooks/useDiaryLog";
 import type { UserProfile } from "../lib/profile";
 import { PROFILE_SELECT } from "../lib/queries";
 import { createClient } from "../lib/supabase/server";
@@ -96,11 +97,13 @@ export default async function RootLayout({
           }
         `}</style>
         <AuthProvider initialUser={user} initialProfile={initialProfile}>
-          <AppNav />
-          <GlobalSearch />
-          <main className="app-shell-main">
-            {children}
-          </main>
+          <DiaryLogProvider>
+            <AppNav />
+            <GlobalSearch />
+            <main className="app-shell-main">
+              {children}
+            </main>
+          </DiaryLogProvider>
         </AuthProvider>
       </body>
     </html>

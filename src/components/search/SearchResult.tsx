@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { getPosterUrl } from "@/src/lib/tmdb-image"
 import type { SearchResult as SearchResultType } from "@/src/hooks/useSearch"
+import { useDiaryLog } from "@/hooks/useDiaryLog"
 
 interface SearchResultProps {
   result: SearchResultType
@@ -59,23 +60,42 @@ export default function SearchResult({
   id,
 }: SearchResultProps) {
   const [imgError, setImgError] = useState(false)
+  const { openLog } = useDiaryLog()
   const posterUrl = result.poster_path ? getPosterUrl(result.poster_path, "w92") : null
   const meta =
     result.media_type === "book"
       ? [result.year, result.author].filter(Boolean).join(" · ")
       : [result.year, result.director].filter(Boolean).join(" · ")
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault()
       onSelect()
     }
   }
 
+  function handleLogClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    openLog({
+      title: result.title,
+      media_type:
+        result.media_type === "series"
+          ? "tv"
+          : result.media_type === "book"
+            ? "book"
+            : "movie",
+      year: Number.parseInt(result.year ?? "0", 10) || 0,
+      poster: result.poster_path ? getPosterUrl(result.poster_path, "w342") : null,
+      creator: result.director ?? result.author ?? null,
+      tmdb_id: result.media_type === "book" ? null : result.id,
+    })
+  }
+
   return (
-    <button
+    <div
       id={id}
-      type="button"
+      role="button"
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
@@ -101,9 +121,18 @@ export default function SearchResult({
         <p className="mt-0.5 truncate text-[11px] text-white/38">{meta || "No details yet"}</p>
       </div>
 
-      <span className={`inline-flex h-5 shrink-0 items-center rounded-full border px-2 text-[9px] uppercase tracking-[0.14em] ${getBadgeClasses(result.media_type)}`}>
-        {getLabel(result.media_type)}
-      </span>
-    </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className={`inline-flex h-5 items-center rounded-full border px-2 text-[9px] uppercase tracking-[0.14em] ${getBadgeClasses(result.media_type)}`}>
+          {getLabel(result.media_type)}
+        </span>
+        <button
+          type="button"
+          onClick={handleLogClick}
+          className="rounded-md border border-[#1D9E75]/40 bg-[#1D9E75]/15 px-2 py-1 text-[11px] text-[#9de3c7] transition hover:bg-[#1D9E75]/20"
+        >
+          + Log
+        </button>
+      </div>
+    </div>
   )
 }

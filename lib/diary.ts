@@ -11,6 +11,8 @@ export type DiaryMovie = SavedMediaItem & {
   review: string;
   watchedDate: string;
   favourite: boolean;
+  rewatch: boolean;
+  containsSpoilers: boolean;
   savedAt: string;
 };
 
@@ -133,6 +135,14 @@ function normalizeDiaryMovie(
       "favourite" in movie && typeof movie.favourite === "boolean"
         ? movie.favourite
         : false,
+    rewatch:
+      "rewatch" in movie && typeof movie.rewatch === "boolean"
+        ? movie.rewatch
+        : false,
+    containsSpoilers:
+      "containsSpoilers" in movie && typeof movie.containsSpoilers === "boolean"
+        ? movie.containsSpoilers
+        : false,
     savedAt:
       "savedAt" in movie && typeof movie.savedAt === "string"
         ? movie.savedAt
@@ -243,6 +253,8 @@ export function saveDiaryEntry(
     review: string;
     watchedDate: string;
     favourite: boolean;
+    rewatch?: boolean;
+    containsSpoilers?: boolean;
   }
 ) {
   if (typeof window === "undefined") return;
@@ -258,6 +270,8 @@ export function saveDiaryEntry(
     review: movie.review.trim(),
     watchedDate: movie.watchedDate,
     favourite: movie.favourite,
+    rewatch: movie.rewatch ?? false,
+    containsSpoilers: movie.containsSpoilers ?? false,
     savedAt: existingEntry?.savedAt || new Date().toISOString(),
   };
 
@@ -270,6 +284,25 @@ export function saveDiaryEntry(
 
   writeDiaryMovies(updated);
   void upsertDiaryEntryToBackend(nextEntry);
+}
+
+export function saveDiaryEntryLocally(movie: DiaryMovie) {
+  if (typeof window === "undefined") return;
+
+  const normalized = normalizeDiaryMovie(movie);
+
+  if (!normalized) {
+    return;
+  }
+
+  const current = getDiaryMovies();
+  const entryKey = getDiaryEntryKey(normalized);
+  const updated = [
+    normalized,
+    ...current.filter((entry) => getDiaryEntryKey(entry) !== entryKey),
+  ];
+
+  writeDiaryMovies(updated);
 }
 
 export async function importDiaryEntries(entries: DiaryMovie[]) {

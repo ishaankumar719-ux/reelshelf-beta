@@ -16,6 +16,7 @@ export interface MediaCardProps {
   isInWatchlist?: boolean
   href?: string
   onClick?: () => void
+  onLogPress?: () => void
   size?: "sm" | "md" | "lg"
   className?: string
 }
@@ -100,6 +101,7 @@ function MediaCardInner({
   className,
   posterPath,
   posterUrl,
+  onLogPress,
 }: MediaCardProps) {
   const [imgError, setImgError] = useState(false)
 
@@ -144,6 +146,20 @@ function MediaCardInner({
             <div className="absolute bottom-2 left-2 rounded-full border border-white/12 bg-black/55 px-2.5 py-1 text-[10px] font-medium tracking-[0.08em] text-white">
               {rating.toFixed(1)} ★
             </div>
+          ) : null}
+
+          {onLogPress ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onLogPress()
+              }}
+              className="absolute bottom-2 left-2 rounded-full border border-[#1D9E75]/45 bg-[#1D9E75]/15 px-2.5 py-1 text-[10px] font-medium tracking-[0.08em] text-[#9de3c7] opacity-0 transition group-hover:opacity-100"
+            >
+              + Log
+            </button>
           ) : null}
 
           {isWatched ? (
