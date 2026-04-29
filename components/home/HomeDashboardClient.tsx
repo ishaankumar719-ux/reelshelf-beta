@@ -6,9 +6,7 @@ import { MediaCard as SharedMediaCard } from "../../src/components/ui/MediaCard"
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
-import TonightsPick, {
-  type TonightsPickItem,
-} from "../watchlist/TonightsPick";
+import TonightsPick from "./TonightsPick";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
@@ -745,12 +743,10 @@ export default function HomeDashboardClient({
   trendingMovies,
   trendingSeries,
   trendingBooks,
-  explorePickItems,
 }: {
   trendingMovies: DashboardItem[];
   trendingSeries: DashboardItem[];
   trendingBooks: DashboardItem[];
-  explorePickItems: TonightsPickItem[];
 }) {
   const { user, displayName } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
@@ -839,7 +835,7 @@ export default function HomeDashboardClient({
     [diaryEntries]
   );
 
-  const tonightPickItems = useMemo<TonightsPickItem[]>(
+  const tonightPickItems = useMemo(
     () =>
       watchlistEntries
         .filter((entry) => entry.mediaType === "movie" || entry.mediaType === "tv")
@@ -848,13 +844,10 @@ export default function HomeDashboardClient({
           title: entry.title,
           poster: entry.poster ?? null,
           year: entry.year,
+          media_type: entry.mediaType,
           creator: entry.director ?? null,
-          genres: entry.genres ?? [],
-          runtime: entry.runtime ?? null,
-          mediaType: entry.mediaType,
-          href: getMediaHref({ id: entry.id, mediaType: entry.mediaType }),
-          addedAt: entry.addedAt,
-          tmdbId: null,
+          media_id: entry.id,
+          added_at: entry.addedAt,
         })),
     [watchlistEntries]
   );
@@ -1129,13 +1122,7 @@ export default function HomeDashboardClient({
           }}
         >
           <TonightsPick
-            exploreItems={explorePickItems}
             watchlistItems={tonightPickItems}
-            exploreSubtitle="A random film from tonight's wider horizon."
-            watchlistSubtitle="A dashboard shortcut when your watchlist mood is undecided."
-            emptyBody="Add a few titles to your watchlist and ReelShelf will pick one for you."
-            emptyHref="/movies"
-            emptyCta="Find something first"
           />
         </div>
       </section>
