@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { MediaCard as SharedMediaCard } from "../../src/components/ui/MediaCard";
+import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
@@ -1126,6 +1127,15 @@ export default function HomeDashboardClient({
           />
         </div>
       </section>
+
+      <BecauseYouLiked
+        diaryEntries={diaryEntries.map((entry) => ({
+          media_id: entry.id,
+          title: entry.title,
+          rating: entry.rating,
+          watched_date: entry.watchedDate,
+        }))}
+      />
 
       <GamificationWidgets variant="home" />
       <WeeklyChallengesSection />
