@@ -183,6 +183,7 @@ export default function WatchlistPage() {
             onRestored={handleRestored}
           />
         )}
+
       </div>
     </main>
   );

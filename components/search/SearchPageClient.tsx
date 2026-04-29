@@ -1,168 +1,260 @@
 "use client"
 
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
-import { MediaCard } from "@/src/components/ui/MediaCard"
-import { useSearch } from "@/src/hooks/useSearch"
-import type { SearchResult } from "@/src/hooks/useSearch"
+import { useRouter } from "next/navigation"
+import { useDiaryLog } from "@/hooks/useDiaryLog"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { useEffect, useMemo, useState, useTransition } from "react"
+import SearchResultCard from "./SearchResultCard"
+import TrendingGrid from "./TrendingGrid"
+
+export interface TMDBSearchResult {
+  id: number
+  media_type: "movie" | "tv" | "person"
+  title?: string
+  name?: string
+  release_date?: string
+  first_air_date?: string
+  poster_path: string | null
+  backdrop_path?: string | null
+  vote_average?: number
+  overview?: string
+}
 
 interface SearchPageClientProps {
   initialQuery: string
+  results: TMDBSearchResult[]
+  trending: TMDBSearchResult[]
 }
 
-type SearchTypeFilter = "all" | "film" | "series" | "book"
-
-type SearchApiResponse = {
-  films: SearchResult[]
-  series: SearchResult[]
-  books: SearchResult[]
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 }
 
-function getTabHref(query: string, type: SearchTypeFilter) {
-  const params = new URLSearchParams()
-  if (query) params.set("q", query)
-  if (type !== "all") params.set("type", type)
-  return `/search?${params.toString()}`
+function buildSearchHref(query: string) {
+  const trimmed = query.trim()
+  return trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search"
 }
 
-export default function SearchPageClient({ initialQuery }: SearchPageClientProps) {
-  const searchParams = useSearchParams()
-  const { query: hookedQuery, setQuery } = useSearch()
-  const query = searchParams.get("q")?.trim() || initialQuery.trim()
-  const type = (searchParams.get("type") || "all") as SearchTypeFilter
-  const [page, setPage] = useState(1)
-  const [items, setItems] = useState<SearchResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
-  console.log("[SEARCH PAGE] mounted")
-  console.log("[SEARCH PAGE] initialQuery prop:", initialQuery)
-
-  useEffect(() => {
-    const q = searchParams.get("q") ?? initialQuery
-    console.log("[SEARCH PAGE] q param:", q)
-
-    if (q.trim().length >= 2) {
-      console.log("[SEARCH PAGE] request start for:", q)
-      setQuery(q)
-    }
-  }, [searchParams, initialQuery, setQuery])
+export default function SearchPageClient({
+  initialQuery,
+  results,
+  trending,
+}: SearchPageClientProps) {
+  const router = useRouter()
+  const { openLog } = useDiaryLog()
+  const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set())
+  const [inputValue, setInputValue] = useState(initialQuery)
+  const [isFocused, setIsFocused] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    setPage(1)
-  }, [query, type])
+    setInputValue(initialQuery)
+  }, [initialQuery])
 
   useEffect(() => {
-    let cancelled = false
+    const supabase = createSupabaseClient()
+    if (!supabase) return
+    const client = supabase
 
-    async function load() {
-      if (!query || query.length < 2) {
-        setItems([])
-        return
-      }
+    async function loadLogged() {
+      const {
+        data: { session },
+      } = await client.auth.getSession()
 
-      setIsLoading(true)
+      if (!session) return
 
-      const types = type === "all" ? "film,series,book" : type
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}&types=${types}&page=${page}&limit=20`,
-        { cache: "no-store" }
-      )
+      const { data } = await client
+        .from("diary_entries")
+        .select("media_id")
+        .eq("user_id", session.user.id)
+        .eq("review_scope", "show")
 
-      if (!response.ok) {
-        if (!cancelled) {
-          setItems([])
-          setIsLoading(false)
-        }
-        return
-      }
-
-      const payload = (await response.json()) as SearchApiResponse
-      const nextItems =
-        type === "film"
-          ? payload.films
-          : type === "series"
-            ? payload.series
-            : type === "book"
-              ? payload.books
-              : [...payload.films, ...payload.series, ...payload.books]
-
-      if (!cancelled) {
-        setItems((current) => (page === 1 ? nextItems : [...current, ...nextItems]))
-        setIsLoading(false)
+      if (data) {
+        setLoggedIds(new Set(data.map((entry) => entry.media_id)))
       }
     }
 
-    void load()
+    void loadLogged()
+  }, [])
+
+  useEffect(() => {
+    const nextQuery = inputValue.trim()
+    const currentQuery = initialQuery.trim()
+
+    if (nextQuery === currentQuery) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      startTransition(() => {
+        router.replace(buildSearchHref(nextQuery), { scroll: false })
+      })
+    }, 280)
 
     return () => {
-      cancelled = true
+      window.clearTimeout(timeoutId)
     }
-  }, [page, query, type])
+  }, [initialQuery, inputValue, router])
 
-  const hasMore = useMemo(() => items.length > 0 && items.length % 20 === 0, [items.length])
+  useEffect(() => {
+    setVisible(false)
+    const timeoutId = window.setTimeout(() => {
+      setVisible(true)
+    }, 80)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [initialQuery, results.length, trending.length])
+
+  const filteredResults = useMemo(
+    () => results.filter((result) => result.media_type !== "person"),
+    [results]
+  )
+
+  const isLogged = (result: TMDBSearchResult): boolean => {
+    const tmdbId = `tmdb-${result.id}`
+    const title = result.title ?? result.name ?? ""
+    const slug = slugify(title)
+    const year = (result.release_date ?? result.first_air_date ?? "").slice(0, 4)
+
+    return (
+      loggedIds.has(tmdbId) ||
+      loggedIds.has(slug) ||
+      loggedIds.has(`${slug}-${year}`) ||
+      loggedIds.has(`letterboxd-${slug}-${year}`)
+    )
+  }
+
+  const handleLog = (result: TMDBSearchResult) => {
+    const title = result.title ?? result.name ?? ""
+    const year = parseInt((result.release_date ?? result.first_air_date ?? "0").slice(0, 4), 10)
+
+    openLog({
+      title,
+      media_type: result.media_type === "tv" ? "tv" : "movie",
+      year: Number.isFinite(year) ? year : 0,
+      poster: result.poster_path
+        ? `https://image.tmdb.org/t/p/w342${result.poster_path}`
+        : null,
+      tmdb_id: result.id,
+    })
+  }
+
+  const handleNavigate = (result: TMDBSearchResult) => {
+    const route = result.media_type === "tv" ? `/series/${result.id}` : `/films/${result.id}`
+    router.push(route)
+  }
+
+  const showTrending = initialQuery.length === 0
+  const showLoadingBar = isPending && inputValue.trim().length >= 2
+  const searchHasNoResults =
+    initialQuery.length >= 2 && !isPending && filteredResults.length === 0
 
   return (
-    <section className="mx-auto max-w-[1320px] pb-16">
-      <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,#0b0c12_0%,#07070c_100%)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-7">
-        <h1 className="text-[18px] font-medium text-white/88">Results for &quot;{query || hookedQuery || "…"}&quot;</h1>
+    <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 20px 56px" }}>
+      <style>{`
+        @keyframes searchSlide {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["all", "All"],
-            ["film", "Films"],
-            ["series", "Series"],
-            ["book", "Books"],
-          ] as const).map(([value, label]) => {
-            const active = type === value
-            return (
-              <Link
-                key={value}
-                href={getTabHref(query, value)}
-                className={`rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.16em] no-underline ${
-                  active
-                    ? "border-white/18 bg-white/[0.08] text-white"
-                    : "border-white/8 bg-white/[0.03] text-white/56"
-                }`}
-              >
-                {label}
-              </Link>
-            )
-          })}
-        </div>
+      <div style={{ marginBottom: "24px" }}>
+        <input
+          type="search"
+          value={inputValue}
+          placeholder="Search films and series..."
+          onChange={(event) => setInputValue(event.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          style={{
+            width: "100%",
+            borderRadius: "14px",
+            border: isFocused
+              ? "1px solid rgba(255,255,255,0.35)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
+            fontSize: "15px",
+            padding: "14px 16px",
+            outline: "none",
+            boxShadow: isFocused ? "0 0 0 3px rgba(255,255,255,0.06)" : "none",
+            transition: "all 0.15s ease",
+          }}
+        />
+      </div>
 
-        {items.length > 0 ? (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-            {items.map((item, index) => (
-              <MediaCard
-                key={`${item.media_type}-${item.id}-${index}`}
-                title={item.title}
-                year={item.year || undefined}
-                posterPath={item.poster_path}
-                mediaType={item.media_type}
-                size="md"
-                href={item.href}
-              />
-            ))}
+      {showLoadingBar ? (
+        <div
+          style={{
+            height: "2px",
+            borderRadius: "1px",
+            background: "linear-gradient(90deg, transparent, #1D9E75, transparent)",
+            backgroundSize: "200% 100%",
+            animation: "searchSlide 1.2s ease-in-out infinite",
+            marginBottom: "16px",
+          }}
+        />
+      ) : null}
+
+      <div
+        style={{
+          opacity: visible ? 1 : 0,
+          transition: "opacity 0.15s ease",
+        }}
+      >
+        {showTrending ? (
+          <TrendingGrid
+            items={trending}
+            isLogged={isLogged}
+            onLog={handleLog}
+            onNavigate={handleNavigate}
+          />
+        ) : null}
+
+        {!showTrending && filteredResults.length > 0 ? (
+          <div>
+            <p
+              style={{
+                fontSize: "11px",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: "12px",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Results for "{initialQuery}"
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {filteredResults.map((result) => (
+                <SearchResultCard
+                  key={`${result.media_type}-${result.id}`}
+                  result={result}
+                  variant="list"
+                  isLogged={isLogged(result)}
+                  onLog={() => handleLog(result)}
+                  onNavigate={() => handleNavigate(result)}
+                />
+              ))}
+            </div>
           </div>
-        ) : !isLoading && query.length >= 2 ? (
-          <p className="mt-8 text-sm text-white/48">
-            Nothing found for &quot;{query}&quot;. Try a different search.
+        ) : null}
+
+        {searchHasNoResults ? (
+          <p
+            style={{
+              fontSize: "14px",
+              color: "rgba(255,255,255,0.3)",
+              textAlign: "center",
+              padding: "48px 0",
+              fontStyle: "italic",
+            }}
+          >
+            No results for "{initialQuery}"
           </p>
         ) : null}
-
-        {isLoading ? <p className="mt-6 text-sm text-white/46">Loading results…</p> : null}
-
-        {hasMore && !isLoading ? (
-          <button
-            type="button"
-            onClick={() => setPage((current) => current + 1)}
-            className="mt-8 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2 text-[11px] uppercase tracking-[0.16em] text-white/82"
-          >
-            Load more
-          </button>
-        ) : null}
       </div>
-    </section>
+    </div>
   )
 }

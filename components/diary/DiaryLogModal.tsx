@@ -53,6 +53,18 @@ function getMediaBadgeStyles(mediaType: LogMediaInput["media_type"]) {
   };
 }
 
+function Divider() {
+  return (
+    <div
+      style={{
+        marginTop: 18,
+        paddingTop: 18,
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+      }}
+    />
+  );
+}
+
 function ToggleChip({
   active,
   label,
@@ -69,26 +81,54 @@ function ToggleChip({
       type="button"
       onClick={onClick}
       style={{
-        flex: 1,
-        minWidth: 0,
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 6,
-        borderRadius: 12,
-        border: active
-          ? "0.5px solid rgba(29,158,117,0.42)"
-          : "0.5px solid rgba(255,255,255,0.1)",
-        background: active ? "rgba(29,158,117,0.16)" : "rgba(255,255,255,0.04)",
-        color: active ? "rgba(211,255,238,0.95)" : "rgba(255,255,255,0.72)",
-        padding: "10px 12px",
+        border: "none",
+        background: active ? "rgba(255,255,255,0.1)" : "transparent",
+        borderRadius: 20,
+        color: active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)",
+        padding: active ? "4px 10px" : "4px 2px",
         fontSize: 12,
         cursor: "pointer",
+        transition: "background 0.15s ease, color 0.15s ease",
       }}
     >
       <span aria-hidden="true">{icon}</span>
       <span>{label}</span>
     </button>
+  );
+}
+
+function StarIcon({
+  fillPercent,
+  highlighted,
+}: {
+  fillPercent: number;
+  highlighted: boolean;
+}) {
+  const gradientId = useMemo(
+    () => `star-fill-${Math.random().toString(36).slice(2, 9)}`,
+    []
+  );
+
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset={`${fillPercent}%`} stopColor="#EF9F27" />
+          <stop offset={`${fillPercent}%`} stopColor="rgba(255,255,255,0.18)" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M12 2.6 14.84 8.36l6.36.92-4.6 4.48 1.08 6.33L12 17.08l-5.68 2.99 1.08-6.33-4.6-4.48 6.36-.92L12 2.6Z"
+        fill={`url(#${gradientId})`}
+        stroke={highlighted ? "#EF9F27" : "rgba(255,255,255,0.08)"}
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -99,47 +139,94 @@ function RatingStars({
   value: number | null;
   onChange: (nextValue: number | null) => void;
 }) {
-  const current = value ?? 0;
+  const [hoverValue, setHoverValue] = useState<number | null>(null);
+  const activeValue = hoverValue ?? value;
 
   return (
-    <div style={{ display: "flex", gap: 4 }}>
-      {Array.from({ length: 10 }, (_, index) => {
-        const score = index + 1;
-        const isActive = current >= score;
-        const isLeftHalf = index % 2 === 0;
+    <div>
+      <style>{`
+        @keyframes reelshelf-star-pulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.04); }
+        }
+      `}</style>
+      <div style={{ display: "flex", gap: 6 }}>
+        {Array.from({ length: 5 }, (_, index) => {
+          const starNumber = index + 1;
+          const leftValue = starNumber * 2 - 1;
+          const rightValue = starNumber * 2;
+          const fillPercent = Math.max(
+            0,
+            Math.min(100, ((activeValue ?? 0) - (starNumber - 1) * 2) * 50)
+          );
 
-        return (
-          <button
-            key={score}
-            type="button"
-            aria-label={`Set rating to ${score / 2} stars`}
-            onClick={() => onChange(value === score ? null : score)}
-            style={{
-              width: 20,
-              height: 30,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              color: isActive ? "#F6C453" : "rgba(255,255,255,0.22)",
-              cursor: "pointer",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <span
+          return (
+            <div
+              key={starNumber}
               style={{
-                display: "block",
-                width: 20,
-                fontSize: 22,
-                lineHeight: "30px",
-                marginLeft: isLeftHalf ? 0 : -10,
+                position: "relative",
+                width: 28,
+                height: 28,
+                filter:
+                  activeValue !== null && fillPercent > 0
+                    ? "drop-shadow(0 0 8px rgba(239,159,39,0.3))"
+                    : "none",
+                animation:
+                  activeValue === null && starNumber === 1
+                    ? "reelshelf-star-pulse 1.6s ease-in-out infinite"
+                    : "none",
               }}
+              onMouseLeave={() => setHoverValue(null)}
             >
-              ★
-            </span>
-          </button>
-        );
-      })}
+              <StarIcon fillPercent={fillPercent} highlighted={fillPercent > 0} />
+              <button
+                type="button"
+                aria-label={`Set rating to ${leftValue.toFixed(1).replace(".0", "")} / 10`}
+                onMouseEnter={() => setHoverValue(leftValue)}
+                onClick={() => onChange(value === leftValue ? null : leftValue)}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "50%",
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  cursor: "pointer",
+                }}
+              />
+              <button
+                type="button"
+                aria-label={`Set rating to ${rightValue.toFixed(1).replace(".0", "")} / 10`}
+                onMouseEnter={() => setHoverValue(rightValue)}
+                onClick={() => onChange(value === rightValue ? null : rightValue)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: "50%",
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  cursor: "pointer",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <p
+        style={{
+          margin: "10px 0 0",
+          fontSize: 12,
+          color:
+            typeof value === "number"
+              ? "rgba(255,255,255,0.5)"
+              : "rgba(255,255,255,0.3)",
+        }}
+      >
+        {typeof value === "number" ? `${value.toFixed(1)} / 10` : "Tap to rate"}
+      </p>
     </div>
   );
 }
@@ -342,114 +429,167 @@ export default function DiaryLogModal({
             width: "min(460px, 100%)",
             background: "#0f0f1e",
             border: "0.5px solid rgba(255,255,255,0.12)",
-            borderRadius: 24,
-            boxShadow: "0 28px 80px rgba(0,0,0,0.42)",
-            padding: 18,
+            borderRadius: 16,
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.06), 0 28px 80px rgba(0,0,0,0.42)",
+            padding: 24,
             animation: "reelshelf-log-fade 200ms ease-out",
           }}
         >
-          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <div
-              style={{
-                width: 48,
-                height: 72,
-                borderRadius: 10,
-                overflow: "hidden",
-                background: "#18182a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "rgba(255,255,255,0.4)",
-                flexShrink: 0,
-              }}
-            >
-              {media.poster ? (
-                <img
-                  src={media.poster}
-                  alt={media.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <span style={{ fontSize: 18, fontWeight: 600 }}>
-                  {media.title.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-
-            <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              position: "relative",
+              minHeight: 120,
+              borderRadius: 14,
+              overflow: "hidden",
+              background: media.poster ? "#10101a" : "#0f0f1e",
+              marginBottom: 18,
+            }}
+          >
+            {media.poster ? (
               <div
                 style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `url(${media.poster})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  filter: "blur(20px) brightness(0.35) saturate(1.2)",
+                  transform: "scale(1.1)",
+                }}
+              />
+            ) : null}
+
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                display: "flex",
+                gap: 16,
+                alignItems: "flex-start",
+                padding: 18,
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 84,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#18182a",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
+                  justifyContent: "center",
+                  color: "rgba(255,255,255,0.4)",
+                  flexShrink: 0,
+                  boxShadow: "0 14px 28px rgba(0,0,0,0.24)",
                 }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <h2
+                {media.poster ? (
+                  <img
+                    src={media.poster}
+                    alt={media.title}
                     style={{
-                      margin: 0,
-                      fontSize: 16,
-                      lineHeight: 1.25,
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.92)",
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
                     }}
-                  >
-                    {media.title}
-                  </h2>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      marginTop: 6,
-                      color: "rgba(255,255,255,0.55)",
-                      fontSize: 12,
-                    }}
-                  >
-                    <span>{media.year || "Unknown year"}</span>
-                    <span
-                      style={{
-                        borderRadius: 999,
-                        padding: "3px 8px",
-                        fontSize: 10,
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        ...mediaBadgeStyle,
-                      }}
-                    >
-                      {getMediaLabel(media.media_type)}
-                    </span>
-                    {media.creator ? <span>{media.creator}</span> : null}
-                  </div>
-                </div>
+                  />
+                ) : (
+                  <span style={{ fontSize: 20, fontWeight: 600 }}>
+                    {media.title.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
 
-                <button
-                  type="button"
-                  onClick={onClose}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
                   style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.68)",
-                    cursor: "pointer",
-                    fontSize: 22,
-                    lineHeight: 1,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 12,
                   }}
                 >
-                  ×
-                </button>
+                  <div style={{ minWidth: 0 }}>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontSize: 16,
+                        lineHeight: 1.25,
+                        fontWeight: 600,
+                        color: "rgba(255,255,255,0.92)",
+                      }}
+                    >
+                      {media.title}
+                    </h2>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        marginTop: 6,
+                        color: "rgba(255,255,255,0.55)",
+                        fontSize: 12,
+                      }}
+                    >
+                      <span>{media.year || "Unknown year"}</span>
+                      <span
+                        style={{
+                          borderRadius: 999,
+                          padding: "3px 8px",
+                          fontSize: 10,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          ...mediaBadgeStyle,
+                        }}
+                      >
+                        {getMediaLabel(media.media_type)}
+                      </span>
+                    </div>
+                    {media.creator ? (
+                      <p
+                        style={{
+                          margin: "8px 0 0",
+                          fontSize: 11,
+                          color: "rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        {media.creator}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "rgba(255,255,255,0.68)",
+                      cursor: "pointer",
+                      fontSize: 22,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div style={{ marginTop: 18 }}>
+          <div>
             <label
               style={{
                 display: "block",
-                marginBottom: 8,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.62)",
+                marginBottom: 10,
+                fontSize: 11,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.35)",
               }}
             >
               {media.media_type === "book" ? "Finished" : "Watched"}
@@ -460,69 +600,72 @@ export default function DiaryLogModal({
               onChange={(event) => setWatchedDate(event.target.value)}
               style={{
                 width: "100%",
-                borderRadius: 12,
-                border: "0.5px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)",
-                color: "rgba(255,255,255,0.9)",
-                padding: "12px 14px",
+                border: "none",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                background: "transparent",
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 14,
+                padding: "6px 0",
+                cursor: "pointer",
+                outline: "none",
               }}
             />
           </div>
 
-          <div style={{ marginTop: 18 }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.62)",
-              }}
-            >
-              Rating {typeof rating === "number" ? `· ${(rating / 2).toFixed(1)} ★` : ""}
-            </label>
+          <Divider />
+
+          <div style={{ marginTop: -18 }}>
             <RatingStars value={rating} onChange={setRating} />
           </div>
 
-          <div style={{ marginTop: 18 }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.62)",
-              }}
-            >
-              Review
-            </label>
+          <Divider />
+
+          <div style={{ marginTop: -18 }}>
             <textarea
               value={review}
               onChange={(event) => setReview(event.target.value.slice(0, 1000))}
-              placeholder="Write a short review… (optional)"
-              rows={5}
+              placeholder="What did you think? (optional)"
+              rows={4}
               style={{
                 width: "100%",
-                resize: "vertical",
-                borderRadius: 12,
-                border: "0.5px solid rgba(255,255,255,0.12)",
+                resize: "none",
+                border: "none",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 0,
                 background: "rgba(255,255,255,0.04)",
-                color: "rgba(255,255,255,0.9)",
-                padding: "12px 14px",
+                color: "rgba(255,255,255,0.82)",
+                padding: "10px 2px",
+                fontSize: 14,
                 lineHeight: 1.6,
+                minHeight: 72,
+                outline: "none",
               }}
             />
-            <div
-              style={{
-                marginTop: 6,
-                textAlign: "right",
-                color: "rgba(255,255,255,0.36)",
-                fontSize: 11,
-              }}
-            >
-              {review.length}/1000
-            </div>
+            {review.length > 0 ? (
+              <div
+                style={{
+                  marginTop: 6,
+                  textAlign: "right",
+                  color: "rgba(255,255,255,0.2)",
+                  fontSize: 11,
+                }}
+              >
+                {review.length}/1000
+              </div>
+            ) : null}
           </div>
 
-          <div style={{ marginTop: 18, display: "flex", gap: 8 }}>
+          <Divider />
+
+          <div
+            style={{
+              marginTop: -18,
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
             <ToggleChip
               active={favourite}
               label="Favourite"
@@ -544,7 +687,7 @@ export default function DiaryLogModal({
           </div>
 
           {error ? (
-            <p style={{ margin: "14px 0 0", color: "#fca5a5", fontSize: 12 }}>{error}</p>
+            <p style={{ margin: "16px 0 0", color: "#fca5a5", fontSize: 12 }}>{error}</p>
           ) : null}
 
           <button
@@ -553,7 +696,7 @@ export default function DiaryLogModal({
             disabled={saving}
             style={{
               width: "100%",
-              marginTop: 18,
+              marginTop: 22,
               border: "none",
               borderRadius: 14,
               background: "#1D9E75",

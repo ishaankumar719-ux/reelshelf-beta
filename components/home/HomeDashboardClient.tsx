@@ -6,6 +6,9 @@ import { MediaCard as SharedMediaCard } from "../../src/components/ui/MediaCard"
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
+import TonightsPick, {
+  type TonightsPickItem,
+} from "../watchlist/TonightsPick";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
@@ -834,6 +837,25 @@ export default function HomeDashboardClient({
     [diaryEntries]
   );
 
+  const tonightPickItems = useMemo<TonightsPickItem[]>(
+    () =>
+      watchlistEntries
+        .filter((entry) => entry.mediaType === "movie" || entry.mediaType === "tv")
+        .map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          poster: entry.poster ?? null,
+          year: entry.year,
+          creator: entry.director ?? null,
+          genres: entry.genres ?? [],
+          runtime: entry.runtime ?? null,
+          mediaType: entry.mediaType,
+          href: getMediaHref({ id: entry.id, mediaType: entry.mediaType }),
+          addedAt: entry.addedAt,
+        })),
+    [watchlistEntries]
+  );
+
   const quickStats = useMemo(() => {
     const watchlistCount = watchlistEntries.filter(
       (entry) => entry.mediaType === "movie" || entry.mediaType === "tv"
@@ -1089,6 +1111,27 @@ export default function HomeDashboardClient({
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 28 }}>
+        <div
+          style={{
+            borderRadius: 26,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 30%), linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.96) 100%)",
+            padding: "clamp(18px, 4vw, 24px)",
+            boxShadow: "0 18px 48px rgba(0,0,0,0.22)",
+          }}
+        >
+          <TonightsPick
+            items={tonightPickItems}
+            subtitle="A dashboard shortcut when your watchlist mood is undecided."
+            emptyBody="Add a few titles to your watchlist and ReelShelf will pick one for you."
+            emptyHref="/movies"
+            emptyCta="Find something first"
+          />
         </div>
       </section>
 
