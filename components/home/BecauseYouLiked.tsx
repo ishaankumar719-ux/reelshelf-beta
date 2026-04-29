@@ -69,9 +69,11 @@ function RecCard({
         style={{
           position: "relative",
           aspectRatio: "2/3",
-          borderRadius: "8px",
+          borderRadius: "10px",
           overflow: "hidden",
           background: "#111122",
+          transform: hovered ? "scale(1.05)" : "scale(1)",
+          transition: "transform 0.15s ease",
         }}
       >
         {!imgError && film.poster_path ? (
@@ -108,7 +110,7 @@ function RecCard({
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(0,0,0,0.78)",
+            background: "rgba(0,0,0,0.72)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -120,6 +122,21 @@ function RecCard({
             pointerEvents: hovered ? "auto" : "none",
           }}
         >
+          <p
+            style={{
+              margin: "0 0 2px",
+              fontSize: "13px",
+              fontWeight: 500,
+              color: "rgba(255,255,255,0.92)",
+              textAlign: "center",
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {film.title}
+          </p>
           <button
             type="button"
             onClick={(event) => {
@@ -146,7 +163,7 @@ function RecCard({
       <div style={{ marginTop: "7px" }}>
         <p
           style={{
-            fontSize: "11px",
+            fontSize: "12px",
             fontWeight: 500,
             color: "rgba(255,255,255,0.78)",
             margin: 0,
@@ -160,7 +177,7 @@ function RecCard({
         <p
           style={{
             fontSize: "10px",
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.38)",
             margin: "2px 0 0",
           }}
         >
@@ -234,7 +251,15 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
   if (!loading && (!sourceFilm || recs.length === 0)) return null;
 
   return (
-    <section style={{ marginBottom: "40px" }}>
+    <section
+      style={{
+        background: "rgba(255,255,255,0.03)",
+        border: "0.5px solid rgba(255,255,255,0.08)",
+        borderRadius: "16px",
+        padding: "20px",
+        marginBottom: "40px",
+      }}
+    >
       <div style={{ marginBottom: "20px" }}>
         <p
           style={{
@@ -252,20 +277,30 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
           style={{
             fontSize: "18px",
             fontWeight: 600,
-            color: "rgba(255,255,255,0.88)",
-            margin: 0,
+            color: "rgba(255,255,255,0.9)",
+            margin: "0 0 6px",
           }}
         >
           {loading ? "…" : sourceTitle}
         </h2>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "12px",
+            color: "rgba(255,255,255,0.32)",
+            fontStyle: "italic",
+          }}
+        >
+          Films with a similar pulse
+        </p>
       </div>
 
       {loading ? (
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
-            gap: "12px",
+            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            gap: "14px",
           }}
         >
           {[1, 2, 3, 4, 5, 6].map((item) => (
@@ -273,8 +308,8 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
               key={item}
               style={{
                 aspectRatio: "2/3",
-                borderRadius: "8px",
-                background: "rgba(255,255,255,0.05)",
+                borderRadius: "10px",
+                background: "rgba(255,255,255,0.06)",
                 animation: "shimmer 1.5s ease-in-out infinite",
               }}
             />
@@ -286,8 +321,8 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
-            gap: "12px",
+            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            gap: "14px",
           }}
         >
           {recs.map((film) => (
@@ -303,8 +338,8 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
 
       <style>{`
         @keyframes shimmer {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.65; }
         }
       `}</style>
     </section>
