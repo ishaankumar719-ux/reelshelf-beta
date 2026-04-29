@@ -17,17 +17,22 @@ export interface TonightsPickItem {
   mediaType: "movie" | "tv" | "book";
   href: string;
   addedAt: string;
+  tmdbId?: number | null;
 }
 
 interface TonightsPickProps {
-  items: TonightsPickItem[];
+  exploreItems: TonightsPickItem[];
+  watchlistItems: TonightsPickItem[];
   title?: string;
-  subtitle?: string;
+  exploreSubtitle?: string;
+  watchlistSubtitle?: string;
   emptyTitle?: string;
   emptyBody?: string;
   emptyHref?: string;
   emptyCta?: string;
 }
+
+type PickMode = "explore" | "watchlist";
 
 function actionBtn({
   teal = false,
@@ -71,19 +76,24 @@ function getMediaLabel(mediaType: TonightsPickItem["mediaType"]) {
 }
 
 export default function TonightsPick({
-  items,
+  exploreItems,
+  watchlistItems,
   title = "Tonight's Pick",
-  subtitle = "Can't decide? Let ReelShelf choose.",
+  exploreSubtitle = "A random film from tonight's wider horizon.",
+  watchlistSubtitle = "Can't decide? Let ReelShelf choose from your saved queue.",
   emptyTitle = "Your watchlist is empty",
   emptyBody = "Add a few titles to your watchlist and ReelShelf will pick one for you.",
   emptyHref = "/movies",
   emptyCta = "Browse films",
 }: TonightsPickProps) {
   const router = useRouter();
+  const [mode, setMode] = useState<PickMode>("explore");
   const [picked, setPicked] = useState<TonightsPickItem | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const intervalRef = useRef<number | null>(null);
+
+  const items = mode === "explore" ? exploreItems : watchlistItems;
 
   let openLog: ((media: LogMediaInput) => void) | undefined;
   try {
@@ -101,7 +111,7 @@ export default function TonightsPick({
       setPicked(null);
       setRevealed(false);
     }
-  }, [items]);
+  }, [items, mode]);
 
   useEffect(() => {
     return () => {
@@ -146,35 +156,88 @@ export default function TonightsPick({
   return (
     <section>
       <div style={{ marginBottom: "20px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "4px",
-          }}
-        >
-          <span style={{ fontSize: "16px" }}>🎲</span>
-          <h2
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "14px", flexWrap: "wrap" }}>
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "4px",
+              }}
+            >
+              <span style={{ fontSize: "16px" }}>🎲</span>
+              <h2
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.85)",
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h2>
+            </div>
+            <p
+              style={{
+                fontSize: "12px",
+                color: "rgba(255,255,255,0.3)",
+                margin: 0,
+              }}
+            >
+              {mode === "explore"
+                ? items.length > 0
+                  ? exploreSubtitle
+                  : "Explore is warming up — try again shortly."
+                : items.length > 0
+                  ? watchlistSubtitle
+                  : "Add a few titles to your watchlist first"}
+            </p>
+          </div>
+
+          <div
             style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.85)",
-              margin: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px",
+              borderRadius: 999,
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
             }}
           >
-            {title}
-          </h2>
+            {([
+              ["explore", "Explore"],
+              ["watchlist", "My Watchlist"],
+            ] as const).map(([value, label]) => {
+              const active = mode === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  style={{
+                    padding: "7px 12px",
+                    borderRadius: 999,
+                    border: active
+                      ? "0.5px solid rgba(255,255,255,0.14)"
+                      : "0.5px solid transparent",
+                    background: active ? "rgba(255,255,255,0.08)" : "transparent",
+                    color: active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.42)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <p
-          style={{
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.3)",
-            margin: 0,
-          }}
-        >
-          {items.length > 0 ? subtitle : "Add a few titles to your watchlist first"}
-        </p>
       </div>
 
       {items.length === 0 ? (
@@ -194,7 +257,7 @@ export default function TonightsPick({
               margin: "0 0 8px",
             }}
           >
-            {emptyTitle}
+            {mode === "watchlist" ? emptyTitle : "No explore picks right now"}
           </p>
           <p
             style={{
@@ -205,10 +268,12 @@ export default function TonightsPick({
               lineHeight: 1.6,
             }}
           >
-            {emptyBody}
+            {mode === "watchlist"
+              ? emptyBody
+              : "ReelShelf couldn't load a fresh explore pool just yet. Try again in a moment."}
           </p>
           <Link
-            href={emptyHref}
+            href={mode === "watchlist" ? emptyHref : "/movies"}
             style={{
               marginTop: 16,
               display: "inline-flex",
@@ -225,7 +290,7 @@ export default function TonightsPick({
               fontWeight: 600,
             }}
           >
-            {emptyCta}
+            {mode === "watchlist" ? emptyCta : "Browse films"}
           </Link>
         </div>
       ) : null}
@@ -360,7 +425,9 @@ export default function TonightsPick({
                       creator: picked.creator ?? null,
                       genres: picked.genres ?? [],
                       runtime: picked.runtime ?? null,
-                      media_id: picked.id,
+                      ...(mode === "explore" && picked.tmdbId
+                        ? { tmdb_id: picked.tmdbId }
+                        : { media_id: picked.id }),
                     });
                   }
                 }}
@@ -377,7 +444,7 @@ export default function TonightsPick({
                   spinning,
                 })}
               >
-                {spinning ? "…" : "Spin the Shelf"}
+                {spinning ? "…" : mode === "explore" ? "Spin again" : "Spin the Shelf"}
               </button>
             </div>
           </div>

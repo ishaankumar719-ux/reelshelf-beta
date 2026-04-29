@@ -745,10 +745,12 @@ export default function HomeDashboardClient({
   trendingMovies,
   trendingSeries,
   trendingBooks,
+  explorePickItems,
 }: {
   trendingMovies: DashboardItem[];
   trendingSeries: DashboardItem[];
   trendingBooks: DashboardItem[];
+  explorePickItems: TonightsPickItem[];
 }) {
   const { user, displayName } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
@@ -852,6 +854,7 @@ export default function HomeDashboardClient({
           mediaType: entry.mediaType,
           href: getMediaHref({ id: entry.id, mediaType: entry.mediaType }),
           addedAt: entry.addedAt,
+          tmdbId: null,
         })),
     [watchlistEntries]
   );
@@ -1126,8 +1129,10 @@ export default function HomeDashboardClient({
           }}
         >
           <TonightsPick
-            items={tonightPickItems}
-            subtitle="A dashboard shortcut when your watchlist mood is undecided."
+            exploreItems={explorePickItems}
+            watchlistItems={tonightPickItems}
+            exploreSubtitle="A random film from tonight's wider horizon."
+            watchlistSubtitle="A dashboard shortcut when your watchlist mood is undecided."
             emptyBody="Add a few titles to your watchlist and ReelShelf will pick one for you."
             emptyHref="/movies"
             emptyCta="Find something first"
