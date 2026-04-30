@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { getPosterUrl } from "@/src/lib/tmdb-image"
 import type {
   MountRushmoreSlot,
@@ -177,6 +177,12 @@ function SectionHeader({ children }: { children: string }) {
   return <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">{children}</p>
 }
 
+function getRushmorePosterSrc(slot: MountRushmoreSlot) {
+  if (!slot.poster_path) return null
+  if (slot.poster_path.startsWith("http")) return slot.poster_path
+  return getPosterUrl(slot.poster_path, "w342")
+}
+
 function TasteRow({ items }: { items: PublicProfileTopRatedItem[] }) {
   return (
     <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -191,23 +197,25 @@ function TasteRow({ items }: { items: PublicProfileTopRatedItem[] }) {
 }
 
 export default function ProfileShowcase({ profile, isOwner }: ProfileShowcaseProps) {
-  const rushmoreSlots = useMemo(() => {
-    if (!profile) return [] as MountRushmoreSlot[]
+  type RushmoreTab = "movie" | "tv" | "book"
+  const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
+  const [visible, setVisible] = useState(true)
 
-    return [1, 2, 3, 4].map((position) => {
-      const found = profile.mount_rushmore.find((slot) => slot.position === position)
-      return (
-        found || {
-          position: position as 1 | 2 | 3 | 4,
-          media_id: null,
-          media_type: null,
-          title: null,
-          year: null,
-          poster_path: null,
-        }
-      )
-    })
-  }, [profile])
+  const rushmoreSlots = useMemo(() => {
+    if (!profile) return [] as Array<MountRushmoreSlot | null>
+
+    return [1, 2, 3, 4].map((position) =>
+      profile.mount_rushmore.find(
+        (slot) => slot.media_type === activeTab && slot.position === position
+      ) ?? null
+    )
+  }, [activeTab, profile])
+
+  useEffect(() => {
+    setVisible(false)
+    const timeoutId = window.setTimeout(() => setVisible(true), 120)
+    return () => window.clearTimeout(timeoutId)
+  }, [activeTab])
 
   if (!profile) {
     return (
@@ -221,13 +229,13 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
   }
 
   const identityName = profile.display_name || profile.username
-  const hasRushmore = profile.mount_rushmore.length > 0
-  const fallbackTiles = [
-    profile.favourite_film,
-    profile.favourite_series,
-    profile.favourite_book,
-    null,
-  ]
+  const hasRushmore = profile.mount_rushmore.some((slot) => slot.media_type === activeTab)
+  const emptyTabMessage =
+    activeTab === "movie"
+      ? "Build your top 4 films"
+      : activeTab === "tv"
+        ? "Build your top 4 series"
+        : "Build your top 4 books"
 
   const stats = [
     { label: "Films", value: profile.stats.films },
@@ -286,36 +294,73 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
 
           <div className="mt-8 border-t border-white/8 pt-4">
             <SectionHeader>Mount Rushmore</SectionHeader>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {hasRushmore
-                ? rushmoreSlots.map((slot) => {
-                    const src = slot.media_id ? getPosterUrl(slot.poster_path, "w342") : null
-                    return (
-                      <div key={slot.position}>
-                        {slot.media_id ? (
-                          <>
-                            <PosterTile
-                              src={src}
-                              alt={slot.title || `Rushmore slot ${slot.position}`}
-                              title={slot.title || "Rushmore title"}
-                              year={slot.year}
-                            />
-                            <div className="mt-2 min-h-[32px] px-1">
-                              <p className="line-clamp-2 text-xs font-medium text-white/82">{slot.title || "Rushmore title"}</p>
-                              <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-white/40">{slot.year || "—"}</p>
-                            </div>
-                          </>
-                        ) : (
-                          <EmptyRushmoreTile />
-                        )}
-                      </div>
-                    )
-                  })
-                : fallbackTiles.map((text, index) => (
-                    <div key={`fallback-${index}`}>
-                      <EmptyRushmoreTile text={text} />
-                    </div>
-                  ))}
+            <div className="mt-4 flex gap-1">
+              {([
+                { key: "movie", label: "Films" },
+                { key: "tv", label: "Series" },
+                { key: "book", label: "Books" },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    border: "none",
+                    transition: "all 0.15s ease",
+                    background:
+                      activeTab === tab.key ? "rgba(255,255,255,0.14)" : "transparent",
+                    color:
+                      activeTab === tab.key
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(255,255,255,0.35)",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="mt-4"
+              style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}
+            >
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {rushmoreSlots.map((slot, index) => (
+                  <div key={`${activeTab}-${index + 1}`}>
+                    {slot ? (
+                      <>
+                        <PosterTile
+                          src={getRushmorePosterSrc(slot)}
+                          alt={slot.title || `Rushmore slot ${slot.position}`}
+                          title={slot.title || "Rushmore title"}
+                          year={slot.year}
+                        />
+                        <div className="mt-2 min-h-[32px] px-1">
+                          <p className="line-clamp-2 text-xs font-medium text-white/82">
+                            {slot.title || "Rushmore title"}
+                          </p>
+                          <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-white/40">
+                            {slot.year || "—"}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyRushmoreTile />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {!hasRushmore ? (
+                <p className="mt-3 text-center text-[13px] italic text-white/30">
+                  {emptyTabMessage}
+                </p>
+              ) : null}
             </div>
 
             {!hasRushmore && isOwner ? (

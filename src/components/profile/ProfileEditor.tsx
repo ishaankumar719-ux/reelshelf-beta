@@ -37,17 +37,6 @@ function getInitials(name: string) {
   return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase()
 }
 
-function emptyRushmoreSlots(): MountRushmoreSlot[] {
-  return [1, 2, 3, 4].map((position) => ({
-    position: position as 1 | 2 | 3 | 4,
-    media_id: null,
-    media_type: null,
-    title: null,
-    year: null,
-    poster_path: null,
-  }))
-}
-
 function validateWebsite(value: string) {
   const trimmed = value.trim()
 
@@ -121,8 +110,8 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const [isPublic, setIsPublic] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
-  const [rushmore, setRushmore] = useState<MountRushmoreSlot[]>(emptyRushmoreSlots)
-  const [originalRushmore, setOriginalRushmore] = useState<MountRushmoreSlot[]>(emptyRushmoreSlots)
+  const [rushmore, setRushmore] = useState<MountRushmoreSlot[]>([])
+  const [originalRushmore, setOriginalRushmore] = useState<MountRushmoreSlot[]>([])
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
   const [originalUsername, setOriginalUsername] = useState("")
   const [loadedProfile, setLoadedProfile] = useState<OwnerProfileSettings | null>(null)
@@ -161,6 +150,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
           .from("mount_rushmore")
           .select("position, media_id, media_type, title, year, poster_path")
           .eq("user_id", userId)
+          .order("media_type", { ascending: true })
           .order("position", { ascending: true }),
         client
           .from("diary_entries")
@@ -183,19 +173,20 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       console.log("[PROFILE LOAD] row:", data || null)
       console.log("[PROFILE LOAD] error:", "none")
       console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
-      const normalizedRushmore = emptyRushmoreSlots().map((slot) => {
-        const existing = (rushmoreRows || []).find((row) => row.position === slot.position)
-        return existing
-          ? {
-              position: slot.position,
-              media_id: existing.media_id,
-              media_type: existing.media_type,
-              title: existing.title,
-              year: existing.year,
-              poster_path: existing.poster_path,
-            }
-          : slot
-      })
+      const normalizedRushmore = ((rushmoreRows || []) as Array<{
+        position: 1 | 2 | 3 | 4
+        media_id: string | null
+        media_type: "movie" | "tv" | "book" | null
+        title: string | null
+        year: string | null
+        poster_path: string | null
+      }>).filter(
+        (slot): slot is MountRushmoreSlot =>
+          slot.position >= 1 &&
+          slot.position <= 4 &&
+          (slot.media_type === "movie" || slot.media_type === "tv" || slot.media_type === "book") &&
+          typeof slot.media_id === "string"
+      )
 
       setLoadedProfile({
         id: settings.id || userId,
@@ -382,17 +373,22 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       console.log("[PROFILE SAVE] Returned row:", savedProfileRow)
 
       const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
-      const removedPositions = originalRushmore
-        .filter((slot) => slot.media_id !== null)
-        .filter((originalSlot) => !filledSlots.find((slot) => slot.position === originalSlot.position))
-        .map((slot) => slot.position)
+      const removedSlots = originalRushmore.filter(
+        (originalSlot) =>
+          !filledSlots.find(
+            (slot) =>
+              slot.position === originalSlot.position &&
+              slot.media_type === originalSlot.media_type
+          )
+      )
 
-      if (removedPositions.length > 0) {
+      for (const slot of removedSlots) {
         const { error: deleteRushmoreError } = await supabase
           .from("mount_rushmore")
           .delete()
           .eq("user_id", userId)
-          .in("position", removedPositions)
+          .eq("position", slot.position)
+          .eq("media_type", slot.media_type)
 
         if (deleteRushmoreError) {
           console.error("[RUSHMORE SAVE] Error:", deleteRushmoreError)
@@ -411,7 +407,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
             year: slot.year,
             poster_path: slot.poster_path,
           })),
-          { onConflict: "user_id,position" }
+          { onConflict: "user_id,position,media_type" }
         )
 
         if (upsertRushmoreError) {
@@ -669,7 +665,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.24em] text-white/34">Mount Rushmore</p>
                     <p className="mt-2 text-sm leading-6 text-white/52">
-                      Pick four defining films or series. Search, select, and let ReelShelf fill the poster, title, year, and TMDB details automatically.
+                      Pick four defining films, series, or books. Each tab saves independently, so your top 4 in one category never overwrites another.
                     </p>
                   </div>
                 </div>

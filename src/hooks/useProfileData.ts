@@ -23,8 +23,8 @@ type ProfileRow = {
 
 type MountRushmoreRow = {
   position: number
-  media_id: number
-  media_type: "film" | "series"
+  media_id: string
+  media_type: "movie" | "tv" | "book"
   title: string
   year: string | null
   poster_path: string | null
@@ -41,17 +41,6 @@ type DiaryRow = {
   review: string
   favourite: boolean
   saved_at: string
-}
-
-function emptyRushmore(): MountRushmoreSlot[] {
-  return [1, 2, 3, 4].map((position) => ({
-    position: position as 1 | 2 | 3 | 4,
-    media_id: null,
-    media_type: null,
-    title: null,
-    year: null,
-    poster_path: null,
-  }))
 }
 
 function extractNumericMediaId(value: string) {
@@ -202,6 +191,7 @@ export function useProfileData(username: string): {
           .from("mount_rushmore")
           .select("position, media_id, media_type, title, year, poster_path")
           .eq("user_id", typedProfile.id)
+          .order("media_type", { ascending: true })
           .order("position", { ascending: true }),
         supabase
           .from("diary_entries")
@@ -234,20 +224,20 @@ export function useProfileData(username: string): {
         return
       }
 
-      const rushmore = emptyRushmore()
-
-      for (const row of (rushmoreRows || []) as MountRushmoreRow[]) {
-        if (row.position >= 1 && row.position <= 4) {
-          rushmore[row.position - 1] = {
-            position: row.position as 1 | 2 | 3 | 4,
-            media_id: row.media_id,
-            media_type: row.media_type,
-            title: row.title,
-            year: row.year,
-            poster_path: row.poster_path,
-          }
-        }
-      }
+      const rushmore = ((rushmoreRows || []) as MountRushmoreRow[]).filter(
+        (row): row is MountRushmoreRow =>
+          row.position >= 1 &&
+          row.position <= 4 &&
+          typeof row.media_id === "string" &&
+          (row.media_type === "movie" || row.media_type === "tv" || row.media_type === "book")
+      ).map((row) => ({
+        position: row.position as 1 | 2 | 3 | 4,
+        media_id: row.media_id,
+        media_type: row.media_type,
+        title: row.title,
+        year: row.year,
+        poster_path: row.poster_path,
+      }))
 
       const activityRows = (((diaryRows || []) as unknown) as DiaryRow[])
       const recentActivity: ActivityItem[] = activityRows.slice(0, 8).map((row) => ({

@@ -37,8 +37,8 @@ export interface ProfileData {
 
 export interface MountRushmoreSlot {
   position: 1 | 2 | 3 | 4
-  media_id: number | null
-  media_type: "film" | "series" | null
+  media_id: string | null
+  media_type: "movie" | "tv" | "book" | null
   title: string | null
   year: string | null
   poster_path: string | null
