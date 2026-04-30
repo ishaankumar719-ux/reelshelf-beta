@@ -346,31 +346,40 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     setSaveMessage(null)
 
     try {
-      const payload = {
-        display_name: normalizedDisplayNameValue || null,
-        username: normalizedUsernameValue || null,
-        bio: bio.trim() || null,
-        website_url: websiteUrl.trim() || null,
-        is_public: isPublic,
-        favourite_film: favouriteFilm.trim() || null,
-        favourite_series: favouriteSeries.trim() || null,
-        favourite_book: favouriteBook.trim() || null,
-      }
-      console.log("[PROFILE SAVE] Payload:", payload)
+      const profilePayload: Record<string, unknown> = {}
+
+      profilePayload.display_name = normalizedDisplayNameValue || null
+      profilePayload.username = normalizedUsernameValue || null
+      profilePayload.bio = bio.trim() || null
+      profilePayload.website_url = websiteUrl.trim() || null
+      profilePayload.is_public = isPublic
+
+      console.log(
+        "[PROFILE SAVE] payload being sent:",
+        JSON.stringify(profilePayload, null, 2)
+      )
 
       const { data: savedProfileRow, error: profileError } = await supabase
         .from("profiles")
-        .update(payload)
+        .update(profilePayload)
         .eq("id", userId)
-        .select(PROFILE_SELECT)
+        .select("id, username, display_name, bio, website_url, is_public, avatar_url")
         .single()
-      const typedSavedProfileRow = (savedProfileRow || null) as unknown as OwnerProfileSettings | null
 
       if (profileError) {
-        console.error("[PROFILE SAVE] Error:", profileError)
+        console.error(
+          "[PROFILE SAVE] error:",
+          profileError.message,
+          "| code:",
+          profileError.code,
+          "| details:",
+          profileError.details,
+          "| hint:",
+          profileError.hint
+        )
         throw profileError
       }
-      console.log("[PROFILE SAVE] Returned row:", savedProfileRow)
+      console.log("[PROFILE SAVE] success, returned row:", savedProfileRow)
 
       const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
       const removedSlots = originalRushmore.filter(
@@ -424,7 +433,19 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
       setSaveMessage("Profile updated.")
       setOriginalUsername(normalizedUsernameValue)
       setOriginalRushmore(rushmore)
-      setLoadedProfile(typedSavedProfileRow)
+      setLoadedProfile((current) =>
+        current
+          ? {
+              ...current,
+              username: savedProfileRow.username ?? null,
+              display_name: savedProfileRow.display_name ?? null,
+              avatar_url: savedProfileRow.avatar_url ?? current.avatar_url,
+              bio: savedProfileRow.bio ?? "",
+              website_url: savedProfileRow.website_url ?? "",
+              is_public: savedProfileRow.is_public,
+            }
+          : current
+      )
       router.push(publicProfileHref)
       router.refresh()
     } catch (error) {
