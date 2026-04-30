@@ -346,40 +346,39 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     setSaveMessage(null)
 
     try {
-      const profilePayload: Record<string, unknown> = {}
-
-      profilePayload.display_name = normalizedDisplayNameValue || null
-      profilePayload.username = normalizedUsernameValue || null
-      profilePayload.bio = bio.trim() || null
-      profilePayload.website_url = websiteUrl.trim() || null
-      profilePayload.is_public = isPublic
-
-      console.log(
-        "[PROFILE SAVE] payload being sent:",
-        JSON.stringify(profilePayload, null, 2)
-      )
+      console.log("[PROFILE SAVE] starting")
+      console.log("[PROFILE SAVE] userId:", userId)
+      console.log("[PROFILE SAVE] payload:", {
+        display_name: displayName,
+        username,
+        bio,
+        website_url: websiteUrl,
+        is_public: isPublic,
+      })
 
       const { data: savedProfileRow, error: profileError } = await supabase
         .from("profiles")
-        .update(profilePayload)
+        .update({
+          display_name: displayName?.trim() || null,
+          username: username?.trim().toLowerCase() || null,
+          bio: bio?.trim() || null,
+          website_url: websiteUrl?.trim() || null,
+          is_public: isPublic ?? true,
+        })
         .eq("id", userId)
         .select("id, username, display_name, bio, website_url, is_public, avatar_url")
         .single()
 
+      console.log("[PROFILE SAVE] data:", savedProfileRow)
+      console.log("[PROFILE SAVE] error:", profileError)
+
       if (profileError) {
-        console.error(
-          "[PROFILE SAVE] error:",
-          profileError.message,
-          "| code:",
-          profileError.code,
-          "| details:",
-          profileError.details,
-          "| hint:",
-          profileError.hint
+        setSaveState("error")
+        setSaveMessage(
+          profileError.message || profileError.details || "Could not save your profile."
         )
-        throw profileError
+        return
       }
-      console.log("[PROFILE SAVE] success, returned row:", savedProfileRow)
 
       const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
       const removedSlots = originalRushmore.filter(

@@ -365,13 +365,21 @@ export default function DiaryLogModal({
 
     const { data, error: saveError } = await supabase
       .from("diary_entries")
-      .insert(payload)
+      .upsert(payload, {
+        onConflict: "user_id,media_id",
+        ignoreDuplicates: false,
+      })
       .select(DIARY_SELECT)
       .single<DiaryEntry>();
 
     if (saveError || !data) {
-      console.error("[DIARY SAVE] error:", saveError?.message ?? "Unknown error");
-      setError("Failed to save. Please try again.");
+      console.error(
+        "[DIARY SAVE] error:",
+        saveError?.message ?? "Unknown error",
+        "| code:",
+        saveError?.code ?? "unknown"
+      );
+      setError(saveError?.message || "Failed to save diary entry");
       setSaving(false);
       return;
     }
