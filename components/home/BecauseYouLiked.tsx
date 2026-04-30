@@ -30,9 +30,8 @@ interface RecommendationsResponse {
 
 function recBtn({ teal = false }: { teal?: boolean } = {}) {
   return {
-    width: "86%",
-    padding: "6px 0",
-    borderRadius: "6px",
+    padding: "6px 14px",
+    borderRadius: "7px",
     fontSize: "11px",
     fontWeight: 500,
     cursor: "pointer",
@@ -63,7 +62,7 @@ function RecCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onOpen}
-      style={{ cursor: "pointer" }}
+      style={{ cursor: "pointer", width: "140px", flexShrink: 0 }}
     >
       <div
         style={{
@@ -115,7 +114,7 @@ function RecCard({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: "7px",
+            gap: "8px",
             padding: "10px",
             opacity: hovered ? 1 : 0,
             transition: "opacity 0.15s ease",
@@ -124,10 +123,10 @@ function RecCard({
         >
           <p
             style={{
-              margin: "0 0 2px",
-              fontSize: "13px",
+              margin: "0 0 6px",
+              fontSize: "12px",
               fontWeight: 500,
-              color: "rgba(255,255,255,0.92)",
+              color: "rgba(255,255,255,0.9)",
               textAlign: "center",
               overflow: "hidden",
               display: "-webkit-box",
@@ -165,7 +164,7 @@ function RecCard({
           style={{
             fontSize: "12px",
             fontWeight: 500,
-            color: "rgba(255,255,255,0.78)",
+            color: "rgba(255,255,255,0.65)",
             margin: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -177,7 +176,7 @@ function RecCard({
         <p
           style={{
             fontSize: "10px",
-            color: "rgba(255,255,255,0.38)",
+            color: "rgba(255,255,255,0.32)",
             margin: "2px 0 0",
           }}
         >
@@ -254,9 +253,10 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
     <section
       style={{
         background: "rgba(255,255,255,0.03)",
-        border: "0.5px solid rgba(255,255,255,0.08)",
+        border: "0.5px solid rgba(255,255,255,0.06)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
         borderRadius: "16px",
-        padding: "20px",
+        padding: "24px",
         marginBottom: "40px",
       }}
     >
@@ -298,15 +298,19 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
       {loading ? (
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            display: "flex",
             gap: "14px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {[1, 2, 3, 4, 5, 6].map((item) => (
             <div
               key={item}
               style={{
+                width: "140px",
+                flexShrink: 0,
                 aspectRatio: "2/3",
                 borderRadius: "10px",
                 background: "rgba(255,255,255,0.06)",
@@ -320,9 +324,11 @@ export default function BecauseYouLiked({ diaryEntries }: BecauseYouLikedProps) 
       {!loading && recs.length > 0 ? (
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            display: "flex",
             gap: "14px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {recs.map((film) => (
