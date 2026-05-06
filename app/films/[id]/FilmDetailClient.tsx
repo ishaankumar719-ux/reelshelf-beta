@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import CastSection, { type CastMember } from "../../../components/detail/CastSection";
 import { createClient as createSupabaseClient } from "../../../lib/supabase/client";
 import { useDiaryLog } from "../../../hooks/useDiaryLog";
 
@@ -17,13 +18,6 @@ interface TMDBFilm {
   genres: { id: number; name: string }[];
 }
 
-interface TMDBCastMember {
-  id: number;
-  name: string;
-  character: string;
-  profile_path: string | null;
-}
-
 interface DiaryEntry {
   id: string;
   rating: number | string | null;
@@ -35,7 +29,7 @@ interface DiaryEntry {
 
 interface FilmDetailClientProps {
   film: TMDBFilm;
-  topCast: TMDBCastMember[];
+  topCast: CastMember[];
 }
 
 function slugify(value: string) {
@@ -537,98 +531,7 @@ export default function FilmDetailClient({
           </p>
         </section>
 
-        {topCast.length > 0 ? (
-          <section style={{ margin: "32px 0" }}>
-            <h2
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.35)",
-                marginBottom: 12,
-              }}
-            >
-              Cast
-            </h2>
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-                flexWrap: "wrap",
-                marginTop: 12,
-              }}
-            >
-              {topCast.map((member) => (
-                <div key={member.id} style={{ textAlign: "center", width: 72 }}>
-                  <div
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: "50%",
-                      overflow: "hidden",
-                      background: "#1a1a2e",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {member.profile_path ? (
-                      <img
-                        src={`https://image.tmdb.org/t/p/w185${member.profile_path}`}
-                        alt={member.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "rgba(255,255,255,0.15)",
-                          fontSize: 22,
-                        }}
-                      >
-                        {member.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: "rgba(255,255,255,0.75)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      margin: 0,
-                    }}
-                  >
-                    {member.name}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 10,
-                      color: "rgba(255,255,255,0.35)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      marginTop: 2,
-                      marginBottom: 0,
-                    }}
-                  >
-                    {member.character}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {topCast.length > 0 ? <CastSection cast={topCast} /> : null}
       </div>
     </main>
   );

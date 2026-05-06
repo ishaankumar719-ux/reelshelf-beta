@@ -19,6 +19,7 @@ interface TMDBCastMember {
   name: string;
   character: string;
   profile_path: string | null;
+  order: number;
 }
 
 export default async function FilmDetailPage({
@@ -51,7 +52,16 @@ export default async function FilmDetailPage({
     notFound();
   }
 
-  const topCast = (credits.cast ?? []).slice(0, 5);
+  const topCast = (credits.cast ?? [])
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 12)
+    .map((member) => ({
+      id: member.id,
+      name: member.name,
+      character: member.character,
+      profile_path: member.profile_path ?? null,
+      order: member.order,
+    }));
 
   return <FilmDetailClient film={film} topCast={topCast} />;
 }

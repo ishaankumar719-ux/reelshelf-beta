@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import CastSection, { type CastMember } from "../../../components/detail/CastSection";
 import { MediaCard } from "../../../src/components/ui/MediaCard";
 import { getPosterUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
@@ -27,6 +28,23 @@ type Provider = {
   provider_id: number;
   provider_name: string;
   logo_path: string;
+};
+
+type TMDBAggregateCastMember = {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  total_episode_count?: number | null;
+  roles?: Array<{ character?: string | null }>;
+  character?: string | null;
+};
+
+type TMDBStandardCastMember = {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  order?: number;
+  character?: string | null;
 };
 
 function getCreatorName(
@@ -439,6 +457,7 @@ function SeriesHero({
   year,
   creator,
   overview,
+  topCast,
   posterUrl,
   genres,
   seasonsLabel,
@@ -449,6 +468,7 @@ function SeriesHero({
   year: string;
   creator: string;
   overview: string;
+  topCast: CastMember[];
   posterUrl?: string;
   genres: string[];
   seasonsLabel: string;
@@ -668,6 +688,8 @@ function SeriesHero({
               {overview}
             </p>
           </section>
+
+          {topCast.length > 0 ? <CastSection cast={topCast} /> : null}
         </div>
       </div>
     </section>
@@ -679,6 +701,7 @@ function SeriesDetailContent({
   year,
   creator,
   overview,
+  topCast,
   posterUrl,
   genres,
   seasonsLabel,
@@ -695,6 +718,7 @@ function SeriesDetailContent({
   year: string;
   creator: string;
   overview: string;
+  topCast: CastMember[];
   posterUrl?: string;
   genres: string[];
   seasonsLabel: string;
@@ -748,13 +772,14 @@ function SeriesDetailContent({
 
       <BackButton />
 
-      <SeriesHero
-        title={title}
-        year={year}
-        creator={creator}
-        overview={overview}
-        posterUrl={posterUrl}
-        genres={genres}
+        <SeriesHero
+          title={title}
+          year={year}
+          creator={creator}
+          overview={overview}
+          topCast={topCast}
+          posterUrl={posterUrl}
+          genres={genres}
         seasonsLabel={seasonsLabel}
         runtimeLabel={runtimeLabel}
         actionSeries={actionSeries}
@@ -827,6 +852,75 @@ async function loadSeasonDetails(
     }));
 }
 
+async function fetchSeriesTopCast(tmdbId: number): Promise<CastMember[]> {
+  const apiKey = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY;
+
+  if (!apiKey) {
+    return [];
+  }
+
+  try {
+    const aggregateRes = await fetch(
+      `https://api.themoviedb.org/3/tv/${tmdbId}/aggregate_credits?api_key=${apiKey}&language=en-US`,
+      { next: { revalidate: 86400 } }
+    );
+
+    if (aggregateRes.ok) {
+      const aggregateData = (await aggregateRes.json()) as {
+        cast?: TMDBAggregateCastMember[];
+      };
+
+      const aggregateCast = (aggregateData.cast ?? [])
+        .sort(
+          (left, right) =>
+            (right.total_episode_count ?? 0) - (left.total_episode_count ?? 0)
+        )
+        .slice(0, 12)
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          character: member.roles?.[0]?.character ?? member.character ?? "",
+          profile_path: member.profile_path ?? null,
+          order: 0,
+        }));
+
+      if (aggregateCast.length > 0) {
+        return aggregateCast;
+      }
+    }
+  } catch {
+    // fall through to standard credits
+  }
+
+  try {
+    const creditsRes = await fetch(
+      `https://api.themoviedb.org/3/tv/${tmdbId}/credits?api_key=${apiKey}&language=en-US`,
+      { next: { revalidate: 86400 } }
+    );
+
+    if (!creditsRes.ok) {
+      return [];
+    }
+
+    const creditsData = (await creditsRes.json()) as {
+      cast?: TMDBStandardCastMember[];
+    };
+
+    return (creditsData.cast ?? [])
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+      .slice(0, 12)
+      .map((member) => ({
+        id: member.id,
+        name: member.name,
+        character: member.character ?? "",
+        profile_path: member.profile_path ?? null,
+        order: member.order ?? 0,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export default async function SeriesDetailPage({
   params,
 }: {
@@ -851,10 +945,11 @@ export default async function SeriesDetailPage({
   const localShow = getLocalSeriesByRouteId(normalizedId);
 
   if (localShow) {
-    const [details, providers, recommendations] = await Promise.all([
+    const [details, providers, recommendations, topCast] = await Promise.all([
       getTVDetails(localShow.tmdbId),
       getTVWatchProviders(localShow.tmdbId),
       getTVRecommendations(localShow.tmdbId),
+      fetchSeriesTopCast(localShow.tmdbId),
     ]);
 
     const ukProviders = providers?.results?.GB;
@@ -878,6 +973,7 @@ export default async function SeriesDetailPage({
         year={localShow.year}
         creator={creator}
         overview={details?.overview || localShow.overview}
+        topCast={topCast}
         posterUrl={posterUrl || undefined}
         genres={genreNames}
         seasonsLabel={getSeasonLabel(seasonCount, localShow.seasons)}
@@ -908,10 +1004,11 @@ export default async function SeriesDetailPage({
   }
 
   const tmdbId = Number(normalizedId.replace("tmdb-", ""));
-  const [show, providers, recommendations] = await Promise.all([
+  const [show, providers, recommendations, topCast] = await Promise.all([
     getTVDetails(tmdbId),
     getTVWatchProviders(tmdbId),
     getTVRecommendations(tmdbId),
+    fetchSeriesTopCast(tmdbId),
   ]);
 
   if (!show) {
@@ -937,6 +1034,7 @@ export default async function SeriesDetailPage({
       year={showYear}
       creator={creator}
       overview={show.overview || "No overview available."}
+      topCast={topCast}
       posterUrl={posterUrl || undefined}
       genres={genreNames}
       seasonsLabel={getSeasonLabel(seasonCount)}
