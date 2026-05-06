@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { getPosterUrl } from "@/src/lib/tmdb-image"
 import type {
   MountRushmoreSlot,
   PublicProfileActivityItem,
@@ -15,17 +15,28 @@ interface ProfileShowcaseProps {
   isOwner: boolean
 }
 
+type RushmoreTab = "movie" | "tv" | "book"
+
 const INITIAL_COLORS = ["#1D9E75", "#534AB7", "#D85A30", "#D4537E"] as const
+
+function sectionLabelStyle() {
+  return {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.07em",
+    textTransform: "uppercase" as const,
+    color: "rgba(255,255,255,0.3)",
+    marginBottom: 16,
+    display: "block",
+  }
+}
 
 function getInitials(displayName: string | null, username: string) {
   const source = (displayName || username).trim()
   if (!source) return "R"
 
   const parts = source.split(/\s+/).filter(Boolean)
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase()
-  }
-
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return `${parts[0]?.[0] || ""}${parts[1]?.[0] || ""}`.toUpperCase()
 }
 
@@ -34,16 +45,25 @@ function getAvatarColor(username: string) {
   return INITIAL_COLORS[fallback.charCodeAt(0) % INITIAL_COLORS.length] || INITIAL_COLORS[0]
 }
 
-function formatJoinYear(value: string) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "Joined recently" : `joined ${date.getFullYear()}`
+function parseRating(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return null
+  const parsed = typeof value === "string" ? parseFloat(value) : value
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-function formatAverageRating(value: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) : "—"
+function getRushmorePosterSrc(slot: MountRushmoreSlot) {
+  if (!slot.poster_path) return null
+  if (slot.poster_path.startsWith("http")) return slot.poster_path
+  return `https://image.tmdb.org/t/p/w342${slot.poster_path}`
 }
 
-function HeroAvatar({
+function getRouteForMedia(mediaType: "movie" | "tv" | "book", mediaId: string) {
+  if (mediaType === "tv") return `/series/${mediaId}`
+  if (mediaType === "book") return `/books/${mediaId}`
+  return `/films/${mediaId}`
+}
+
+function Avatar({
   avatarUrl,
   displayName,
   username,
@@ -54,142 +74,261 @@ function HeroAvatar({
 }) {
   const [imgError, setImgError] = useState(false)
   const initials = getInitials(displayName, username)
-  const bgColor = getAvatarColor(username)
 
   return (
     <div
-      className="relative h-[72px] w-[72px] overflow-hidden rounded-full border border-white/10 shadow-[0_18px_45px_rgba(0,0,0,0.36)]"
-      style={{ background: `linear-gradient(180deg, ${bgColor}, rgba(10,10,20,0.92))` }}
+      style={{
+        width: 72,
+        height: 72,
+        borderRadius: "50%",
+        overflow: "hidden",
+        flexShrink: 0,
+        border: "1px solid rgba(255,255,255,0.1)",
+        background: `linear-gradient(135deg, ${getAvatarColor(username)}, rgba(10,10,20,0.92))`,
+        boxShadow: "0 18px 45px rgba(0,0,0,0.36)",
+      }}
     >
-      {avatarUrl ? (
+      {avatarUrl && !imgError ? (
         <img
           src={avatarUrl}
           alt={displayName || username}
-          onError={(event) => {
-            setImgError(true)
-            event.currentTarget.style.display = "none"
-            event.currentTarget.nextElementSibling?.removeAttribute("style")
-          }}
+          onError={() => setImgError(true)}
           style={{
-            width: "72px",
-            height: "72px",
-            borderRadius: "50%",
+            width: "100%",
+            height: "100%",
             objectFit: "cover",
-            display: imgError ? "none" : "block",
+            display: "block",
           }}
         />
-      ) : null}
-      <div
-        className="h-full w-full items-center justify-center text-lg font-semibold tracking-[0.08em] text-white/92"
-        style={{ display: avatarUrl && !imgError ? "none" : "flex" }}
-      >
-        {initials}
-      </div>
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            color: "rgba(255,255,255,0.92)",
+          }}
+        >
+          {initials}
+        </div>
+      )}
     </div>
   )
 }
 
-function PosterTile({
-  src,
-  alt,
-  title,
-  year,
-  width = "w-full",
-}: {
-  src: string | null
-  alt: string
-  title: string
-  year?: string | number | null
-  width?: string
-}) {
+function PosterFallback({ title }: { title: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(180deg,#141622 0%,#0b0c14 100%)",
+        color: "rgba(255,255,255,0.22)",
+        fontSize: 24,
+        fontWeight: 700,
+      }}
+    >
+      {title.charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
+function RushmoreCard({ slot }: { slot: MountRushmoreSlot }) {
+  const router = useRouter()
   const [imgError, setImgError] = useState(false)
+  const posterSrc = getRushmorePosterSrc(slot)
+  const title = slot.title || "Untitled"
+  const mediaType = slot.media_type || "movie"
+  const routeId = slot.media_id || ""
 
   return (
-    <div className={width}>
-      <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-white/8 bg-[#10111c]">
-        {src && !imgError ? (
+    <button
+      type="button"
+      onClick={() => {
+        if (!routeId) return
+        router.push(getRouteForMedia(mediaType, routeId))
+      }}
+      style={{
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: routeId ? "pointer" : "default",
+        textAlign: "left",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: "2 / 3",
+          borderRadius: 10,
+          overflow: "hidden",
+          background: "#10111c",
+          transition: "transform 0.15s ease",
+        }}
+        className="group"
+      >
+        {posterSrc && !imgError ? (
           <img
-            src={src}
-            alt={alt}
-            className="h-full w-full object-cover"
+            src={posterSrc}
+            alt={title}
             onError={() => setImgError(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+            className="transition duration-150 ease-out group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(180deg,#141622_0%,#0b0c14_100%)] px-4 text-center">
-            <div>
-              <p className="line-clamp-2 text-xs font-medium text-white/72">{title}</p>
-              {year ? <p className="mt-1 text-[10px] text-white/42">{year}</p> : null}
-            </div>
-          </div>
+          <PosterFallback title={title} />
         )}
       </div>
-    </div>
+      <p
+        style={{
+          fontSize: 11,
+          color: "rgba(255,255,255,0.82)",
+          margin: "8px 0 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {title}
+      </p>
+      <p
+        style={{
+          fontSize: 10,
+          color: "rgba(255,255,255,0.35)",
+          margin: "2px 0 0",
+        }}
+      >
+        {slot.year || "—"}
+      </p>
+    </button>
   )
 }
 
-function ActivityCard({ item }: { item: PublicProfileActivityItem }) {
+function EmptyRushmoreTile() {
+  return (
+    <div
+      style={{
+        aspectRatio: "2 / 3",
+        borderRadius: 10,
+        border: "1.5px dashed rgba(255,255,255,0.1)",
+        background: "rgba(255,255,255,0.02)",
+      }}
+    />
+  )
+}
+
+function RecentItem({ item }: { item: PublicProfileActivityItem }) {
+  const router = useRouter()
   const [imgError, setImgError] = useState(false)
+  const title = item.title
+  const route = getRouteForMedia(item.media_type, item.media_id)
 
   return (
-    <div className="w-20 shrink-0">
-      <div className="group relative aspect-[2/3] overflow-hidden rounded-xl border border-white/8 bg-[#10111c]">
+    <button
+      type="button"
+      onClick={() => router.push(route)}
+      style={{
+        width: 80,
+        flexShrink: 0,
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: "2 / 3",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "#10111c",
+        }}
+      >
         {item.poster && !imgError ? (
           <img
             src={item.poster}
-            alt={item.title}
-            className="h-full w-full object-cover"
+            alt={title}
             onError={() => setImgError(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(180deg,#141622_0%,#0b0c14_100%)] px-2 text-center">
-            <p className="line-clamp-3 text-[10px] leading-4 text-white/68">{item.title}</p>
-          </div>
+          <PosterFallback title={title} />
         )}
-
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-2 py-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-          <p className="line-clamp-2 text-[10px] leading-4 text-white/90">{item.title}</p>
-        </div>
       </div>
-    </div>
+      <p
+        style={{
+          fontSize: 11,
+          color: "rgba(255,255,255,0.78)",
+          margin: "5px 0 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {title}
+      </p>
+    </button>
   )
 }
 
-function EmptyRushmoreTile({ text }: { text?: string | null }) {
+function HighestRatedRow({ items }: { items: PublicProfileTopRatedItem[] }) {
+  const [errors, setErrors] = useState<Record<number, boolean>>({})
+
   return (
-    <div className="aspect-[2/3] overflow-hidden rounded-xl border border-dashed border-white/14 bg-[#141522]">
-      <div className="flex h-full items-center justify-center px-4 text-center">
-        {text ? (
-          <p className="line-clamp-3 text-sm font-medium text-white/68">{text}</p>
-        ) : (
-          <div className="flex flex-col items-center gap-3 text-white/34">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-              <path d="M12 7v10" />
-              <path d="M7 12h10" />
-            </svg>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function SectionHeader({ children }: { children: string }) {
-  return <p className="text-[10px] uppercase tracking-[0.24em] text-white/30">{children}</p>
-}
-
-function getRushmorePosterSrc(slot: MountRushmoreSlot) {
-  if (!slot.poster_path) return null
-  if (slot.poster_path.startsWith("http")) return slot.poster_path
-  return getPosterUrl(slot.poster_path, "w342")
-}
-
-function TasteRow({ items }: { items: PublicProfileTopRatedItem[] }) {
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))",
+        gap: 10,
+      }}
+    >
       {items.map((item, index) => (
-        <div key={`${item.title}-${index}`} className="w-[60px] shrink-0">
-          <PosterTile src={item.poster} alt={item.title} title={item.title} width="w-[60px]" />
-          <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-white/72">{item.title}</p>
+        <div
+          key={`${item.title}-${index}`}
+          style={{
+            position: "relative",
+            width: 64,
+            aspectRatio: "2 / 3",
+            borderRadius: 8,
+            overflow: "hidden",
+            background: "#10111c",
+          }}
+        >
+          {item.poster && !errors[index] ? (
+            <img
+              src={item.poster}
+              alt={item.title}
+              onError={() => setErrors((current) => ({ ...current, [index]: true }))}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <PosterFallback title={item.title} />
+          )}
         </div>
       ))}
     </div>
@@ -197,13 +336,17 @@ function TasteRow({ items }: { items: PublicProfileTopRatedItem[] }) {
 }
 
 export default function ProfileShowcase({ profile, isOwner }: ProfileShowcaseProps) {
-  type RushmoreTab = "movie" | "tv" | "book"
   const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
   const [visible, setVisible] = useState(true)
 
+  useEffect(() => {
+    setVisible(false)
+    const timeoutId = window.setTimeout(() => setVisible(true), 100)
+    return () => window.clearTimeout(timeoutId)
+  }, [activeTab])
+
   const rushmoreSlots = useMemo(() => {
     if (!profile) return [] as Array<MountRushmoreSlot | null>
-
     return [1, 2, 3, 4].map((position) =>
       profile.mount_rushmore.find(
         (slot) => slot.media_type === activeTab && slot.position === position
@@ -211,25 +354,61 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
     )
   }, [activeTab, profile])
 
-  useEffect(() => {
-    setVisible(false)
-    const timeoutId = window.setTimeout(() => setVisible(true), 120)
-    return () => window.clearTimeout(timeoutId)
-  }, [activeTab])
+  if (!profile) return null
 
-  if (!profile) {
+  const identityName = profile.display_name || profile.username
+  const favourites = [
+    profile.favourite_film ? `🎬 ${profile.favourite_film}` : null,
+    profile.favourite_series ? `📺 ${profile.favourite_series}` : null,
+    profile.favourite_book ? `📚 ${profile.favourite_book}` : null,
+  ].filter((value): value is string => Boolean(value))
+
+  if (!profile.is_public && !isOwner) {
     return (
-      <section className="mx-auto max-w-[980px] pb-16">
-        <div className="rounded-[28px] border border-white/10 bg-[#0a0a14] px-6 py-14 text-center shadow-[0_24px_80px_rgba(0,0,0,0.34)]">
-          <h1 className="text-xl font-medium text-white/88">No user found</h1>
-          <p className="mt-3 text-sm text-white/52">That profile doesn’t exist or is no longer available.</p>
+      <section
+        style={{
+          maxWidth: 1020,
+          margin: "0 auto",
+          padding: "32px 20px 48px",
+          background: "#08080f",
+        }}
+      >
+        <div
+          style={{
+            minHeight: "50vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            gap: 16,
+          }}
+        >
+          <Avatar
+            avatarUrl={profile.avatar_url}
+            displayName={profile.display_name}
+            username={profile.username}
+          />
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.92)", margin: 0 }}>
+              {identityName}
+            </h1>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", margin: "6px 0 0" }}>
+              @{profile.username} has a private profile
+            </p>
+          </div>
         </div>
       </section>
     )
   }
 
-  const identityName = profile.display_name || profile.username
-  const hasRushmore = profile.mount_rushmore.some((slot) => slot.media_type === activeTab)
+  const stats = [
+    { label: "Films", value: profile.stats.films },
+    { label: "Series", value: profile.stats.series },
+    { label: "Reviews", value: profile.stats.reviews },
+    { label: "Avg rating", value: profile.stats.avg_rating !== null ? `${profile.stats.avg_rating} ★` : "—" },
+  ]
+
   const emptyTabMessage =
     activeTab === "movie"
       ? "Build your top 4 films"
@@ -237,163 +416,246 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
         ? "Build your top 4 series"
         : "Build your top 4 books"
 
-  const stats = [
-    { label: "Films", value: profile.stats.films },
-    { label: "Series", value: profile.stats.series },
-    { label: "Reviews", value: profile.stats.reviews },
-    { label: "Avg rating", value: formatAverageRating(profile.stats.avg_rating) },
-  ]
-
   return (
-    <section className="mx-auto max-w-[980px] pb-16">
-      <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[#080910] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
-        <div className="relative h-40 bg-[#0a0a14] px-5 pt-4 sm:px-7">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.06),transparent_28%),linear-gradient(180deg,rgba(12,14,22,0.7),rgba(10,10,20,0.95))]" />
+    <section
+      style={{
+        maxWidth: 1020,
+        margin: "0 auto",
+        padding: "32px 20px 48px",
+        background: "#08080f",
+      }}
+    >
+      <div
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "0.5px solid rgba(255,255,255,0.08)",
+          borderRadius: 28,
+          padding: 24,
+          boxShadow: "0 28px 90px rgba(0,0,0,0.42)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, minWidth: 0 }}>
+            <Avatar
+              avatarUrl={profile.avatar_url}
+              displayName={profile.display_name}
+              username={profile.username}
+            />
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.92)", margin: 0 }}>
+                {identityName}
+              </h1>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", margin: "4px 0 0" }}>
+                @{profile.username}
+              </p>
+              {profile.bio ? (
+                <p
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    color: "rgba(255,255,255,0.6)",
+                    margin: "10px 0 0",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    maxWidth: 560,
+                  }}
+                >
+                  {profile.bio}
+                </p>
+              ) : null}
+              {profile.website_url ? (
+                <a
+                  href={profile.website_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    marginTop: 10,
+                    fontSize: 12,
+                    color: "#67d7b2",
+                    textDecoration: "none",
+                  }}
+                >
+                  {profile.website_url}
+                </a>
+              ) : null}
+            </div>
+          </div>
+
           {isOwner ? (
             <Link
               href="/profile"
-              className="relative z-10 inline-flex h-9 items-center rounded-full border border-white/12 bg-black/25 px-4 text-[11px] uppercase tracking-[0.16em] text-white/82"
+              style={{
+                display: "inline-flex",
+                height: 36,
+                alignItems: "center",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(0,0,0,0.25)",
+                padding: "0 16px",
+                fontSize: 11,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.82)",
+                textDecoration: "none",
+                flexShrink: 0,
+              }}
             >
               Edit profile
             </Link>
           ) : null}
-          <div className="absolute bottom-0 left-5 z-10 translate-y-1/2 sm:left-7">
-            <HeroAvatar avatarUrl={profile.avatar_url} displayName={profile.display_name} username={profile.username} />
-          </div>
         </div>
 
-        <div className="px-5 pb-8 pt-11 sm:px-7">
-          <div className="max-w-[720px]">
-            <h1 className="text-[17px] font-medium text-white/90">{identityName}</h1>
-            <p className="mt-1 text-xs text-white/35">
-              @{profile.username} · {formatJoinYear(profile.created_at)}
-            </p>
-            {profile.bio ? (
-              <p className="mt-3 line-clamp-2 max-w-[660px] text-[13px] leading-6 text-white/55">{profile.bio}</p>
-            ) : null}
-            {profile.website_url ? (
-              <a
-                href={profile.website_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex text-xs text-[#67d7b2] transition hover:text-[#8be7c8]"
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 12,
+            marginTop: 28,
+          }}
+        >
+          {stats.map((item) => (
+            <div
+              key={item.label}
+              style={{
+                textAlign: "center",
+                border: "0.5px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+                borderRadius: 14,
+                padding: "16px 12px",
+              }}
+            >
+              <p style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: 0 }}>
+                {item.value}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)",
+                  margin: "6px 0 0",
+                }}
               >
-                {profile.website_url}
-              </a>
-            ) : null}
-          </div>
+                {item.label}
+              </p>
+            </div>
+          ))}
+        </div>
 
-          <div className="mt-6 flex items-start justify-between gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {stats.map((item) => (
-              <div key={item.label} className="min-w-[72px] shrink-0 text-center">
-                <p className="text-base font-medium text-white/85">{item.value}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/30">{item.label}</p>
-              </div>
+        <div style={{ marginTop: 40 }}>
+          <span style={sectionLabelStyle()}>Mount Rushmore</span>
+          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+            {([
+              { key: "movie", label: "Films" },
+              { key: "tv", label: "Series" },
+              { key: "book", label: "Books" },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  padding: "5px 14px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  border: "none",
+                  transition: "all 0.15s ease",
+                  background:
+                    activeTab === tab.key ? "rgba(255,255,255,0.14)" : "transparent",
+                  color:
+                    activeTab === tab.key
+                      ? "rgba(255,255,255,0.88)"
+                      : "rgba(255,255,255,0.35)",
+                }}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
 
-          <div className="mt-8 border-t border-white/8 pt-4">
-            <SectionHeader>Mount Rushmore</SectionHeader>
-            <div className="mt-4 flex gap-1">
-              {([
-                { key: "movie", label: "Films" },
-                { key: "tv", label: "Series" },
-                { key: "book", label: "Books" },
-              ] as const).map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    padding: "5px 14px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background:
-                      activeTab === tab.key ? "rgba(255,255,255,0.14)" : "transparent",
-                    color:
-                      activeTab === tab.key
-                        ? "rgba(255,255,255,0.88)"
-                        : "rgba(255,255,255,0.35)",
-                  }}
-                >
-                  {tab.label}
-                </button>
+          <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
+              {rushmoreSlots.map((slot, index) => (
+                <div key={`${activeTab}-${index + 1}`}>
+                  {slot ? <RushmoreCard slot={slot} /> : <EmptyRushmoreTile />}
+                </div>
               ))}
             </div>
 
-            <div
-              className="mt-4"
-              style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}
-            >
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {rushmoreSlots.map((slot, index) => (
-                  <div key={`${activeTab}-${index + 1}`}>
-                    {slot ? (
-                      <>
-                        <PosterTile
-                          src={getRushmorePosterSrc(slot)}
-                          alt={slot.title || `Rushmore slot ${slot.position}`}
-                          title={slot.title || "Rushmore title"}
-                          year={slot.year}
-                        />
-                        <div className="mt-2 min-h-[32px] px-1">
-                          <p className="line-clamp-2 text-xs font-medium text-white/82">
-                            {slot.title || "Rushmore title"}
-                          </p>
-                          <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-white/40">
-                            {slot.year || "—"}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <EmptyRushmoreTile />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {!hasRushmore ? (
-                <p className="mt-3 text-center text-[13px] italic text-white/30">
-                  {emptyTabMessage}
-                </p>
-              ) : null}
-            </div>
-
-            {!hasRushmore && isOwner ? (
-              <div className="mt-4">
-                <Link href="/profile" className="text-sm text-[#67d7b2] transition hover:text-[#8be7c8]">
-                  Add your picks →
-                </Link>
-              </div>
+            {rushmoreSlots.every((slot) => slot === null) ? (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.3)",
+                  fontStyle: "italic",
+                  textAlign: "center",
+                  margin: "12px 0 0",
+                }}
+              >
+                {emptyTabMessage}
+              </p>
             ) : null}
           </div>
-
-          {profile.recent_activity.length > 0 ? (
-            <div className="mt-8 border-t border-white/8 pt-4">
-              <SectionHeader>Recently watched</SectionHeader>
-              <div className="-mx-5 mt-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-7 sm:px-7">
-                <div className="flex gap-3">
-                  {profile.recent_activity.map((item) => (
-                    <ActivityCard key={`${item.title}-${item.watched_date || item.id}`} item={item} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {profile.stats.films >= 10 && profile.highest_rated.length > 0 ? (
-            <div className="mt-8 border-t border-white/8 pt-4">
-              <SectionHeader>Highest rated</SectionHeader>
-              <div className="mt-4">
-                <TasteRow items={profile.highest_rated} />
-              </div>
-            </div>
-          ) : null}
         </div>
+
+        {profile.recent_activity.length > 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>Recently watched</span>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                paddingBottom: 4,
+              }}
+              className="[&::-webkit-scrollbar]:hidden"
+            >
+              {profile.recent_activity.map((item) => (
+                <RecentItem key={`${item.id}-${item.media_id}`} item={item} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {profile.highest_rated.length > 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>Highest rated</span>
+            <HighestRatedRow items={profile.highest_rated} />
+          </div>
+        ) : null}
+
+        {favourites.length > 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>Favourites</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {favourites.map((item) => (
+                <p
+                  key={item}
+                  style={{
+                    fontSize: 14,
+                    color: "rgba(255,255,255,0.75)",
+                    fontStyle: "italic",
+                    margin: 0,
+                  }}
+                >
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )

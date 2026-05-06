@@ -1,20 +1,48 @@
+import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { DIARY_SELECT, PROFILE_SELECT } from "@/lib/queries"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
 
 export const dynamic = "force-dynamic"
 
-function normalizeRushmoreSlots(rows: Array<{
+type ProfileRow = {
+  id: string
+  username: string | null
+  display_name: string | null
+  bio: string | null
+  avatar_url: string | null
+  is_public: boolean
+  website_url: string | null
+  favourite_film: string | null
+  favourite_series: string | null
+  favourite_book: string | null
+  created_at: string
+}
+
+type RushmoreRow = {
   position: number
-  media_id: string | null
-  media_type: "movie" | "tv" | "book" | null
-  title: string | null
+  title: string
   year: string | null
   poster_path: string | null
-}>): MountRushmoreSlot[] {
+  media_id: string
+  media_type: "movie" | "tv" | "book"
+}
+
+type DiaryRow = {
+  id: string
+  title: string
+  media_id: string
+  media_type: "movie" | "tv" | "book"
+  year: number | null
+  poster: string | null
+  rating: number | string | null
+  watched_date: string | null
+  review_scope: "show" | "season" | "episode" | "title" | null
+}
+
+function normalizeRushmoreRows(rows: RushmoreRow[]): MountRushmoreSlot[] {
   return rows
-    .filter((row): row is typeof row & { position: 1 | 2 | 3 | 4 } => row.position >= 1 && row.position <= 4)
+    .filter((row): row is RushmoreRow & { position: 1 | 2 | 3 | 4 } => row.position >= 1 && row.position <= 4)
     .map((row) => ({
       position: row.position,
       media_id: row.media_id,
@@ -25,20 +53,10 @@ function normalizeRushmoreSlots(rows: Array<{
     }))
 }
 
-function normalizeRating(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null
-}
-
-type ShowcaseDiaryRow = {
-  id: string
-  title: string
-  media_type: "movie" | "tv" | "book"
-  year: number | null
-  poster: string | null
-  rating: number | null
-  watched_date: string | null
-  review_scope: "show" | "season" | "episode" | "title" | null
-  review: string | null
+function parseRating(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return null
+  const parsed = typeof value === "string" ? parseFloat(value) : value
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 export default async function PublicProfilePage({
@@ -51,70 +69,84 @@ export default async function PublicProfilePage({
   const supabase = await createClient()
 
   if (!normalizedUsername || !supabase) {
-    return <ProfileShowcase profile={null} isOwner={false} />
+    notFound()
   }
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
-  const { data: profileRowData, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
-    .select(PROFILE_SELECT)
+    .select(
+      "id, username, display_name, bio, avatar_url, is_public, website_url, favourite_film, favourite_series, favourite_book, created_at"
+    )
     .eq("username", normalizedUsername)
-    .limit(1)
-    .maybeSingle()
+    .single()
 
-  const profileRow = (profileRowData || null) as
-    | {
-        id: string
-        username: string | null
-        display_name: string | null
-        avatar_url: string | null
-        bio: string | null
-        website_url: string | null
-        created_at: string
-        favourite_film: string | null
-        favourite_series: string | null
-        favourite_book: string | null
-        is_public: boolean
-      }
-    | null
-
-  console.log("[SHOWCASE LOAD] profile:", profileRow?.username ?? null)
-  console.log("[SHOWCASE LOAD] error:", profileError?.message ?? "none")
-
-  if (!profileRow) {
-    return <ProfileShowcase profile={null} isOwner={false} />
+  if (profileError || !profileData) {
+    notFound()
   }
 
+  const profileRow = profileData as ProfileRow
   const isOwner = user?.id === profileRow.id
 
+  if (!profileRow.is_public && !isOwner) {
+    const privateProfile: PublicProfileShowcaseData = {
+      id: profileRow.id,
+      username: profileRow.username ?? normalizedUsername,
+      display_name: profileRow.display_name,
+      avatar_url: profileRow.avatar_url,
+      bio: profileRow.bio,
+      is_public: profileRow.is_public,
+      website_url: profileRow.website_url,
+      created_at: profileRow.created_at,
+      favourite_film: profileRow.favourite_film,
+      favourite_series: profileRow.favourite_series,
+      favourite_book: profileRow.favourite_book,
+      mount_rushmore: [],
+      recent_activity: [],
+      stats: {
+        films: 0,
+        series: 0,
+        reviews: 0,
+        avg_rating: null,
+        followers: 0,
+        following: 0,
+      },
+      highest_rated: [],
+    }
+
+    return <ProfileShowcase profile={privateProfile} isOwner={false} />
+  }
+
   const [
-    { data: rushmoreRows },
-    { data: recentRows },
-    { data: statsRows },
+    { data: rushmoreData },
+    { data: recentDiaryData },
+    { data: allDiaryData },
     { count: followersCount },
     { count: followingCount },
   ] = await Promise.all([
     supabase
       .from("mount_rushmore")
-      .select("position, media_id, media_type, title, year, poster_path")
+      .select("position, title, year, poster_path, media_id, media_type")
       .eq("user_id", profileRow.id)
+      .order("media_type", { ascending: true })
       .order("position", { ascending: true }),
     supabase
       .from("diary_entries")
-      .select(DIARY_SELECT)
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review_scope")
       .eq("user_id", profileRow.id)
-      .eq("review_scope", "show")
+      .in("review_scope", ["show", "title"])
+      .not("poster", "is", null)
       .order("watched_date", { ascending: false })
-      .limit(12),
+      .limit(10),
     supabase
       .from("diary_entries")
-      .select(DIARY_SELECT)
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review_scope")
       .eq("user_id", profileRow.id)
-      .eq("review_scope", "show"),
+      .in("review_scope", ["show", "title"])
+      .order("watched_date", { ascending: false }),
     supabase
       .from("followers")
       .select("*", { count: "exact", head: true })
@@ -125,26 +157,28 @@ export default async function PublicProfilePage({
       .eq("follower_id", profileRow.id),
   ])
 
-  const statsSource = ((statsRows || []) as unknown) as ShowcaseDiaryRow[]
-  const recentActivityRows = ((recentRows || []) as unknown) as ShowcaseDiaryRow[]
-  const films = statsSource.filter((entry) => entry.media_type === "movie").length
-  const series = statsSource.filter((entry) => entry.media_type === "tv").length
-  const reviews = statsSource.filter((entry) => (entry.review || "").trim().length > 0).length
-  const ratings = statsSource
-    .map((entry) => normalizeRating(entry.rating))
-    .filter((value): value is number => typeof value === "number")
-  const avgRating = ratings.length > 0 ? Number((ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1)) : null
+  const rushmoreRows = (rushmoreData ?? []) as RushmoreRow[]
+  const recentRows = (recentDiaryData ?? []) as DiaryRow[]
+  const allRows = (allDiaryData ?? []) as DiaryRow[]
 
-  const highestRated = statsSource
-    .filter((entry) => entry.media_type === "movie")
+  const films = allRows.filter((entry) => entry.media_type === "movie").length
+  const series = allRows.filter((entry) => entry.media_type === "tv").length
+  const reviews = allRows.filter((entry) => parseRating(entry.rating) !== null).length
+  const ratings = allRows
+    .map((entry) => parseRating(entry.rating))
+    .filter((value): value is number => value !== null)
+  const avgRating = ratings.length > 0 ? Number((ratings.reduce((sum, value) => sum + value, 0) / ratings.length / 2).toFixed(1)) : null
+
+  const highestRated = allRows
+    .filter((entry) => parseRating(entry.rating) !== null && parseRating(entry.rating)! >= 10)
+    .filter((entry) => entry.poster)
+    .filter((entry, index, source) => source.findIndex((candidate) => candidate.title === entry.title) === index)
+    .slice(0, 5)
     .map((entry) => ({
       title: entry.title,
       poster: entry.poster,
-      rating: normalizeRating(entry.rating),
+      rating: parseRating(entry.rating),
     }))
-    .filter((entry) => entry.rating !== null)
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-    .slice(0, 3)
 
   const profile: PublicProfileShowcaseData = {
     id: profileRow.id,
@@ -152,24 +186,27 @@ export default async function PublicProfilePage({
     display_name: profileRow.display_name,
     avatar_url: profileRow.avatar_url,
     bio: profileRow.bio,
+    is_public: profileRow.is_public,
     website_url: profileRow.website_url,
     created_at: profileRow.created_at,
     favourite_film: profileRow.favourite_film,
     favourite_series: profileRow.favourite_series,
     favourite_book: profileRow.favourite_book,
-    mount_rushmore: normalizeRushmoreSlots(rushmoreRows || []),
-    recent_activity: recentActivityRows
-      .filter((entry): entry is ShowcaseDiaryRow & { media_type: "movie" | "tv" } => entry.media_type === "movie" || entry.media_type === "tv")
-      .map((entry) => ({
-        id: entry.id,
-        title: entry.title,
-        media_type: entry.media_type,
-        year: typeof entry.year === "number" ? entry.year : null,
-        poster: entry.poster,
-        rating: normalizeRating(entry.rating),
-        watched_date: entry.watched_date,
-        review_scope: entry.review_scope === "title" ? "show" : entry.review_scope,
-      })),
+    mount_rushmore: normalizeRushmoreRows(rushmoreRows),
+    recent_activity: recentRows.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      media_id: entry.media_id,
+      media_type: entry.media_type,
+      year: typeof entry.year === "number" ? entry.year : null,
+      poster: entry.poster,
+      rating: entry.rating,
+      watched_date: entry.watched_date,
+      review_scope:
+        entry.review_scope === "show" || entry.review_scope === "season" || entry.review_scope === "episode"
+          ? entry.review_scope
+          : "show",
+    })),
     stats: {
       films,
       series,

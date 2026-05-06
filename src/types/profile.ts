@@ -74,10 +74,11 @@ export interface PublicProfileStats {
 export interface PublicProfileActivityItem {
   id: string
   title: string
-  media_type: "movie" | "tv"
+  media_id: string
+  media_type: "movie" | "tv" | "book"
   year: number | null
   poster: string | null
-  rating: number | null
+  rating: number | string | null
   watched_date: string | null
   review_scope: "show" | "season" | "episode" | null
 }
@@ -94,6 +95,7 @@ export interface PublicProfileShowcaseData {
   display_name: string | null
   avatar_url: string | null
   bio: string | null
+  is_public: boolean
   website_url: string | null
   created_at: string
   favourite_film: string | null
