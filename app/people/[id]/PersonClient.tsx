@@ -30,6 +30,7 @@ interface KnownForItem {
   title: string;
   poster_path: string;
   year: string;
+  vote_average?: number;
   character?: string;
   mediaType: "movie" | "tv";
 }
@@ -59,6 +60,28 @@ const scrollRowStyle: CSSProperties = {
   scrollbarWidth: "none",
   WebkitOverflowScrolling: "touch",
 };
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 16,
+      }}
+    >
+      <span style={{ ...sectionLabelStyle, margin: 0, flexShrink: 0 }}>{label}</span>
+      <div
+        style={{
+          flex: 1,
+          height: "0.5px",
+          background: "rgba(255,255,255,0.07)",
+        }}
+      />
+    </div>
+  );
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -101,7 +124,7 @@ export default function PersonClient({
       <section
         style={{
           position: "relative",
-          minHeight: "clamp(220px, 34vw, 280px)",
+          minHeight: "clamp(220px, 38vw, 320px)",
           overflow: "hidden",
           background: person.profile_path ? "#08080f" : "#0d0d1a",
           display: "flex",
@@ -127,7 +150,7 @@ export default function PersonClient({
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to bottom, rgba(8,8,20,0.2) 0%, rgba(8,8,20,1) 100%)",
+              "linear-gradient(to bottom, rgba(8,8,20,0.15) 0%, rgba(8,8,20,0.5) 50%, rgba(8,8,20,1.0) 90%)",
           }}
         />
 
@@ -138,7 +161,7 @@ export default function PersonClient({
             width: "100%",
             maxWidth: 1020,
             margin: "0 auto",
-            padding: "0 24px 24px",
+            padding: "0 20px 24px",
           }}
         >
           <div
@@ -151,12 +174,12 @@ export default function PersonClient({
           >
             <div
               style={{
-                width: 110,
-                height: 165,
+                width: 130,
+                height: 195,
                 borderRadius: 10,
                 overflow: "hidden",
                 flexShrink: 0,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
                 background: "linear-gradient(135deg, #1e1e35, #2a2a45)",
               }}
             >
@@ -200,7 +223,7 @@ export default function PersonClient({
                     padding: "3px 10px",
                     background: "rgba(255,255,255,0.1)",
                     fontSize: 11,
-                    marginBottom: 6,
+                    marginBottom: 8,
                     color: "rgba(255,255,255,0.8)",
                   }}
                 >
@@ -210,10 +233,11 @@ export default function PersonClient({
 
               <h1
                 style={{
-                  fontSize: 30,
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.95)",
-                  lineHeight: 1.1,
+                  fontSize: "clamp(30px, 4vw, 36px)",
+                  fontWeight: 800,
+                  color: "rgba(255,255,255,0.97)",
+                  lineHeight: 1,
+                  letterSpacing: "-0.02em",
                   margin: 0,
                 }}
               >
@@ -223,19 +247,37 @@ export default function PersonClient({
               {(person.birthday || person.place_of_birth) && (
                 <p
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "nowrap",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
                     fontSize: 13,
-                    color: "rgba(255,255,255,0.45)",
-                    margin: "6px 0 0",
+                    color: "rgba(255,255,255,0.42)",
+                    margin: "8px 0 0",
                   }}
                 >
-                  {person.birthday
-                    ? `Born ${formatDate(person.birthday)}${
-                        age ? ` · age ${age}` : ""
-                      }`
-                    : ""}
-                  {person.place_of_birth
-                    ? `${person.birthday ? " · " : ""}${person.place_of_birth}`
-                    : ""}
+                  {person.birthday ? <span>Born {formatDate(person.birthday)}</span> : null}
+                  {person.birthday && age ? (
+                    <>
+                      <span>·</span>
+                      <span>Age {age}</span>
+                    </>
+                  ) : null}
+                  {person.place_of_birth ? (
+                    <>
+                      {(person.birthday || age) ? <span>·</span> : null}
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {person.place_of_birth}
+                      </span>
+                    </>
+                  ) : null}
                 </p>
               )}
             </div>
@@ -247,12 +289,12 @@ export default function PersonClient({
         style={{
           maxWidth: 1020,
           margin: "0 auto",
-          padding: "40px 20px 56px",
+          padding: "32px 20px 56px",
         }}
       >
         {knownFor.length > 0 ? (
-          <section style={{ marginBottom: 40 }}>
-            <p style={sectionLabelStyle}>Known for</p>
+          <section style={{ marginBottom: 48 }}>
+            <SectionHeader label="Known for" />
             <div className="scroll-row" style={scrollRowStyle}>
               {knownFor.map((item) => (
                 <KnownForCard
@@ -261,6 +303,7 @@ export default function PersonClient({
                   title={item.title}
                   poster_path={item.poster_path}
                   year={item.year}
+                  vote_average={item.vote_average}
                   character={item.character}
                   mediaType={item.mediaType}
                 />
@@ -269,55 +312,66 @@ export default function PersonClient({
           </section>
         ) : null}
 
-        <section style={{ marginBottom: 40 }}>
-          <p style={sectionLabelStyle}>Biography</p>
-          {biography ? (
-            <>
-              <p
-                style={{
-                  fontSize: 14,
-                  lineHeight: 1.75,
-                  color: "rgba(255,255,255,0.7)",
-                  margin: 0,
-                }}
-              >
-                {bioExpanded ? biography : collapsedBiography}
-              </p>
-              {biography.length > 400 ? (
-                <button
-                  type="button"
-                  onClick={() => setBioExpanded((previous) => !previous)}
+        <section style={{ marginBottom: 48 }}>
+          <SectionHeader label="Biography" />
+          <div style={{ maxWidth: 680 }}>
+            {biography ? (
+              <>
+                <p
                   style={{
-                    fontSize: 13,
-                    color: "rgba(29,158,117,0.9)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    marginTop: 6,
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                    color: "rgba(255,255,255,0.68)",
+                    letterSpacing: "0.01em",
+                    margin: 0,
                   }}
                 >
-                  {bioExpanded ? "Show less" : "Read more"}
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <p
-              style={{
-                fontStyle: "italic",
-                color: "rgba(255,255,255,0.3)",
-                fontSize: 14,
-                margin: 0,
-              }}
-            >
-              No biography available.
-            </p>
-          )}
+                  {bioExpanded ? biography : collapsedBiography}
+                </p>
+                {biography.length > 400 ? (
+                  <button
+                    type="button"
+                    onClick={() => setBioExpanded((previous) => !previous)}
+                    style={{
+                      fontSize: 13,
+                      color: "rgba(29,158,117,0.9)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      marginTop: 6,
+                    }}
+                  >
+                    {bioExpanded ? "Show less ↑" : "Read more ↓"}
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <div
+                style={{
+                  padding: "20px 0",
+                  borderLeft: "2px solid rgba(255,255,255,0.08)",
+                  paddingLeft: 16,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "rgba(255,255,255,0.25)",
+                    fontStyle: "italic",
+                    margin: 0,
+                  }}
+                >
+                  No biography available for this person.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         {topMovies.length > 0 ? (
-          <section style={{ marginBottom: 40 }}>
-            <p style={sectionLabelStyle}>Films</p>
+          <section style={{ marginBottom: 48 }}>
+            <SectionHeader label="Films" />
             <div className="scroll-row" style={scrollRowStyle}>
               {topMovies.map((item) => (
                 <KnownForCard
@@ -326,6 +380,7 @@ export default function PersonClient({
                   title={item.title}
                   poster_path={item.poster_path}
                   year={item.year}
+                  vote_average={item.vote_average}
                   character={item.character}
                   mediaType="movie"
                 />
@@ -335,8 +390,8 @@ export default function PersonClient({
         ) : null}
 
         {topTV.length > 0 ? (
-          <section style={{ marginBottom: 40 }}>
-            <p style={sectionLabelStyle}>TV shows</p>
+          <section style={{ marginBottom: 48 }}>
+            <SectionHeader label="TV shows" />
             <div className="scroll-row" style={scrollRowStyle}>
               {topTV.map((item) => (
                 <KnownForCard
@@ -345,6 +400,7 @@ export default function PersonClient({
                   title={item.title}
                   poster_path={item.poster_path}
                   year={item.year}
+                  vote_average={item.vote_average}
                   character={item.character}
                   mediaType="tv"
                 />

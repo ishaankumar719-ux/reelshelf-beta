@@ -27,6 +27,7 @@ interface TMDBMovieCredit {
   poster_path: string | null;
   release_date?: string;
   vote_average?: number;
+  vote_count?: number;
   order?: number;
   popularity?: number;
 }
@@ -38,6 +39,7 @@ interface TMDBTVCredit {
   poster_path: string | null;
   first_air_date?: string;
   vote_average?: number;
+  vote_count?: number;
   episode_count?: number;
   popularity?: number;
 }
@@ -56,12 +58,14 @@ interface KnownForItem {
   title: string;
   poster_path: string;
   year: string;
+  vote_average?: number;
   character?: string;
   mediaType: "movie" | "tv";
 }
 
 interface KnownForSortableItem extends KnownForItem {
-  popularity: number;
+  sortKey: number;
+  vote_count: number;
 }
 
 export default async function PersonPage({
@@ -130,11 +134,12 @@ export default async function PersonPage({
       title: item.title ?? "",
       poster_path: item.poster_path ?? "",
       year: item.release_date?.slice(0, 4) ?? "",
+      vote_average: item.vote_average ?? 0,
       character: item.character ?? "",
       mediaType: "movie" as const,
-      popularity: item.popularity ?? 0,
-    }))
-    .sort((a, b) => b.popularity - a.popularity);
+      sortKey: item.popularity ?? 0,
+      vote_count: item.vote_count ?? 0,
+    }));
 
   const knownForTV: KnownForSortableItem[] = (person.tv_credits?.cast ?? [])
     .filter((item): item is TMDBTVCredit => Boolean(item.poster_path))
@@ -143,16 +148,26 @@ export default async function PersonPage({
       title: item.name ?? "",
       poster_path: item.poster_path ?? "",
       year: item.first_air_date?.slice(0, 4) ?? "",
+      vote_average: item.vote_average ?? 0,
       character: item.character ?? "",
       mediaType: "tv" as const,
-      popularity: item.popularity ?? 0,
-    }))
-    .sort((a, b) => b.popularity - a.popularity);
+      sortKey: (item.episode_count ?? 1) * (item.popularity ?? 0),
+      vote_count: item.vote_count ?? 0,
+    }));
 
+  const seen = new Set<number>();
   const knownFor: KnownForItem[] = [...knownForMovies, ...knownForTV]
-    .sort((a, b) => b.popularity - a.popularity)
-    .slice(0, 6)
-    .map(({ popularity: _popularity, ...item }) => item);
+    .filter((item) => item.poster_path && ((item as KnownForSortableItem & { vote_count: number }).vote_count ?? 0) > 100)
+    .sort((a, b) => b.sortKey - a.sortKey)
+    .filter((item) => {
+      if (seen.has(item.id)) {
+        return false;
+      }
+      seen.add(item.id);
+      return true;
+    })
+    .slice(0, 8)
+    .map(({ sortKey: _sortKey, vote_count: _voteCount, ...item }) => item);
 
   return (
     <PersonClient
