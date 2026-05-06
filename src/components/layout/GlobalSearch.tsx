@@ -200,7 +200,7 @@ export default function GlobalSearch() {
           style={{
             top: dropdownRect.top,
             left: dropdownRect.left,
-            width: Math.max(dropdownRect.width, 320),
+            width: Math.max(dropdownRect.width, 400),
           }}
         >
           <SearchResults
@@ -275,7 +275,7 @@ export default function GlobalSearch() {
     <>
       <div className="hidden border-b border-white/8 bg-[#07070d] md:block">
         <div className="mx-auto flex h-[52px] max-w-[1600px] items-center justify-end px-6">
-          <div ref={desktopShellRef} className="w-full max-w-[320px] min-w-[240px]">
+          <div ref={desktopShellRef} className="w-full max-w-[400px] min-w-[240px]">
             <SearchInput
               value={query}
               onChange={handleInputChange}
