@@ -11,6 +11,7 @@ interface KnownForCardProps {
   vote_average?: number;
   character?: string;
   mediaType: "movie" | "tv";
+  showMediaBadge?: boolean;
 }
 
 export default function KnownForCard({
@@ -21,6 +22,7 @@ export default function KnownForCard({
   vote_average,
   character,
   mediaType,
+  showMediaBadge = false,
 }: KnownForCardProps) {
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
@@ -32,21 +34,22 @@ export default function KnownForCard({
         router.push(mediaType === "tv" ? `/series/${id}` : `/films/${id}`)
       }
       style={{
-        width: 120,
+        width: 144,
         flexShrink: 0,
         cursor: "pointer",
-        transform: "scale(1)",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-        boxShadow: "0 0 0 rgba(0,0,0,0)",
       }}
-      className="group hover:scale-[1.05] hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)]"
+      className="known-for-card-hover"
     >
+      {/* Poster */}
       <div
         style={{
+          position: "relative",
           aspectRatio: "2 / 3",
-          borderRadius: 10,
+          borderRadius: 12,
           overflow: "hidden",
-          background: "#111122",
+          background: "linear-gradient(160deg, #151525, #1a1a2e)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
         }}
       >
         {showPoster ? (
@@ -71,70 +74,103 @@ export default function KnownForCard({
               alignItems: "center",
               justifyContent: "center",
               color: "rgba(255,255,255,0.12)",
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: 700,
             }}
           >
             {title.charAt(0).toUpperCase()}
           </div>
         )}
+
+        {/* Media type badge */}
+        {showMediaBadge ? (
+          <div
+            style={{
+              position: "absolute",
+              top: 7,
+              right: 7,
+              padding: "2px 7px",
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.72)",
+              backdropFilter: "blur(6px)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              color:
+                mediaType === "tv"
+                  ? "rgba(139,195,255,0.9)"
+                  : "rgba(255,255,255,0.65)",
+              border: "0.5px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            {mediaType === "tv" ? "Series" : "Film"}
+          </div>
+        ) : null}
+
+        {/* Rating badge */}
+        {typeof vote_average === "number" && vote_average > 0 ? (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 7,
+              left: 7,
+              padding: "2px 7px",
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.72)",
+              backdropFilter: "blur(6px)",
+              fontSize: 10,
+              fontWeight: 600,
+              color: "rgba(250,199,117,0.9)",
+              border: "0.5px solid rgba(250,199,117,0.2)",
+            }}
+          >
+            ★ {vote_average.toFixed(1)}
+          </div>
+        ) : null}
       </div>
 
+      {/* Title */}
       <p
         style={{
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 500,
-          color: "rgba(255,255,255,0.78)",
+          color: "rgba(255,255,255,0.82)",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical",
-          margin: "6px 0 0",
-          lineHeight: 1.35,
+          margin: "8px 0 0",
+          lineHeight: 1.4,
         }}
       >
         {title}
       </p>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flexWrap: "wrap",
-          marginTop: 2,
-        }}
-      >
+
+      {/* Year */}
+      {year ? (
         <p
           style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.35)",
-            margin: 0,
+            fontSize: 11,
+            color: "rgba(255,255,255,0.32)",
+            margin: "3px 0 0",
           }}
         >
           {year}
         </p>
-        {typeof vote_average === "number" && vote_average > 0 ? (
-          <span
-            style={{
-              fontSize: 10,
-              color: "rgba(250,199,117,0.7)",
-            }}
-          >
-            ★ {vote_average.toFixed(1)}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
+
+      {/* Character */}
       {character ? (
         <p
           style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.28)",
+            fontSize: 11,
+            color: "rgba(255,255,255,0.25)",
             fontStyle: "italic",
             margin: "2px 0 0",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            maxWidth: "100%",
           }}
         >
           {character}

@@ -98,10 +98,16 @@ export default async function PersonPage({
   const topMovies: CreditItem[] = (person.movie_credits?.cast ?? [])
     .filter(
       (item): item is TMDBMovieCredit =>
-        Boolean(item.poster_path) && (item.vote_average ?? 0) > 0
+        Boolean(item.poster_path) &&
+        (item.vote_average ?? 0) > 0 &&
+        (item.vote_count ?? 0) > 50
     )
-    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-    .slice(0, 12)
+    .sort(
+      (a, b) =>
+        (b.popularity ?? 0) * (b.vote_count ?? 1) -
+        (a.popularity ?? 0) * (a.vote_count ?? 1)
+    )
+    .slice(0, 14)
     .map((item) => ({
       id: item.id,
       title: item.title ?? "",
@@ -166,7 +172,7 @@ export default async function PersonPage({
       seen.add(item.id);
       return true;
     })
-    .slice(0, 8)
+    .slice(0, 6)
     .map(({ sortKey: _sortKey, vote_count: _voteCount, ...item }) => item);
 
   return (
