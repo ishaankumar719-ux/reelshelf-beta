@@ -16,10 +16,10 @@ interface TMDBFilm {
 
 interface TMDBCastMember {
   id: number;
-  name: string;
-  character: string;
+  name?: string;
+  character?: string;
   profile_path: string | null;
-  order: number;
+  order?: number;
 }
 
 export default async function FilmDetailPage({
@@ -40,28 +40,35 @@ export default async function FilmDetailPage({
       { next: { revalidate: 86400 } }
     ),
     fetch(
-      `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}`,
+      `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}&language=en-US`,
       { next: { revalidate: 86400 } }
     ),
   ]);
 
   const film = (await filmRes.json()) as TMDBFilm & { success?: boolean };
-  const credits = (await creditsRes.json()) as { cast?: TMDBCastMember[] };
+  const creditsData = (await creditsRes.json()) as { cast?: TMDBCastMember[] };
 
   if (filmRes.status === 404 || film.success === false || !film.id) {
     notFound();
   }
 
-  const topCast = (credits.cast ?? [])
-    .sort((a, b) => a.order - b.order)
-    .slice(0, 12)
-    .map((member) => ({
-      id: member.id,
-      name: member.name,
-      character: member.character,
-      profile_path: member.profile_path ?? null,
-      order: member.order,
-    }));
+  console.log("[FILM CAST] raw cast count:", creditsData?.cast?.length ?? 0);
+  console.log("[FILM CAST] first member:", creditsData?.cast?.[0]);
+
+  const topCast = creditsData?.cast
+    ? creditsData.cast
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+        .slice(0, 12)
+        .map((member) => ({
+          id: member.id,
+          name: member.name ?? "",
+          character: member.character ?? "",
+          profile_path: member.profile_path ?? null,
+          order: member.order ?? 0,
+        }))
+    : [];
+
+  console.log("[FILM CAST] topCast length after mapping:", topCast.length);
 
   return <FilmDetailClient film={film} topCast={topCast} />;
 }
