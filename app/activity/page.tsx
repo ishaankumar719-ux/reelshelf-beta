@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation"
-import ActivityFeed, {
-  type ActivityEvent,
-  type ActivityProfile,
-} from "@/components/activity/ActivityFeed"
+import ActivityFeed from "@/components/activity/ActivityFeed"
+import { fetchActivityEvents } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function ActivityPage() {
@@ -22,53 +20,29 @@ export default async function ActivityPage() {
 
   const userId = session.user.id
 
-  const [{ data: diaryRows }, { data: savedRows }, { data: profile }] = await Promise.all([
-    supabase
-      .from("diary_entries")
-      .select("id, title, media_type, poster, rating, watched_date, created_at")
-      .eq("user_id", userId)
-      .in("review_scope", ["show", "title"])
-      .order("created_at", { ascending: false })
-      .limit(40),
-    supabase
-      .from("saved_items")
-      .select("id, title, media_type, poster, list_type, added_at, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20),
-    supabase
-      .from("profiles")
-      .select("username, display_name, avatar_url")
-      .eq("id", userId)
-      .single(),
-  ])
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, display_name, avatar_url")
+    .eq("id", userId)
+    .single()
 
-  const diaryEvents: ActivityEvent[] = (diaryRows ?? []).map((row) => ({
-    id: `diary-${row.id}`,
-    type: "logged",
-    title: row.title,
-    media_type: row.media_type,
-    poster: row.poster ?? null,
-    rating:
-      row.rating !== null && row.rating !== "" ? parseFloat(String(row.rating)) : null,
-    watched_date: row.watched_date ?? null,
-    timestamp: row.created_at,
-  }))
+  const activityProfile = {
+    username: profile?.username ?? null,
+    display_name: profile?.display_name ?? null,
+    avatar_url: profile?.avatar_url ?? null,
+  }
 
-  const watchlistEvents: ActivityEvent[] = (savedRows ?? []).map((row) => ({
-    id: `saved-${row.id}`,
-    type: "watchlisted",
-    title: row.title,
-    media_type: row.media_type,
-    poster: row.poster ?? null,
-    rating: null,
-    watched_date: null,
-    timestamp: row.added_at ?? row.created_at,
-  }))
+  const events = await fetchActivityEvents(userId, activityProfile)
 
-  const allEvents = [...diaryEvents, ...watchlistEvents]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 50)
-
-  return <ActivityFeed allEvents={allEvents} profile={(profile ?? null) as ActivityProfile | null} />
+  return (
+    <main style={{ padding: "32px 24px 56px", background: "#08080f", minHeight: "100vh" }}>
+      <div style={{ maxWidth: "1020px", margin: "0 auto" }}>
+        <ActivityFeed
+          events={events}
+          emptyMessage="No activity yet — start logging films to see your history here"
+          showTabs
+        />
+      </div>
+    </main>
+  )
 }

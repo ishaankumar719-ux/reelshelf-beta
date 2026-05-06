@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { buildActivityEventsFromSources } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
@@ -26,6 +27,7 @@ type RushmoreRow = {
   poster_path: string | null
   media_id: string
   media_type: "movie" | "tv" | "book"
+  created_at: string | null
 }
 
 type DiaryRow = {
@@ -37,6 +39,8 @@ type DiaryRow = {
   poster: string | null
   rating: number | string | null
   watched_date: string | null
+  review: string | null
+  created_at: string
   review_scope: "show" | "season" | "episode" | "title" | null
 }
 
@@ -130,13 +134,13 @@ export default async function PublicProfilePage({
   ] = await Promise.all([
     supabase
       .from("mount_rushmore")
-      .select("position, title, year, poster_path, media_id, media_type")
+      .select("position, title, year, poster_path, media_id, media_type, created_at")
       .eq("user_id", profileRow.id)
       .order("media_type", { ascending: true })
       .order("position", { ascending: true }),
     supabase
       .from("diary_entries")
-      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review_scope")
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .not("poster", "is", null)
@@ -144,10 +148,10 @@ export default async function PublicProfilePage({
       .limit(10),
     supabase
       .from("diary_entries")
-      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review_scope")
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
-      .order("watched_date", { ascending: false }),
+      .order("created_at", { ascending: false }),
     supabase
       .from("saved_items")
       .select("id", { count: "exact", head: true })
@@ -182,6 +186,32 @@ export default async function PublicProfilePage({
       poster: entry.poster,
       rating: parseRating(entry.rating),
     }))
+
+  const activityEvents = buildActivityEventsFromSources({
+    diaryRows: recentRows.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      media_type: entry.media_type,
+      poster: entry.poster ?? null,
+      rating: entry.rating,
+      review: entry.review ?? null,
+      watched_date: entry.watched_date,
+      created_at: entry.created_at,
+    })),
+    rushmoreRows: rushmoreRows.map((row) => ({
+      id: `${row.media_type}-${row.position}`,
+      title: row.title,
+      media_type: row.media_type,
+      poster_path: row.poster_path,
+      created_at: row.created_at,
+    })),
+    profile: {
+      username: profileRow.username ?? normalizedUsername,
+      display_name: profileRow.display_name,
+      avatar_url: profileRow.avatar_url,
+    },
+    limit: 5,
+  })
 
   const profile: PublicProfileShowcaseData = {
     id: profileRow.id,
@@ -221,5 +251,5 @@ export default async function PublicProfilePage({
     highest_rated: highestRated,
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} />
+  return <ProfileShowcase profile={profile} isOwner={isOwner} activityEvents={activityEvents} />
 }

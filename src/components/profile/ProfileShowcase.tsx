@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
+import ActivityFeed from "@/components/activity/ActivityFeed"
+import type { ActivityEvent } from "@/lib/activity"
 import type {
   MountRushmoreSlot,
   PublicProfileActivityItem,
@@ -13,6 +15,7 @@ import type {
 interface ProfileShowcaseProps {
   profile: PublicProfileShowcaseData | null
   isOwner: boolean
+  activityEvents?: ActivityEvent[]
 }
 
 type RushmoreTab = "movie" | "tv" | "book"
@@ -335,7 +338,11 @@ function HighestRatedRow({ items }: { items: PublicProfileTopRatedItem[] }) {
   )
 }
 
-export default function ProfileShowcase({ profile, isOwner }: ProfileShowcaseProps) {
+export default function ProfileShowcase({
+  profile,
+  isOwner,
+  activityEvents = [],
+}: ProfileShowcaseProps) {
   const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
   const [visible, setVisible] = useState(true)
 
@@ -628,6 +635,11 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
             </div>
           </div>
         ) : null}
+
+        <div style={{ marginTop: 40 }}>
+          <span style={sectionLabelStyle()}>Recent activity</span>
+          <ActivityFeed events={activityEvents.slice(0, 5)} emptyMessage="No activity yet" />
+        </div>
 
         {profile.highest_rated.length > 0 ? (
           <div style={{ marginTop: 40 }}>
