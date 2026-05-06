@@ -345,113 +345,119 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     setSaveState("saving")
     setSaveMessage(null)
 
-    try {
-      console.log("[PROFILE SAVE] starting")
-      console.log("[PROFILE SAVE] userId:", userId)
-      console.log("[PROFILE SAVE] payload:", {
-        display_name: displayName,
-        username,
-        bio,
-        website_url: websiteUrl,
-        is_public: isPublic,
+    console.log("[PROFILE SAVE] starting")
+    console.log("[PROFILE SAVE] payload:", {
+      display_name: displayName,
+      username,
+      bio,
+      website_url: websiteUrl,
+      is_public: isPublic,
+    })
+
+    const { data: savedProfileRow, error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName?.trim() || null,
+        username: username?.trim().toLowerCase() || null,
+        bio: bio?.trim() || null,
+        website_url: websiteUrl?.trim() || null,
+        is_public: isPublic ?? true,
       })
+      .eq("id", userId)
+      .select("id, username, display_name, bio, website_url, is_public, avatar_url")
+      .single()
 
-      const { data: savedProfileRow, error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName?.trim() || null,
-          username: username?.trim().toLowerCase() || null,
-          bio: bio?.trim() || null,
-          website_url: websiteUrl?.trim() || null,
-          is_public: isPublic ?? true,
-        })
-        .eq("id", userId)
-        .select("id, username, display_name, bio, website_url, is_public, avatar_url")
-        .single()
+    console.log("[PROFILE SAVE] data:", savedProfileRow)
+    console.log("[PROFILE SAVE] error:", profileError)
 
-      console.log("[PROFILE SAVE] data:", savedProfileRow)
-      console.log("[PROFILE SAVE] error:", profileError)
+    if (profileError) {
+      setSaveState("error")
+      setSaveMessage(profileError.message || profileError.hint || "Profile update failed")
+      return
+    }
 
-      if (profileError) {
-        setSaveState("error")
-        setSaveMessage(
-          profileError.message || profileError.details || "Could not save your profile."
+    const mediaTypes: Array<"movie" | "tv" | "book"> = ["movie", "tv", "book"]
+
+    try {
+      for (const mediaType of mediaTypes) {
+        const rushmoreSlots = rushmore.filter(
+          (slot) =>
+            slot.media_type === mediaType &&
+            slot.media_id !== null &&
+            slot.title !== null
         )
-        return
-      }
 
-      const filledSlots = rushmore.filter((slot) => slot.media_id !== null)
-      const removedSlots = originalRushmore.filter(
-        (originalSlot) =>
-          !filledSlots.find(
-            (slot) =>
-              slot.position === originalSlot.position &&
-              slot.media_type === originalSlot.media_type
-          )
-      )
+        console.log("[RUSHMORE SAVE] starting, mediaType:", mediaType)
+        console.log("[RUSHMORE SAVE] slots:", rushmoreSlots)
 
-      for (const slot of removedSlots) {
-        const { error: deleteRushmoreError } = await supabase
+        const { error: deleteError } = await supabase
           .from("mount_rushmore")
           .delete()
           .eq("user_id", userId)
-          .eq("position", slot.position)
-          .eq("media_type", slot.media_type)
+          .eq("media_type", mediaType)
 
-        if (deleteRushmoreError) {
-          console.error("[RUSHMORE SAVE] Error:", deleteRushmoreError)
-          throw deleteRushmoreError
-        }
-      }
+        console.log("[RUSHMORE SAVE] delete error:", deleteError)
 
-      if (filledSlots.length > 0) {
-        const { error: upsertRushmoreError } = await supabase.from("mount_rushmore").upsert(
-          filledSlots.map((slot) => ({
-            user_id: userId,
-            position: slot.position,
-            media_id: slot.media_id,
-            media_type: slot.media_type,
-            title: slot.title,
-            year: slot.year,
-            poster_path: slot.poster_path,
-          })),
-          { onConflict: "user_id,position,media_type" }
-        )
-
-        if (upsertRushmoreError) {
-          console.error("[RUSHMORE SAVE] Error:", upsertRushmoreError)
-          throw upsertRushmoreError
+        if (deleteError) {
+          setSaveState("error")
+          setSaveMessage(`Rushmore save failed: ${deleteError.message || deleteError.hint}`)
+          return
         }
 
-        console.log("[RUSHMORE SAVE] Saved", filledSlots.length, "slots")
-      } else {
-        console.log("[RUSHMORE SAVE] Saved", 0, "slots")
-      }
+        if (rushmoreSlots.length > 0) {
+          const { data: insertData, error: insertError } = await supabase
+            .from("mount_rushmore")
+            .insert(
+              rushmoreSlots.map((slot) => ({
+                user_id: userId,
+                position: slot.position,
+                media_id: String(slot.media_id),
+                media_type: mediaType,
+                title: slot.title,
+                year: slot.year ?? null,
+                poster_path: slot.poster_path ?? null,
+              }))
+            )
+            .select()
 
-      setSaveState("success")
-      setSaveMessage("Profile updated.")
-      setOriginalUsername(normalizedUsernameValue)
-      setOriginalRushmore(rushmore)
-      setLoadedProfile((current) =>
-        current
-          ? {
-              ...current,
-              username: savedProfileRow.username ?? null,
-              display_name: savedProfileRow.display_name ?? null,
-              avatar_url: savedProfileRow.avatar_url ?? current.avatar_url,
-              bio: savedProfileRow.bio ?? "",
-              website_url: savedProfileRow.website_url ?? "",
-              is_public: savedProfileRow.is_public,
-            }
-          : current
-      )
-      router.push(publicProfileHref)
-      router.refresh()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not save your profile."
+          console.log("[RUSHMORE SAVE] insert data:", insertData)
+          console.log("[RUSHMORE SAVE] insert error:", insertError)
+
+          if (insertError) {
+            setSaveState("error")
+            setSaveMessage(`Rushmore save failed: ${insertError.message || insertError.hint}`)
+            return
+          }
+        }
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error("[RUSHMORE SAVE] caught exception:", message)
       setSaveState("error")
-      setSaveMessage(message)
+      setSaveMessage(`Rushmore error: ${message}`)
+      return
     }
+
+    setSaveState("success")
+    setSaveMessage(null)
+    setOriginalUsername(normalizedUsernameValue)
+    setOriginalRushmore(rushmore)
+    setLoadedProfile((current) =>
+      current
+        ? {
+            ...current,
+            username: savedProfileRow.username ?? null,
+            display_name: savedProfileRow.display_name ?? null,
+            avatar_url: savedProfileRow.avatar_url ?? current.avatar_url,
+            bio: savedProfileRow.bio ?? "",
+            website_url: savedProfileRow.website_url ?? "",
+            is_public: savedProfileRow.is_public,
+          }
+        : current
+    )
+    console.log("[PROFILE SAVE] complete — both profile and rushmore saved")
+    router.push(publicProfileHref)
+    router.refresh()
   }
 
   return (
