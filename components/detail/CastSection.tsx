@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export interface CastMember {
@@ -25,16 +26,23 @@ function getInitials(name: string) {
 
 function CastCard({ member }: { member: CastMember }) {
   const [imgError, setImgError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const showImage = Boolean(member.profile_path) && !imgError;
 
   return (
-    <div
+    <Link
+      href={`/people/${member.id}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         width: 88,
         flexShrink: 0,
-        cursor: "default",
+        cursor: "pointer",
         transform: "scale(1)",
-        transition: "transform 0.15s ease",
+        transition: "transform 0.15s ease, opacity 0.12s ease",
+        opacity: isHovered ? 0.85 : 1,
+        textDecoration: "none",
+        display: "block",
       }}
       className="group"
     >
@@ -111,7 +119,7 @@ function CastCard({ member }: { member: CastMember }) {
       >
         {member.character}
       </p>
-    </div>
+    </Link>
   );
 }
 
