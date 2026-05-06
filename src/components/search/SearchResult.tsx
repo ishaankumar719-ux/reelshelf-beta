@@ -4,6 +4,7 @@ import { useState } from "react"
 import { getPosterUrl } from "@/src/lib/tmdb-image"
 import type { SearchResult as SearchResultType } from "@/src/hooks/useSearch"
 import { useDiaryLog } from "@/hooks/useDiaryLog"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 
 interface SearchResultProps {
   result: SearchResultType
@@ -11,6 +12,8 @@ interface SearchResultProps {
   active?: boolean
   id?: string
 }
+
+type WatchlistState = "idle" | "saving" | "saved"
 
 function getBadgeClasses(mediaType: SearchResultType["media_type"]) {
   if (mediaType === "film") return "border-blue-300/20 bg-blue-400/15 text-blue-100"
@@ -60,12 +63,16 @@ export default function SearchResult({
   id,
 }: SearchResultProps) {
   const [imgError, setImgError] = useState(false)
+  const [watchlistState, setWatchlistState] = useState<WatchlistState>("idle")
   const { openLog } = useDiaryLog()
   const posterUrl = result.poster_path ? getPosterUrl(result.poster_path, "w92") : null
   const meta =
     result.media_type === "book"
       ? [result.year, result.author].filter(Boolean).join(" · ")
       : [result.year, result.director].filter(Boolean).join(" · ")
+
+  // Only films and series support watchlist (books go to reading_shelf — different flow)
+  const supportsWatchlist = result.media_type === "film" || result.media_type === "series"
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" || event.key === " ") {
@@ -90,6 +97,66 @@ export default function SearchResult({
       creator: result.director ?? result.author ?? null,
       tmdb_id: result.media_type === "book" ? null : result.id,
     })
+  }
+
+  function handleWatchlistClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (watchlistState !== "idle") return
+    void addToWatchlist()
+  }
+
+  async function addToWatchlist() {
+    const supabase = createSupabaseClient()
+    if (!supabase) return
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) return
+
+    // Map search media_type → saved_items media_type
+    const dbMediaType = result.media_type === "series" ? "tv" : "movie"
+    // Consistent media_id format used across film/series pages
+    const mediaId = `tmdb-${result.id}`
+
+    setWatchlistState("saving")
+
+    // Duplicate check — unique constraint is (user_id, list_type, media_type, media_id)
+    const { count } = await supabase
+      .from("saved_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.user.id)
+      .eq("list_type", "watchlist")
+      .eq("media_type", dbMediaType)
+      .eq("media_id", mediaId)
+
+    if ((count ?? 0) > 0) {
+      setWatchlistState("saved")
+      return
+    }
+
+    const { error } = await supabase.from("saved_items").insert({
+      user_id: session.user.id,
+      list_type: "watchlist",
+      media_id: mediaId,
+      media_type: dbMediaType,
+      title: result.title,
+      poster: result.poster_path ? getPosterUrl(result.poster_path, "w342") : null,
+      year: Number.parseInt(result.year ?? "0", 10) || 0,
+      creator: result.director ?? null,
+      genres: [],
+      runtime: null,
+      vote_average: null,
+    })
+
+    if (error) {
+      console.error("[WATCHLIST] insert error:", error.message)
+      setWatchlistState("idle")
+      return
+    }
+
+    setWatchlistState("saved")
   }
 
   return (
@@ -121,10 +188,31 @@ export default function SearchResult({
         <p className="mt-0.5 truncate text-[11px] text-white/38">{meta || "No details yet"}</p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={`inline-flex h-5 items-center rounded-full border px-2 text-[9px] uppercase tracking-[0.14em] ${getBadgeClasses(result.media_type)}`}>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <span
+          className={`inline-flex h-5 items-center rounded-full border px-2 text-[9px] uppercase tracking-[0.14em] ${getBadgeClasses(result.media_type)}`}
+        >
           {getLabel(result.media_type)}
         </span>
+
+        {/* Watchlist button — films and series only */}
+        {supportsWatchlist ? (
+          <button
+            type="button"
+            onClick={handleWatchlistClick}
+            disabled={watchlistState !== "idle"}
+            className={`rounded-md border px-2 py-1 text-[11px] transition ${
+              watchlistState === "saved"
+                ? "cursor-default border-white/[0.1] bg-white/[0.04] text-white/30"
+                : watchlistState === "saving"
+                  ? "cursor-wait border-white/[0.12] bg-white/[0.04] text-white/30"
+                  : "border-white/[0.18] bg-white/[0.06] text-white/55 hover:bg-white/[0.10] hover:text-white/75"
+            }`}
+          >
+            {watchlistState === "saved" ? "✓ Saved" : watchlistState === "saving" ? "…" : "+ Watchlist"}
+          </button>
+        ) : null}
+
         <button
           type="button"
           onClick={handleLogClick}

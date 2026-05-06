@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 interface KnownForCardProps {
@@ -24,32 +24,32 @@ export default function KnownForCard({
   mediaType,
   showMediaBadge = false,
 }: KnownForCardProps) {
-  const router = useRouter();
   const [imgError, setImgError] = useState(false);
   const showPoster = Boolean(poster_path) && !imgError;
+  const href = mediaType === "tv" ? `/series/${id}` : `/films/${id}`;
 
   return (
-    <div
-      onClick={() =>
-        router.push(mediaType === "tv" ? `/series/${id}` : `/films/${id}`)
-      }
+    <Link
+      href={href}
       style={{
+        display: "block",
         width: 144,
-        flexShrink: 0,
-        cursor: "pointer",
+        minWidth: 144,
+        textDecoration: "none",
+        color: "inherit",
+        WebkitTapHighlightColor: "transparent",
       }}
-      className="known-for-card-hover"
     >
       {/* Poster */}
       <div
         style={{
           position: "relative",
           aspectRatio: "2 / 3",
-          borderRadius: 12,
+          borderRadius: 14,
           overflow: "hidden",
-          background: "linear-gradient(160deg, #151525, #1a1a2e)",
+          background: "linear-gradient(160deg, #14142a, #1c1c36)",
           border: "1px solid rgba(255,255,255,0.07)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
         }}
       >
         {showPoster ? (
@@ -73,22 +73,23 @@ export default function KnownForCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "rgba(255,255,255,0.12)",
-              fontSize: 28,
+              color: "rgba(255,255,255,0.1)",
+              fontSize: 32,
               fontWeight: 700,
+              letterSpacing: "-0.02em",
             }}
           >
             {title.charAt(0).toUpperCase()}
           </div>
         )}
 
-        {/* Media type badge */}
+        {/* Media type badge — top-left */}
         {showMediaBadge ? (
           <div
             style={{
               position: "absolute",
-              top: 7,
-              left: 7,
+              top: 8,
+              left: 8,
               padding: "3px 8px",
               borderRadius: 999,
               fontSize: 9,
@@ -98,12 +99,12 @@ export default function KnownForCard({
               ...(mediaType === "tv"
                 ? {
                     background: "rgba(100,160,255,0.15)",
-                    border: "0.5px solid rgba(100,160,255,0.35)",
+                    border: "0.5px solid rgba(100,160,255,0.32)",
                     color: "rgba(140,190,255,0.95)",
                   }
                 : {
-                    background: "rgba(29,158,117,0.15)",
-                    border: "0.5px solid rgba(29,158,117,0.35)",
+                    background: "rgba(29,158,117,0.14)",
+                    border: "0.5px solid rgba(29,158,117,0.32)",
                     color: "rgba(29,158,117,0.95)",
                   }),
             }}
@@ -112,21 +113,23 @@ export default function KnownForCard({
           </div>
         ) : null}
 
-        {/* Rating badge */}
+        {/* Rating badge — bottom-right (clear of media badge) */}
         {typeof vote_average === "number" && vote_average > 0 ? (
           <div
             style={{
               position: "absolute",
-              bottom: 7,
-              left: 7,
-              padding: "2px 7px",
+              bottom: 8,
+              right: 8,
+              padding: "3px 8px",
               borderRadius: 999,
-              background: "rgba(0,0,0,0.72)",
-              backdropFilter: "blur(6px)",
-              fontSize: 10,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              fontSize: 11,
               fontWeight: 600,
-              color: "rgba(250,199,117,0.9)",
-              border: "0.5px solid rgba(250,199,117,0.2)",
+              color: "rgba(250,199,117,0.95)",
+              border: "0.5px solid rgba(250,199,117,0.22)",
+              lineHeight: 1,
             }}
           >
             ★ {vote_average.toFixed(1)}
@@ -139,13 +142,14 @@ export default function KnownForCard({
         style={{
           fontSize: 12,
           fontWeight: 500,
-          color: "rgba(255,255,255,0.82)",
+          color: "rgba(255,255,255,0.84)",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical",
-          margin: "8px 0 0",
-          lineHeight: 1.4,
+          margin: "9px 0 0",
+          lineHeight: 1.42,
+          letterSpacing: "0.005em",
         }}
       >
         {title}
@@ -156,8 +160,9 @@ export default function KnownForCard({
         <p
           style={{
             fontSize: 11,
-            color: "rgba(255,255,255,0.32)",
+            color: "rgba(255,255,255,0.3)",
             margin: "3px 0 0",
+            lineHeight: 1,
           }}
         >
           {year}
@@ -169,17 +174,18 @@ export default function KnownForCard({
         <p
           style={{
             fontSize: 11,
-            color: "rgba(255,255,255,0.25)",
+            color: "rgba(255,255,255,0.24)",
             fontStyle: "italic",
-            margin: "2px 0 0",
+            margin: "3px 0 0",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            lineHeight: 1,
           }}
         >
           {character}
         </p>
       ) : null}
-    </div>
+    </Link>
   );
 }
