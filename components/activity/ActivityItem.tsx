@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import type { ActivityEvent, ActivityProfile } from "./ActivityFeed"
+import type { ActivityEvent } from "@/lib/activity"
 
 interface ActivityItemProps {
   event: ActivityEvent
-  profile: ActivityProfile | null
+  profile: ActivityEvent["profile"] | null
   isLast: boolean
 }
 
