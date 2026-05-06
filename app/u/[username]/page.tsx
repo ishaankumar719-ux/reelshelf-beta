@@ -110,7 +110,7 @@ export default async function PublicProfilePage({
         films: 0,
         series: 0,
         reviews: 0,
-        avg_rating: null,
+        watchlist: 0,
         followers: 0,
         following: 0,
       },
@@ -124,6 +124,7 @@ export default async function PublicProfilePage({
     { data: rushmoreData },
     { data: recentDiaryData },
     { data: allDiaryData },
+    watchlistRes,
     { count: followersCount },
     { count: followingCount },
   ] = await Promise.all([
@@ -148,6 +149,11 @@ export default async function PublicProfilePage({
       .in("review_scope", ["show", "title"])
       .order("watched_date", { ascending: false }),
     supabase
+      .from("saved_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profileRow.id)
+      .eq("list_type", "watchlist"),
+    supabase
       .from("followers")
       .select("*", { count: "exact", head: true })
       .eq("following_id", profileRow.id),
@@ -160,14 +166,11 @@ export default async function PublicProfilePage({
   const rushmoreRows = (rushmoreData ?? []) as RushmoreRow[]
   const recentRows = (recentDiaryData ?? []) as DiaryRow[]
   const allRows = (allDiaryData ?? []) as DiaryRow[]
+  const watchlistCount = watchlistRes.count ?? 0
 
   const films = allRows.filter((entry) => entry.media_type === "movie").length
   const series = allRows.filter((entry) => entry.media_type === "tv").length
   const reviews = allRows.filter((entry) => parseRating(entry.rating) !== null).length
-  const ratings = allRows
-    .map((entry) => parseRating(entry.rating))
-    .filter((value): value is number => value !== null)
-  const avgRating = ratings.length > 0 ? Number((ratings.reduce((sum, value) => sum + value, 0) / ratings.length / 2).toFixed(1)) : null
 
   const highestRated = allRows
     .filter((entry) => parseRating(entry.rating) !== null && parseRating(entry.rating)! >= 10)
@@ -211,7 +214,7 @@ export default async function PublicProfilePage({
       films,
       series,
       reviews,
-      avg_rating: avgRating,
+      watchlist: watchlistCount,
       followers: followersCount || 0,
       following: followingCount || 0,
     },

@@ -406,7 +406,7 @@ export default function ProfileShowcase({ profile, isOwner }: ProfileShowcasePro
     { label: "Films", value: profile.stats.films },
     { label: "Series", value: profile.stats.series },
     { label: "Reviews", value: profile.stats.reviews },
-    { label: "Avg rating", value: profile.stats.avg_rating !== null ? `${profile.stats.avg_rating} ★` : "—" },
+    { label: "Watchlist", value: profile.stats.watchlist },
   ]
 
   const emptyTabMessage =

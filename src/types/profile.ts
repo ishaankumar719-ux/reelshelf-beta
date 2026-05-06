@@ -66,7 +66,7 @@ export interface PublicProfileStats {
   films: number
   series: number
   reviews: number
-  avg_rating: number | null
+  watchlist: number
   followers: number
   following: number
 }
