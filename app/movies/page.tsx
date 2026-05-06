@@ -49,7 +49,7 @@ export default function MoviesPage() {
             posterUrl={film.poster}
             mediaType="film"
             size="md"
-            href={`/movies/${film.id}`}
+            href={`/films/${film.id}`}
           />
         ))}
       </section>

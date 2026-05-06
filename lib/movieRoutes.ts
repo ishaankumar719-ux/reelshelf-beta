@@ -4,17 +4,16 @@ import {
 } from "./localMovies";
 
 export function getMovieHrefFromRouteId(id: string) {
-  return `/movies/${id}`;
+  const localMovie = getLocalMovieByRouteId(id);
+  if (localMovie) {
+    return `/films/${localMovie.tmdbId}`;
+  }
+
+  return `/films/${id}`;
 }
 
 export function getMovieHrefFromTmdbId(tmdbId: number) {
-  const localMovie = getLocalMovieByTmdbId(tmdbId);
-
-  if (localMovie) {
-    return getMovieHrefFromRouteId(localMovie.id);
-  }
-
-  return `/movies/tmdb-${tmdbId}`;
+  return `/films/${tmdbId}`;
 }
 
 export function normalizeMovieRouteId(id: string) {
@@ -40,5 +39,5 @@ export function normalizeMovieRouteId(id: string) {
     return null;
   }
 
-  return getMovieHrefFromTmdbId(tmdbId).replace("/movies/", "");
+  return getMovieHrefFromTmdbId(tmdbId).replace("/films/", "");
 }

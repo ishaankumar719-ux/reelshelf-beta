@@ -54,7 +54,7 @@ function normalizeStoredWatchlistEntry(
 
   if (typeof entry.id === "number") {
     const href = getMovieHrefFromTmdbId(entry.id);
-    const normalizedId = normalizeMovieRouteId(href.replace("/movies/", ""));
+    const normalizedId = normalizeMovieRouteId(href.replace("/films/", ""));
 
     if (!normalizedId) {
       return null;

@@ -16,7 +16,7 @@ export default function MovieCard({
   image,
 }: MovieCardProps) {
   return (
-    <Link href={`/movies/${id}`} className="group block">
+    <Link href={`/films/${id}`} className="group block">
       <article className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/80 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-zinc-900">
         <div className="overflow-hidden">
           <img

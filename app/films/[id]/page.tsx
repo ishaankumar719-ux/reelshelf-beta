@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getLocalMovieByRouteId } from "../../../lib/localMovies";
 import FilmDetailClient from "./FilmDetailClient";
 
 interface TMDBFilm {
@@ -34,13 +35,20 @@ export default async function FilmDetailPage({
     notFound();
   }
 
+  const localMovie = getLocalMovieByRouteId(id);
+  const normalizedMovieId = localMovie
+    ? String(localMovie.tmdbId)
+    : id.startsWith("tmdb-")
+      ? id.slice(5)
+      : id;
+
   const [filmRes, creditsRes] = await Promise.all([
     fetch(
-      `https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=en-US`,
+      `https://api.themoviedb.org/3/movie/${normalizedMovieId}?api_key=${apiKey}&language=en-US`,
       { next: { revalidate: 86400 } }
     ),
     fetch(
-      `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}&language=en-US`,
+      `https://api.themoviedb.org/3/movie/${normalizedMovieId}/credits?api_key=${apiKey}&language=en-US`,
       { next: { revalidate: 86400 } }
     ),
   ]);
