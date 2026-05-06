@@ -88,20 +88,24 @@ export default function KnownForCard({
             style={{
               position: "absolute",
               top: 7,
-              right: 7,
-              padding: "2px 7px",
+              left: 7,
+              padding: "3px 8px",
               borderRadius: 999,
-              background: "rgba(0,0,0,0.72)",
-              backdropFilter: "blur(6px)",
               fontSize: 9,
               fontWeight: 700,
-              letterSpacing: "0.07em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color:
-                mediaType === "tv"
-                  ? "rgba(139,195,255,0.9)"
-                  : "rgba(255,255,255,0.65)",
-              border: "0.5px solid rgba(255,255,255,0.15)",
+              ...(mediaType === "tv"
+                ? {
+                    background: "rgba(100,160,255,0.15)",
+                    border: "0.5px solid rgba(100,160,255,0.35)",
+                    color: "rgba(140,190,255,0.95)",
+                  }
+                : {
+                    background: "rgba(29,158,117,0.15)",
+                    border: "0.5px solid rgba(29,158,117,0.35)",
+                    color: "rgba(29,158,117,0.95)",
+                  }),
             }}
           >
             {mediaType === "tv" ? "Series" : "Film"}
