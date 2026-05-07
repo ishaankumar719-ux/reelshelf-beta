@@ -21,7 +21,108 @@ interface ReviewFormProps {
   aliases?: string[]
 }
 
-const STAR_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const SLIDER_CSS = `
+  .rs-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    outline: none;
+    cursor: pointer;
+  }
+  .rs-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.55), 0 0 14px rgba(255,255,255,0.08);
+    cursor: grab;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .rs-slider:focus::-webkit-slider-thumb,
+  .rs-slider:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.1), 0 2px 10px rgba(0,0,0,0.6), 0 0 18px rgba(255,255,255,0.12);
+  }
+  .rs-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
+    transform: scale(1.18);
+  }
+  .rs-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.55);
+    cursor: grab;
+  }
+  .rs-slider::-moz-range-track { background: transparent; }
+`
+
+function RatingSlider({
+  rating,
+  onSelect,
+}: {
+  rating: number | null
+  onSelect: (next: number | null) => void
+}) {
+  const fillPct = ((rating ?? 0) / 10) * 100
+  const hasValue = rating !== null
+  const trackBg = `linear-gradient(to right, rgba(255,255,255,${hasValue ? 0.52 : 0.16}) 0%, rgba(255,255,255,${hasValue ? 0.52 : 0.16}) ${fillPct}%, rgba(255,255,255,0.09) ${fillPct}%, rgba(255,255,255,0.09) 100%)`
+
+  return (
+    <>
+      <style>{SLIDER_CSS}</style>
+      <div>
+        <div className="mb-4 flex min-h-[52px] items-baseline justify-center gap-1.5">
+          {hasValue ? (
+            <>
+              <span className="text-[44px] font-light leading-none tracking-[-2px] text-white/92" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {rating!.toFixed(1)}
+              </span>
+              <span className="text-base text-white/28">/ 10</span>
+            </>
+          ) : (
+            <span className="text-[13px] uppercase tracking-[0.1em] text-white/22">Slide to rate</span>
+          )}
+        </div>
+
+        <input
+          type="range"
+          className="rs-slider"
+          min={0}
+          max={10}
+          step={0.1}
+          value={rating ?? 0}
+          onChange={(e) => {
+            const n = Number(e.target.value)
+            onSelect(n === 0 ? null : Math.max(1, Math.round(n * 10) / 10))
+          }}
+          style={{ background: trackBg }}
+          aria-label="Rating"
+          aria-valuemin={1}
+          aria-valuemax={10}
+          aria-valuenow={rating ?? undefined}
+        />
+
+        <div className="mt-2.5 flex min-h-[16px] justify-end">
+          {hasValue ? (
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              className="text-[11px] text-white/22 tracking-[0.04em]"
+            >
+              × Clear rating
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </>
+  )
+}
 
 function getSaveLabel(scope: ReviewScope) {
   if (scope === "season") return "Save season review"
@@ -31,41 +132,6 @@ function getSaveLabel(scope: ReviewScope) {
 
 function getDateLabel(scope: ReviewScope) {
   return scope === "season" ? "Finished season" : "Watched"
-}
-
-function getDisplayRating(value: number) {
-  return (value / 2).toFixed(1)
-}
-
-function Stars({
-  rating,
-  onSelect,
-}: {
-  rating: number | null
-  onSelect: (next: number | null) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {STAR_VALUES.map((value) => {
-        const active = (rating ?? 0) >= value
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onSelect(rating === value ? null : value)}
-            className={`h-8 w-7 rounded-full border text-[11px] transition ${
-              active
-                ? "border-amber-300/45 bg-amber-300/18 text-amber-50"
-                : "border-white/10 bg-white/[0.04] text-white/45 hover:border-white/20 hover:text-white/72"
-            }`}
-            aria-label={`Rate ${getDisplayRating(value)} stars`}
-          >
-            ★
-          </button>
-        )
-      })}
-    </div>
-  )
 }
 
 export default function ReviewForm({
@@ -181,19 +247,14 @@ export default function ReviewForm({
     <div className="rounded-[22px] border border-white/10 bg-[#0b0c13] p-4 sm:p-5">
       <div className="grid gap-4">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-white/35">
+          <p className="mb-3 text-[10px] uppercase tracking-[0.22em] text-white/35">
             {scope === "show"
               ? "Overall view"
               : scope === "season"
                 ? `Season ${seasonNumber}`
                 : `Season ${seasonNumber} Episode ${episodeNumber}`}
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Stars rating={rating} onSelect={setRating} />
-            <span className="text-sm text-white/55">
-              {typeof rating === "number" ? `${getDisplayRating(rating)} / 5.0` : "Rating optional"}
-            </span>
-          </div>
+          <RatingSlider rating={rating} onSelect={setRating} />
         </div>
 
         <label className="block">

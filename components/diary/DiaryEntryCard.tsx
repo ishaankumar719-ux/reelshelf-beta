@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getDiaryEntryKey, type DiaryMovie } from "../../lib/diary";
 import type { MediaType } from "../../lib/media";
 import { getMediaHref } from "../../lib/mediaRoutes";
-import { hasReviewLayers, type ReviewLayers } from "../../types/diary";
+import { getLayerDefs, hasReviewLayers, type ReviewLayers } from "../../types/diary";
 
 interface DiaryEntryCardProps {
   movie: DiaryMovie & { isNew?: boolean };
@@ -17,20 +17,10 @@ interface DiaryEntryCardProps {
   formatDiaryDate: (date: string) => string;
 }
 
-const LAYER_LABELS: Array<{ key: keyof ReviewLayers; label: string }> = [
-  { key: "score_rating", label: "Score" },
-  { key: "cinematography_rating", label: "Cinematography" },
-  { key: "writing_rating", label: "Writing" },
-  { key: "performances_rating", label: "Performances" },
-  { key: "direction_rating", label: "Direction" },
-  { key: "rewatchability_rating", label: "Rewatchability" },
-  { key: "emotional_impact_rating", label: "Emotional Impact" },
-  { key: "entertainment_rating", label: "Entertainment" },
-];
-
-function ReviewLayersDisplay({ layers }: { layers: ReviewLayers }) {
+function ReviewLayersDisplay({ layers, mediaType }: { layers: ReviewLayers; mediaType: MediaType }) {
   const [open, setOpen] = useState(false);
-  const filled = LAYER_LABELS.filter(({ key }) => layers[key] !== null);
+  const defs = getLayerDefs(mediaType);
+  const filled = defs.filter(({ key }) => layers[key] !== null);
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -288,15 +278,11 @@ export default function DiaryEntryCard({
               </div>
 
               {ratingNum !== null ? (
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: "#EF9F27",
-                    fontSize: 13,
-                    fontWeight: 500,
-                  }}
-                >
-                  ★ {(ratingNum / 2).toFixed(1)}
+                <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 400 }}>
+                  <span style={{ color: "rgba(255,255,255,0.82)", fontVariantNumeric: "tabular-nums" }}>
+                    {ratingNum.toFixed(1)}
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>/ 10</span>
                 </p>
               ) : null}
 
@@ -327,8 +313,8 @@ export default function DiaryEntryCard({
                 </div>
               ) : null}
 
-              {movie.mediaType === "movie" && hasReviewLayers(movie.reviewLayers) ? (
-                <ReviewLayersDisplay layers={movie.reviewLayers!} />
+              {hasReviewLayers(movie.reviewLayers) ? (
+                <ReviewLayersDisplay layers={movie.reviewLayers!} mediaType={movie.mediaType} />
               ) : null}
 
               <div

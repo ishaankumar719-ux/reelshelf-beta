@@ -105,7 +105,7 @@ export default function ActivityItem({ event, profile, isLast }: ActivityItemPro
             <>
               logged{" "}
               <span style={{ color: "rgba(255,255,255,0.75)" }}>{event.title}</span>
-              {event.rating !== null ? ` · ★ ${(event.rating / 2).toFixed(1)}` : ""}
+              {event.rating !== null ? ` · ${event.rating.toFixed(1)} / 10` : ""}
             </>
           ) : (
             <>

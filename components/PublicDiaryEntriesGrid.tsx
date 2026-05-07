@@ -351,7 +351,7 @@ export default function PublicDiaryEntriesGrid({
                   ? entry.review.slice(0, 140) +
                     (entry.review.length > 140 ? "..." : "")
                   : typeof entry.rating === "number"
-                    ? `${entry.rating.toFixed(1)} ★`
+                    ? `${entry.rating.toFixed(1)} / 10`
                     : "Logged to the shelf."}
               </p>
             </Link>

@@ -455,12 +455,15 @@ export default function FilmDetailClient({
                 You rated this{" "}
                 <span
                   style={{
-                    color: "#EF9F27",
+                    color: "rgba(255,255,255,0.9)",
                     fontSize: 20,
-                    fontWeight: 600,
+                    fontWeight: 300,
+                    letterSpacing: "-0.5px",
+                    fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  ★ {(((coercedRating ?? 0) / 2) || 0).toFixed(1)}
+                  {(coercedRating ?? 0).toFixed(1)}
+                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
                 </span>
                 {" · "}Logged {formatLoggedDate(diaryEntry.watched_date)}
               </p>

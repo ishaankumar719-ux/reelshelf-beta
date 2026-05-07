@@ -434,7 +434,7 @@ export default function SeriesReviewPanel({
                         <h3 className="text-lg font-medium text-white/90">{season.name}</h3>
                         {seasonReview ? (
                           <span className="inline-flex h-7 items-center rounded-full border border-white/12 bg-white/[0.06] px-3 text-[10px] uppercase tracking-[0.16em] text-white/65">
-                            {seasonReview.rating ? `${(seasonReview.rating / 2).toFixed(1)} ★` : "Review saved"}
+                            {seasonReview.rating ? `${seasonReview.rating.toFixed(1)} / 10` : "Review saved"}
                           </span>
                         ) : (
                           <span className="inline-flex h-7 items-center rounded-full border border-white/10 bg-white/[0.03] px-3 text-[10px] uppercase tracking-[0.16em] text-white/42">
@@ -445,7 +445,7 @@ export default function SeriesReviewPanel({
                       <p className="mt-2 text-sm text-white/46">
                         {season.episodes.length} episodes
                         {season.airDate ? ` · ${season.airDate.slice(0, 4)}` : ""}
-                        {averageRating ? ` · Avg episode score ${(averageRating / 2).toFixed(1)} ★` : ""}
+                        {averageRating ? ` · Avg episode score ${averageRating.toFixed(1)} / 10` : ""}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-white/54">
                         {season.overview || "No season overview available yet."}
@@ -554,7 +554,7 @@ export default function SeriesReviewPanel({
                           </span>
                           {review ? (
                             <span className="inline-flex h-6 items-center rounded-full border border-white/12 bg-white/[0.06] px-2.5 text-[10px] uppercase tracking-[0.14em] text-white/64">
-                              {review.rating ? `${(review.rating / 2).toFixed(1)} ★` : "Saved"}
+                              {review.rating ? `${review.rating.toFixed(1)} / 10` : "Saved"}
                             </span>
                           ) : null}
                         </div>

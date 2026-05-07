@@ -41,7 +41,7 @@ type DashboardItem = {
 };
 
 function formatDiaryRating(rating: number | null) {
-  return typeof rating === "number" ? `${rating.toFixed(1)} ★` : "No rating";
+  return typeof rating === "number" ? `${rating.toFixed(1)} / 10` : "No rating";
 }
 
 function getActivityType(entry: FriendsActivityEntry) {
@@ -580,7 +580,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   fontWeight: 600,
                 }}
               >
-                {entry.rating.toFixed(1)} ★
+                {entry.rating.toFixed(1)} / 10
               </span>
             ) : null}
           </div>

@@ -149,7 +149,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
     highRaterPct >= 50
       ? `You rate generously — ${highRaterPct}% of your ratings are 8 or above`
       : avgRating && avgRating < 6
-        ? `You're a tough critic — avg ${(avgRating / 2).toFixed(1)}/5`
+        ? `You're a tough critic — avg ${avgRating.toFixed(1)}/10`
         : `${ratedEntries.length} films rated`
 
   const unratedCount = totalEntries - ratedEntries.length
@@ -189,7 +189,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
         >
           {[
             { label: "Films logged", value: `${filmsCount}` },
-            { label: "Avg rating", value: avgRating ? `${(avgRating / 2).toFixed(1)} / 5` : "—" },
+            { label: "Avg rating", value: avgRating ? `${avgRating.toFixed(1)} / 10` : "—" },
             { label: "Rated", value: `${ratedEntries.length} titles` },
             { label: "Streak", value: `${streakStats.currentStreak} days` },
           ].map((stat) => (

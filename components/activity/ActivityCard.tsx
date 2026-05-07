@@ -571,8 +571,11 @@ export default function ActivityCard({
           <strong style={{ color: "rgba(255,255,255,0.76)", fontWeight: 500 }}>{event.title}</strong>
         )}
         {event.rating ? (
-          <span style={{ color: "rgba(250,199,117,0.75)", marginLeft: 7, fontWeight: 500 }}>
-            ★ {(event.rating / 2).toFixed(1)}
+          <span style={{ marginLeft: 7, fontWeight: 400 }}>
+            <span style={{ color: "rgba(255,255,255,0.72)", fontVariantNumeric: "tabular-nums" }}>
+              {event.rating.toFixed(1)}
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.28)", marginLeft: 2 }}>/10</span>
           </span>
         ) : null}
       </span>

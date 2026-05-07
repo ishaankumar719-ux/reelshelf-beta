@@ -389,7 +389,7 @@ export default function ImportedMovieDetailClient({
                 fontFamily: "Arial, sans-serif",
               }}
             >
-              {movie.rating !== null ? `${movie.rating.toFixed(1)} ★` : "No rating"}
+              {movie.rating !== null ? `${movie.rating.toFixed(1)} / 10` : "No rating"}
             </span>
 
             <span

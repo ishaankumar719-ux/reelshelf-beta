@@ -557,7 +557,7 @@ export default function LetterboxdImportClient() {
                             fontFamily: "Arial, sans-serif",
                           }}
                         >
-                          {item.year} · {item.rating !== null ? `${item.rating.toFixed(1)} ★` : "No rating"}
+                          {item.year} · {item.rating !== null ? `${item.rating.toFixed(1)} / 10` : "No rating"}
                         </p>
                       </div>
                       <span

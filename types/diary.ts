@@ -1,5 +1,49 @@
-// Aspect-level ratings for film entries, all nullable so they never break
-// existing logs.  Keys mirror the DB column names (snake_case) for easy mapping.
+export interface LayerDef {
+  key: keyof ReviewLayers
+  label: string
+}
+
+export const FILM_LAYER_DEFS: LayerDef[] = [
+  { key: "score_rating", label: "Score / Soundtrack" },
+  { key: "cinematography_rating", label: "Cinematography" },
+  { key: "writing_rating", label: "Writing" },
+  { key: "performances_rating", label: "Performances" },
+  { key: "direction_rating", label: "Direction" },
+  { key: "rewatchability_rating", label: "Rewatchability" },
+  { key: "emotional_impact_rating", label: "Emotional Impact" },
+  { key: "entertainment_rating", label: "Entertainment" },
+]
+
+export const TV_LAYER_DEFS: LayerDef[] = [
+  { key: "writing_rating", label: "Writing" },
+  { key: "performances_rating", label: "Performances" },
+  { key: "direction_rating", label: "Direction" },
+  { key: "score_rating", label: "Pacing" },
+  { key: "cinematography_rating", label: "Episode Impact" },
+  { key: "rewatchability_rating", label: "Rewatchability" },
+  { key: "emotional_impact_rating", label: "Emotional Impact" },
+  { key: "entertainment_rating", label: "Entertainment" },
+]
+
+export const BOOK_LAYER_DEFS: LayerDef[] = [
+  { key: "score_rating", label: "Writing Style" },
+  { key: "cinematography_rating", label: "Story / Plot" },
+  { key: "writing_rating", label: "Characters" },
+  { key: "performances_rating", label: "Pacing" },
+  { key: "direction_rating", label: "Worldbuilding" },
+  { key: "emotional_impact_rating", label: "Emotional Impact" },
+  { key: "rewatchability_rating", label: "Re-readability" },
+  { key: "entertainment_rating", label: "Readability" },
+]
+
+export function getLayerDefs(mediaType: "movie" | "tv" | "book"): LayerDef[] {
+  if (mediaType === "tv") return TV_LAYER_DEFS
+  if (mediaType === "book") return BOOK_LAYER_DEFS
+  return FILM_LAYER_DEFS
+}
+
+// Aspect-level ratings, all nullable so they never break existing logs.
+// Keys mirror DB column names (snake_case) for easy mapping.
 export interface ReviewLayers {
   score_rating: number | null
   cinematography_rating: number | null

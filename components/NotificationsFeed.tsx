@@ -21,7 +21,7 @@ function getNotificationPreview(notification: ReelShelfNotification) {
   }
 
   if (typeof notification.rating === "number") {
-    return `${notification.rating.toFixed(1)} ★`;
+    return `${notification.rating.toFixed(1)} / 10`;
   }
 
   if (notification.mediaTitle) {

@@ -6,8 +6,8 @@ import { createClient as createSupabaseClient } from "../../lib/supabase/client"
 import { saveDiaryEntryLocally, type DiaryMovie } from "../../lib/diary";
 import { DIARY_SELECT } from "../../lib/queries";
 import { computeStreak } from "../../lib/streak";
-import type { DiaryEntry, LogMediaInput, ReviewLayers } from "../../types/diary";
-import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS } from "../../types/diary";
+import type { DiaryEntry, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
+import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS, getLayerDefs } from "../../types/diary";
 
 interface DiaryLogModalProps {
   isOpen: boolean;
@@ -102,150 +102,182 @@ function ToggleChip({
   );
 }
 
-function StarIcon({
-  fillPercent,
-  highlighted,
+const SLIDER_CSS = `
+  .rs-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    outline: none;
+    cursor: pointer;
+  }
+  .rs-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.55), 0 0 14px rgba(255,255,255,0.08);
+    cursor: grab;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .rs-slider:focus::-webkit-slider-thumb,
+  .rs-slider:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.1), 0 2px 10px rgba(0,0,0,0.6), 0 0 18px rgba(255,255,255,0.12);
+  }
+  .rs-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
+    transform: scale(1.18);
+  }
+  .rs-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.55);
+    cursor: grab;
+  }
+  .rs-slider::-moz-range-track { background: transparent; }
+`;
+
+function CinematicSlider({
+  value,
+  min = 1,
+  max = 10,
+  step = 0.1,
+  onChange,
+  ariaLabel,
 }: {
-  fillPercent: number;
-  highlighted: boolean;
+  value: number | null;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (v: number | null) => void;
+  ariaLabel?: string;
 }) {
-  const gradientId = useMemo(
-    () => `star-fill-${Math.random().toString(36).slice(2, 9)}`,
-    []
-  );
+  const internalMin = 0;
+  const internalValue = value ?? internalMin;
+  const fillPct = (internalValue / max) * 100;
+  const hasValue = value !== null;
+  const trackBg = `linear-gradient(to right, rgba(255,255,255,${hasValue ? 0.52 : 0.16}) 0%, rgba(255,255,255,${hasValue ? 0.52 : 0.16}) ${fillPct}%, rgba(255,255,255,0.09) ${fillPct}%, rgba(255,255,255,0.09) 100%)`;
 
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset={`${fillPercent}%`} stopColor="#EF9F27" />
-          <stop offset={`${fillPercent}%`} stopColor="rgba(255,255,255,0.18)" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M12 2.6 14.84 8.36l6.36.92-4.6 4.48 1.08 6.33L12 17.08l-5.68 2.99 1.08-6.33-4.6-4.48 6.36-.92L12 2.6Z"
-        fill={`url(#${gradientId})`}
-        stroke={highlighted ? "#EF9F27" : "rgba(255,255,255,0.08)"}
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <input
+      type="range"
+      className="rs-slider"
+      min={internalMin}
+      max={max}
+      step={step}
+      value={internalValue}
+      onChange={(e) => {
+        const n = Number(e.target.value);
+        if (n === 0) { onChange(null); return; }
+        onChange(Math.max(min, Math.round(n / step) * step));
+      }}
+      style={{ background: trackBg }}
+      aria-label={ariaLabel}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value ?? undefined}
+    />
   );
 }
 
-function RatingStars({
+function RatingWidget({
   value,
   onChange,
 }: {
   value: number | null;
-  onChange: (nextValue: number | null) => void;
+  onChange: (v: number | null) => void;
 }) {
-  const [hoverValue, setHoverValue] = useState<number | null>(null);
-  const activeValue = hoverValue ?? value;
-
   return (
     <div>
-      <style>{`
-        @keyframes reelshelf-star-pulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.04); }
-        }
-      `}</style>
-      <div style={{ display: "flex", gap: 6 }}>
-        {Array.from({ length: 5 }, (_, index) => {
-          const starNumber = index + 1;
-          const leftValue = starNumber * 2 - 1;
-          const rightValue = starNumber * 2;
-          const fillPercent = Math.max(
-            0,
-            Math.min(100, ((activeValue ?? 0) - (starNumber - 1) * 2) * 50)
-          );
-
-          return (
-            <div
-              key={starNumber}
-              style={{
-                position: "relative",
-                width: 28,
-                height: 28,
-                filter:
-                  activeValue !== null && fillPercent > 0
-                    ? "drop-shadow(0 0 8px rgba(239,159,39,0.3))"
-                    : "none",
-                animation:
-                  activeValue === null && starNumber === 1
-                    ? "reelshelf-star-pulse 1.6s ease-in-out infinite"
-                    : "none",
-              }}
-              onMouseLeave={() => setHoverValue(null)}
-            >
-              <StarIcon fillPercent={fillPercent} highlighted={fillPercent > 0} />
-              <button
-                type="button"
-                aria-label={`Set rating to ${leftValue.toFixed(1).replace(".0", "")} / 10`}
-                onMouseEnter={() => setHoverValue(leftValue)}
-                onClick={() => onChange(value === leftValue ? null : leftValue)}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "50%",
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              />
-              <button
-                type="button"
-                aria-label={`Set rating to ${rightValue.toFixed(1).replace(".0", "")} / 10`}
-                onMouseEnter={() => setHoverValue(rightValue)}
-                onClick={() => onChange(value === rightValue ? null : rightValue)}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: "50%",
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <p
+      <div
         style={{
-          margin: "10px 0 0",
-          fontSize: 12,
-          color:
-            typeof value === "number"
-              ? "rgba(255,255,255,0.5)"
-              : "rgba(255,255,255,0.3)",
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "center",
+          gap: 6,
+          marginBottom: 18,
+          minHeight: 52,
         }}
       >
-        {typeof value === "number" ? `${value.toFixed(1)} / 10` : "Tap to rate"}
-      </p>
+        {value !== null ? (
+          <>
+            <span
+              style={{
+                fontSize: 44,
+                fontWeight: 300,
+                letterSpacing: "-2px",
+                color: "rgba(255,255,255,0.92)",
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+                transition: "color 0.15s ease",
+              }}
+            >
+              {value.toFixed(1)}
+            </span>
+            <span
+              style={{
+                fontSize: 16,
+                color: "rgba(255,255,255,0.28)",
+                fontWeight: 400,
+                letterSpacing: "0.02em",
+              }}
+            >
+              / 10
+            </span>
+          </>
+        ) : (
+          <span
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.22)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Slide to rate
+          </span>
+        )}
+      </div>
+
+      <CinematicSlider
+        value={value}
+        min={1}
+        max={10}
+        step={0.1}
+        onChange={onChange}
+        ariaLabel="Overall rating"
+      />
+
+      <div style={{ textAlign: "right", marginTop: 10, minHeight: 16 }}>
+        {value !== null ? (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgba(255,255,255,0.22)",
+              fontSize: 11,
+              letterSpacing: "0.04em",
+            }}
+          >
+            × Clear rating
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 // ─── Review layers ────────────────────────────────────────────────────────────
-
-type LayerKey = keyof ReviewLayers;
-
-const LAYER_DEFS: { key: LayerKey; label: string }[] = [
-  { key: "score_rating", label: "Score / Soundtrack" },
-  { key: "cinematography_rating", label: "Cinematography" },
-  { key: "writing_rating", label: "Writing" },
-  { key: "performances_rating", label: "Performances" },
-  { key: "direction_rating", label: "Direction" },
-  { key: "rewatchability_rating", label: "Rewatchability" },
-  { key: "emotional_impact_rating", label: "Emotional Impact" },
-  { key: "entertainment_rating", label: "Entertainment" },
-];
 
 function ReviewLayerRow({
   label,
@@ -257,83 +289,57 @@ function ReviewLayerRow({
   onChange: (v: number | null) => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "5px 0",
-      }}
-    >
-      <span
+    <div style={{ padding: "8px 0" }}>
+      <div
         style={{
-          minWidth: 134,
-          fontSize: 12,
-          color: "rgba(255,255,255,0.46)",
-          flexShrink: 0,
-          lineHeight: 1,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginBottom: 7,
         }}
       >
-        {label}
-      </span>
-      <div style={{ display: "flex", gap: 3, flexWrap: "nowrap" }}>
-        {Array.from({ length: 10 }, (_, i) => {
-          const n = i + 1;
-          const active = value === n;
-          return (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onChange(active ? null : n)}
-              style={{
-                width: 22,
-                height: 20,
-                borderRadius: 4,
-                border: active
-                  ? "0.5px solid rgba(29,158,117,0.6)"
-                  : "0.5px solid rgba(255,255,255,0.1)",
-                background: active
-                  ? "rgba(29,158,117,0.75)"
-                  : "rgba(255,255,255,0.04)",
-                color: active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)",
-                fontSize: 10,
-                fontWeight: active ? 700 : 400,
-                cursor: "pointer",
-                lineHeight: 1,
-                transition: "background 0.12s ease, color 0.12s ease",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {n}
-            </button>
-          );
-        })}
-      </div>
-      {value !== null ? (
         <span
           style={{
             fontSize: 11,
-            color: "rgba(29,158,117,0.85)",
-            fontWeight: 600,
-            minWidth: 28,
+            color: "rgba(255,255,255,0.42)",
+            letterSpacing: "0.03em",
           }}
         >
-          {value}/10
+          {label}
         </span>
-      ) : (
-        <span style={{ minWidth: 28 }} />
-      )}
+        {value !== null ? (
+          <span
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.62)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}
+            <span style={{ color: "rgba(255,255,255,0.24)", marginLeft: 2 }}>/10</span>
+          </span>
+        ) : (
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>—</span>
+        )}
+      </div>
+      <CinematicSlider
+        value={value}
+        min={1}
+        max={10}
+        step={0.5}
+        onChange={onChange}
+        ariaLabel={label}
+      />
     </div>
   );
 }
 
 function ReviewLayersPanel({
+  defs,
   layers,
   onChange,
 }: {
+  defs: LayerDef[];
   layers: ReviewLayers;
   onChange: (next: ReviewLayers) => void;
 }) {
@@ -347,7 +353,7 @@ function ReviewLayersPanel({
         border: "0.5px solid rgba(255,255,255,0.07)",
       }}
     >
-      {LAYER_DEFS.map(({ key, label }) => (
+      {defs.map(({ key, label }) => (
         <ReviewLayerRow
           key={key}
           label={label}
@@ -505,19 +511,15 @@ export default function DiaryLogModal({
       contains_spoilers: containsSpoilers,
       review_scope: "show",
       show_id: "",
-      // Review layers — only included for films; all nullable so no field is required
-      ...(media.media_type === "movie"
-        ? {
-            score_rating: layers.score_rating,
-            cinematography_rating: layers.cinematography_rating,
-            writing_rating: layers.writing_rating,
-            performances_rating: layers.performances_rating,
-            direction_rating: layers.direction_rating,
-            rewatchability_rating: layers.rewatchability_rating,
-            emotional_impact_rating: layers.emotional_impact_rating,
-            entertainment_rating: layers.entertainment_rating,
-          }
-        : {}),
+      // Review layers — nullable for all media types
+      score_rating: layers.score_rating,
+      cinematography_rating: layers.cinematography_rating,
+      writing_rating: layers.writing_rating,
+      performances_rating: layers.performances_rating,
+      direction_rating: layers.direction_rating,
+      rewatchability_rating: layers.rewatchability_rating,
+      emotional_impact_rating: layers.emotional_impact_rating,
+      entertainment_rating: layers.entertainment_rating,
     };
 
     const { data, error: saveError } = await supabase
@@ -564,15 +566,10 @@ export default function DiaryLogModal({
     <>
       <style>{`
         @keyframes reelshelf-log-fade {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
+        ${SLIDER_CSS}
       `}</style>
       <div
         onClick={onClose}
@@ -780,7 +777,7 @@ export default function DiaryLogModal({
           <Divider />
 
           <div style={{ marginTop: -18 }}>
-            <RatingStars value={rating} onChange={setRating} />
+            <RatingWidget value={rating} onChange={setRating} />
           </div>
 
           <Divider />
@@ -851,50 +848,52 @@ export default function DiaryLogModal({
             />
           </div>
 
-          {/* Review layers — films only */}
-          {media.media_type === "movie" ? (
-            <>
-              <Divider />
-              <div style={{ marginTop: -18 }}>
-                <button
-                  type="button"
-                  onClick={() => setLayersOpen((o) => !o)}
+          {/* Review layers — all media types */}
+          <>
+            <Divider />
+            <div style={{ marginTop: -18 }}>
+              <button
+                type="button"
+                onClick={() => setLayersOpen((o) => !o)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  color: layersOpen
+                    ? "rgba(255,255,255,0.6)"
+                    : "rgba(255,255,255,0.32)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  letterSpacing: "0.02em",
+                  transition: "color 0.15s ease",
+                }}
+              >
+                <span
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    color: layersOpen
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(255,255,255,0.32)",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    letterSpacing: "0.02em",
-                    transition: "color 0.15s ease",
+                    fontSize: 9,
+                    display: "inline-block",
+                    transition: "transform 0.2s ease",
+                    transform: layersOpen ? "rotate(180deg)" : "rotate(0deg)",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 9,
-                      display: "inline-block",
-                      transition: "transform 0.2s ease",
-                      transform: layersOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    }}
-                  >
-                    ▼
-                  </span>
-                  {layersOpen ? "Hide review layers" : "Add review layers"}
-                </button>
+                  ▼
+                </span>
+                {layersOpen ? "Hide review layers" : "Add review layers"}
+              </button>
 
-                {layersOpen ? (
-                  <ReviewLayersPanel layers={layers} onChange={setLayers} />
-                ) : null}
-              </div>
-            </>
-          ) : null}
+              {layersOpen ? (
+                <ReviewLayersPanel
+                  defs={getLayerDefs(media.media_type)}
+                  layers={layers}
+                  onChange={setLayers}
+                />
+              ) : null}
+            </div>
+          </>
 
           {error ? (
             <p style={{ margin: "16px 0 0", color: "#fca5a5", fontSize: 12 }}>{error}</p>
