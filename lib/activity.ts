@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series"
+export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series" | "challenge_completed"
 
 export interface ActivityEvent {
   id: string
@@ -13,6 +13,7 @@ export interface ActivityEvent {
   title: string
   media_type: "movie" | "tv" | "book"
   media_id?: string | null
+  diary_entry_id?: string | null
   poster: string | null
   rating: number | null
   review: string | null
@@ -138,6 +139,7 @@ export function buildActivityEventsFromSources({
       title: row.title,
       media_type: row.media_type,
       media_id: row.media_id ?? null,
+      diary_entry_id: row.id,
       poster: row.poster ?? null,
       rating: toRating(row.rating),
       review: row.review?.trim() || null,

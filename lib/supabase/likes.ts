@@ -112,6 +112,24 @@ export async function toggleDiaryEntryLike(
   };
 }
 
+export async function getLikeCountsForEntries(
+  entryIds: string[]
+): Promise<Record<string, number>> {
+  const client = createSupabaseBrowserClient();
+  if (!client || entryIds.length === 0) return {};
+
+  const { data } = await client
+    .from("diary_entry_likes")
+    .select("diary_entry_id")
+    .in("diary_entry_id", entryIds);
+
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    counts[row.diary_entry_id] = (counts[row.diary_entry_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export function subscribeToLikes(listener: () => void) {
   if (typeof window === "undefined") {
     return () => {};
