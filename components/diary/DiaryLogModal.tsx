@@ -535,6 +535,8 @@ export default function DiaryLogModal({
       contains_spoilers: containsSpoilers,
       review_scope: "show",
       show_id: "",
+      season_number: 0,
+      episode_number: 0,
       // Review layers — nullable for all media types
       score_rating: layers.score_rating,
       cinematography_rating: layers.cinematography_rating,
@@ -550,7 +552,7 @@ export default function DiaryLogModal({
     const { data, error: saveError } = await supabase
       .from("diary_entries")
       .upsert(payload, {
-        onConflict: "user_id,media_id",
+        onConflict: "user_id,media_type,media_id,review_scope,season_number,episode_number",
         ignoreDuplicates: false,
       })
       .select(DIARY_SELECT)
