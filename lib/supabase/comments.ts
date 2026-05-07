@@ -12,6 +12,8 @@ export type PublicComment = {
   username: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  attachmentUrl: string | null;
+  attachmentType: "image" | "gif" | null;
 };
 
 const COMMENT_EVENT = "reelshelf:comments-updated";
@@ -23,6 +25,8 @@ type CommentRow = {
   user_id: string;
   body: string;
   created_at: string;
+  attachment_url: string | null;
+  attachment_type: "image" | "gif" | null;
 };
 
 type ProfileRow = {
@@ -32,6 +36,9 @@ type ProfileRow = {
   avatar_url: string | null;
 };
 
+const COMMENT_SELECT =
+  "id, diary_entry_id, parent_comment_id, user_id, body, created_at, attachment_url, attachment_type";
+
 function notifyCommentListeners() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(COMMENT_EVENT));
@@ -40,18 +47,17 @@ function notifyCommentListeners() {
 async function getCurrentUserId() {
   const client = createSupabaseBrowserClient();
   if (!client) return null;
-  const { data: { user } } = await client.auth.getUser();
+  const {
+    data: { user },
+  } = await client.auth.getUser();
   return user?.id ?? null;
 }
 
-async function attachProfiles(
-  commentRows: CommentRow[]
-): Promise<PublicComment[]> {
+async function attachProfiles(commentRows: CommentRow[]): Promise<PublicComment[]> {
   if (commentRows.length === 0) return [];
 
   const client = createSupabaseBrowserClient();
   const userIds = Array.from(new Set(commentRows.map((r) => r.user_id)));
-
   const profileMap = new Map<string, ProfileRow>();
 
   if (client && userIds.length > 0) {
@@ -77,10 +83,14 @@ async function attachProfiles(
       username: profile?.username ?? null,
       displayName: profile?.display_name ?? null,
       avatarUrl: profile?.avatar_url ?? null,
+      attachmentUrl: row.attachment_url ?? null,
+      attachmentType: row.attachment_type ?? null,
     };
   });
 }
 
+// Loads ALL comments (roots + replies) for a set of entries in one query.
+// The caller separates roots from replies via parentCommentId.
 export async function getCommentsForDiaryEntries(
   entryIds: string[]
 ): Promise<PublicComment[]> {
@@ -91,11 +101,10 @@ export async function getCommentsForDiaryEntries(
 
   const { data, error } = await client
     .from("diary_entry_comments")
-    .select("id, diary_entry_id, parent_comment_id, user_id, body, created_at")
+    .select(COMMENT_SELECT)
     .in("diary_entry_id", entryIds)
-    .is("parent_comment_id", null)
     .order("created_at", { ascending: true })
-    .limit(200);
+    .limit(500);
 
   if (error) {
     console.error("[ReelShelf comments] batch load failed", error);
@@ -105,9 +114,7 @@ export async function getCommentsForDiaryEntries(
   return attachProfiles((data ?? []) as CommentRow[]);
 }
 
-export async function getCommentsForEntry(
-  entryId: string
-): Promise<PublicComment[]> {
+export async function getCommentsForEntry(entryId: string): Promise<PublicComment[]> {
   return getCommentsForDiaryEntries([entryId]);
 }
 
@@ -119,6 +126,7 @@ export async function getCommentCountsForEntries(
   const client = createSupabaseBrowserClient();
   if (!client) return {};
 
+  // Count root comments only (parent_comment_id IS NULL)
   const { data } = await client
     .from("diary_entry_comments")
     .select("diary_entry_id")
@@ -136,6 +144,8 @@ export async function createDiaryEntryComment(input: {
   diaryEntryId: string;
   body: string;
   parentCommentId?: string | null;
+  attachmentUrl?: string | null;
+  attachmentType?: "image" | "gif" | null;
 }): Promise<{ error: string | null; comment: PublicComment | null }> {
   const currentUserId = await getCurrentUserId();
   if (!currentUserId) {
@@ -159,8 +169,10 @@ export async function createDiaryEntryComment(input: {
       parent_comment_id: input.parentCommentId ?? null,
       user_id: currentUserId,
       body: normalizedBody,
+      attachment_url: input.attachmentUrl ?? null,
+      attachment_type: input.attachmentType ?? null,
     })
-    .select("id, diary_entry_id, parent_comment_id, user_id, body, created_at")
+    .select(COMMENT_SELECT)
     .single();
 
   if (error) {
@@ -168,7 +180,6 @@ export async function createDiaryEntryComment(input: {
     return { error: error.message || "Could not post your comment.", comment: null };
   }
 
-  // Fetch the commenter's profile for immediate display
   const { data: profile } = await client
     .from("profiles")
     .select("username, display_name, avatar_url")
@@ -190,6 +201,8 @@ export async function createDiaryEntryComment(input: {
       username: profile?.username ?? null,
       displayName: profile?.display_name ?? null,
       avatarUrl: profile?.avatar_url ?? null,
+      attachmentUrl: row.attachment_url ?? null,
+      attachmentType: row.attachment_type ?? null,
     },
   };
 }

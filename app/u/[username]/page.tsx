@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation"
 import { buildActivityEventsFromSources } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
+import { getMediaHref } from "@/lib/mediaRoutes"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
+import type { PublicDiaryEntry } from "@/lib/publicProfiles"
 
 export const dynamic = "force-dynamic"
 
@@ -42,6 +44,65 @@ type DiaryRow = {
   review: string | null
   created_at: string
   review_scope: "show" | "season" | "episode" | "title" | null
+}
+
+type FullDiaryRow = {
+  id: string
+  title: string
+  media_id: string
+  media_type: "movie" | "tv" | "book"
+  year: number | null
+  poster: string | null
+  creator: string | null
+  rating: number | null
+  review: string | null
+  watched_date: string | null
+  favourite: boolean
+  rewatch: boolean
+  contains_spoilers: boolean
+  saved_at: string
+  score_rating: number | null
+  cinematography_rating: number | null
+  writing_rating: number | null
+  performances_rating: number | null
+  direction_rating: number | null
+  rewatchability_rating: number | null
+  emotional_impact_rating: number | null
+  entertainment_rating: number | null
+  reelshelf_score: number | null
+}
+
+function mapToPublicEntry(row: FullDiaryRow): PublicDiaryEntry {
+  return {
+    entryId: row.id,
+    id: row.media_id,
+    mediaType: row.media_type,
+    title: row.title,
+    poster: row.poster,
+    year: Number(row.year) || 0,
+    creator: row.creator,
+    rating: typeof row.rating === "number" ? row.rating : null,
+    review: row.review || "",
+    watchedDate: row.watched_date ?? "",
+    favourite: Boolean(row.favourite),
+    rewatch: Boolean(row.rewatch),
+    containsSpoilers: Boolean(row.contains_spoilers),
+    savedAt: row.saved_at,
+    href: getMediaHref({ id: row.media_id, mediaType: row.media_type }),
+    likeCount: 0,
+    commentCount: 0,
+    reelshelfScore: row.reelshelf_score ?? null,
+    reviewLayers: {
+      score_rating: row.score_rating ?? null,
+      cinematography_rating: row.cinematography_rating ?? null,
+      writing_rating: row.writing_rating ?? null,
+      performances_rating: row.performances_rating ?? null,
+      direction_rating: row.direction_rating ?? null,
+      rewatchability_rating: row.rewatchability_rating ?? null,
+      emotional_impact_rating: row.emotional_impact_rating ?? null,
+      entertainment_rating: row.entertainment_rating ?? null,
+    },
+  }
 }
 
 function normalizeRushmoreRows(rows: RushmoreRow[]): MountRushmoreSlot[] {
@@ -128,6 +189,7 @@ export default async function PublicProfilePage({
     { data: rushmoreData },
     { data: recentDiaryData },
     { data: allDiaryData },
+    { data: reviewsData },
     watchlistRes,
     { count: followersCount },
     { count: followingCount },
@@ -153,6 +215,14 @@ export default async function PublicProfilePage({
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false }),
     supabase
+      .from("diary_entries")
+      .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score")
+      .eq("user_id", profileRow.id)
+      .in("review_scope", ["show", "title"])
+      .not("review", "is", null)
+      .order("saved_at", { ascending: false })
+      .limit(8),
+    supabase
       .from("saved_items")
       .select("id", { count: "exact", head: true })
       .eq("user_id", profileRow.id)
@@ -171,6 +241,10 @@ export default async function PublicProfilePage({
   const recentRows = (recentDiaryData ?? []) as DiaryRow[]
   const allRows = (allDiaryData ?? []) as DiaryRow[]
   const watchlistCount = watchlistRes.count ?? 0
+
+  const recentReviews = ((reviewsData ?? []) as FullDiaryRow[])
+    .filter((row) => row.review && row.review.trim().length > 0)
+    .map(mapToPublicEntry)
 
   const films = allRows.filter((entry) => entry.media_type === "movie").length
   const series = allRows.filter((entry) => entry.media_type === "tv").length
@@ -252,5 +326,5 @@ export default async function PublicProfilePage({
     highest_rated: highestRated,
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} activityEvents={activityEvents} />
+  return <ProfileShowcase profile={profile} isOwner={isOwner} activityEvents={activityEvents} recentReviews={recentReviews} />
 }

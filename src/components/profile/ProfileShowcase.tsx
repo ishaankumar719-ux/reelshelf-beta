@@ -4,7 +4,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import ActivityFeed from "@/components/activity/ActivityFeed"
+import PublicDiaryEntriesGrid from "@/components/PublicDiaryEntriesGrid"
 import type { ActivityEvent } from "@/lib/activity"
+import type { PublicDiaryEntry } from "@/lib/publicProfiles"
 import type {
   MountRushmoreSlot,
   PublicProfileActivityItem,
@@ -16,6 +18,7 @@ interface ProfileShowcaseProps {
   profile: PublicProfileShowcaseData | null
   isOwner: boolean
   activityEvents?: ActivityEvent[]
+  recentReviews?: PublicDiaryEntry[]
 }
 
 type RushmoreTab = "movie" | "tv" | "book"
@@ -342,6 +345,7 @@ export default function ProfileShowcase({
   profile,
   isOwner,
   activityEvents = [],
+  recentReviews = [],
 }: ProfileShowcaseProps) {
   const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
   const [visible, setVisible] = useState(true)
@@ -645,6 +649,19 @@ export default function ProfileShowcase({
           <div style={{ marginTop: 40 }}>
             <span style={sectionLabelStyle()}>Highest rated</span>
             <HighestRatedRow items={profile.highest_rated} />
+          </div>
+        ) : null}
+
+        {recentReviews.length > 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>Reviews</span>
+            <PublicDiaryEntriesGrid
+              entries={recentReviews}
+              ownerUserId={profile.id}
+              ownerUsername={profile.username}
+              ownerDisplayName={profile.display_name}
+              ownerAvatarUrl={profile.avatar_url}
+            />
           </div>
         ) : null}
 

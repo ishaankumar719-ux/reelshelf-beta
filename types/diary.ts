@@ -16,10 +16,10 @@ export const FILM_LAYER_DEFS: LayerDef[] = [
 
 export const TV_LAYER_DEFS: LayerDef[] = [
   { key: "writing_rating", label: "Writing" },
+  { key: "direction_rating", label: "Characters" },
   { key: "performances_rating", label: "Performances" },
-  { key: "direction_rating", label: "Direction" },
-  { key: "score_rating", label: "Pacing" },
-  { key: "cinematography_rating", label: "Episode Impact" },
+  { key: "score_rating", label: "Season Quality" },
+  { key: "cinematography_rating", label: "Finale" },
   { key: "rewatchability_rating", label: "Rewatchability" },
   { key: "emotional_impact_rating", label: "Emotional Impact" },
   { key: "entertainment_rating", label: "Entertainment" },
@@ -27,13 +27,13 @@ export const TV_LAYER_DEFS: LayerDef[] = [
 
 export const BOOK_LAYER_DEFS: LayerDef[] = [
   { key: "score_rating", label: "Writing Style" },
-  { key: "cinematography_rating", label: "Story / Plot" },
-  { key: "writing_rating", label: "Characters" },
+  { key: "cinematography_rating", label: "Characters" },
+  { key: "writing_rating", label: "Worldbuilding" },
   { key: "performances_rating", label: "Pacing" },
-  { key: "direction_rating", label: "Worldbuilding" },
+  { key: "direction_rating", label: "Themes" },
   { key: "emotional_impact_rating", label: "Emotional Impact" },
-  { key: "rewatchability_rating", label: "Re-readability" },
-  { key: "entertainment_rating", label: "Readability" },
+  { key: "rewatchability_rating", label: "Readability" },
+  { key: "entertainment_rating", label: "Ending" },
 ]
 
 export function getLayerDefs(mediaType: "movie" | "tv" | "book"): LayerDef[] {

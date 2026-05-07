@@ -4,6 +4,7 @@ import type { UserProfile } from "./profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getFollowCounts } from "./follows";
 import { DIARY_SELECT, PROFILE_SELECT } from "./queries";
+import type { ReviewLayers } from "../types/diary";
 
 export type PublicDiaryEntry = {
   entryId: string;
@@ -17,10 +18,14 @@ export type PublicDiaryEntry = {
   review: string;
   watchedDate: string;
   favourite: boolean;
+  rewatch: boolean;
+  containsSpoilers: boolean;
   savedAt: string;
   href: string;
   likeCount: number;
   commentCount: number;
+  reelshelfScore: number | null;
+  reviewLayers: ReviewLayers | null;
 };
 
 export type PublicProfileData = {
@@ -70,7 +75,18 @@ type DiaryRow = {
   review: string | null;
   watched_date: string;
   favourite: boolean;
+  rewatch: boolean;
+  contains_spoilers: boolean;
   saved_at: string;
+  reelshelf_score: number | null;
+  score_rating: number | null;
+  cinematography_rating: number | null;
+  writing_rating: number | null;
+  performances_rating: number | null;
+  direction_rating: number | null;
+  rewatchability_rating: number | null;
+  emotional_impact_rating: number | null;
+  entertainment_rating: number | null;
 };
 
 function mapProfileRow(row: ProfileRow): UserProfile {
@@ -104,10 +120,23 @@ function mapDiaryRow(row: DiaryRow): PublicDiaryEntry {
     review: row.review || "",
     watchedDate: row.watched_date,
     favourite: Boolean(row.favourite),
+    rewatch: Boolean(row.rewatch),
+    containsSpoilers: Boolean(row.contains_spoilers),
     savedAt: row.saved_at,
     href: getMediaHref({ id: row.media_id, mediaType: row.media_type }),
     likeCount: 0,
     commentCount: 0,
+    reelshelfScore: typeof row.reelshelf_score === "number" ? row.reelshelf_score : null,
+    reviewLayers: {
+      score_rating: row.score_rating ?? null,
+      cinematography_rating: row.cinematography_rating ?? null,
+      writing_rating: row.writing_rating ?? null,
+      performances_rating: row.performances_rating ?? null,
+      direction_rating: row.direction_rating ?? null,
+      rewatchability_rating: row.rewatchability_rating ?? null,
+      emotional_impact_rating: row.emotional_impact_rating ?? null,
+      entertainment_rating: row.entertainment_rating ?? null,
+    },
   };
 }
 
@@ -275,22 +304,7 @@ export async function getDiscoverProfiles(
 
   for (const row of (((diaryRows || []) as unknown) as (DiaryRow & { user_id: string })[])) {
     const current = diaryByUser.get(row.user_id) || [];
-    current.push(
-      mapDiaryRow({
-        id: row.id,
-        media_id: row.media_id,
-        media_type: row.media_type,
-        title: row.title,
-        poster: row.poster,
-        year: row.year,
-        creator: row.creator,
-        rating: row.rating,
-        review: row.review,
-        watched_date: row.watched_date,
-        favourite: row.favourite,
-        saved_at: row.saved_at,
-      })
-    );
+    current.push(mapDiaryRow(row));
     diaryByUser.set(row.user_id, current);
   }
 
