@@ -116,6 +116,16 @@ export interface DiaryEntry {
   entertainment_rating: number | null
 }
 
+export interface InitialEntryData {
+  rating: number | null
+  review: string
+  watchedDate: string
+  favourite: boolean
+  rewatch: boolean
+  containsSpoilers: boolean
+  reviewLayers: ReviewLayers
+}
+
 export interface LogMediaInput {
   title: string
   media_type: "movie" | "tv" | "book"

@@ -9,13 +9,13 @@ import {
 } from "react";
 import DiaryLogModal from "../components/diary/DiaryLogModal";
 import DiaryToast from "../components/diary/DiaryToast";
-import type { DiaryEntry, LogMediaInput } from "../types/diary";
+import type { DiaryEntry, InitialEntryData, LogMediaInput } from "../types/diary";
 
 interface DiaryLogContextValue {
   isOpen: boolean;
   media: LogMediaInput | null;
   toastMessage: string | null;
-  openLog: (media: LogMediaInput) => void;
+  openLog: (media: LogMediaInput, initialEntry?: InitialEntryData) => void;
   closeLog: () => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
@@ -26,6 +26,7 @@ const DiaryLogContext = createContext<DiaryLogContextValue | null>(null);
 export function DiaryLogProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [media, setMedia] = useState<LogMediaInput | null>(null);
+  const [initialEntry, setInitialEntry] = useState<InitialEntryData | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const value = useMemo<DiaryLogContextValue>(
@@ -33,8 +34,9 @@ export function DiaryLogProvider({ children }: { children: ReactNode }) {
       isOpen,
       media,
       toastMessage,
-      openLog: (nextMedia) => {
+      openLog: (nextMedia, nextInitialEntry) => {
         setMedia(nextMedia);
+        setInitialEntry(nextInitialEntry);
         setIsOpen(true);
       },
       closeLog: () => setIsOpen(false),
@@ -60,6 +62,7 @@ export function DiaryLogProvider({ children }: { children: ReactNode }) {
             );
           }}
           media={media}
+          initialEntry={initialEntry}
         />
       ) : null}
       {toastMessage ? (

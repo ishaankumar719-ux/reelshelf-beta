@@ -1,6 +1,6 @@
 "use client";
 
-import { saveDiaryDraft } from "../lib/diary";
+import { useDiaryLog } from "../hooks/useDiaryLog";
 import type { MediaType } from "../lib/media";
 
 type Props = {
@@ -18,12 +18,20 @@ type Props = {
 };
 
 export default function AddToDiaryButton({ movie }: Props) {
+  const { openLog } = useDiaryLog();
+
   function handleAdd() {
-    saveDiaryDraft({
-      ...movie,
-      mediaType: movie.mediaType || "movie",
+    openLog({
+      title: movie.title,
+      media_type: movie.mediaType || "movie",
+      year: movie.year,
+      poster: movie.poster ?? null,
+      creator: movie.director ?? null,
+      genres: movie.genres,
+      runtime: movie.runtime ?? null,
+      vote_average: movie.voteAverage ?? null,
+      media_id: movie.id,
     });
-    window.location.href = "/diary/log";
   }
 
   return (

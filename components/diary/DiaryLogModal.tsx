@@ -6,7 +6,7 @@ import { createClient as createSupabaseClient } from "../../lib/supabase/client"
 import { saveDiaryEntryLocally, type DiaryMovie } from "../../lib/diary";
 import { DIARY_SELECT } from "../../lib/queries";
 import { computeStreak } from "../../lib/streak";
-import type { DiaryEntry, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
+import type { DiaryEntry, InitialEntryData, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
 import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS, getLayerDefs } from "../../types/diary";
 
 interface DiaryLogModalProps {
@@ -14,6 +14,17 @@ interface DiaryLogModalProps {
   onClose: () => void;
   onSaved: (entry: DiaryEntry, streakDays: number) => void;
   media: LogMediaInput;
+  initialEntry?: InitialEntryData;
+}
+
+function getReviewPlaceholder(mediaType: LogMediaInput["media_type"]) {
+  if (mediaType === "tv") return "What stayed with you after the credits rolled? (optional)";
+  if (mediaType === "book") return "What stayed with you after the final page? (optional)";
+  return "What did you think? (optional)";
+}
+
+function getRewatchLabel(mediaType: LogMediaInput["media_type"]) {
+  return mediaType === "book" ? "Re-read" : "Rewatch";
 }
 
 function todayIso() {
@@ -408,6 +419,7 @@ export default function DiaryLogModal({
   onClose,
   onSaved,
   media,
+  initialEntry,
 }: DiaryLogModalProps) {
   const [mounted, setMounted] = useState(false);
   const [watchedDate, setWatchedDate] = useState(todayIso());
@@ -441,7 +453,15 @@ export default function DiaryLogModal({
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && initialEntry) {
+      setRating(initialEntry.rating);
+      setReview(initialEntry.review);
+      setWatchedDate(initialEntry.watchedDate);
+      setFavourite(initialEntry.favourite);
+      setRewatch(initialEntry.rewatch);
+      setContainsSpoilers(initialEntry.containsSpoilers);
+      setLayers(initialEntry.reviewLayers ?? EMPTY_LAYERS);
+    } else if (!isOpen) {
       setWatchedDate(todayIso());
       setRating(null);
       setReview("");
@@ -453,7 +473,7 @@ export default function DiaryLogModal({
       setSaving(false);
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialEntry]);
 
   const mediaBadgeStyle = useMemo(
     () => getMediaBadgeStyles(media.media_type),
@@ -786,7 +806,7 @@ export default function DiaryLogModal({
             <textarea
               value={review}
               onChange={(event) => setReview(event.target.value.slice(0, 1000))}
-              placeholder="What did you think? (optional)"
+              placeholder={getReviewPlaceholder(media.media_type)}
               rows={4}
               style={{
                 width: "100%",
@@ -836,7 +856,7 @@ export default function DiaryLogModal({
             />
             <ToggleChip
               active={rewatch}
-              label="Rewatch"
+              label={getRewatchLabel(media.media_type)}
               icon="↺"
               onClick={() => setRewatch((value) => !value)}
             />

@@ -1,16 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   getDiaryEntryKey,
   getDiaryMovies,
   removeDiaryEntry,
-  saveDiaryDraft,
   subscribeToDiary,
   type DiaryMovie,
 } from "../../lib/diary";
+import { EMPTY_REVIEW_LAYERS } from "../../types/diary";
 import DiaryEntryCard from "../../components/diary/DiaryEntryCard";
+import { useDiaryLog } from "../../hooks/useDiaryLog";
 import type { MediaType } from "../../lib/media";
 
 type FilterType = "all" | "favourites" | "highest-rated" | "recent";
@@ -101,7 +101,7 @@ function FilterButton({
 }
 
 export default function DiaryPage() {
-  const router = useRouter();
+  const { openLog } = useDiaryLog();
   const [movies, setMovies] = useState<Array<DiaryMovie & { isNew?: boolean }>>([]);
   const [filter, setFilter] = useState<FilterType>("all");
   const [mediaFilter, setMediaFilter] = useState<MediaFilterType>("all");
@@ -176,22 +176,28 @@ export default function DiaryPage() {
   const isFilteredEmpty = !isEmpty && filteredMovies.length === 0;
 
   function handleEdit(movie: DiaryMovie) {
-    saveDiaryDraft({
-      id: movie.id,
-      mediaType: movie.mediaType,
-      reviewScope: movie.reviewScope,
-      showId: movie.showId,
-      seasonNumber: movie.seasonNumber,
-      episodeNumber: movie.episodeNumber,
-      title: movie.title,
-      poster: movie.poster,
-      year: movie.year,
-      director: movie.director,
-      genres: movie.genres,
-      runtime: movie.runtime,
-      voteAverage: movie.voteAverage,
-    });
-    router.push("/diary/log?mode=edit");
+    openLog(
+      {
+        title: movie.title,
+        media_type: movie.mediaType,
+        year: movie.year,
+        poster: movie.poster ?? null,
+        creator: movie.director ?? null,
+        genres: movie.genres,
+        runtime: movie.runtime ?? null,
+        vote_average: movie.voteAverage ?? null,
+        media_id: movie.id,
+      },
+      {
+        rating: movie.rating,
+        review: movie.review,
+        watchedDate: movie.watchedDate,
+        favourite: movie.favourite,
+        rewatch: movie.rewatch,
+        containsSpoilers: movie.containsSpoilers,
+        reviewLayers: movie.reviewLayers ?? EMPTY_REVIEW_LAYERS,
+      }
+    );
   }
 
   function handleDelete(movie: DiaryMovie) {
