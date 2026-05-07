@@ -518,7 +518,7 @@ export default function ProfileShowcase({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
             gap: 12,
             marginTop: 28,
           }}
@@ -589,7 +589,7 @@ export default function ProfileShowcase({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
                 gap: 10,
               }}
             >

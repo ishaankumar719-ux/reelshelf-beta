@@ -9,6 +9,12 @@ import GlobalSearch from "../src/components/layout/GlobalSearch";
 
 export const dynamic = "force-dynamic";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({
   children,
 }: {

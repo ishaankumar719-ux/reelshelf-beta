@@ -594,21 +594,24 @@ export default function DiaryLogModal({
       <div
         onClick={onClose}
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.75)",
           zIndex: 50,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: "100dvh",
-          padding: 16,
+          padding: "16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)",
         }}
       >
         <div
           onClick={(event) => event.stopPropagation()}
           style={{
             width: "min(460px, 100%)",
+            maxHeight: "calc(100dvh - 48px)",
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
             background: "#0f0f1e",
             border: "0.5px solid rgba(255,255,255,0.12)",
             borderRadius: 16,

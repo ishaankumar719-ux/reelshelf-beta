@@ -175,7 +175,17 @@ export default function AppNav() {
         </div>
       </header>
 
-      <nav className="border-t border-white/8 bg-[#07070d] md:hidden">
+      <nav
+        className="border-t border-white/8 bg-[#07070d] md:hidden"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
         <div className="mx-auto grid max-w-[1600px] grid-cols-5 px-2">
           {[
             { href: "/", label: "Home" },

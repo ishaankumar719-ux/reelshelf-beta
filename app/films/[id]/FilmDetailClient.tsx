@@ -330,7 +330,7 @@ export default function FilmDetailClient({
               )}
             </div>
 
-            <div style={{ flex: 1, minWidth: 260, paddingBottom: 6 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
               <h1
                 style={{
                   margin: 0,
