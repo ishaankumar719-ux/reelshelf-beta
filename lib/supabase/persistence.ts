@@ -14,6 +14,7 @@ export type PersistedDiaryEntry = SavedMediaItem & {
   containsSpoilers: boolean;
   savedAt: string;
   reviewLayers?: ReviewLayers | null;
+  reelshelfScore?: number | null;
 };
 
 export type PersistedSavedItem = SavedMediaItem & {
@@ -51,6 +52,8 @@ type DiaryRow = {
   rewatchability_rating?: number | null;
   emotional_impact_rating?: number | null;
   entertainment_rating?: number | null;
+  // Calculated score — migration 20260510_reelshelf_score.sql
+  reelshelf_score?: number | null;
 };
 
 type SavedItemRow = {
@@ -178,6 +181,7 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     rewatchability_rating: entry.reviewLayers?.rewatchability_rating ?? null,
     emotional_impact_rating: entry.reviewLayers?.emotional_impact_rating ?? null,
     entertainment_rating: entry.reviewLayers?.entertainment_rating ?? null,
+    reelshelf_score: entry.reelshelfScore ?? null,
   };
 }
 
@@ -214,6 +218,7 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
       emotional_impact_rating: row.emotional_impact_rating ?? null,
       entertainment_rating: row.entertainment_rating ?? null,
     },
+    reelshelfScore: typeof row.reelshelf_score === "number" ? row.reelshelf_score : null,
   };
 }
 

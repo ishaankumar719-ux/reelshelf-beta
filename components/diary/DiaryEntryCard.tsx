@@ -278,12 +278,47 @@ export default function DiaryEntryCard({
               </div>
 
               {ratingNum !== null ? (
-                <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 400 }}>
-                  <span style={{ color: "rgba(255,255,255,0.82)", fontVariantNumeric: "tabular-nums" }}>
-                    {ratingNum.toFixed(1)}
-                  </span>
-                  <span style={{ color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>/ 10</span>
-                </p>
+                <div style={{ marginTop: 8, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "baseline" }}>
+                  <div>
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 9,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.3)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Your Rating
+                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.82)", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                      {ratingNum.toFixed(1)}
+                      <span style={{ color: "rgba(255,255,255,0.28)", marginLeft: 3, fontSize: 11 }}>/ 10</span>
+                    </span>
+                  </div>
+
+                  {typeof movie.reelshelfScore === "number" && movie.reelshelfScore !== ratingNum ? (
+                    <div>
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: 9,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: "rgba(255,255,255,0.3)",
+                          marginBottom: 2,
+                        }}
+                      >
+                        ReelShelf Score
+                      </span>
+                      <span style={{ color: "#EF9F27", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                        {movie.reelshelfScore.toFixed(1)}
+                        <span style={{ color: "rgba(239,159,39,0.45)", marginLeft: 3, fontSize: 11 }}>/ 10</span>
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
 
               {reviewSnippet ? (

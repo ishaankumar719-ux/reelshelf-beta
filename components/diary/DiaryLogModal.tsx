@@ -8,6 +8,7 @@ import { DIARY_SELECT } from "../../lib/queries";
 import { computeStreak } from "../../lib/streak";
 import type { DiaryEntry, InitialEntryData, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
 import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS, getLayerDefs } from "../../types/diary";
+import { calculateReelShelfScore } from "../../lib/scoring";
 
 interface DiaryLogModalProps {
   isOpen: boolean;
@@ -411,6 +412,7 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
       emotional_impact_rating: entry.emotional_impact_rating ?? null,
       entertainment_rating: entry.entertainment_rating ?? null,
     },
+    reelshelfScore: typeof entry.reelshelf_score === "number" ? entry.reelshelf_score : null,
   };
 }
 
@@ -512,6 +514,8 @@ export default function DiaryLogModal({
         ? `tmdb-${media.tmdb_id}`
         : `${slugifyTitle(media.title)}-${media.year}`);
 
+    const reelshelfScore = calculateReelShelfScore(media.media_type, rating, layers);
+
     const payload = {
       user_id: session.user.id,
       media_id: mediaId,
@@ -540,6 +544,7 @@ export default function DiaryLogModal({
       rewatchability_rating: layers.rewatchability_rating,
       emotional_impact_rating: layers.emotional_impact_rating,
       entertainment_rating: layers.entertainment_rating,
+      reelshelf_score: reelshelfScore,
     };
 
     const { data, error: saveError } = await supabase

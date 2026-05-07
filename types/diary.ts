@@ -114,6 +114,8 @@ export interface DiaryEntry {
   rewatchability_rating: number | null
   emotional_impact_rating: number | null
   entertainment_rating: number | null
+  // Calculated from overallRating + review layers — see lib/scoring.ts
+  reelshelf_score: number | null
 }
 
 export interface InitialEntryData {

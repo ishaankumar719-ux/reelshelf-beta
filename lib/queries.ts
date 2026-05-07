@@ -23,7 +23,7 @@ export const DIARY_SELECT = [
   "saved_at",
   "created_at",
   "updated_at",
-  // Review layers — nullable, movie-only in the UI (migration: 20260509_review_layers.sql)
+  // Review layers — nullable for all media types (migration: 20260509_review_layers.sql)
   "score_rating",
   "cinematography_rating",
   "writing_rating",
@@ -32,6 +32,8 @@ export const DIARY_SELECT = [
   "rewatchability_rating",
   "emotional_impact_rating",
   "entertainment_rating",
+  // Calculated score — see lib/scoring.ts (migration: 20260510_reelshelf_score.sql)
+  "reelshelf_score",
 ].join(", ")
 
 export const PROFILE_SELECT =

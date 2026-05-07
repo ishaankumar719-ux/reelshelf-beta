@@ -21,6 +21,7 @@ interface TMDBFilm {
 interface DiaryEntry {
   id: string;
   rating: number | string | null;
+  reelshelf_score?: number | null;
   review: string;
   watched_date: string;
   favourite: boolean;
@@ -118,7 +119,7 @@ export default function FilmDetailClient({
 
       const { data: diaryEntries } = await supabase
         .from("diary_entries")
-        .select("id, rating, review, watched_date, favourite, media_id")
+        .select("id, rating, review, watched_date, favourite, media_id, reelshelf_score")
         .eq("user_id", userId)
         .eq("review_scope", "show")
         .or(`media_id.eq.${tmdbMediaId},media_id.eq.${titleYearSlug}`)
@@ -445,27 +446,75 @@ export default function FilmDetailClient({
                 margin: "24px 0",
               }}
             >
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div>
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      fontSize: 10,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    Your Rating
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <span
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: 20,
+                        fontWeight: 300,
+                        letterSpacing: "-0.5px",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {(coercedRating ?? 0).toFixed(1)}
+                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
+                  </p>
+                </div>
+
+                {typeof diaryEntry.reelshelf_score === "number" &&
+                diaryEntry.reelshelf_score !== coercedRating ? (
+                  <div>
+                    <p
+                      style={{
+                        margin: "0 0 4px",
+                        fontSize: 10,
+                        letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.3)",
+                      }}
+                    >
+                      ReelShelf Score
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      <span
+                        style={{
+                          color: "#EF9F27",
+                          fontSize: 20,
+                          fontWeight: 300,
+                          letterSpacing: "-0.5px",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {diaryEntry.reelshelf_score.toFixed(1)}
+                      </span>
+                      <span style={{ color: "rgba(239,159,39,0.45)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
               <p
                 style={{
-                  margin: 0,
+                  margin: "8px 0 0",
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.45)",
+                  color: "rgba(255,255,255,0.4)",
                 }}
               >
-                You rated this{" "}
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: 20,
-                    fontWeight: 300,
-                    letterSpacing: "-0.5px",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {(coercedRating ?? 0).toFixed(1)}
-                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
-                </span>
-                {" · "}Logged {formatLoggedDate(diaryEntry.watched_date)}
+                Logged {formatLoggedDate(diaryEntry.watched_date)}
               </p>
 
               {diaryEntry.review && diaryEntry.review.trim() !== "" ? (

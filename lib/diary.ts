@@ -16,6 +16,7 @@ export type DiaryMovie = SavedMediaItem & {
   containsSpoilers: boolean;
   savedAt: string;
   reviewLayers?: ReviewLayers | null;
+  reelshelfScore?: number | null;
 };
 
 export type DiaryDraftMovie = SavedMediaItem;
@@ -152,6 +153,10 @@ function normalizeDiaryMovie(
     reviewLayers:
       "reviewLayers" in movie && movie.reviewLayers != null
         ? (movie.reviewLayers as ReviewLayers)
+        : null,
+    reelshelfScore:
+      "reelshelfScore" in movie && typeof movie.reelshelfScore === "number"
+        ? movie.reelshelfScore
         : null,
   };
 }
