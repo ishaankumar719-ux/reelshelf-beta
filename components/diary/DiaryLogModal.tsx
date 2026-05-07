@@ -6,7 +6,8 @@ import { createClient as createSupabaseClient } from "../../lib/supabase/client"
 import { saveDiaryEntryLocally, type DiaryMovie } from "../../lib/diary";
 import { DIARY_SELECT } from "../../lib/queries";
 import { computeStreak } from "../../lib/streak";
-import type { DiaryEntry, LogMediaInput } from "../../types/diary";
+import type { DiaryEntry, LogMediaInput, ReviewLayers } from "../../types/diary";
+import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS } from "../../types/diary";
 
 interface DiaryLogModalProps {
   isOpen: boolean;
@@ -231,6 +232,135 @@ function RatingStars({
   );
 }
 
+// ─── Review layers ────────────────────────────────────────────────────────────
+
+type LayerKey = keyof ReviewLayers;
+
+const LAYER_DEFS: { key: LayerKey; label: string }[] = [
+  { key: "score_rating", label: "Score / Soundtrack" },
+  { key: "cinematography_rating", label: "Cinematography" },
+  { key: "writing_rating", label: "Writing" },
+  { key: "performances_rating", label: "Performances" },
+  { key: "direction_rating", label: "Direction" },
+  { key: "rewatchability_rating", label: "Rewatchability" },
+  { key: "emotional_impact_rating", label: "Emotional Impact" },
+  { key: "entertainment_rating", label: "Entertainment" },
+];
+
+function ReviewLayerRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "5px 0",
+      }}
+    >
+      <span
+        style={{
+          minWidth: 134,
+          fontSize: 12,
+          color: "rgba(255,255,255,0.46)",
+          flexShrink: 0,
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </span>
+      <div style={{ display: "flex", gap: 3, flexWrap: "nowrap" }}>
+        {Array.from({ length: 10 }, (_, i) => {
+          const n = i + 1;
+          const active = value === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange(active ? null : n)}
+              style={{
+                width: 22,
+                height: 20,
+                borderRadius: 4,
+                border: active
+                  ? "0.5px solid rgba(29,158,117,0.6)"
+                  : "0.5px solid rgba(255,255,255,0.1)",
+                background: active
+                  ? "rgba(29,158,117,0.75)"
+                  : "rgba(255,255,255,0.04)",
+                color: active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)",
+                fontSize: 10,
+                fontWeight: active ? 700 : 400,
+                cursor: "pointer",
+                lineHeight: 1,
+                transition: "background 0.12s ease, color 0.12s ease",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      {value !== null ? (
+        <span
+          style={{
+            fontSize: 11,
+            color: "rgba(29,158,117,0.85)",
+            fontWeight: 600,
+            minWidth: 28,
+          }}
+        >
+          {value}/10
+        </span>
+      ) : (
+        <span style={{ minWidth: 28 }} />
+      )}
+    </div>
+  );
+}
+
+function ReviewLayersPanel({
+  layers,
+  onChange,
+}: {
+  layers: ReviewLayers;
+  onChange: (next: ReviewLayers) => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: "12px 14px",
+        borderRadius: 10,
+        background: "rgba(255,255,255,0.025)",
+        border: "0.5px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      {LAYER_DEFS.map(({ key, label }) => (
+        <ReviewLayerRow
+          key={key}
+          label={label}
+          value={layers[key]}
+          onChange={(v) => onChange({ ...layers, [key]: v })}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
   return {
     id: entry.media_id,
@@ -254,6 +384,16 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
     rewatch: entry.rewatch,
     containsSpoilers: entry.contains_spoilers,
     savedAt: entry.saved_at,
+    reviewLayers: {
+      score_rating: entry.score_rating ?? null,
+      cinematography_rating: entry.cinematography_rating ?? null,
+      writing_rating: entry.writing_rating ?? null,
+      performances_rating: entry.performances_rating ?? null,
+      direction_rating: entry.direction_rating ?? null,
+      rewatchability_rating: entry.rewatchability_rating ?? null,
+      emotional_impact_rating: entry.emotional_impact_rating ?? null,
+      entertainment_rating: entry.entertainment_rating ?? null,
+    },
   };
 }
 
@@ -270,6 +410,8 @@ export default function DiaryLogModal({
   const [favourite, setFavourite] = useState(false);
   const [rewatch, setRewatch] = useState(false);
   const [containsSpoilers, setContainsSpoilers] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [layers, setLayers] = useState<ReviewLayers>(EMPTY_LAYERS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -300,6 +442,8 @@ export default function DiaryLogModal({
       setFavourite(false);
       setRewatch(false);
       setContainsSpoilers(false);
+      setLayersOpen(false);
+      setLayers(EMPTY_LAYERS);
       setSaving(false);
       setError(null);
     }
@@ -361,6 +505,19 @@ export default function DiaryLogModal({
       contains_spoilers: containsSpoilers,
       review_scope: "show",
       show_id: "",
+      // Review layers — only included for films; all nullable so no field is required
+      ...(media.media_type === "movie"
+        ? {
+            score_rating: layers.score_rating,
+            cinematography_rating: layers.cinematography_rating,
+            writing_rating: layers.writing_rating,
+            performances_rating: layers.performances_rating,
+            direction_rating: layers.direction_rating,
+            rewatchability_rating: layers.rewatchability_rating,
+            emotional_impact_rating: layers.emotional_impact_rating,
+            entertainment_rating: layers.entertainment_rating,
+          }
+        : {}),
     };
 
     const { data, error: saveError } = await supabase
@@ -693,6 +850,51 @@ export default function DiaryLogModal({
               onClick={() => setContainsSpoilers((value) => !value)}
             />
           </div>
+
+          {/* Review layers — films only */}
+          {media.media_type === "movie" ? (
+            <>
+              <Divider />
+              <div style={{ marginTop: -18 }}>
+                <button
+                  type="button"
+                  onClick={() => setLayersOpen((o) => !o)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    color: layersOpen
+                      ? "rgba(255,255,255,0.6)"
+                      : "rgba(255,255,255,0.32)",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: "0.02em",
+                    transition: "color 0.15s ease",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 9,
+                      display: "inline-block",
+                      transition: "transform 0.2s ease",
+                      transform: layersOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  >
+                    ▼
+                  </span>
+                  {layersOpen ? "Hide review layers" : "Add review layers"}
+                </button>
+
+                {layersOpen ? (
+                  <ReviewLayersPanel layers={layers} onChange={setLayers} />
+                ) : null}
+              </div>
+            </>
+          ) : null}
 
           {error ? (
             <p style={{ margin: "16px 0 0", color: "#fca5a5", fontSize: 12 }}>{error}</p>

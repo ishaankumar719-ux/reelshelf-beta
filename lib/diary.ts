@@ -1,4 +1,5 @@
 import type { DiaryReviewScope, MediaType, SavedMediaItem } from "./media";
+import type { ReviewLayers } from "../types/diary";
 import {
   deleteDiaryEntryFromBackend,
   syncDiaryEntriesWithBackend,
@@ -14,6 +15,7 @@ export type DiaryMovie = SavedMediaItem & {
   rewatch: boolean;
   containsSpoilers: boolean;
   savedAt: string;
+  reviewLayers?: ReviewLayers | null;
 };
 
 export type DiaryDraftMovie = SavedMediaItem;
@@ -147,6 +149,10 @@ function normalizeDiaryMovie(
       "savedAt" in movie && typeof movie.savedAt === "string"
         ? movie.savedAt
         : new Date().toISOString(),
+    reviewLayers:
+      "reviewLayers" in movie && movie.reviewLayers != null
+        ? (movie.reviewLayers as ReviewLayers)
+        : null,
   };
 }
 

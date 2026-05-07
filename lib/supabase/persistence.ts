@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseBrowserClient } from "./client";
 import type { DiaryReviewScope, MediaType, SavedMediaItem } from "../media";
+import type { ReviewLayers } from "../../types/diary";
 import { DIARY_SELECT } from "../queries";
 
 export type PersistedDiaryEntry = SavedMediaItem & {
@@ -12,6 +13,7 @@ export type PersistedDiaryEntry = SavedMediaItem & {
   rewatch: boolean;
   containsSpoilers: boolean;
   savedAt: string;
+  reviewLayers?: ReviewLayers | null;
 };
 
 export type PersistedSavedItem = SavedMediaItem & {
@@ -40,6 +42,15 @@ type DiaryRow = {
   rewatch: boolean;
   contains_spoilers: boolean;
   saved_at: string;
+  // Review layers — nullable columns added in migration 20260509_review_layers.sql
+  score_rating?: number | null;
+  cinematography_rating?: number | null;
+  writing_rating?: number | null;
+  performances_rating?: number | null;
+  direction_rating?: number | null;
+  rewatchability_rating?: number | null;
+  emotional_impact_rating?: number | null;
+  entertainment_rating?: number | null;
 };
 
 type SavedItemRow = {
@@ -159,6 +170,14 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     rewatch: entry.rewatch ?? false,
     contains_spoilers: entry.containsSpoilers ?? false,
     saved_at: entry.savedAt,
+    score_rating: entry.reviewLayers?.score_rating ?? null,
+    cinematography_rating: entry.reviewLayers?.cinematography_rating ?? null,
+    writing_rating: entry.reviewLayers?.writing_rating ?? null,
+    performances_rating: entry.reviewLayers?.performances_rating ?? null,
+    direction_rating: entry.reviewLayers?.direction_rating ?? null,
+    rewatchability_rating: entry.reviewLayers?.rewatchability_rating ?? null,
+    emotional_impact_rating: entry.reviewLayers?.emotional_impact_rating ?? null,
+    entertainment_rating: entry.reviewLayers?.entertainment_rating ?? null,
   };
 }
 
@@ -185,6 +204,16 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     rewatch: row.rewatch ?? false,
     containsSpoilers: row.contains_spoilers ?? false,
     savedAt: row.saved_at,
+    reviewLayers: {
+      score_rating: row.score_rating ?? null,
+      cinematography_rating: row.cinematography_rating ?? null,
+      writing_rating: row.writing_rating ?? null,
+      performances_rating: row.performances_rating ?? null,
+      direction_rating: row.direction_rating ?? null,
+      rewatchability_rating: row.rewatchability_rating ?? null,
+      emotional_impact_rating: row.emotional_impact_rating ?? null,
+      entertainment_rating: row.entertainment_rating ?? null,
+    },
   };
 }
 

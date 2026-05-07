@@ -23,6 +23,15 @@ export const DIARY_SELECT = [
   "saved_at",
   "created_at",
   "updated_at",
+  // Review layers — nullable, movie-only in the UI (migration: 20260509_review_layers.sql)
+  "score_rating",
+  "cinematography_rating",
+  "writing_rating",
+  "performances_rating",
+  "direction_rating",
+  "rewatchability_rating",
+  "emotional_impact_rating",
+  "entertainment_rating",
 ].join(", ")
 
 export const PROFILE_SELECT =

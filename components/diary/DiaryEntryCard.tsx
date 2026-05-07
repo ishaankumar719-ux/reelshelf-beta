@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { getDiaryEntryKey, type DiaryMovie } from "../../lib/diary";
 import type { MediaType } from "../../lib/media";
 import { getMediaHref } from "../../lib/mediaRoutes";
+import { hasReviewLayers, type ReviewLayers } from "../../types/diary";
 
 interface DiaryEntryCardProps {
   movie: DiaryMovie & { isNew?: boolean };
@@ -13,6 +15,93 @@ interface DiaryEntryCardProps {
   onDeleteConfirm: () => void;
   onDeleteCancel: () => void;
   formatDiaryDate: (date: string) => string;
+}
+
+const LAYER_LABELS: Array<{ key: keyof ReviewLayers; label: string }> = [
+  { key: "score_rating", label: "Score" },
+  { key: "cinematography_rating", label: "Cinematography" },
+  { key: "writing_rating", label: "Writing" },
+  { key: "performances_rating", label: "Performances" },
+  { key: "direction_rating", label: "Direction" },
+  { key: "rewatchability_rating", label: "Rewatchability" },
+  { key: "emotional_impact_rating", label: "Emotional Impact" },
+  { key: "entertainment_rating", label: "Entertainment" },
+];
+
+function ReviewLayersDisplay({ layers }: { layers: ReviewLayers }) {
+  const [open, setOpen] = useState(false);
+  const filled = LAYER_LABELS.filter(({ key }) => layers[key] !== null);
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          color: "rgba(255,255,255,0.4)",
+          fontSize: 10,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}
+      >
+        <span
+          style={{
+            display: "inline-block",
+            transition: "transform 0.18s",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            fontSize: 8,
+          }}
+        >
+          ▼
+        </span>
+        Review layers ({filled.length})
+      </button>
+
+      {open ? (
+        <div
+          style={{
+            marginTop: 8,
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "5px 16px",
+          }}
+        >
+          {filled.map(({ key, label }) => (
+            <div
+              key={key}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span style={{ color: "rgba(255,255,255,0.38)", fontSize: 11 }}>
+                {label}
+              </span>
+              <span
+                style={{
+                  color: "#EF9F27",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                {layers[key]}/10
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function getMediaBadgeLabel(mediaType: MediaType) {
@@ -236,6 +325,10 @@ export default function DiaryEntryCard({
                     {reviewSnippet}
                   </p>
                 </div>
+              ) : null}
+
+              {movie.mediaType === "movie" && hasReviewLayers(movie.reviewLayers) ? (
+                <ReviewLayersDisplay layers={movie.reviewLayers!} />
               ) : null}
 
               <div
