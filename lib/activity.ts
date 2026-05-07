@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore"
+export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series"
 
 export interface ActivityEvent {
   id: string
@@ -12,6 +12,7 @@ export interface ActivityEvent {
   }
   title: string
   media_type: "movie" | "tv" | "book"
+  media_id?: string | null
   poster: string | null
   rating: number | null
   review: string | null
@@ -22,6 +23,7 @@ export interface ActivityEvent {
 
 type DiaryActivityRow = {
   id: string
+  media_id: string | null
   title: string
   media_type: "movie" | "tv" | "book"
   poster: string | null
@@ -33,6 +35,7 @@ type DiaryActivityRow = {
 
 type SavedActivityRow = {
   id: string
+  media_id: string | null
   title: string
   media_type: "movie" | "tv" | "book"
   poster: string | null
@@ -62,7 +65,9 @@ function collapseActivityEvents(events: ActivityEvent[], limit: number) {
   while (index < events.length) {
     const current = events[index]
 
-    if (current.type !== "logged" && current.type !== "reviewed") {
+    const isBatchable = (t: ActivityType) => t === "logged" || t === "reviewed" || t === "finished_series"
+
+    if (!isBatchable(current.type)) {
       collapsed.push(current)
       index += 1
       continue
@@ -78,10 +83,7 @@ function collapseActivityEvents(events: ActivityEvent[], limit: number) {
             new Date(current.timestamp).getTime()
         ) < BATCH_MS
 
-      if (
-        withinBatchWindow &&
-        (candidate.type === "logged" || candidate.type === "reviewed")
-      ) {
+      if (withinBatchWindow && isBatchable(candidate.type)) {
         nextIndex += 1
         continue
       }
@@ -125,18 +127,24 @@ export function buildActivityEventsFromSources({
   profile: ActivityEvent["profile"]
   limit?: number
 }): ActivityEvent[] {
-  const diaryEvents: ActivityEvent[] = diaryRows.map((row) => ({
-    id: `diary-${row.id}`,
-    type: row.review?.trim() ? "reviewed" : "logged",
-    profile,
-    title: row.title,
-    media_type: row.media_type,
-    poster: row.poster ?? null,
-    rating: toRating(row.rating),
-    review: row.review?.trim() || null,
-    timestamp: row.created_at,
-    isBatch: false,
-  }))
+  const diaryEvents: ActivityEvent[] = diaryRows.map((row) => {
+    const isTV = row.media_type === "tv"
+    const hasReview = Boolean(row.review?.trim())
+    const type: ActivityType = isTV ? "finished_series" : hasReview ? "reviewed" : "logged"
+    return {
+      id: `diary-${row.id}`,
+      type,
+      profile,
+      title: row.title,
+      media_type: row.media_type,
+      media_id: row.media_id ?? null,
+      poster: row.poster ?? null,
+      rating: toRating(row.rating),
+      review: row.review?.trim() || null,
+      timestamp: row.created_at,
+      isBatch: false,
+    }
+  })
 
   const savedEvents: ActivityEvent[] = savedRows.map((row) => ({
     id: `saved-${row.id}`,
@@ -144,6 +152,7 @@ export function buildActivityEventsFromSources({
     profile,
     title: row.title,
     media_type: row.media_type,
+    media_id: row.media_id ?? null,
     poster: row.poster ?? null,
     rating: null,
     review: null,
@@ -191,14 +200,14 @@ export async function fetchActivityEvents(
   const [diaryRes, savedRes, rushmoreRes] = await Promise.all([
     supabase
       .from("diary_entries")
-      .select("id, title, media_type, poster, rating, review, watched_date, created_at")
+      .select("id, media_id, title, media_type, poster, rating, review, watched_date, created_at")
       .eq("user_id", userId)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })
       .limit(limit),
     supabase
       .from("saved_items")
-      .select("id, title, media_type, poster, created_at")
+      .select("id, media_id, title, media_type, poster, created_at")
       .eq("user_id", userId)
       .eq("list_type", "watchlist")
       .order("created_at", { ascending: false })

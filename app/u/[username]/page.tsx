@@ -190,6 +190,7 @@ export default async function PublicProfilePage({
   const activityEvents = buildActivityEventsFromSources({
     diaryRows: recentRows.map((entry) => ({
       id: entry.id,
+      media_id: entry.media_id ?? null,
       title: entry.title,
       media_type: entry.media_type,
       poster: entry.poster ?? null,
