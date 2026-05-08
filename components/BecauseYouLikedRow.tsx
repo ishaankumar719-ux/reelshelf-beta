@@ -209,7 +209,7 @@ export default function BecauseYouLikedRow({
           color: "#9ca3af",
           fontSize: 14,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {body ||

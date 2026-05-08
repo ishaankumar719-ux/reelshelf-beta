@@ -180,7 +180,7 @@ function SuggestionCard({
               background: "rgba(255,255,255,0.03)",
               color: "#d1d5db",
               fontSize: 10,
-              letterSpacing: "0.16em",
+              letterSpacing: "0.04em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
@@ -300,7 +300,7 @@ function SuggestionCard({
               margin: 0,
               color: "#7f7f7f",
               fontSize: 10,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.05em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
@@ -351,7 +351,7 @@ function SuggestionCard({
                         placeItems: "center",
                         color: "rgba(255,255,255,0.42)",
                         fontSize: 10,
-                        letterSpacing: "0.14em",
+                        letterSpacing: "0.04em",
                         textTransform: "uppercase",
                         fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
@@ -441,7 +441,7 @@ export default function PeopleToFollowSection({
               margin: "0 0 8px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.22em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}

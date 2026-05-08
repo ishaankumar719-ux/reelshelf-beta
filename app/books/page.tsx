@@ -15,7 +15,7 @@ export default async function BooksPage() {
             letterSpacing: "0.3em",
             textTransform: "uppercase",
             marginBottom: 4,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Discover

@@ -76,7 +76,7 @@ export default function ReadingShelfPage() {
               margin: "10px 0 0",
               color: "#9ca3af",
               fontSize: 14,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Saved books to read next
@@ -88,7 +88,7 @@ export default function ReadingShelfPage() {
             margin: 0,
             color: "#9ca3af",
             fontSize: 14,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {items.length} {items.length === 1 ? "book" : "books"} saved
@@ -185,7 +185,7 @@ export default function ReadingShelfPage() {
                     color: "#9ca3af",
                     fontSize: 13,
                     lineHeight: 1.5,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     minHeight: 38,
                   }}
                 >
@@ -208,7 +208,7 @@ export default function ReadingShelfPage() {
                     color: "#7f7f7f",
                     fontSize: 11,
                     letterSpacing: "0.02em",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Saved {new Date(book.addedAt).toLocaleDateString()}
@@ -225,7 +225,7 @@ export default function ReadingShelfPage() {
                     padding: "6px 10px",
                     fontSize: 11,
                     cursor: "pointer",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     lineHeight: 1,
                   }}
                 >

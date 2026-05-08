@@ -136,7 +136,7 @@ export default function ProfileSetupModal({
             margin: "0 0 12px",
             color: "#7f7f7f",
             fontSize: 11,
-            letterSpacing: "0.22em",
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
             fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
@@ -281,7 +281,7 @@ export default function ProfileSetupModal({
                   style={{
                     color: "#d1d5db",
                     fontSize: 12,
-                    letterSpacing: "0.1em",
+                    letterSpacing: "0.03em",
                     textTransform: "uppercase",
                     fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
@@ -320,7 +320,7 @@ export default function ProfileSetupModal({
                   style={{
                     color: "#d1d5db",
                     fontSize: 12,
-                    letterSpacing: "0.1em",
+                    letterSpacing: "0.03em",
                     textTransform: "uppercase",
                     fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
@@ -364,7 +364,7 @@ export default function ProfileSetupModal({
                     margin: 0,
                     color: "#7f7f7f",
                     fontSize: 11,
-                    letterSpacing: "0.18em",
+                    letterSpacing: "0.05em",
                     textTransform: "uppercase",
                     fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}

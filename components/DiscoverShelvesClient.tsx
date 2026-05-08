@@ -254,7 +254,7 @@ export default function DiscoverShelvesClient({
                         background: "rgba(255,255,255,0.03)",
                         color: "#d1d5db",
                         fontSize: 10,
-                        letterSpacing: "0.16em",
+                        letterSpacing: "0.04em",
                         textTransform: "uppercase",
                         fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}

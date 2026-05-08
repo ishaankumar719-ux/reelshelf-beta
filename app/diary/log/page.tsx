@@ -218,7 +218,7 @@ export default function DiaryLogPage() {
                 marginBottom: 8,
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.05em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
@@ -257,9 +257,9 @@ export default function DiaryLogPage() {
               style={{
                 margin: 0,
                 marginBottom: 10,
-                color: "#7f7f7f",
-                fontSize: 11,
-                letterSpacing: "0.28em",
+                color: "rgba(255,255,255,0.34)",
+                fontSize: 10,
+                letterSpacing: "0.06em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}

@@ -31,7 +31,7 @@ function ModeButton({
         background: active ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.03)",
         color: active ? "white" : "#9ca3af",
         fontSize: 12,
-        letterSpacing: "0.1em",
+        letterSpacing: "0.03em",
         textTransform: "uppercase",
         fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         cursor: "pointer",
@@ -161,7 +161,7 @@ export default function AuthPage() {
               margin: "0 0 12px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.24em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}

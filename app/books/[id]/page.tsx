@@ -56,7 +56,7 @@ function FallbackCover() {
         style={{
           color: "rgba(255,255,255,0.38)",
           fontSize: 10,
-          letterSpacing: "0.24em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
           fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}

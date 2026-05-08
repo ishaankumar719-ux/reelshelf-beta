@@ -251,7 +251,7 @@ function EntryAttachment({ url, type }: { url: string; type: "image" | "gif" | n
             borderRadius: 4,
             padding: "2px 5px",
             fontSize: 9,
-            letterSpacing: "0.1em",
+            letterSpacing: "0.03em",
             color: "rgba(255,255,255,0.8)",
           }}
         >
@@ -356,7 +356,7 @@ function CommentRow({ comment }: { comment: PublicComment }) {
                   borderRadius: 4,
                   padding: "1px 5px",
                   fontSize: 9,
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.03em",
                   color: "rgba(255,255,255,0.8)",
                 }}
               >

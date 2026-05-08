@@ -452,7 +452,7 @@ export default function FilmDetailClient({
                     style={{
                       margin: "0 0 4px",
                       fontSize: 10,
-                      letterSpacing: "0.12em",
+                      letterSpacing: "0.03em",
                       textTransform: "uppercase",
                       color: "rgba(255,255,255,0.3)",
                     }}
@@ -482,7 +482,7 @@ export default function FilmDetailClient({
                       style={{
                         margin: "0 0 4px",
                         fontSize: 10,
-                        letterSpacing: "0.12em",
+                        letterSpacing: "0.03em",
                         textTransform: "uppercase",
                         color: "rgba(255,255,255,0.3)",
                       }}

@@ -676,7 +676,7 @@ export function AuthProvider({
               padding: "12px 18px",
               color: "#e5e7eb",
               fontSize: 13,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               letterSpacing: "0.08em",
               textTransform: "uppercase",
             }}

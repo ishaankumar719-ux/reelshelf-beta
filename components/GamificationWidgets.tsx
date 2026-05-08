@@ -63,7 +63,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         margin: 0,
         color: "#7f7f7f",
         fontSize: 11,
-        letterSpacing: "0.22em",
+        letterSpacing: "0.06em",
         textTransform: "uppercase",
         fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
@@ -97,7 +97,7 @@ function StreakCard({
           margin: 0,
           color: "#8f8f8f",
           fontSize: 10,
-          letterSpacing: "0.16em",
+          letterSpacing: "0.04em",
           textTransform: "uppercase",
           fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
@@ -180,7 +180,7 @@ function BadgeCard({
           margin: "10px 0 0",
           color: achieved ? "#cbd5e1" : "#6b7280",
           fontSize: 10,
-          letterSpacing: "0.14em",
+          letterSpacing: "0.04em",
           textTransform: "uppercase",
           fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}

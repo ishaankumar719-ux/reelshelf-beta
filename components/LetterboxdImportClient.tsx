@@ -268,7 +268,7 @@ export default function LetterboxdImportClient() {
                       margin: 0,
                       color: "#7f7f7f",
                       fontSize: 10,
-                      letterSpacing: "0.18em",
+                      letterSpacing: "0.05em",
                       textTransform: "uppercase",
                       fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
@@ -293,7 +293,7 @@ export default function LetterboxdImportClient() {
                       margin: 0,
                       color: "#7f7f7f",
                       fontSize: 10,
-                      letterSpacing: "0.18em",
+                      letterSpacing: "0.05em",
                       textTransform: "uppercase",
                       fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
@@ -318,7 +318,7 @@ export default function LetterboxdImportClient() {
                       margin: 0,
                       color: "#7f7f7f",
                       fontSize: 10,
-                      letterSpacing: "0.18em",
+                      letterSpacing: "0.05em",
                       textTransform: "uppercase",
                       fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
@@ -573,7 +573,7 @@ export default function LetterboxdImportClient() {
                               : "rgba(255,255,255,0.04)",
                           color: "white",
                           fontSize: 11,
-                          letterSpacing: "0.12em",
+                          letterSpacing: "0.03em",
                           textTransform: "uppercase",
                           fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           display: "inline-flex",

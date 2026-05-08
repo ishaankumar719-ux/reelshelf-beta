@@ -228,7 +228,7 @@ export default function NotificationsBell() {
                   margin: 0,
                   color: "#7f7f7f",
                   fontSize: 10,
-                  letterSpacing: "0.2em",
+                  letterSpacing: "0.05em",
                   textTransform: "uppercase",
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
@@ -310,7 +310,7 @@ export default function NotificationsBell() {
                     margin: "0 0 8px",
                     color: "#7f7f7f",
                     fontSize: 10,
-                    letterSpacing: "0.16em",
+                    letterSpacing: "0.04em",
                     textTransform: "uppercase",
                     fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}

@@ -61,7 +61,7 @@ export default function AddToWatchlistButton({
         padding: "12px 18px",
         fontSize: 14,
         cursor: added ? "default" : "pointer",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         transition: "background 0.2s ease, border-color 0.2s ease",
       }}
     >

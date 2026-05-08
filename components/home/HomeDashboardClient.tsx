@@ -211,7 +211,7 @@ function CardFallback({ label }: { label: string }) {
         style={{
           color: "rgba(255,255,255,0.36)",
           fontSize: 10,
-          letterSpacing: "0.24em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
           fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
@@ -304,7 +304,7 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
                 color: "#8f8f8f",
                 fontSize: 10,
                 lineHeight: 1,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
@@ -501,7 +501,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   color: "#7f7f7f",
                   fontSize: 10,
                   lineHeight: 1,
-                  letterSpacing: "0.14em",
+                  letterSpacing: "0.04em",
                   textTransform: "uppercase",
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
@@ -528,7 +528,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                 color: "#e5e7eb",
                 fontSize: 10,
                 lineHeight: 1,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
@@ -562,7 +562,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                 color: "#7f7f7f",
                 fontSize: 10,
                 lineHeight: 1,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
@@ -617,7 +617,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   background: "rgba(45, 212, 191, 0.09)",
                   color: "#d5fffb",
                   fontSize: 9,
-                  letterSpacing: "0.14em",
+                  letterSpacing: "0.04em",
                   textTransform: "uppercase",
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
@@ -939,7 +939,7 @@ export default function HomeDashboardClient({
               margin: "0 0 10px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.24em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
@@ -1076,7 +1076,7 @@ export default function HomeDashboardClient({
                     margin: 0,
                     color: "#8f8f8f",
                     fontSize: 11,
-                    letterSpacing: "0.14em",
+                    letterSpacing: "0.04em",
                     textTransform: "uppercase",
                     fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}

@@ -508,7 +508,7 @@ export default function ActivityFeedClient() {
                       style={{
                         color: "#6b7280",
                         fontSize: 11,
-                        letterSpacing: "0.12em",
+                        letterSpacing: "0.03em",
                         textTransform: "uppercase",
                         fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}

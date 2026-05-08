@@ -261,7 +261,7 @@ export function NotificationCard({
             alignSelf: "center",
             color: "rgba(255,255,255,0.34)",
             fontSize: 10,
-            letterSpacing: "0.16em",
+            letterSpacing: "0.04em",
             textTransform: "uppercase",
             fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}

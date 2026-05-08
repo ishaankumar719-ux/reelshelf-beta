@@ -375,7 +375,7 @@ function WatchSection({
                   fontSize: 13,
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
-                  letterSpacing: "0.12em",
+                  letterSpacing: "0.03em",
                 }}
               >
                 Stream
@@ -402,7 +402,7 @@ function WatchSection({
                   fontSize: 13,
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
-                  letterSpacing: "0.12em",
+                  letterSpacing: "0.03em",
                 }}
               >
                 Rent
@@ -429,7 +429,7 @@ function WatchSection({
                   fontSize: 13,
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
-                  letterSpacing: "0.12em",
+                  letterSpacing: "0.03em",
                 }}
               >
                 Buy

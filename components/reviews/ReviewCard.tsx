@@ -702,7 +702,7 @@ export default function ReviewCard({
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
                 {showScore ? (
                   <div>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
+                    <div style={{ fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                       ReelShelf Score
                     </div>
                     <span style={{ fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", color: "#EF9F27", fontVariantNumeric: "tabular-nums" }}>
@@ -713,7 +713,7 @@ export default function ReviewCard({
                 ) : null}
                 {showRating && (scoresDiffer || !showScore) ? (
                   <div>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
+                    <div style={{ fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                       {showScore ? "Your Rating" : "Rating"}
                     </div>
                     <span style={{ fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", color: "rgba(255,255,255,0.82)", fontVariantNumeric: "tabular-nums" }}>

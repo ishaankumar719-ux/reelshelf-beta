@@ -84,7 +84,7 @@ export default function PublicDiaryEntriesGrid({
 
   if (entries.length === 0) {
     return (
-      <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 14, fontFamily: "Arial, sans-serif", margin: 0 }}>
+      <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 14, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif', margin: 0 }}>
         Nothing logged yet.
       </p>
     );

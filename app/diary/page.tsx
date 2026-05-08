@@ -269,9 +269,9 @@ export default function DiaryPage() {
             style={{
               margin: 0,
               marginBottom: 10,
-              color: "#7f7f7f",
-              fontSize: 11,
-              letterSpacing: "0.28em",
+              color: "rgba(255,255,255,0.34)",
+              fontSize: 10,
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
@@ -319,7 +319,7 @@ export default function DiaryPage() {
               margin: 0,
               color: "#7f7f7f",
               fontSize: 10,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.05em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
@@ -385,7 +385,7 @@ export default function DiaryPage() {
               marginBottom: 10,
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.22em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}

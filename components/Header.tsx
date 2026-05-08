@@ -107,7 +107,7 @@ function SearchResultCard({
               fontSize: 10,
               lineHeight: 1,
               textTransform: "uppercase",
-              letterSpacing: "0.14em",
+              letterSpacing: "0.04em",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
@@ -1133,7 +1133,7 @@ export default function Header() {
                   marginBottom: 10,
                   color: "#7f7f7f",
                   fontSize: 11,
-                  letterSpacing: "0.24em",
+                  letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}

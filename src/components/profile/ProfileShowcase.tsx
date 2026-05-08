@@ -508,7 +508,7 @@ export default function ProfileShowcase({
                 background: "rgba(0,0,0,0.25)",
                 padding: "0 16px",
                 fontSize: 11,
-                letterSpacing: "0.16em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 color: "rgba(255,255,255,0.82)",
                 textDecoration: "none",
