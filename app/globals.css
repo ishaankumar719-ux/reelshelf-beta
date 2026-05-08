@@ -3,8 +3,17 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* ─── Typography tokens ──────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
+
+  /* Base UI font stack — Helvetica Now Display, falling back gracefully */
+  --rs-font: "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Tracking scale */
+  --rs-track-label: 0.06em;   /* section eyebrows / uppercase labels */
+  --rs-track-meta:  0.02em;   /* metadata, timestamps, counts */
+  --rs-track-ui:    0.01em;   /* buttons, nav items */
 }
 
 *,
@@ -28,7 +37,7 @@ body {
     radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 28%),
     linear-gradient(180deg, #09090f 0%, #040406 100%);
   color: rgba(255, 255, 255, 0.92);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--rs-font);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
@@ -65,4 +74,35 @@ img {
 ::selection {
   background: rgba(255, 255, 255, 0.18);
   color: white;
+}
+
+/* ─── Reusable typography classes ───────────────────────────────────────── */
+
+/* Uppercase section eyebrow — "RECENTLY WATCHED", "REVIEWS" etc. */
+.rs-label {
+  font-family: var(--rs-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--rs-track-label);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+  display: block;
+}
+
+/* Inline metadata — timestamps, genres, counts */
+.rs-meta {
+  font-family: var(--rs-font);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: var(--rs-track-meta);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Subtle eyebrow without uppercase — for navigation labels etc. */
+.rs-eyebrow {
+  font-family: var(--rs-font);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.38);
 }

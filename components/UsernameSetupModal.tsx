@@ -76,9 +76,9 @@ export default function UsernameSetupModal({
             margin: "0 0 12px",
             color: "#7f7f7f",
             fontSize: 11,
-            letterSpacing: "0.22em",
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Choose Your Username
@@ -116,9 +116,9 @@ export default function UsernameSetupModal({
               style={{
                 color: "#d1d5db",
                 fontSize: 12,
-                letterSpacing: "0.1em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Username
@@ -167,7 +167,7 @@ export default function UsernameSetupModal({
                 color: "#9ca3af",
                 fontSize: 13,
                 lineHeight: 1.6,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Preview: {preview}
@@ -179,7 +179,7 @@ export default function UsernameSetupModal({
                 color: "#7f7f7f",
                 fontSize: 12,
                 lineHeight: 1.6,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               3-24 chars, lowercase letters, numbers, underscores
@@ -193,7 +193,7 @@ export default function UsernameSetupModal({
                 color: "#fca5a5",
                 fontSize: 13,
                 lineHeight: 1.6,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {error}
@@ -213,7 +213,7 @@ export default function UsernameSetupModal({
               color: "black",
               fontSize: 14,
               fontWeight: 600,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               cursor: saving ? "wait" : "pointer",
               opacity: saving ? 0.7 : 1,
             }}

@@ -257,7 +257,7 @@ function AttachmentPreview({ url, type }: { url: string; type: "image" | "gif" |
             borderRadius: 4,
             padding: "2px 5px",
             fontSize: 9,
-            letterSpacing: "0.1em",
+            letterSpacing: "0.04em",
             color: "rgba(255,255,255,0.75)",
           }}
         >
@@ -322,7 +322,7 @@ function CommentComposer({
           fontSize: 13,
           lineHeight: 1.6,
           outline: "none",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           boxSizing: "border-box",
         }}
       />
@@ -407,20 +407,20 @@ function CommentThread({
             {comment.username ? (
               <Link
                 href={`/u/${encodeURIComponent(comment.username)}`}
-                style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 600, textDecoration: "none", fontFamily: "Arial, sans-serif" }}
+                style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 600, textDecoration: "none", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}
               >
                 @{comment.username}
               </Link>
             ) : (
-              <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
+              <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 600, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                 @reelshelf
               </span>
             )}
-            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: "Arial, sans-serif" }}>
+            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
               {timeAgo(comment.createdAt)}
             </span>
           </div>
-          <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.68)", fontSize: 13, lineHeight: 1.6, fontFamily: "Arial, sans-serif" }}>
+          <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.68)", fontSize: 13, lineHeight: 1.6, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
             {comment.body}
           </p>
           {comment.attachmentUrl ? (
@@ -439,7 +439,7 @@ function CommentThread({
                 color: showReply ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)",
                 fontSize: 11,
                 letterSpacing: "0.04em",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {showReply ? "Cancel" : "Reply"}
@@ -459,20 +459,20 @@ function CommentThread({
                   {reply.username ? (
                     <Link
                       href={`/u/${encodeURIComponent(reply.username)}`}
-                      style={{ color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: 600, textDecoration: "none", fontFamily: "Arial, sans-serif" }}
+                      style={{ color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: 600, textDecoration: "none", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}
                     >
                       @{reply.username}
                     </Link>
                   ) : (
-                    <span style={{ color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
+                    <span style={{ color: "rgba(255,255,255,0.78)", fontSize: 11, fontWeight: 600, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                       @reelshelf
                     </span>
                   )}
-                  <span style={{ color: "rgba(255,255,255,0.24)", fontSize: 10, fontFamily: "Arial, sans-serif" }}>
+                  <span style={{ color: "rgba(255,255,255,0.24)", fontSize: 10, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                     {timeAgo(reply.createdAt)}
                   </span>
                 </div>
-                <p style={{ margin: "5px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.6, fontFamily: "Arial, sans-serif" }}>
+                <p style={{ margin: "5px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.6, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                   {reply.body}
                 </p>
                 {reply.attachmentUrl ? (
@@ -628,11 +628,11 @@ export default function ReviewCard({
             <MiniAvatar avatarUrl={ownerAvatarUrl} displayName={ownerDisplayName} username={ownerUsername} size={28} />
             <Link
               href={`/u/${encodeURIComponent(ownerUsername)}`}
-              style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 500, textDecoration: "none", fontFamily: "Arial, sans-serif" }}
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 500, textDecoration: "none", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}
             >
               @{ownerUsername}
             </Link>
-            <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.24)", fontSize: 11, fontFamily: "Arial, sans-serif" }}>
+            <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.24)", fontSize: 11, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
               {timeAgo(savedAt)}
             </span>
           </div>
@@ -682,7 +682,7 @@ export default function ReviewCard({
                   border: `0.5px solid ${badge.border}`,
                   color: badge.color,
                   fontSize: 9,
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.04em",
                   textTransform: "uppercase",
                   flexShrink: 0,
                 }}
@@ -692,7 +692,7 @@ export default function ReviewCard({
             </div>
 
             {/* Meta */}
-            <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.36)", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
+            <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.36)", fontSize: 12, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
               {year || ""}
               {creator ? ` · ${creator}` : ""}
             </p>
@@ -702,7 +702,7 @@ export default function ReviewCard({
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
                 {showScore ? (
                   <div>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: "Arial, sans-serif" }}>
+                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                       ReelShelf Score
                     </div>
                     <span style={{ fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", color: "#EF9F27", fontVariantNumeric: "tabular-nums" }}>
@@ -713,7 +713,7 @@ export default function ReviewCard({
                 ) : null}
                 {showRating && (scoresDiffer || !showScore) ? (
                   <div>
-                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: "Arial, sans-serif" }}>
+                    <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                       {showScore ? "Your Rating" : "Rating"}
                     </div>
                     <span style={{ fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", color: "rgba(255,255,255,0.82)", fontVariantNumeric: "tabular-nums" }}>
@@ -728,7 +728,7 @@ export default function ReviewCard({
             {/* Review text */}
             {reviewTrimmed ? (
               <div style={{ marginTop: 12 }}>
-                <p style={{ margin: 0, color: "rgba(255,255,255,0.65)", fontSize: 13, lineHeight: 1.65, fontStyle: "italic", fontFamily: "Arial, sans-serif" }}>
+                <p style={{ margin: 0, color: "rgba(255,255,255,0.65)", fontSize: 13, lineHeight: 1.65, fontStyle: "italic", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                   {reviewExpanded ? reviewTrimmed : reviewTruncated}
                 </p>
                 {needsExpand ? (
@@ -743,7 +743,7 @@ export default function ReviewCard({
                       cursor: "pointer",
                       color: "rgba(255,255,255,0.36)",
                       fontSize: 11,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {reviewExpanded ? "Show less" : "Read more"}
@@ -760,7 +760,7 @@ export default function ReviewCard({
             {/* Tags + date */}
             <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {favourite ? (
-                <span style={{ color: "#fb7185", fontSize: 11, fontFamily: "Arial, sans-serif" }}>♥ Favourite</span>
+                <span style={{ color: "#fb7185", fontSize: 11, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>♥ Favourite</span>
               ) : null}
               {rewatch ? (
                 <span
@@ -771,7 +771,7 @@ export default function ReviewCard({
                     border: "0.5px solid rgba(245,158,11,0.22)",
                     color: "#f8c16d",
                     fontSize: 10,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   ↺ Rewatch
@@ -786,13 +786,13 @@ export default function ReviewCard({
                     border: "0.5px solid rgba(239,68,68,0.2)",
                     color: "#fca5a5",
                     fontSize: 10,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   ⚠ Spoilers
                 </span>
               ) : null}
-              <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, fontFamily: "Arial, sans-serif", marginLeft: "auto" }}>
+              <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 11, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif', marginLeft: "auto" }}>
                 Watched {formatWatchedDate(watchedDate)}
               </span>
             </div>
@@ -835,7 +835,7 @@ export default function ReviewCard({
               cursor: canLike ? "pointer" : "default",
               opacity: likeLoading ? 0.6 : 1,
               transition: "all 0.15s ease",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             <span style={{ fontSize: 13 }}>{liked ? "♥" : "♡"}</span>
@@ -859,7 +859,7 @@ export default function ReviewCard({
               fontSize: 12,
               cursor: "pointer",
               transition: "all 0.15s ease",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             <span>💬</span>
@@ -886,7 +886,7 @@ export default function ReviewCard({
                 onSubmit={(body, attachUrl, attachType) => void handlePostComment(body, attachUrl, attachType)}
               />
             ) : (
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.3)", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
+              <p style={{ margin: 0, color: "rgba(255,255,255,0.3)", fontSize: 12, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                 <Link href="/auth" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "underline" }}>Sign in</Link> to join the conversation.
               </p>
             )}
@@ -906,7 +906,7 @@ export default function ReviewCard({
                 ))}
               </div>
             ) : (
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.24)", fontSize: 12, fontFamily: "Arial, sans-serif" }}>
+              <p style={{ margin: 0, color: "rgba(255,255,255,0.24)", fontSize: 12, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                 No comments yet. Start the conversation.
               </p>
             )}

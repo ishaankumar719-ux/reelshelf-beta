@@ -91,7 +91,7 @@ function FilterButton({
         letterSpacing: "0.08em",
         textTransform: "uppercase",
         cursor: "pointer",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         transition: "all 0.2s ease",
       }}
     >
@@ -273,7 +273,7 @@ export default function DiaryPage() {
               fontSize: 11,
               letterSpacing: "0.28em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Cinematic journal
@@ -296,7 +296,7 @@ export default function DiaryPage() {
               fontSize: "clamp(14px, 3.8vw, 15px)",
               lineHeight: 1.7,
               maxWidth: 660,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             A running timeline of what you watched, what you thought, and what
@@ -321,7 +321,7 @@ export default function DiaryPage() {
               fontSize: 10,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Entries
@@ -387,7 +387,7 @@ export default function DiaryPage() {
               fontSize: 11,
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Nothing logged yet

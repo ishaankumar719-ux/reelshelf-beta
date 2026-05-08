@@ -17,7 +17,7 @@ interface SearchResultsProps {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="px-2.5 pb-2 pt-2 text-[10px] uppercase tracking-[0.22em] text-white/34">{children}</p>
+  return <p className="px-2.5 pb-2 pt-2 text-[10px] uppercase tracking-[0.06em] text-white/34">{children}</p>
 }
 
 function LoadingDots() {
@@ -71,7 +71,7 @@ export default function SearchResults({
                       key={recentQuery}
                       type="button"
                       onClick={() => onQuerySelect(recentQuery)}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/72"
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.04em] text-white/72"
                     >
                       {recentQuery}
                     </button>

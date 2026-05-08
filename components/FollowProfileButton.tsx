@@ -78,9 +78,9 @@ export default function FollowProfileButton({
                 margin: 0,
                 color: "#7f7f7f",
                 fontSize: 10,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Followers
@@ -91,7 +91,7 @@ export default function FollowProfileButton({
                 color: "white",
                 fontSize: 20,
                 lineHeight: 1.2,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {followerCount}
@@ -111,9 +111,9 @@ export default function FollowProfileButton({
                 margin: 0,
                 color: "#7f7f7f",
                 fontSize: 10,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Following
@@ -124,7 +124,7 @@ export default function FollowProfileButton({
                 color: "white",
                 fontSize: 20,
                 lineHeight: 1.2,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {followingCount}
@@ -150,7 +150,7 @@ export default function FollowProfileButton({
               background: "rgba(255,255,255,0.03)",
               color: "white",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {followerCount} followers
@@ -166,7 +166,7 @@ export default function FollowProfileButton({
               background: "rgba(255,255,255,0.03)",
               color: "white",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {followingCount} following
@@ -186,7 +186,7 @@ export default function FollowProfileButton({
             alignItems: "center",
             justifyContent: "center",
             fontSize: 13,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           This is your public profile
@@ -206,7 +206,7 @@ export default function FollowProfileButton({
             color: isFollowing ? "white" : "black",
             fontSize: 14,
             fontWeight: 600,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             cursor: loading ? "wait" : "pointer",
             opacity: loading ? 0.7 : 1,
           }}
@@ -227,7 +227,7 @@ export default function FollowProfileButton({
             textDecoration: "none",
             fontSize: 14,
             fontWeight: 600,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Sign in to follow
@@ -241,7 +241,7 @@ export default function FollowProfileButton({
             color: "#fca5a5",
             fontSize: 13,
             lineHeight: 1.6,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {message}

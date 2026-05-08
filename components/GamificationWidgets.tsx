@@ -65,7 +65,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         fontSize: 11,
         letterSpacing: "0.22em",
         textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {children}
@@ -99,7 +99,7 @@ function StreakCard({
           fontSize: 10,
           letterSpacing: "0.16em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {label}
@@ -121,7 +121,7 @@ function StreakCard({
           color: "#9ca3af",
           fontSize: 13,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {detail}
@@ -159,7 +159,7 @@ function BadgeCard({
           fontSize: 14,
           fontWeight: 600,
           letterSpacing: "-0.2px",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {meta.label}
@@ -170,7 +170,7 @@ function BadgeCard({
           color: achieved ? "#d1d5db" : "#7f7f7f",
           fontSize: 12,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {meta.description}
@@ -182,7 +182,7 @@ function BadgeCard({
           fontSize: 10,
           letterSpacing: "0.14em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {achieved ? meta.counterLabel : "Locked"}
@@ -314,7 +314,7 @@ export default function GamificationWidgets({
             background: "rgba(255,255,255,0.03)",
             color: "#d1d5db",
             fontSize: 12,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {loading ? "Refreshing…" : `${stats.badges.length} badges unlocked`}

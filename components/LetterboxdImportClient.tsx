@@ -21,11 +21,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p
       style={{
         margin: "0 0 10px",
-        color: "#7f7f7f",
-        fontSize: 11,
-        letterSpacing: "0.22em",
+        color: "rgba(255,255,255,0.34)",
+        fontSize: 10,
+        letterSpacing: "0.06em",
         textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {children}
@@ -234,7 +234,7 @@ export default function LetterboxdImportClient() {
                     color: "#a1a1aa",
                     fontSize: 14,
                     lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Supported fields: title, year, rating, watched date, review text,
@@ -270,7 +270,7 @@ export default function LetterboxdImportClient() {
                       fontSize: 10,
                       letterSpacing: "0.18em",
                       textTransform: "uppercase",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Preview rows
@@ -295,7 +295,7 @@ export default function LetterboxdImportClient() {
                       fontSize: 10,
                       letterSpacing: "0.18em",
                       textTransform: "uppercase",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Matched locally
@@ -320,7 +320,7 @@ export default function LetterboxdImportClient() {
                       fontSize: 10,
                       letterSpacing: "0.18em",
                       textTransform: "uppercase",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Reviews found
@@ -345,7 +345,7 @@ export default function LetterboxdImportClient() {
                     color: "#d1d5db",
                     fontSize: 14,
                     lineHeight: 1.7,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {fileName
@@ -361,7 +361,7 @@ export default function LetterboxdImportClient() {
                     color: "#fca5a5",
                     fontSize: 13,
                     lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {error}
@@ -417,7 +417,7 @@ export default function LetterboxdImportClient() {
                         textDecoration: "none",
                         fontSize: 14,
                         fontWeight: 600,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       Open Diary
@@ -434,7 +434,7 @@ export default function LetterboxdImportClient() {
                         color: "white",
                         textDecoration: "none",
                         fontSize: 14,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       Back to Profile
@@ -455,7 +455,7 @@ export default function LetterboxdImportClient() {
                   color: "black",
                   fontSize: 14,
                   fontWeight: 600,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   cursor:
                     previewItems.length === 0 || isImporting || loading
                       ? "default"
@@ -513,7 +513,7 @@ export default function LetterboxdImportClient() {
                     color: "#a1a1aa",
                     fontSize: 15,
                     lineHeight: 1.7,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Your preview will appear here once a CSV is loaded. ReelShelf will
@@ -554,7 +554,7 @@ export default function LetterboxdImportClient() {
                             margin: "6px 0 0",
                             color: "#9ca3af",
                             fontSize: 13,
-                            fontFamily: "Arial, sans-serif",
+                            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           }}
                         >
                           {item.year} · {item.rating !== null ? `${item.rating.toFixed(1)} / 10` : "No rating"}
@@ -575,7 +575,7 @@ export default function LetterboxdImportClient() {
                           fontSize: 11,
                           letterSpacing: "0.12em",
                           textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           display: "inline-flex",
                           alignItems: "center",
                         }}
@@ -590,7 +590,7 @@ export default function LetterboxdImportClient() {
                         color: "#c7c7c7",
                         fontSize: 14,
                         lineHeight: 1.65,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {item.reason}
@@ -614,7 +614,7 @@ export default function LetterboxdImportClient() {
                           border: "1px solid rgba(255,255,255,0.08)",
                           color: "#d1d5db",
                           fontSize: 12,
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         {formatDate(item.watchedDate)}
@@ -631,7 +631,7 @@ export default function LetterboxdImportClient() {
                             border: "1px solid rgba(255,255,255,0.08)",
                             color: "#d1d5db",
                             fontSize: 12,
-                            fontFamily: "Arial, sans-serif",
+                            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           }}
                         >
                           Rewatch
@@ -646,7 +646,7 @@ export default function LetterboxdImportClient() {
                           color: "#a1a1aa",
                           fontSize: 13,
                           lineHeight: 1.7,
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           display: "-webkit-box",
                           WebkitLineClamp: 3,
                           WebkitBoxOrient: "vertical",

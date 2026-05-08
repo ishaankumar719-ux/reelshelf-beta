@@ -187,7 +187,7 @@ export default function NotificationsBell() {
               fontWeight: 700,
               lineHeight: "18px",
               textAlign: "center",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               boxShadow: "0 8px 18px rgba(0,0,0,0.28)",
             }}
           >
@@ -230,7 +230,7 @@ export default function NotificationsBell() {
                   fontSize: 10,
                   letterSpacing: "0.2em",
                   textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Notifications
@@ -256,7 +256,7 @@ export default function NotificationsBell() {
                 background: "rgba(255,255,255,0.04)",
                 color: "#d1d5db",
                 fontSize: 11,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
@@ -281,7 +281,7 @@ export default function NotificationsBell() {
                   padding: 18,
                   color: "#9ca3af",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Loading notifications…
@@ -312,7 +312,7 @@ export default function NotificationsBell() {
                     fontSize: 10,
                     letterSpacing: "0.16em",
                     textTransform: "uppercase",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Quiet for now
@@ -323,7 +323,7 @@ export default function NotificationsBell() {
                     color: "#d1d5db",
                     fontSize: 13,
                     lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Follow more shelves to see new reviews, fresh logs, and social activity appear here.
@@ -355,7 +355,7 @@ export default function NotificationsBell() {
                 color: "#d1d5db",
                 fontSize: 12,
                 cursor: "pointer",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Mark all read
@@ -370,7 +370,7 @@ export default function NotificationsBell() {
                 fontSize: 12,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               View all activity

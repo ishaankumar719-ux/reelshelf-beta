@@ -220,7 +220,7 @@ export default function DiaryLogPage() {
                 fontSize: 11,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Diary log
@@ -244,7 +244,7 @@ export default function DiaryLogPage() {
                 color: "#9ca3af",
                 fontSize: 14,
                 lineHeight: 1.6,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {movie.year || "—"}
@@ -261,7 +261,7 @@ export default function DiaryLogPage() {
                 fontSize: 11,
                 letterSpacing: "0.28em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {isEditing ? "Update your entry" : "Log your watch"}
@@ -300,7 +300,7 @@ export default function DiaryLogPage() {
                     style={{
                       color: "#d1d5db",
                       fontSize: 13,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Rating out of 10
@@ -330,7 +330,7 @@ export default function DiaryLogPage() {
                     style={{
                       color: "#7f7f7f",
                       fontSize: 12,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Use one decimal place max, from 0.0 to 10.0.
@@ -342,7 +342,7 @@ export default function DiaryLogPage() {
                     style={{
                       color: "#d1d5db",
                       fontSize: 13,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {getDateLabel(movie)}
@@ -366,7 +366,7 @@ export default function DiaryLogPage() {
                     style={{
                       color: "#7f7f7f",
                       fontSize: 12,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Logged for {formatDate(watchedDate)}.
@@ -379,7 +379,7 @@ export default function DiaryLogPage() {
                   style={{
                     color: "#d1d5db",
                     fontSize: 13,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Review
@@ -428,7 +428,7 @@ export default function DiaryLogPage() {
                   style={{
                     fontSize: 14,
                     color: "white",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Mark as a favourite
@@ -463,7 +463,7 @@ export default function DiaryLogPage() {
                     color: "white",
                     border: "1px solid rgba(255,255,255,0.14)",
                     cursor: "pointer",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Cancel

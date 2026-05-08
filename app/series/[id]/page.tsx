@@ -112,7 +112,7 @@ function BackButton() {
         color: "#d1d5db",
         textDecoration: "none",
         fontSize: 13,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         lineHeight: 1,
       }}
     >
@@ -155,7 +155,7 @@ function ProviderBadge({
         style={{
           fontSize: 14,
           color: "white",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {name}
@@ -203,7 +203,7 @@ function DetailPill({ label }: { label: string }) {
         color: "#e5e7eb",
         fontSize: 13,
         lineHeight: 1,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {label}
@@ -278,7 +278,7 @@ function RecommendationsSection({
           color: "#9ca3af",
           fontSize: 14,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         More shows in the same orbit.
@@ -347,7 +347,7 @@ function WatchSection({
           color: "#9ca3af",
           fontSize: 14,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         Available UK streaming options for this series.
@@ -359,7 +359,7 @@ function WatchSection({
             margin: 0,
             color: "#9ca3af",
             fontSize: 14,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           No UK streaming information available.
@@ -373,7 +373,7 @@ function WatchSection({
                   margin: "0 0 10px",
                   color: "#9ca3af",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
                 }}
@@ -400,7 +400,7 @@ function WatchSection({
                   margin: "0 0 10px",
                   color: "#9ca3af",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
                 }}
@@ -427,7 +427,7 @@ function WatchSection({
                   margin: "0 0 10px",
                   color: "#9ca3af",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
                 }}
@@ -535,9 +535,9 @@ function SeriesHero({
               style={{
                 color: "rgba(255,255,255,0.38)",
                 fontSize: 10,
-                letterSpacing: "0.22em",
+                letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               ReelShelf
@@ -557,7 +557,7 @@ function SeriesHero({
                 color: "rgba(255,255,255,0.62)",
                 fontSize: 15,
                 fontWeight: 600,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               TV
@@ -605,9 +605,9 @@ function SeriesHero({
               marginBottom: 12,
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.28em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Series
@@ -631,7 +631,7 @@ function SeriesHero({
               color: "#d1d5db",
               fontSize: 17,
               lineHeight: 1.7,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {year} · Created by {creator}
@@ -668,9 +668,9 @@ function SeriesHero({
                 margin: "0 0 12px",
                 color: "#9ca3af",
                 fontSize: 12,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Overview

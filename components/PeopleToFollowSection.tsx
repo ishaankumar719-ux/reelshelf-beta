@@ -56,7 +56,7 @@ function SuggestionFollowButton({
           textDecoration: "none",
           fontSize: 13,
           fontWeight: 600,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         Sign in
@@ -88,7 +88,7 @@ function SuggestionFollowButton({
           color: isFollowing ? "white" : "black",
           fontSize: 13,
           fontWeight: 600,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           cursor: loading ? "wait" : "pointer",
           opacity: loading ? 0.7 : 1,
         }}
@@ -107,7 +107,7 @@ function SuggestionFollowButton({
           background: "rgba(255,255,255,0.03)",
           color: "#d1d5db",
           fontSize: 12,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {followers} follower{followers === 1 ? "" : "s"}
@@ -182,7 +182,7 @@ function SuggestionCard({
               fontSize: 10,
               letterSpacing: "0.16em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Suggested
@@ -192,7 +192,7 @@ function SuggestionCard({
             style={{
               color: "#9ca3af",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {suggestion.followers} follower{suggestion.followers === 1 ? "" : "s"}
@@ -240,7 +240,7 @@ function SuggestionCard({
                   color: "rgba(255,255,255,0.76)",
                   fontSize: 18,
                   fontWeight: 700,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {initials}
@@ -255,7 +255,7 @@ function SuggestionCard({
                 color: "#9ca3af",
                 fontSize: 12,
                 lineHeight: 1.5,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {handle || "@reelshelf"}
@@ -282,7 +282,7 @@ function SuggestionCard({
             fontSize: 13,
             lineHeight: 1.65,
             minHeight: 44,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {suggestion.reason}
@@ -302,7 +302,7 @@ function SuggestionCard({
               fontSize: 10,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Mount Rushmore preview
@@ -353,7 +353,7 @@ function SuggestionCard({
                         fontSize: 10,
                         letterSpacing: "0.14em",
                         textTransform: "uppercase",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       Film
@@ -443,7 +443,7 @@ export default function PeopleToFollowSection({
               fontSize: 11,
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Social discovery
@@ -479,7 +479,7 @@ export default function PeopleToFollowSection({
               color: "#d1d5db",
               textDecoration: "none",
               fontSize: 14,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Open discover
@@ -497,7 +497,7 @@ export default function PeopleToFollowSection({
             padding: 22,
             color: "#9ca3af",
             fontSize: 14,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Loading suggestions…

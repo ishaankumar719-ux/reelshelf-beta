@@ -27,11 +27,12 @@ const INITIAL_COLORS = ["#1D9E75", "#534AB7", "#D85A30", "#D4537E"] as const
 
 function sectionLabelStyle() {
   return {
-    fontSize: 11,
+    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+    fontSize: 10,
     fontWeight: 600,
-    letterSpacing: "0.07em",
+    letterSpacing: "0.06em",
     textTransform: "uppercase" as const,
-    color: "rgba(255,255,255,0.3)",
+    color: "rgba(255,255,255,0.34)",
     marginBottom: 16,
     display: "block",
   }

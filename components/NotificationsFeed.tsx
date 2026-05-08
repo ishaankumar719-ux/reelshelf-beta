@@ -56,7 +56,7 @@ export function NotificationFilterButton({
         fontSize: 12,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         cursor: "pointer",
       }}
     >
@@ -135,7 +135,7 @@ export function NotificationCard({
               color: "rgba(255,255,255,0.7)",
               fontSize: compact ? 11 : 13,
               fontWeight: 700,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {getProfileInitials({
@@ -160,7 +160,7 @@ export function NotificationCard({
               color: "#f3f4f6",
               fontSize: compact ? 13 : 14,
               fontWeight: 600,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             @{notification.username || "reelshelf"}
@@ -186,7 +186,7 @@ export function NotificationCard({
             color: "#d1d5db",
             fontSize: compact ? 13 : 14,
             lineHeight: 1.5,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {notification.actionText}
@@ -205,7 +205,7 @@ export function NotificationCard({
                   : "#9ca3af",
               fontSize: compact ? 12 : 13,
               lineHeight: 1.55,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               display: "-webkit-box",
               WebkitLineClamp: compact ? 1 : 2,
               WebkitBoxOrient: "vertical",
@@ -223,7 +223,7 @@ export function NotificationCard({
             fontSize: 11,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {formatNotificationRecency(notification.createdAt)}
@@ -263,7 +263,7 @@ export function NotificationCard({
             fontSize: 10,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           {notification.type === "new_follower" ? "Follow" : "Social"}

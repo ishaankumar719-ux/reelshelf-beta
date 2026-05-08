@@ -124,9 +124,9 @@ function EmptyRow({
           margin: "0 0 8px",
           color: "#7f7f7f",
           fontSize: 11,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.04em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         Nothing here yet
@@ -166,7 +166,7 @@ function EmptyRow({
           textDecoration: "none",
           fontSize: 14,
           fontWeight: 600,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {cta}
@@ -213,7 +213,7 @@ function CardFallback({ label }: { label: string }) {
           fontSize: 10,
           letterSpacing: "0.24em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         ReelShelf
@@ -306,7 +306,7 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
                 lineHeight: 1,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {getMediaBadgeLabel(entry.mediaType)}
@@ -343,7 +343,7 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
               color: "#9ca3af",
               fontSize: 13,
               lineHeight: 1.55,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {entry.year || "—"}
@@ -472,7 +472,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                     color: "rgba(255,255,255,0.7)",
                     fontSize: 10,
                     fontWeight: 700,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {getProfileInitials({
@@ -490,7 +490,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   color: "white",
                   fontSize: 13,
                   lineHeight: 1.2,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {ownerLabel}
@@ -503,7 +503,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   lineHeight: 1,
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {entry.username ? `@${entry.username}` : "Public profile"}
@@ -530,7 +530,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                 lineHeight: 1,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {activityType}
@@ -539,7 +539,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
               style={{
                 color: "#8f8f8f",
                 fontSize: 11,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {recency}
@@ -564,7 +564,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                 lineHeight: 1,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {getMediaBadgeLabel(entry.mediaType)}
@@ -619,7 +619,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
                   fontSize: 9,
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {getSeriesScopeBadge(entry)}
@@ -633,7 +633,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
               color: "#9ca3af",
               fontSize: 13,
               lineHeight: 1.55,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {entry.year || "—"}
@@ -696,9 +696,9 @@ function Section({
                 margin: "0 0 8px",
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.22em",
+                letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {eyebrow}
@@ -941,7 +941,7 @@ export default function HomeDashboardClient({
               fontSize: 11,
               letterSpacing: "0.24em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Discovery Dashboard
@@ -994,7 +994,7 @@ export default function HomeDashboardClient({
                 textDecoration: "none",
                 fontSize: 14,
                 fontWeight: 600,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Discover films
@@ -1013,7 +1013,7 @@ export default function HomeDashboardClient({
                 color: "white",
                 textDecoration: "none",
                 fontSize: 14,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Explore series
@@ -1036,9 +1036,9 @@ export default function HomeDashboardClient({
               margin: "0 0 10px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.22em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             At a glance
@@ -1078,7 +1078,7 @@ export default function HomeDashboardClient({
                     fontSize: 11,
                     letterSpacing: "0.14em",
                     textTransform: "uppercase",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {item.label}
@@ -1100,7 +1100,7 @@ export default function HomeDashboardClient({
                     color: "#a7a7a7",
                     fontSize: 12,
                     lineHeight: 1.5,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {item.detail}
@@ -1212,9 +1212,9 @@ export default function HomeDashboardClient({
                         margin: "0 0 8px",
                         color: "#7f7f7f",
                         fontSize: 10,
-                        letterSpacing: "0.18em",
+                        letterSpacing: "0.04em",
                         textTransform: "uppercase",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       Quick action
@@ -1285,7 +1285,7 @@ export default function HomeDashboardClient({
               color: "#d1d5db",
               textDecoration: "none",
               fontSize: 14,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Open diary

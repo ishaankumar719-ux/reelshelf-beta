@@ -116,9 +116,9 @@ export default function DiscoverShelvesClient({
             margin: "0 0 10px",
             color: "#7f7f7f",
             fontSize: 11,
-            letterSpacing: "0.22em",
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Explore Users
@@ -183,7 +183,7 @@ export default function DiscoverShelvesClient({
               background: "rgba(255,255,255,0.03)",
               color: "#d1d5db",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               whiteSpace: "nowrap",
             }}
           >
@@ -256,7 +256,7 @@ export default function DiscoverShelvesClient({
                         fontSize: 10,
                         letterSpacing: "0.16em",
                         textTransform: "uppercase",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       Public Shelf
@@ -266,7 +266,7 @@ export default function DiscoverShelvesClient({
                       style={{
                         color: "#9ca3af",
                         fontSize: 12,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {entry.counts.followers} follower
@@ -315,7 +315,7 @@ export default function DiscoverShelvesClient({
                             color: "rgba(255,255,255,0.76)",
                             fontSize: 20,
                             fontWeight: 700,
-                            fontFamily: "Arial, sans-serif",
+                            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                           }}
                         >
                           {initials}
@@ -330,7 +330,7 @@ export default function DiscoverShelvesClient({
                           color: "#9ca3af",
                           fontSize: 12,
                           lineHeight: 1.5,
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         {handle || "@reelshelf"}
@@ -357,7 +357,7 @@ export default function DiscoverShelvesClient({
                       fontSize: 14,
                       lineHeight: 1.68,
                       minHeight: 72,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {entry.profile.bio?.trim()
@@ -384,9 +384,9 @@ export default function DiscoverShelvesClient({
                           margin: 0,
                           color: "#7f7f7f",
                           fontSize: 10,
-                          letterSpacing: "0.18em",
+                          letterSpacing: "0.04em",
                           textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         Featured Film
@@ -398,7 +398,7 @@ export default function DiscoverShelvesClient({
                           fontSize: 17,
                           lineHeight: 1.35,
                           letterSpacing: "-0.3px",
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         {featuredFilm}
@@ -411,9 +411,9 @@ export default function DiscoverShelvesClient({
                           margin: "0 0 10px",
                           color: "#7f7f7f",
                           fontSize: 10,
-                          letterSpacing: "0.18em",
+                          letterSpacing: "0.04em",
                           textTransform: "uppercase",
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         Movie Mount Rushmore
@@ -464,9 +464,9 @@ export default function DiscoverShelvesClient({
                                     style={{
                                       color: "rgba(255,255,255,0.36)",
                                       fontSize: 8,
-                                      letterSpacing: "0.22em",
+                                      letterSpacing: "0.06em",
                                       textTransform: "uppercase",
-                                      fontFamily: "Arial, sans-serif",
+                                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                                     }}
                                   >
                                     ReelShelf
@@ -486,7 +486,7 @@ export default function DiscoverShelvesClient({
                                       color: "rgba(255,255,255,0.58)",
                                       fontSize: 10,
                                       fontWeight: 600,
-                                      fontFamily: "Arial, sans-serif",
+                                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                                     }}
                                   >
                                     {film?.title ? film.title.slice(0, 1).toUpperCase() : "+"}
@@ -530,9 +530,9 @@ export default function DiscoverShelvesClient({
               margin: "0 0 8px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.04em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             No matches
@@ -554,7 +554,7 @@ export default function DiscoverShelvesClient({
               fontSize: 14,
               lineHeight: 1.7,
               maxWidth: 680,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Try a different username or display name, or clear the search to
@@ -574,7 +574,7 @@ export default function DiscoverShelvesClient({
                 color: "#f3f4f6",
                 fontSize: 13,
                 cursor: "pointer",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Clear search

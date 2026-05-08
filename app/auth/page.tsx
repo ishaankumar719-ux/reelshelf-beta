@@ -33,7 +33,7 @@ function ModeButton({
         fontSize: 12,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         cursor: "pointer",
       }}
     >
@@ -163,7 +163,7 @@ export default function AuthPage() {
               fontSize: 11,
               letterSpacing: "0.24em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             ReelShelf Account
@@ -217,7 +217,7 @@ export default function AuthPage() {
                   color: "#e5e7eb",
                   fontSize: 15,
                   lineHeight: 1.6,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {item}
@@ -264,7 +264,7 @@ export default function AuthPage() {
                   color: "#e5e7eb",
                   fontSize: 15,
                   lineHeight: 1.7,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Supabase is not configured yet. Add
@@ -281,7 +281,7 @@ export default function AuthPage() {
                 style={{
                   color: "#d1d5db",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Email
@@ -309,7 +309,7 @@ export default function AuthPage() {
                 style={{
                   color: "#d1d5db",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Password
@@ -340,7 +340,7 @@ export default function AuthPage() {
                   color: "#d1d5db",
                   fontSize: 14,
                   lineHeight: 1.6,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {message}

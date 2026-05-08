@@ -28,7 +28,7 @@ function BackButton() {
         color: "#d1d5db",
         textDecoration: "none",
         fontSize: 13,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         lineHeight: 1,
       }}
     >
@@ -58,7 +58,7 @@ function FallbackCover() {
           fontSize: 10,
           letterSpacing: "0.24em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         ReelShelf
@@ -98,7 +98,7 @@ function DetailPill({ label }: { label: string }) {
         color: "#e5e7eb",
         fontSize: 13,
         lineHeight: 1,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {label}
@@ -218,7 +218,7 @@ function RecommendationCard({
               margin: "6px 0 0",
               color: "rgba(255,255,255,0.75)",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {book.year}
@@ -267,7 +267,7 @@ function RelatedBooksSection({
           color: "#9ca3af",
           fontSize: 14,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         More reads with a similar mood, author, or shelf energy.
@@ -447,9 +447,9 @@ export default async function BookDetailPage({
                 marginBottom: 12,
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.28em",
+                letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Book
@@ -473,7 +473,7 @@ export default async function BookDetailPage({
                 color: "#d1d5db",
                 fontSize: 17,
                 lineHeight: 1.7,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {book.year} · By {book.author} · {book.genre}
@@ -519,9 +519,9 @@ export default async function BookDetailPage({
                   margin: "0 0 12px",
                   color: "#9ca3af",
                   fontSize: 12,
-                  letterSpacing: "0.18em",
+                  letterSpacing: "0.04em",
                   textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Overview

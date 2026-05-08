@@ -136,7 +136,7 @@ export default function ImportedMovieDetailClient({
               color: "#a1a1aa",
               fontSize: 15,
               lineHeight: 1.7,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Loading imported diary entry...
@@ -163,9 +163,9 @@ export default function ImportedMovieDetailClient({
               margin: "0 0 10px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.22em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Imported Film
@@ -208,7 +208,7 @@ export default function ImportedMovieDetailClient({
                 textDecoration: "none",
                 fontSize: 14,
                 fontWeight: 600,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Back to Diary
@@ -225,7 +225,7 @@ export default function ImportedMovieDetailClient({
                 color: "white",
                 textDecoration: "none",
                 fontSize: 14,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Import Again
@@ -266,7 +266,7 @@ export default function ImportedMovieDetailClient({
           color: "#d1d5db",
           textDecoration: "none",
           fontSize: 13,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           lineHeight: 1,
         }}
       >
@@ -334,9 +334,9 @@ export default function ImportedMovieDetailClient({
               marginBottom: 10,
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.28em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Imported Film
@@ -360,7 +360,7 @@ export default function ImportedMovieDetailClient({
               marginBottom: 0,
               color: "#aaaaaa",
               fontSize: 16,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {movie.year || "—"} · Logged from Letterboxd
@@ -386,7 +386,7 @@ export default function ImportedMovieDetailClient({
                 background: "rgba(255,255,255,0.03)",
                 color: "white",
                 fontSize: 13,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {movie.rating !== null ? `${movie.rating.toFixed(1)} / 10` : "No rating"}
@@ -403,7 +403,7 @@ export default function ImportedMovieDetailClient({
                 background: "rgba(255,255,255,0.03)",
                 color: "white",
                 fontSize: 13,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {formatWatchedDate(movie.watchedDate)}
@@ -421,7 +421,7 @@ export default function ImportedMovieDetailClient({
                   background: "rgba(255,255,255,0.03)",
                   color: "white",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Favourite
@@ -480,9 +480,9 @@ export default function ImportedMovieDetailClient({
                 margin: "0 0 10px",
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Review

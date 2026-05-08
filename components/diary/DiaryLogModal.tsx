@@ -250,7 +250,7 @@ function RatingWidget({
             style={{
               fontSize: 13,
               color: "rgba(255,255,255,0.22)",
-              letterSpacing: "0.1em",
+              letterSpacing: "0.04em",
               textTransform: "uppercase",
             }}
           >

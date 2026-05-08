@@ -197,7 +197,7 @@ export default function ActivityFeedClient() {
               "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.96) 100%)",
             padding: 28,
             color: "#9ca3af",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Loading your activity…
@@ -229,9 +229,9 @@ export default function ActivityFeedClient() {
               margin: "0 0 8px",
               color: "#7f7f7f",
               fontSize: 11,
-              letterSpacing: "0.22em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Activity
@@ -254,7 +254,7 @@ export default function ActivityFeedClient() {
               fontSize: 15,
               lineHeight: 1.75,
               maxWidth: 680,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Sign in to see who followed you, what the shelves you follow logged, and the reviews worth opening next.
@@ -273,7 +273,7 @@ export default function ActivityFeedClient() {
               textDecoration: "none",
               fontSize: 14,
               fontWeight: 600,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             Sign In
@@ -318,9 +318,9 @@ export default function ActivityFeedClient() {
             margin: 0,
             color: "#7f7f7f",
             fontSize: 11,
-            letterSpacing: "0.22em",
+            letterSpacing: "0.06em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Activity
@@ -355,7 +355,7 @@ export default function ActivityFeedClient() {
                 fontSize: "clamp(14px, 3.8vw, 15px)",
                 lineHeight: 1.75,
                 maxWidth: 720,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Track new followers, fresh logs, standout reviews, and the shelves whose Mount Rushmore just shifted.
@@ -378,7 +378,7 @@ export default function ActivityFeedClient() {
                 background: "rgba(255,255,255,0.04)",
                 color: "#f3f4f6",
                 fontSize: 12,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
@@ -396,7 +396,7 @@ export default function ActivityFeedClient() {
                 color: "#d1d5db",
                 fontSize: 12,
                 cursor: "pointer",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Mark all as read
@@ -447,7 +447,7 @@ export default function ActivityFeedClient() {
               fontSize: 12,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {loading ? "Refreshing feed…" : `${filteredNotifications.length} shown`}
@@ -489,7 +489,7 @@ export default function ActivityFeedClient() {
                         fontSize: 15,
                         fontWeight: 600,
                         letterSpacing: "-0.2px",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {section.label}
@@ -510,7 +510,7 @@ export default function ActivityFeedClient() {
                         fontSize: 11,
                         letterSpacing: "0.12em",
                         textTransform: "uppercase",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {section.items.length}
@@ -523,7 +523,7 @@ export default function ActivityFeedClient() {
                       color: "#7f7f7f",
                       fontSize: 12,
                       lineHeight: 1.6,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {section.label === "Today"
@@ -566,9 +566,9 @@ export default function ActivityFeedClient() {
                 margin: "0 0 8px",
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.22em",
+                letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {filter === "unread" ? "No unread notifications" : "Quiet for now"}
@@ -592,7 +592,7 @@ export default function ActivityFeedClient() {
                 fontSize: 14,
                 lineHeight: 1.75,
                 maxWidth: 700,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {filter === "unread"

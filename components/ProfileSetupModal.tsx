@@ -138,7 +138,7 @@ export default function ProfileSetupModal({
             fontSize: 11,
             letterSpacing: "0.22em",
             textTransform: "uppercase",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
           }}
         >
           Complete Your Profile
@@ -244,7 +244,7 @@ export default function ProfileSetupModal({
                   color: "white",
                   fontSize: 13,
                   cursor: "pointer",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {avatarPreview ? "Change profile picture" : "Upload profile picture"}
@@ -268,7 +268,7 @@ export default function ProfileSetupModal({
                   color: "#7f7f7f",
                   fontSize: 12,
                   lineHeight: 1.6,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 JPG, PNG, WEBP, or GIF. Best at square crop.
@@ -283,7 +283,7 @@ export default function ProfileSetupModal({
                     fontSize: 12,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Username
@@ -322,7 +322,7 @@ export default function ProfileSetupModal({
                     fontSize: 12,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Display Name
@@ -366,7 +366,7 @@ export default function ProfileSetupModal({
                     fontSize: 11,
                     letterSpacing: "0.18em",
                     textTransform: "uppercase",
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Preview
@@ -387,7 +387,7 @@ export default function ProfileSetupModal({
                     color: "#9ca3af",
                     fontSize: 14,
                     lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {previewHandle}
@@ -403,7 +403,7 @@ export default function ProfileSetupModal({
                 color: "#fca5a5",
                 fontSize: 13,
                 lineHeight: 1.6,
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {error}
@@ -423,7 +423,7 @@ export default function ProfileSetupModal({
               color: "black",
               fontSize: 14,
               fontWeight: 600,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               cursor: saving ? "wait" : "pointer",
               opacity: saving ? 0.7 : 1,
             }}
@@ -445,7 +445,7 @@ export default function ProfileSetupModal({
                 fontSize: 13,
                 lineHeight: 1.6,
                 textDecoration: "none",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               Import from Letterboxd instead

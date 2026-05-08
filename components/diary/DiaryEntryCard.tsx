@@ -37,7 +37,7 @@ function ReviewLayersDisplay({ layers, mediaType }: { layers: ReviewLayers; medi
           gap: 5,
           color: "rgba(255,255,255,0.4)",
           fontSize: 10,
-          letterSpacing: "0.12em",
+          letterSpacing: "0.05em",
           textTransform: "uppercase",
         }}
       >
@@ -284,7 +284,7 @@ export default function DiaryEntryCard({
                       style={{
                         display: "block",
                         fontSize: 9,
-                        letterSpacing: "0.14em",
+                        letterSpacing: "0.05em",
                         textTransform: "uppercase",
                         color: "rgba(255,255,255,0.3)",
                         marginBottom: 2,
@@ -304,7 +304,7 @@ export default function DiaryEntryCard({
                         style={{
                           display: "block",
                           fontSize: 9,
-                          letterSpacing: "0.14em",
+                          letterSpacing: "0.05em",
                           textTransform: "uppercase",
                           color: "rgba(255,255,255,0.3)",
                           marginBottom: 2,
@@ -327,7 +327,7 @@ export default function DiaryEntryCard({
                     style={{
                       margin: "0 0 6px",
                       fontSize: 10,
-                      letterSpacing: "0.14em",
+                      letterSpacing: "0.05em",
                       textTransform: "uppercase",
                       color: "rgba(255,255,255,0.34)",
                     }}
@@ -380,7 +380,7 @@ export default function DiaryEntryCard({
                       background: "rgba(255,255,255,0.12)",
                       color: "white",
                       fontSize: 10,
-                      letterSpacing: "0.1em",
+                      letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       cursor: "pointer",
                     }}
@@ -397,7 +397,7 @@ export default function DiaryEntryCard({
                       background: "rgba(255,255,255,0.04)",
                       color: "#e5e7eb",
                       fontSize: 10,
-                      letterSpacing: "0.1em",
+                      letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       cursor: "pointer",
                     }}
@@ -417,7 +417,7 @@ export default function DiaryEntryCard({
                       background: "rgba(255,255,255,0.04)",
                       color: "#e5e7eb",
                       fontSize: 10,
-                      letterSpacing: "0.1em",
+                      letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       cursor: "pointer",
                     }}
@@ -434,7 +434,7 @@ export default function DiaryEntryCard({
                       background: "rgba(255,255,255,0.04)",
                       color: "#f3caca",
                       fontSize: 10,
-                      letterSpacing: "0.1em",
+                      letterSpacing: "0.04em",
                       textTransform: "uppercase",
                       cursor: "pointer",
                     }}

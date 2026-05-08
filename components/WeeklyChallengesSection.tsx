@@ -21,9 +21,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         margin: 0,
         color: "#7f7f7f",
         fontSize: 11,
-        letterSpacing: "0.22em",
+        letterSpacing: "0.06em",
         textTransform: "uppercase",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {children}
@@ -95,7 +95,7 @@ function ChallengeCard({ challenge }: { challenge: WeeklyChallengeProgress }) {
             color: challenge.complete ? "#f3f4f6" : "#9ca3af",
             fontSize: 12,
             fontWeight: 600,
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             flexShrink: 0,
           }}
         >
@@ -109,7 +109,7 @@ function ChallengeCard({ challenge }: { challenge: WeeklyChallengeProgress }) {
           color: "#9ca3af",
           fontSize: 13,
           lineHeight: 1.6,
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {challenge.detail}
@@ -126,7 +126,7 @@ function ChallengeCard({ challenge }: { challenge: WeeklyChallengeProgress }) {
           fontSize: 10,
           letterSpacing: "0.14em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {challenge.complete ? "Completed this week" : "In progress"}
@@ -161,7 +161,7 @@ function LeaderboardCard({
           fontSize: 10,
           letterSpacing: "0.16em",
           textTransform: "uppercase",
-          fontFamily: "Arial, sans-serif",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         Leaderboard
@@ -208,7 +208,7 @@ function LeaderboardCard({
                   color: "#f3f4f6",
                   fontSize: 13,
                   fontWeight: 600,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   width: 16,
                 }}
               >
@@ -254,7 +254,7 @@ function LeaderboardCard({
                         color: "rgba(255,255,255,0.7)",
                         fontSize: 10,
                         fontWeight: 700,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {getProfileInitials({
@@ -272,7 +272,7 @@ function LeaderboardCard({
                       color: "#f3f4f6",
                       fontSize: 13,
                       fontWeight: 600,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -287,7 +287,7 @@ function LeaderboardCard({
                       fontSize: 10,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     @{entry.username || "reelshelf"}
@@ -300,7 +300,7 @@ function LeaderboardCard({
                   color: "white",
                   fontSize: 13,
                   fontWeight: 600,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   textAlign: "right",
                 }}
               >
@@ -315,7 +315,7 @@ function LeaderboardCard({
               color: "#6b7280",
               fontSize: 12,
               lineHeight: 1.6,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             No public activity has landed on this leaderboard yet.
@@ -478,7 +478,7 @@ export default function WeeklyChallengesSection() {
               background: "rgba(255,255,255,0.03)",
               color: "#d1d5db",
               fontSize: 12,
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {snapshot.completedCount}/{snapshot.progress.length} challenges complete
@@ -489,7 +489,7 @@ export default function WeeklyChallengesSection() {
               fontSize: 11,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {loading ? "Refreshing week…" : `Week of ${snapshot.weekStart}`}

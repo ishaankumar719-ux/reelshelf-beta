@@ -46,7 +46,7 @@ function SearchFilterButton({
         color: active ? "white" : "#9ca3af",
         fontSize: 12,
         cursor: "pointer",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {label}
@@ -108,7 +108,7 @@ function SearchResultCard({
               lineHeight: 1,
               textTransform: "uppercase",
               letterSpacing: "0.14em",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {getLabel(item.mediaType)}
@@ -134,7 +134,7 @@ function SearchResultCard({
             marginTop: 6,
             fontSize: 12,
             color: "#aaaaaa",
-            fontFamily: "Arial, sans-serif",
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             lineHeight: 1.55,
           }}
         >
@@ -294,7 +294,7 @@ function SearchTriggerButton({
         fontSize: 12,
         cursor: "pointer",
         textAlign: "left",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         display: "inline-flex",
         alignItems: "center",
         gap: 10,
@@ -612,7 +612,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Films
@@ -624,7 +624,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Series
@@ -636,7 +636,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Books
@@ -648,7 +648,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Diary
@@ -660,7 +660,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Watchlist
@@ -672,7 +672,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Reading Shelf
@@ -684,7 +684,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Profile
@@ -696,7 +696,7 @@ export default function Header() {
                   color: "#9ca3af",
                   textDecoration: "none",
                   fontSize: 13,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Discover
@@ -743,7 +743,7 @@ export default function Header() {
                           color: "rgba(255,255,255,0.7)",
                           fontSize: 11,
                           fontWeight: 700,
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         {getProfileInitials(profile)}
@@ -756,7 +756,7 @@ export default function Header() {
                       style={{
                         color: "#f3f4f6",
                         fontSize: 12,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         maxWidth: 180,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
@@ -773,7 +773,7 @@ export default function Header() {
                       style={{
                         color: "#7f7f7f",
                         fontSize: 10,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
                         maxWidth: 180,
@@ -798,7 +798,7 @@ export default function Header() {
                       color: "white",
                       fontSize: 11,
                       cursor: "pointer",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Sign Out
@@ -818,7 +818,7 @@ export default function Header() {
                     color: authLoading ? "#7f7f7f" : "#e5e7eb",
                     textDecoration: "none",
                     fontSize: 12,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {authLoading ? "Loading..." : "Sign In"}
@@ -838,7 +838,7 @@ export default function Header() {
                   color: "#e5e7eb",
                   textDecoration: "none",
                   fontSize: 12,
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Account Setup
@@ -871,7 +871,7 @@ export default function Header() {
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {getProfileInitials(profile)}
@@ -955,7 +955,7 @@ export default function Header() {
                           color: "rgba(255,255,255,0.7)",
                           fontSize: 13,
                           fontWeight: 700,
-                          fontFamily: "Arial, sans-serif",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                         }}
                       >
                         {getProfileInitials(profile)}
@@ -968,7 +968,7 @@ export default function Header() {
                         margin: 0,
                         color: "white",
                         fontSize: 14,
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {displayName || "ReelShelf member"}
@@ -980,7 +980,7 @@ export default function Header() {
                         fontSize: 11,
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        fontFamily: "Arial, sans-serif",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {syncing
@@ -1011,7 +1011,7 @@ export default function Header() {
                       alignItems: "center",
                       padding: "0 14px",
                       fontSize: 14,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Open profile
@@ -1030,7 +1030,7 @@ export default function Header() {
                       alignItems: "center",
                       padding: "0 14px",
                       fontSize: 14,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     Open activity
@@ -1048,7 +1048,7 @@ export default function Header() {
                       alignItems: "center",
                       padding: "0 14px",
                       fontSize: 14,
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       cursor: "pointer",
                     }}
                   >
@@ -1064,7 +1064,7 @@ export default function Header() {
                     color: "#d1d5db",
                     fontSize: 14,
                     lineHeight: 1.6,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Sign in to sync your diary, saved lists, and social activity.
@@ -1083,7 +1083,7 @@ export default function Header() {
                     justifyContent: "center",
                     fontSize: 14,
                     fontWeight: 600,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Sign In
@@ -1135,7 +1135,7 @@ export default function Header() {
                   fontSize: 11,
                   letterSpacing: "0.24em",
                   textTransform: "uppercase",
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 Search the universe
@@ -1174,7 +1174,7 @@ export default function Header() {
                     margin: 0,
                     color: "#9a9a9a",
                     fontSize: 13,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   {query.trim()
@@ -1187,7 +1187,7 @@ export default function Header() {
                     margin: 0,
                     color: "#6f6f6f",
                     fontSize: 12,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Press ESC to close
@@ -1230,7 +1230,7 @@ export default function Header() {
                     padding: "0 0 14px",
                     color: "#8a8a8a",
                     fontSize: 13,
-                    fontFamily: "Arial, sans-serif",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                   }}
                 >
                   Searching…
@@ -1253,7 +1253,7 @@ export default function Header() {
                       padding: "40px 10px",
                       textAlign: "center",
                       color: "#8a8a8a",
-                      fontFamily: "Arial, sans-serif",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     No results found.
