@@ -119,6 +119,8 @@ export interface DiaryEntry {
   // Attachment (migration: 20260508_diary_entry_attachments.sql)
   attachment_url: string | null
   attachment_type: "image" | "gif" | null
+  // Cinema logging (migration: 20260508_watched_in_cinema.sql)
+  watched_in_cinema: boolean
 }
 
 export interface InitialEntryData {
@@ -129,6 +131,7 @@ export interface InitialEntryData {
   rewatch: boolean
   containsSpoilers: boolean
   reviewLayers: ReviewLayers
+  watchedInCinema: boolean
 }
 
 export interface LogMediaInput {

@@ -195,6 +195,7 @@ export default function DiaryPage() {
         favourite: movie.favourite,
         rewatch: movie.rewatch,
         containsSpoilers: movie.containsSpoilers,
+        watchedInCinema: movie.watchedInCinema ?? false,
         reviewLayers: movie.reviewLayers ?? EMPTY_REVIEW_LAYERS,
       }
     );

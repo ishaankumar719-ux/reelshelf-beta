@@ -403,6 +403,7 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
     favourite: entry.favourite,
     rewatch: entry.rewatch,
     containsSpoilers: entry.contains_spoilers,
+    watchedInCinema: entry.watched_in_cinema ?? false,
     savedAt: entry.saved_at,
     reviewLayers: {
       score_rating: entry.score_rating ?? null,
@@ -434,6 +435,7 @@ export default function DiaryLogModal({
   const [containsSpoilers, setContainsSpoilers] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [layers, setLayers] = useState<ReviewLayers>(EMPTY_LAYERS);
+  const [watchedInCinema, setWatchedInCinema] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<AttachmentValue | null>(null);
@@ -465,6 +467,7 @@ export default function DiaryLogModal({
       setFavourite(initialEntry.favourite);
       setRewatch(initialEntry.rewatch);
       setContainsSpoilers(initialEntry.containsSpoilers);
+      setWatchedInCinema(initialEntry.watchedInCinema ?? false);
       setLayers(initialEntry.reviewLayers ?? EMPTY_LAYERS);
     } else if (!isOpen) {
       setWatchedDate(todayIso());
@@ -473,6 +476,7 @@ export default function DiaryLogModal({
       setFavourite(false);
       setRewatch(false);
       setContainsSpoilers(false);
+      setWatchedInCinema(false);
       setLayersOpen(false);
       setLayers(EMPTY_LAYERS);
       setSaving(false);
@@ -553,6 +557,7 @@ export default function DiaryLogModal({
       reelshelf_score: reelshelfScore,
       attachment_url: attachment?.url ?? null,
       attachment_type: attachment?.type ?? null,
+      watched_in_cinema: media.media_type === "movie" ? watchedInCinema : false,
     };
 
     const { data, error: saveError } = await supabase
@@ -887,6 +892,14 @@ export default function DiaryLogModal({
               icon="⚠"
               onClick={() => setContainsSpoilers((value) => !value)}
             />
+            {media.media_type === "movie" ? (
+              <ToggleChip
+                active={watchedInCinema}
+                label="Cinema"
+                icon="🎬"
+                onClick={() => setWatchedInCinema((value) => !value)}
+              />
+            ) : null}
           </div>
 
           {/* Review layers — all media types */}

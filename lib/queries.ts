@@ -37,6 +37,8 @@ export const DIARY_SELECT = [
   // Entry-level attachment (migration: 20260508_diary_entry_attachments.sql)
   "attachment_url",
   "attachment_type",
+  // Cinema logging (migration: 20260508_watched_in_cinema.sql)
+  "watched_in_cinema",
 ].join(", ")
 
 export const PROFILE_SELECT =

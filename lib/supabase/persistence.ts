@@ -12,6 +12,7 @@ export type PersistedDiaryEntry = SavedMediaItem & {
   favourite: boolean;
   rewatch: boolean;
   containsSpoilers: boolean;
+  watchedInCinema: boolean;
   savedAt: string;
   reviewLayers?: ReviewLayers | null;
   reelshelfScore?: number | null;
@@ -59,6 +60,8 @@ type DiaryRow = {
   // Entry attachment — migration 20260508_diary_entry_attachments.sql
   attachment_url?: string | null;
   attachment_type?: "image" | "gif" | null;
+  // Cinema logging — migration 20260508_watched_in_cinema.sql
+  watched_in_cinema?: boolean;
 };
 
 type SavedItemRow = {
@@ -189,6 +192,7 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     reelshelf_score: entry.reelshelfScore ?? null,
     attachment_url: entry.attachmentUrl ?? null,
     attachment_type: entry.attachmentType ?? null,
+    watched_in_cinema: entry.watchedInCinema ?? false,
   };
 }
 
@@ -228,6 +232,7 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     reelshelfScore: typeof row.reelshelf_score === "number" ? row.reelshelf_score : null,
     attachmentUrl: row.attachment_url ?? null,
     attachmentType: row.attachment_type ?? null,
+    watchedInCinema: row.watched_in_cinema ?? false,
   };
 }
 

@@ -44,6 +44,7 @@ type DiaryRow = {
   review: string | null
   created_at: string
   review_scope: "show" | "season" | "episode" | "title" | null
+  watched_in_cinema?: boolean
 }
 
 type FullDiaryRow = {
@@ -72,6 +73,7 @@ type FullDiaryRow = {
   reelshelf_score: number | null
   attachment_url: string | null
   attachment_type: "image" | "gif" | null
+  watched_in_cinema: boolean
 }
 
 function mapToPublicEntry(row: FullDiaryRow): PublicDiaryEntry {
@@ -182,6 +184,7 @@ export default async function PublicProfilePage({
         watchlist: 0,
         followers: 0,
         following: 0,
+        cinemaVisits: 0,
       },
       highest_rated: [],
     }
@@ -206,7 +209,7 @@ export default async function PublicProfilePage({
       .order("position", { ascending: true }),
     supabase
       .from("diary_entries")
-      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope")
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope, watched_in_cinema")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .not("poster", "is", null)
@@ -214,7 +217,7 @@ export default async function PublicProfilePage({
       .limit(10),
     supabase
       .from("diary_entries")
-      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope")
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope, watched_in_cinema")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false }),
@@ -253,6 +256,7 @@ export default async function PublicProfilePage({
   const films = allRows.filter((entry) => entry.media_type === "movie").length
   const series = allRows.filter((entry) => entry.media_type === "tv").length
   const reviews = allRows.filter((entry) => parseRating(entry.rating) !== null).length
+  const cinemaVisits = allRows.filter((entry) => entry.media_type === "movie" && entry.watched_in_cinema === true).length
 
   const highestRated = allRows
     .filter((entry) => parseRating(entry.rating) !== null && parseRating(entry.rating)! >= 10)
@@ -276,6 +280,7 @@ export default async function PublicProfilePage({
       review: entry.review ?? null,
       watched_date: entry.watched_date,
       created_at: entry.created_at,
+      watched_in_cinema: entry.watched_in_cinema ?? false,
     })),
     rushmoreRows: rushmoreRows.map((row) => ({
       id: `${row.media_type}-${row.position}`,
@@ -326,6 +331,7 @@ export default async function PublicProfilePage({
       watchlist: watchlistCount,
       followers: followersCount || 0,
       following: followingCount || 0,
+      cinemaVisits,
     },
     highest_rated: highestRated,
   }

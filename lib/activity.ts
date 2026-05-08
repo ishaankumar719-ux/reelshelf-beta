@@ -19,6 +19,7 @@ export interface ActivityEvent {
   review: string | null
   attachmentUrl?: string | null
   attachmentType?: "image" | "gif" | null
+  watchedInCinema?: boolean
   timestamp: string
   isBatch: boolean
   batchCount?: number
@@ -36,6 +37,7 @@ type DiaryActivityRow = {
   attachment_type?: "image" | "gif" | null
   watched_date?: string | null
   created_at: string
+  watched_in_cinema?: boolean
 }
 
 type SavedActivityRow = {
@@ -149,6 +151,7 @@ export function buildActivityEventsFromSources({
       review: row.review?.trim() || null,
       attachmentUrl: row.attachment_url ?? null,
       attachmentType: row.attachment_type ?? null,
+      watchedInCinema: row.watched_in_cinema ?? false,
       timestamp: row.created_at,
       isBatch: false,
     }
@@ -208,7 +211,7 @@ export async function fetchActivityEvents(
   const [diaryRes, savedRes, rushmoreRes] = await Promise.all([
     supabase
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, watched_date, created_at")
+      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, watched_in_cinema, watched_date, created_at")
       .eq("user_id", userId)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })

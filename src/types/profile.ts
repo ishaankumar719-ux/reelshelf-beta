@@ -69,6 +69,7 @@ export interface PublicProfileStats {
   watchlist: number
   followers: number
   following: number
+  cinemaVisits: number
 }
 
 export interface PublicProfileActivityItem {

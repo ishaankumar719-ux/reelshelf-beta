@@ -419,6 +419,9 @@ export default function ProfileShowcase({
     { label: "Series", value: profile.stats.series },
     { label: "Reviews", value: profile.stats.reviews },
     { label: "Watchlist", value: profile.stats.watchlist },
+    ...(profile.stats.cinemaVisits > 0
+      ? [{ label: "Cinema", value: profile.stats.cinemaVisits }]
+      : []),
   ]
 
   const emptyTabMessage =

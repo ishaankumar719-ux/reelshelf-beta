@@ -217,6 +217,7 @@ export function parseLetterboxdCsv(csvText: string) {
       favourite: false,
       rewatch,
       containsSpoilers: false,
+      watchedInCinema: false,
       savedAt: savedAtFromWatchedDate(watchedDate),
     };
 

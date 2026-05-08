@@ -229,6 +229,25 @@ export default function DiaryEntryCard({
                 {movie.favourite ? (
                   <span style={{ color: "#fb7185", fontSize: 13 }}>♥</span>
                 ) : null}
+                {movie.watchedInCinema && movie.mediaType === "movie" ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background: "rgba(99,102,241,0.14)",
+                      border: "0.5px solid rgba(129,140,248,0.28)",
+                      color: "#c7d2fe",
+                      fontSize: 10,
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    }}
+                  >
+                    <span>🎬</span>
+                    <span>Cinema</span>
+                  </span>
+                ) : null}
                 {movie.rewatch ? (
                   <span
                     style={{

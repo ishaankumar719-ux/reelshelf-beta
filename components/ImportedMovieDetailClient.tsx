@@ -106,6 +106,7 @@ export default function ImportedMovieDetailClient({
         favourite: row.favourite,
         rewatch: Boolean(row.rewatch),
         containsSpoilers: Boolean(row.contains_spoilers),
+        watchedInCinema: false,
         savedAt: row.saved_at,
       });
       setNotFound(false);

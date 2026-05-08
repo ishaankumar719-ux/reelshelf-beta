@@ -14,6 +14,7 @@ export type DiaryMovie = SavedMediaItem & {
   favourite: boolean;
   rewatch: boolean;
   containsSpoilers: boolean;
+  watchedInCinema: boolean;
   savedAt: string;
   reviewLayers?: ReviewLayers | null;
   reelshelfScore?: number | null;
@@ -146,6 +147,10 @@ function normalizeDiaryMovie(
       "containsSpoilers" in movie && typeof movie.containsSpoilers === "boolean"
         ? movie.containsSpoilers
         : false,
+    watchedInCinema:
+      "watchedInCinema" in movie && typeof movie.watchedInCinema === "boolean"
+        ? movie.watchedInCinema
+        : false,
     savedAt:
       "savedAt" in movie && typeof movie.savedAt === "string"
         ? movie.savedAt
@@ -266,6 +271,7 @@ export function saveDiaryEntry(
     favourite: boolean;
     rewatch?: boolean;
     containsSpoilers?: boolean;
+    watchedInCinema?: boolean;
   }
 ) {
   if (typeof window === "undefined") return;
@@ -283,6 +289,7 @@ export function saveDiaryEntry(
     favourite: movie.favourite,
     rewatch: movie.rewatch ?? false,
     containsSpoilers: movie.containsSpoilers ?? false,
+    watchedInCinema: movie.watchedInCinema ?? false,
     savedAt: existingEntry?.savedAt || new Date().toISOString(),
   };
 
