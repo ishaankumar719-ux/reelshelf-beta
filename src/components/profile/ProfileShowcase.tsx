@@ -117,7 +117,7 @@ function Avatar({
             justifyContent: "center",
             fontSize: 18,
             fontWeight: 600,
-            letterSpacing: "0.08em",
+            letterSpacing: "0.02em",
             color: "rgba(255,255,255,0.92)",
           }}
         >
@@ -539,16 +539,17 @@ export default function ProfileShowcase({
                 padding: "16px 12px",
               }}
             >
-              <p style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: 0 }}>
+              <p style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.88)", margin: 0 }}>
                 {item.value}
               </p>
               <p
                 style={{
                   fontSize: 10,
-                  letterSpacing: "0.07em",
+                  letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   color: "rgba(255,255,255,0.3)",
                   margin: "6px 0 0",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {item.label}

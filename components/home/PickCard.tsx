@@ -62,6 +62,7 @@ function Btn({
         borderRadius: "7px",
         fontSize: "11px",
         fontWeight: 500,
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.4 : 1,
         border: teal
@@ -236,12 +237,13 @@ export default function PickCard({
     >
       <p
         style={{
-          fontSize: "12px",
+          fontSize: "10px",
           fontWeight: 600,
-          letterSpacing: "0.07em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.35)",
+          color: "rgba(255,255,255,0.34)",
           margin: 0,
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         {title}

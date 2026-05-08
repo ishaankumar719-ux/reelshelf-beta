@@ -51,11 +51,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
       style={{
         margin: 0,
         marginBottom: "12px",
-        fontSize: "11px",
+        fontSize: "10px",
         fontWeight: 600,
-        letterSpacing: "0.08em",
+        letterSpacing: "0.06em",
         textTransform: "uppercase",
-        color: "rgba(255,255,255,0.35)",
+        color: "rgba(255,255,255,0.34)",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
       }}
     >
       {children}
@@ -161,7 +162,8 @@ export default function StatsClient({ entries }: StatsClientProps) {
           <h1
             style={{
               fontSize: "26px",
-              fontWeight: 600,
+              fontWeight: 500,
+              letterSpacing: "-0.6px",
               color: "rgba(255,255,255,0.92)",
               margin: 0,
             }}
@@ -173,6 +175,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
               fontSize: "14px",
               color: "rgba(255,255,255,0.4)",
               marginTop: "6px",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {totalEntries} titles tracked · your viewing identity
@@ -205,7 +208,9 @@ export default function StatsClient({ entries }: StatsClientProps) {
               <div
                 style={{
                   fontSize: "28px",
-                  fontWeight: 600,
+                  fontWeight: 500,
+                  letterSpacing: "-0.5px",
+                  fontVariantNumeric: "tabular-nums",
                   color: "rgba(255,255,255,0.9)",
                   lineHeight: 1.1,
                 }}
@@ -215,10 +220,11 @@ export default function StatsClient({ entries }: StatsClientProps) {
               <div
                 style={{
                   marginTop: "8px",
-                  fontSize: "11px",
-                  letterSpacing: "0.07em",
+                  fontSize: "10px",
+                  letterSpacing: "0.06em",
                   textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.35)",
+                  color: "rgba(255,255,255,0.34)",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
                 {stat.label}
@@ -235,6 +241,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
               color: "rgba(255,255,255,0.45)",
               margin: "0 0 20px",
               fontStyle: "italic",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
             {subtitle}
@@ -270,27 +277,27 @@ export default function StatsClient({ entries }: StatsClientProps) {
             <SectionLabel>Patterns</SectionLabel>
             <div style={{ display: "grid", gap: "12px" }}>
               <div>
-                <p style={{ margin: 0, fontSize: "22px", color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+                <p style={{ margin: 0, fontSize: "22px", color: "rgba(255,255,255,0.9)", fontWeight: 500, letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>
                   {streakStats.longestStreak} days
                 </p>
-                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "rgba(255,255,255,0.36)" }}>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "rgba(255,255,255,0.36)", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                   Longest streak · last log {formatWatchedDate(streakStats.lastLogDate)}
                 </p>
               </div>
               <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: "18px", color: "rgba(255,255,255,0.86)", fontWeight: 600 }}>
+                  <p style={{ margin: 0, fontSize: "18px", color: "rgba(255,255,255,0.86)", fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums" }}>
                     {seriesCount}
                   </p>
-                  <p style={{ margin: "3px 0 0", fontSize: "11px", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: "10px", color: "rgba(255,255,255,0.34)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                     Series
                   </p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: "18px", color: "rgba(255,255,255,0.86)", fontWeight: 600 }}>
+                  <p style={{ margin: 0, fontSize: "18px", color: "rgba(255,255,255,0.86)", fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums" }}>
                     {unratedCount}
                   </p>
-                  <p style={{ margin: "3px 0 0", fontSize: "11px", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <p style={{ margin: "3px 0 0", fontSize: "10px", color: "rgba(255,255,255,0.34)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
                     Unrated
                   </p>
                 </div>
@@ -319,6 +326,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
                       border: "0.5px solid rgba(255,255,255,0.08)",
                       color: "rgba(255,255,255,0.72)",
                       fontSize: "12px",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                     }}
                   >
                     {genre} · {count}
@@ -417,6 +425,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {entry.title}
@@ -426,6 +435,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
                         margin: "3px 0 0",
                         fontSize: "11px",
                         color: "rgba(255,255,255,0.35)",
+                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                       }}
                     >
                       {entry.year || "—"} · 10 / 10

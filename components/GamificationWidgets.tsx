@@ -110,7 +110,8 @@ function StreakCard({
           fontSize: 30,
           lineHeight: 1,
           letterSpacing: "-1px",
-          fontWeight: 600,
+          fontWeight: 500,
+          fontVariantNumeric: "tabular-nums",
         }}
       >
         {value}

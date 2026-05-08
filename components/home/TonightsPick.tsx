@@ -11,10 +11,13 @@ export default function TonightsPick({ watchlistItems }: TonightsPickProps) {
     <section style={{ marginBottom: "40px" }}>
       <h2
         style={{
-          fontSize: "15px",
+          fontSize: "10px",
           fontWeight: 600,
-          color: "rgba(255,255,255,0.82)",
-          margin: "0 0 16px",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.34)",
+          margin: "0 0 14px",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
         }}
       >
         Tonight&apos;s Picks
