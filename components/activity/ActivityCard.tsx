@@ -9,6 +9,7 @@ import {
   createDiaryEntryComment,
   type PublicComment,
 } from "@/lib/supabase/comments"
+import AttachmentPicker, { type AttachmentValue } from "@/components/AttachmentPicker"
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -358,13 +359,8 @@ function CommentPanel({
   const [body, setBody] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [showAttach, setShowAttach] = useState(false)
-  const [attachUrl, setAttachUrl] = useState("")
-  const [attachImgErr, setAttachImgErr] = useState(false)
+  const [attachment, setAttachment] = useState<AttachmentValue | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const attachType = attachUrl.trim() ? inferAttachmentType(attachUrl.trim()) : null
-  const attachValid = attachType !== null
 
   useEffect(() => {
     setLoading(true)
@@ -379,22 +375,16 @@ function CommentPanel({
     }
   }, [loading])
 
-  // Reset image error state whenever the URL changes
-  useEffect(() => {
-    setAttachImgErr(false)
-  }, [attachUrl])
-
   async function handleSubmit() {
     const trimmed = body.trim()
     if (!trimmed || submitting) return
     setSubmitting(true)
     setSubmitError(null)
-    const urlToSave = attachUrl.trim() && attachValid ? attachUrl.trim() : null
     const result = await createDiaryEntryComment({
       diaryEntryId,
       body: trimmed,
-      attachmentUrl: urlToSave,
-      attachmentType: urlToSave ? attachType : null,
+      attachmentUrl: attachment?.url ?? null,
+      attachmentType: attachment?.type ?? null,
     })
     if (result.error) {
       setSubmitError(result.error)
@@ -402,8 +392,7 @@ function CommentPanel({
       setComments((prev) => [...prev, result.comment!])
       onCommentAdded()
       setBody("")
-      setAttachUrl("")
-      setShowAttach(false)
+      setAttachment(null)
     }
     setSubmitting(false)
   }
@@ -514,107 +503,11 @@ function CommentPanel({
               </button>
             </div>
 
-            {/* Attachment toggle row */}
-            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAttach((v) => !v)
-                  if (showAttach) {
-                    setAttachUrl("")
-                  }
-                }}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  height: 26,
-                  padding: "0 10px",
-                  borderRadius: 999,
-                  border: `0.5px solid ${showAttach ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.09)"}`,
-                  background: showAttach ? "rgba(255,255,255,0.07)" : "transparent",
-                  color: showAttach ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.38)",
-                  fontSize: 11,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  fontFamily: "inherit",
-                }}
-              >
-                <span>📎</span>
-                <span>{showAttach ? "Remove image" : "+ Image / GIF"}</span>
-              </button>
-              {attachUrl.trim() && attachValid ? (
-                <span style={{ fontSize: 10, color: "rgba(29,158,117,0.85)" }}>
-                  ✓ {attachType === "gif" ? "GIF" : "Image"} attached
-                </span>
-              ) : attachUrl.trim() && !attachValid ? (
-                <span style={{ fontSize: 10, color: "rgba(255,100,100,0.7)" }}>
-                  Unrecognised URL — paste a direct .jpg, .png, .gif, .webp link
-                </span>
-              ) : null}
-            </div>
-
-            {/* Attachment URL input + preview */}
-            {showAttach ? (
-              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                <input
-                  type="url"
-                  value={attachUrl}
-                  onChange={(e) => setAttachUrl(e.target.value)}
-                  placeholder="Paste image or GIF URL"
-                  style={{
-                    width: "100%",
-                    borderRadius: 8,
-                    border: "0.5px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.78)",
-                    padding: "7px 10px",
-                    fontSize: 12,
-                    outline: "none",
-                    fontFamily: "inherit",
-                    boxSizing: "border-box",
-                    transition: "border-color 0.15s ease",
-                  }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)" }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)" }}
-                />
-                {attachUrl.trim() && attachValid && !attachImgErr ? (
-                  <div
-                    style={{
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      maxWidth: 200,
-                      border: "0.5px solid rgba(255,255,255,0.08)",
-                      position: "relative",
-                    }}
-                  >
-                    {attachType === "gif" ? (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: 5,
-                          left: 5,
-                          background: "rgba(0,0,0,0.55)",
-                          borderRadius: 4,
-                          padding: "1px 5px",
-                          fontSize: 9,
-                          letterSpacing: "0.1em",
-                          color: "rgba(255,255,255,0.8)",
-                        }}
-                      >
-                        GIF
-                      </span>
-                    ) : null}
-                    <img
-                      src={attachUrl.trim()}
-                      alt="Preview"
-                      style={{ width: "100%", display: "block", maxHeight: 160, objectFit: "cover" }}
-                      onError={() => setAttachImgErr(true)}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+            <AttachmentPicker
+              value={attachment}
+              onChange={setAttachment}
+              compact
+            />
           </div>
 
           {submitError ? (

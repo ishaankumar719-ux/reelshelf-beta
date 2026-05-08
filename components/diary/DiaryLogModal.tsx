@@ -9,6 +9,7 @@ import { computeStreak } from "../../lib/streak";
 import type { DiaryEntry, InitialEntryData, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
 import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS, getLayerDefs } from "../../types/diary";
 import { calculateReelShelfScore } from "../../lib/scoring";
+import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
 
 interface DiaryLogModalProps {
   isOpen: boolean;
@@ -28,17 +29,6 @@ function getRewatchLabel(mediaType: LogMediaInput["media_type"]) {
   return mediaType === "book" ? "Re-read" : "Rewatch";
 }
 
-function inferAttachmentType(url: string): "image" | "gif" | null {
-  try {
-    const { hostname, pathname } = new URL(url);
-    const ext = pathname.split(".").pop()?.toLowerCase() ?? "";
-    if (hostname.includes("giphy.com") || hostname.includes("tenor.com") || ext === "gif") return "gif";
-    if (["jpg", "jpeg", "png", "webp", "avif", "bmp"].includes(ext)) return "image";
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 function todayIso() {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -446,9 +436,7 @@ export default function DiaryLogModal({
   const [layers, setLayers] = useState<ReviewLayers>(EMPTY_LAYERS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [attachUrl, setAttachUrl] = useState("");
-  const [showAttach, setShowAttach] = useState(false);
-  const [attachImgErr, setAttachImgErr] = useState(false);
+  const [attachment, setAttachment] = useState<AttachmentValue | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -489,9 +477,7 @@ export default function DiaryLogModal({
       setLayers(EMPTY_LAYERS);
       setSaving(false);
       setError(null);
-      setAttachUrl("");
-      setShowAttach(false);
-      setAttachImgErr(false);
+      setAttachment(null);
     }
   }, [isOpen, initialEntry]);
 
@@ -533,8 +519,6 @@ export default function DiaryLogModal({
         : `${slugifyTitle(media.title)}-${media.year}`);
 
     const reelshelfScore = calculateReelShelfScore(media.media_type, rating, layers);
-    const trimmedAttachUrl = attachUrl.trim();
-    const attachType = trimmedAttachUrl ? inferAttachmentType(trimmedAttachUrl) : null;
 
     const payload = {
       user_id: session.user.id,
@@ -567,8 +551,8 @@ export default function DiaryLogModal({
       emotional_impact_rating: layers.emotional_impact_rating,
       entertainment_rating: layers.entertainment_rating,
       reelshelf_score: reelshelfScore,
-      attachment_url: trimmedAttachUrl && attachType ? trimmedAttachUrl : null,
-      attachment_type: trimmedAttachUrl && attachType ? attachType : null,
+      attachment_url: attachment?.url ?? null,
+      attachment_type: attachment?.type ?? null,
     };
 
     const { data, error: saveError } = await supabase
@@ -868,108 +852,10 @@ export default function DiaryLogModal({
               </div>
             ) : null}
 
-            {/* Attachment toggle */}
-            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAttach((v) => !v);
-                  if (showAttach) { setAttachUrl(""); setAttachImgErr(false); }
-                }}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  height: 28,
-                  padding: "0 12px",
-                  borderRadius: 999,
-                  border: `0.5px solid ${showAttach ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.1)"}`,
-                  background: showAttach ? "rgba(255,255,255,0.07)" : "transparent",
-                  color: showAttach ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.4)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <span>📎</span>
-                <span>{showAttach ? "Remove image" : "+ Add image / GIF"}</span>
-              </button>
-              {(() => {
-                const t = attachUrl.trim() ? inferAttachmentType(attachUrl.trim()) : null;
-                return attachUrl.trim() && t ? (
-                  <span style={{ fontSize: 11, color: "rgba(29,158,117,0.9)" }}>
-                    ✓ {t === "gif" ? "GIF" : "Image"} attached
-                  </span>
-                ) : attachUrl.trim() && !t ? (
-                  <span style={{ fontSize: 11, color: "rgba(255,100,100,0.75)" }}>
-                    Unrecognised URL — paste a direct .jpg, .png, .gif, .webp link
-                  </span>
-                ) : null;
-              })()}
-            </div>
-
-            {showAttach ? (
-              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                <input
-                  type="url"
-                  value={attachUrl}
-                  onChange={(e) => { setAttachUrl(e.target.value); setAttachImgErr(false); }}
-                  placeholder="Paste image or GIF URL"
-                  style={{
-                    width: "100%",
-                    borderRadius: 8,
-                    border: "0.5px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.78)",
-                    padding: "8px 10px",
-                    fontSize: 13,
-                    outline: "none",
-                    fontFamily: "inherit",
-                    boxSizing: "border-box",
-                  }}
-                />
-                {(() => {
-                  const trimmed = attachUrl.trim();
-                  const t = trimmed ? inferAttachmentType(trimmed) : null;
-                  if (!trimmed || !t || attachImgErr) return null;
-                  return (
-                    <div
-                      style={{
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        maxWidth: "100%",
-                        border: "0.5px solid rgba(255,255,255,0.08)",
-                        position: "relative",
-                      }}
-                    >
-                      {t === "gif" ? (
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: 6,
-                            left: 6,
-                            background: "rgba(0,0,0,0.55)",
-                            borderRadius: 4,
-                            padding: "2px 5px",
-                            fontSize: 9,
-                            letterSpacing: "0.1em",
-                            color: "rgba(255,255,255,0.8)",
-                          }}
-                        >
-                          GIF
-                        </span>
-                      ) : null}
-                      <img
-                        src={trimmed}
-                        alt="Preview"
-                        style={{ width: "100%", display: "block", maxHeight: 180, objectFit: "cover" }}
-                        onError={() => setAttachImgErr(true)}
-                      />
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : null}
+            <AttachmentPicker
+              value={attachment}
+              onChange={setAttachment}
+            />
           </div>
 
           <Divider />
