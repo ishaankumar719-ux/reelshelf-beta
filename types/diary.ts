@@ -116,6 +116,9 @@ export interface DiaryEntry {
   entertainment_rating: number | null
   // Calculated from overallRating + review layers — see lib/scoring.ts
   reelshelf_score: number | null
+  // Attachment (migration: 20260508_diary_entry_attachments.sql)
+  attachment_url: string | null
+  attachment_type: "image" | "gif" | null
 }
 
 export interface InitialEntryData {

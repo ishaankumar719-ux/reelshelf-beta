@@ -120,6 +120,8 @@ export default function PublicDiaryEntriesGrid({
           initialCommentCount={commentCounts[entry.entryId] ?? entry.commentCount}
           isLiked={likedIdSet.has(entry.entryId)}
           initialComments={commentsByEntry[entry.entryId] ?? []}
+          attachmentUrl={entry.attachmentUrl}
+          attachmentType={entry.attachmentType}
         />
       ))}
     </div>

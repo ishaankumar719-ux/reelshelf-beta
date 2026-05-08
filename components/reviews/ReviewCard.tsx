@@ -36,6 +36,8 @@ export interface ReviewCardEntry {
   initialCommentCount: number;
   isLiked?: boolean;
   initialComments?: PublicComment[];
+  attachmentUrl?: string | null;
+  attachmentType?: "image" | "gif" | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -581,6 +583,8 @@ export default function ReviewCard({
   initialCommentCount,
   isLiked = false,
   initialComments = [],
+  attachmentUrl,
+  attachmentType,
 }: ReviewCardEntry) {
   const { user } = useAuth();
   const [liked, setLiked] = useState(isLiked);
@@ -794,6 +798,11 @@ export default function ReviewCard({
                   </button>
                 ) : null}
               </div>
+            ) : null}
+
+            {/* Entry attachment */}
+            {attachmentUrl ? (
+              <AttachmentPreview url={attachmentUrl} type={attachmentType ?? null} />
             ) : null}
 
             {/* Tags + date */}

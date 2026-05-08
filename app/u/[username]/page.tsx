@@ -70,6 +70,8 @@ type FullDiaryRow = {
   emotional_impact_rating: number | null
   entertainment_rating: number | null
   reelshelf_score: number | null
+  attachment_url: string | null
+  attachment_type: "image" | "gif" | null
 }
 
 function mapToPublicEntry(row: FullDiaryRow): PublicDiaryEntry {
@@ -92,6 +94,8 @@ function mapToPublicEntry(row: FullDiaryRow): PublicDiaryEntry {
     likeCount: 0,
     commentCount: 0,
     reelshelfScore: row.reelshelf_score ?? null,
+    attachmentUrl: row.attachment_url ?? null,
+    attachmentType: row.attachment_type ?? null,
     reviewLayers: {
       score_rating: row.score_rating ?? null,
       cinematography_rating: row.cinematography_rating ?? null,
@@ -216,7 +220,7 @@ export default async function PublicProfilePage({
       .order("created_at", { ascending: false }),
     supabase
       .from("diary_entries")
-      .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score")
+      .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score, attachment_url, attachment_type")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .not("review", "is", null)

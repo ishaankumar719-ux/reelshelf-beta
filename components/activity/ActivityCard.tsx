@@ -197,6 +197,47 @@ function CommentAvatar({
   )
 }
 
+function EntryAttachment({ url, type }: { url: string; type: "image" | "gif" | null }) {
+  const [err, setErr] = useState(false)
+  if (err) return null
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        borderRadius: 10,
+        overflow: "hidden",
+        maxWidth: "100%",
+        border: "0.5px solid rgba(255,255,255,0.08)",
+        position: "relative",
+      }}
+    >
+      {type === "gif" ? (
+        <span
+          style={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            background: "rgba(0,0,0,0.55)",
+            borderRadius: 4,
+            padding: "2px 5px",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            color: "rgba(255,255,255,0.8)",
+          }}
+        >
+          GIF
+        </span>
+      ) : null}
+      <img
+        src={url}
+        alt="Attachment"
+        style={{ width: "100%", display: "block", maxHeight: 240, objectFit: "cover" }}
+        onError={() => setErr(true)}
+      />
+    </div>
+  )
+}
+
 function inferAttachmentType(url: string): "image" | "gif" | null {
   try {
     const { hostname, pathname } = new URL(url)
@@ -936,6 +977,11 @@ export default function ActivityCard({
             >
               {event.review}
             </p>
+          ) : null}
+
+          {/* Entry attachment */}
+          {event.attachmentUrl && !event.isBatch ? (
+            <EntryAttachment url={event.attachmentUrl} type={event.attachmentType ?? null} />
           ) : null}
 
           {/* Interaction bar */}

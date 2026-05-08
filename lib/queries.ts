@@ -34,6 +34,9 @@ export const DIARY_SELECT = [
   "entertainment_rating",
   // Calculated score — see lib/scoring.ts (migration: 20260510_reelshelf_score.sql)
   "reelshelf_score",
+  // Entry-level attachment (migration: 20260508_diary_entry_attachments.sql)
+  "attachment_url",
+  "attachment_type",
 ].join(", ")
 
 export const PROFILE_SELECT =

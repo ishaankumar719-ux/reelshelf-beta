@@ -26,6 +26,8 @@ export type PublicDiaryEntry = {
   commentCount: number;
   reelshelfScore: number | null;
   reviewLayers: ReviewLayers | null;
+  attachmentUrl: string | null;
+  attachmentType: "image" | "gif" | null;
 };
 
 export type PublicProfileData = {
@@ -79,6 +81,8 @@ type DiaryRow = {
   contains_spoilers: boolean;
   saved_at: string;
   reelshelf_score: number | null;
+  attachment_url: string | null;
+  attachment_type: "image" | "gif" | null;
   score_rating: number | null;
   cinematography_rating: number | null;
   writing_rating: number | null;
@@ -127,6 +131,8 @@ function mapDiaryRow(row: DiaryRow): PublicDiaryEntry {
     likeCount: 0,
     commentCount: 0,
     reelshelfScore: typeof row.reelshelf_score === "number" ? row.reelshelf_score : null,
+    attachmentUrl: row.attachment_url ?? null,
+    attachmentType: row.attachment_type ?? null,
     reviewLayers: {
       score_rating: row.score_rating ?? null,
       cinematography_rating: row.cinematography_rating ?? null,
