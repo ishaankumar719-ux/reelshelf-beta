@@ -153,8 +153,9 @@ export async function createDiaryEntryComment(input: {
   }
 
   const normalizedBody = input.body.trim();
-  if (!normalizedBody) {
-    return { error: "Write something before posting.", comment: null };
+  const hasAttachment = Boolean(input.attachmentUrl);
+  if (!normalizedBody && !hasAttachment) {
+    return { error: "Write something or add an attachment before posting.", comment: null };
   }
 
   const client = createSupabaseBrowserClient();

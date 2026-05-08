@@ -9,7 +9,36 @@ import {
   createDiaryEntryComment,
   type PublicComment,
 } from "@/lib/supabase/comments"
-import AttachmentPicker, { type AttachmentValue } from "@/components/AttachmentPicker"
+import { type AttachmentValue } from "@/components/AttachmentPicker"
+import { uploadAttachment } from "@/lib/supabase/storage"
+
+// ─── GIPHY ───────────────────────────────────────────────────────────────────
+
+interface GiphyGif {
+  id: string
+  title: string
+  images: {
+    fixed_height_small: { url: string }
+    downsized: { url: string }
+  }
+}
+
+async function fetchGifs(query: string): Promise<GiphyGif[]> {
+  const key = process.env.NEXT_PUBLIC_GIPHY_API_KEY ?? ""
+  if (!key) return []
+  try {
+    const base = "https://api.giphy.com/v1/gifs"
+    const endpoint = query.trim()
+      ? `${base}/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=18&rating=g`
+      : `${base}/trending?api_key=${key}&limit=18&rating=g`
+    const res = await fetch(endpoint)
+    if (!res.ok) return []
+    const json = (await res.json()) as { data: GiphyGif[] }
+    return json.data ?? []
+  } catch {
+    return []
+  }
+}
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -361,6 +390,13 @@ function CommentPanel({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [attachment, setAttachment] = useState<AttachmentValue | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showGifPicker, setShowGifPicker] = useState(false)
+  const [gifSearch, setGifSearch] = useState("")
+  const [gifResults, setGifResults] = useState<GiphyGif[]>([])
+  const [gifLoading, setGifLoading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -374,6 +410,18 @@ function CommentPanel({
       textareaRef.current?.focus()
     }
   }, [loading])
+
+  useEffect(() => {
+    if (!showGifPicker) return
+    const delay = gifSearch ? 400 : 0
+    const timer = window.setTimeout(async () => {
+      setGifLoading(true)
+      const gifs = await fetchGifs(gifSearch)
+      setGifResults(gifs)
+      setGifLoading(false)
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [gifSearch, showGifPicker])
 
   const canSubmit = (body.trim().length > 0 || attachment !== null) && !submitting
 
@@ -394,6 +442,8 @@ function CommentPanel({
       onCommentAdded()
       setBody("")
       setAttachment(null)
+      setShowGifPicker(false)
+      setGifSearch("")
     }
     setSubmitting(false)
   }
@@ -404,6 +454,35 @@ function CommentPanel({
       e.preventDefault()
       void handleSubmit()
     }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    if (!file) return
+    setUploadError(null)
+    setUploading(true)
+    const result = await uploadAttachment(file)
+    setUploading(false)
+    if ("error" in result) {
+      setUploadError(result.error)
+    } else {
+      setAttachment({ url: result.url, type: result.type })
+    }
+  }
+
+  function selectGif(gif: GiphyGif) {
+    setAttachment({ url: gif.images.downsized.url, type: "gif" })
+    setShowGifPicker(false)
+    setGifSearch("")
+    setGifResults([])
+  }
+
+  function clearAttachment() {
+    setAttachment(null)
+    setShowGifPicker(false)
+    setGifSearch("")
+    setUploadError(null)
   }
 
   return (
@@ -499,11 +578,103 @@ function CommentPanel({
               </button>
             </div>
 
-            <AttachmentPicker
-              value={attachment}
-              onChange={setAttachment}
-              compact
-            />
+            {/* ── Inline attachment controls ── */}
+            <div style={{ marginTop: 8 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: "none" }}
+                onChange={handleFileChange}
+              />
+
+              {attachment ? (
+                /* Preview with remove */
+                <div style={{ position: "relative", display: "inline-block", borderRadius: 8, overflow: "hidden", border: "0.5px solid rgba(255,255,255,0.1)", maxWidth: 200 }}>
+                  <img
+                    src={attachment.url}
+                    alt="Attachment preview"
+                    style={{ width: "100%", display: "block", maxHeight: 130, objectFit: "cover" }}
+                  />
+                  {attachment.type === "gif" && (
+                    <span style={{ position: "absolute", top: 4, left: 4, background: "rgba(0,0,0,0.6)", borderRadius: 3, padding: "1px 5px", fontSize: 9, fontWeight: 700, color: "#fff" }}>GIF</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearAttachment}
+                    style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.65)", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >×</button>
+                </div>
+              ) : (
+                <>
+                  {/* Button row: Image + GIF */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => { setUploadError(null); fileInputRef.current?.click() }}
+                      disabled={uploading}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 26, padding: "0 10px", borderRadius: 999, border: "0.5px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)", color: uploading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)", fontSize: 11, cursor: uploading ? "default" : "pointer", fontFamily: "inherit" }}
+                    >
+                      <span>📷</span>
+                      <span>{uploading ? "Uploading…" : "Image"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowGifPicker((v) => !v)}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 26, padding: "0 10px", borderRadius: 999, border: showGifPicker ? "0.5px solid rgba(255,210,0,0.55)" : "0.5px solid rgba(255,210,0,0.35)", background: showGifPicker ? "rgba(255,210,0,0.2)" : "rgba(255,210,0,0.08)", color: showGifPicker ? "rgba(255,210,0,1)" : "rgba(255,210,0,0.75)", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      GIF
+                    </button>
+                  </div>
+
+                  {/* GIF picker panel */}
+                  {showGifPicker && (
+                    <div style={{ marginTop: 8, borderRadius: 10, border: "0.5px solid rgba(255,255,255,0.12)", background: "rgba(8,8,18,0.97)", overflow: "hidden" }}>
+                      <div style={{ padding: "8px 8px 6px" }}>
+                        <input
+                          type="text"
+                          value={gifSearch}
+                          onChange={(e) => setGifSearch(e.target.value)}
+                          placeholder="Search GIFs…"
+                          autoFocus
+                          style={{ width: "100%", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", padding: "6px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                        />
+                      </div>
+                      <div style={{ maxHeight: 200, overflowY: "auto", padding: "0 8px 8px" }}>
+                        {gifLoading ? (
+                          <p style={{ margin: 0, padding: "14px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "inherit" }}>Loading…</p>
+                        ) : gifResults.length === 0 ? (
+                          <p style={{ margin: 0, padding: "14px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "inherit" }}>
+                            {gifSearch ? "No results" : "Loading trending…"}
+                          </p>
+                        ) : (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+                            {gifResults.map((gif) => (
+                              <button
+                                key={gif.id}
+                                type="button"
+                                onClick={() => selectGif(gif)}
+                                style={{ padding: 0, border: "none", background: "rgba(255,255,255,0.04)", cursor: "pointer", borderRadius: 5, overflow: "hidden", aspectRatio: "4/3", display: "block" }}
+                              >
+                                <img src={gif.images.fixed_height_small.url} alt={gif.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: "3px 8px 5px", textAlign: "right" }}>
+                        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", fontFamily: "inherit" }}>Powered by GIPHY</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {uploadError && (
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,100,100,0.8)", fontFamily: "inherit" }}>{uploadError}</p>
+              )}
+            </div>
           </div>
 
           {submitError ? (
