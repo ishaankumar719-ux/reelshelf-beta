@@ -9,6 +9,7 @@ import { toggleDiaryEntryLike } from "../../lib/supabase/likes";
 import { createDiaryEntryComment } from "../../lib/supabase/comments";
 import type { PublicComment } from "../../lib/supabase/comments";
 import { getProfileInitials } from "../../lib/profile";
+import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
 
 export interface ReviewCardEntry {
   entryId: string;
@@ -285,16 +286,14 @@ function CommentComposer({
   onCancel?: () => void;
 }) {
   const [body, setBody] = useState("");
-  const [attachUrl, setAttachUrl] = useState("");
-  const [showAttach, setShowAttach] = useState(false);
-  const attachType = attachUrl ? inferAttachmentType(attachUrl) : null;
+  const [attachment, setAttachment] = useState<AttachmentValue | null>(null);
+  const canPost = (body.trim().length > 0 || attachment !== null) && !loading;
 
   function handleSubmit() {
-    if (!body.trim()) return;
-    onSubmit(body, attachUrl.trim() || null, attachType);
+    if (!canPost) return;
+    onSubmit(body, attachment?.url ?? null, attachment?.type ?? null);
     setBody("");
-    setAttachUrl("");
-    setShowAttach(false);
+    setAttachment(null);
   }
 
   return (
@@ -305,7 +304,11 @@ function CommentComposer({
         placeholder={placeholder}
         rows={3}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+          // Enter posts; Shift+Enter inserts newline
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+          }
         }}
         style={{
           width: "100%",
@@ -324,92 +327,41 @@ function CommentComposer({
         }}
       />
 
-      {showAttach ? (
-        <div style={{ display: "grid", gap: 6 }}>
-          <input
-            type="url"
-            value={attachUrl}
-            onChange={(e) => setAttachUrl(e.target.value)}
-            placeholder="Paste image or GIF URL…"
-            style={{
-              width: "100%",
-              borderRadius: 8,
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)",
-              color: "rgba(255,255,255,0.8)",
-              padding: "8px 12px",
-              fontSize: 12,
-              outline: "none",
-              fontFamily: "Arial, sans-serif",
-              boxSizing: "border-box",
-            }}
-          />
-          {attachUrl && attachType ? (
-            <AttachmentPreview url={attachUrl} type={attachType} />
-          ) : attachUrl ? (
-            <span style={{ fontSize: 11, color: "rgba(255,100,100,0.7)" }}>
-              Unrecognised image URL — paste a direct link ending in .jpg, .png, .gif, etc.
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <AttachmentPicker value={attachment} onChange={setAttachment} compact />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+        {onCancel ? (
           <button
             type="button"
-            onClick={() => setShowAttach((v) => !v)}
-            title="Attach image or GIF"
+            onClick={onCancel}
             style={{
               height: 30,
               padding: "0 10px",
               borderRadius: 999,
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              background: showAttach ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-              color: showAttach ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.4)",
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              background: "transparent",
+              color: "rgba(255,255,255,0.38)",
               fontSize: 12,
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
             }}
           >
-            <span>📎</span>
-            <span>{showAttach ? "Remove" : "Image"}</span>
+            Cancel
           </button>
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                height: 30,
-                padding: "0 10px",
-                borderRadius: 999,
-                border: "0.5px solid rgba(255,255,255,0.08)",
-                background: "transparent",
-                color: "rgba(255,255,255,0.38)",
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-          ) : null}
-        </div>
+        ) : null}
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading || !body.trim()}
+          disabled={!canPost}
           style={{
             height: 30,
             padding: "0 14px",
             borderRadius: 999,
             border: "none",
-            background: body.trim() ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.1)",
-            color: body.trim() ? "black" : "rgba(255,255,255,0.28)",
+            background: canPost ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.1)",
+            color: canPost ? "black" : "rgba(255,255,255,0.28)",
             fontSize: 12,
             fontWeight: 600,
-            cursor: loading || !body.trim() ? "default" : "pointer",
+            cursor: canPost ? "pointer" : "default",
             opacity: loading ? 0.7 : 1,
             transition: "background 0.15s ease, color 0.15s ease",
           }}

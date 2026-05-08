@@ -1,10 +1,38 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadAttachment } from "../lib/supabase/storage";
 
-// TODO: Add GIF picker here when GIPHY/Tenor API key is available.
-// Suggested interface: show "Add GIF" button that opens an inline search modal.
+interface GiphyGif {
+  id: string;
+  title: string;
+  images: {
+    fixed_height_small: { url: string };
+    downsized: { url: string };
+  };
+}
+
+async function fetchGifs(query: string): Promise<GiphyGif[]> {
+  // Read the key lazily so it's always current at call time
+  const key = process.env.NEXT_PUBLIC_GIPHY_API_KEY ?? "";
+  if (!key) return [];
+  try {
+    const base = "https://api.giphy.com/v1/gifs";
+    const endpoint = query.trim()
+      ? `${base}/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=18&rating=g`
+      : `${base}/trending?api_key=${key}&limit=18&rating=g`;
+    const res = await fetch(endpoint);
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data: GiphyGif[] };
+    return json.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function hasGiphyKey(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_GIPHY_API_KEY);
+}
 
 const ACCEPTED = "image/jpeg,image/png,image/webp,image/gif";
 
@@ -27,20 +55,35 @@ export default function AttachmentPicker({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState("");
+  const [gifResults, setGifResults] = useState<GiphyGif[]>([]);
+  const [gifLoading, setGifLoading] = useState(false);
+
   const [showUrlFallback, setShowUrlFallback] = useState(false);
   const [urlInput, setUrlInput] = useState("");
 
+  useEffect(() => {
+    if (!showGifPicker) return;
+    const delay = gifSearch ? 400 : 0;
+    const timer = window.setTimeout(async () => {
+      setGifLoading(true);
+      const gifs = await fetchGifs(gifSearch);
+      setGifResults(gifs);
+      setGifLoading(false);
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [gifSearch, showGifPicker]);
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    // Reset input so the same file can be re-selected after removal
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file) return;
-
     setUploadError(null);
     setUploading(true);
     const result = await uploadAttachment(file);
     setUploading(false);
-
     if ("error" in result) {
       setUploadError(result.error);
     } else {
@@ -52,7 +95,16 @@ export default function AttachmentPicker({
     onChange(null);
     setUrlInput("");
     setShowUrlFallback(false);
+    setShowGifPicker(false);
+    setGifSearch("");
     setUploadError(null);
+  }
+
+  function selectGif(gif: GiphyGif) {
+    onChange({ url: gif.images.downsized.url, type: "gif" });
+    setShowGifPicker(false);
+    setGifSearch("");
+    setGifResults([]);
   }
 
   function handleUrlConfirm() {
@@ -65,10 +117,10 @@ export default function AttachmentPicker({
     setShowUrlFallback(false);
   }
 
-  const height = compact ? 26 : 30;
-  const fontSize = compact ? 11 : 12;
+  const h = compact ? 26 : 30;
+  const fs = compact ? 11 : 12;
 
-  // ── Preview state: attachment already chosen ──────────────────────────────
+  // ── Preview state ─────────────────────────────────────────────────────────
   if (value) {
     return (
       <div style={{ marginTop: 8 }}>
@@ -93,23 +145,24 @@ export default function AttachmentPicker({
               objectFit: "cover",
             }}
           />
-          {value.type === "gif" ? (
+          {value.type === "gif" && (
             <span
               style={{
                 position: "absolute",
                 top: 6,
                 left: 6,
-                background: "rgba(0,0,0,0.55)",
+                background: "rgba(0,0,0,0.6)",
                 borderRadius: 4,
                 padding: "2px 5px",
                 fontSize: 9,
-                letterSpacing: "0.1em",
-                color: "rgba(255,255,255,0.8)",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                color: "#fff",
               }}
             >
               GIF
             </span>
-          ) : null}
+          )}
           <button
             type="button"
             onClick={handleRemove}
@@ -123,7 +176,7 @@ export default function AttachmentPicker({
               borderRadius: "50%",
               border: "none",
               background: "rgba(0,0,0,0.65)",
-              color: "rgba(255,255,255,0.9)",
+              color: "#fff",
               fontSize: 13,
               lineHeight: 1,
               cursor: "pointer",
@@ -139,10 +192,9 @@ export default function AttachmentPicker({
     );
   }
 
-  // ── Empty state: show upload controls ─────────────────────────────────────
+  // ── Controls ──────────────────────────────────────────────────────────────
   return (
     <div style={{ marginTop: 8 }}>
-      {/* Hidden file input — triggers iOS camera roll on mobile Safari */}
       <input
         ref={fileInputRef}
         type="file"
@@ -151,60 +203,179 @@ export default function AttachmentPicker({
         onChange={handleFileChange}
       />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {/* Primary: Upload Image */}
+      {/* Button row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+
+        {/* Upload Image */}
         <button
           type="button"
-          onClick={() => {
-            setUploadError(null);
-            fileInputRef.current?.click();
-          }}
+          onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
           disabled={uploading}
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 5,
-            height,
+            height: h,
             padding: "0 12px",
             borderRadius: 999,
-            border: "0.5px solid rgba(255,255,255,0.14)",
-            background: uploading ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.07)",
-            color: uploading ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.78)",
-            fontSize,
+            border: "0.5px solid rgba(255,255,255,0.18)",
+            background: uploading ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)",
+            color: uploading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.8)",
+            fontSize: fs,
             cursor: uploading ? "default" : "pointer",
-            transition: "all 0.15s ease",
             fontFamily: "inherit",
+            whiteSpace: "nowrap",
           }}
         >
-          <span>📷</span>
-          <span>{uploading ? "Uploading…" : "Upload Image"}</span>
+          <span style={{ fontSize: fs + 1 }}>📷</span>
+          <span>{uploading ? "Uploading…" : "Image"}</span>
         </button>
 
-        {/* TODO: "Add GIF" button — insert GIF picker component here */}
+        {/* GIF button — always visible */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowGifPicker((prev) => !prev);
+            setShowUrlFallback(false);
+          }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: h,
+            padding: "0 12px",
+            borderRadius: 999,
+            border: showGifPicker
+              ? "0.5px solid rgba(255,210,0,0.5)"
+              : "0.5px solid rgba(255,210,0,0.3)",
+            background: showGifPicker
+              ? "rgba(255,210,0,0.18)"
+              : "rgba(255,210,0,0.08)",
+            color: showGifPicker
+              ? "rgba(255,210,0,1)"
+              : "rgba(255,210,0,0.7)",
+            fontSize: fs,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            whiteSpace: "nowrap",
+          }}
+        >
+          GIF
+        </button>
 
-        {/* Secondary: URL fallback */}
-        {!showUrlFallback && !uploading ? (
+        {/* Paste URL — only when no other panel is open */}
+        {!showUrlFallback && !showGifPicker && (
           <button
             type="button"
-            onClick={() => setShowUrlFallback(true)}
+            onClick={() => { setShowUrlFallback(true); setShowGifPicker(false); }}
             style={{
               background: "none",
               border: "none",
               padding: 0,
-              color: "rgba(255,255,255,0.22)",
+              color: "rgba(255,255,255,0.25)",
               fontSize: compact ? 10 : 11,
               cursor: "pointer",
               textDecoration: "underline",
               fontFamily: "inherit",
             }}
           >
-            Paste URL instead
+            Paste URL
           </button>
-        ) : null}
+        )}
       </div>
 
-      {/* URL fallback input */}
-      {showUrlFallback ? (
+      {/* GIF picker panel */}
+      {showGifPicker && (
+        <div
+          style={{
+            marginTop: 8,
+            borderRadius: 12,
+            border: "0.5px solid rgba(255,255,255,0.12)",
+            background: "rgba(8,8,18,0.97)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Search */}
+          <div style={{ padding: "8px 8px 6px" }}>
+            <input
+              type="text"
+              value={gifSearch}
+              onChange={(e) => setGifSearch(e.target.value)}
+              placeholder="Search GIFs…"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              style={{
+                width: "100%",
+                borderRadius: 8,
+                border: "0.5px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.85)",
+                padding: "7px 10px",
+                fontSize: 13,
+                outline: "none",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {/* Results grid */}
+          <div style={{ maxHeight: 220, overflowY: "auto", padding: "0 8px 8px" }}>
+            {gifLoading ? (
+              <p style={{ margin: 0, padding: "16px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "inherit" }}>
+                Loading…
+              </p>
+            ) : !hasGiphyKey() ? (
+              <p style={{ margin: 0, padding: "12px 0", fontSize: 11, color: "rgba(255,100,100,0.7)", fontFamily: "inherit", textAlign: "center" }}>
+                Add <code style={{ background: "rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 4px" }}>NEXT_PUBLIC_GIPHY_API_KEY</code> to .env.local
+              </p>
+            ) : gifResults.length === 0 && !gifLoading ? (
+              <p style={{ margin: 0, padding: "16px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "inherit" }}>
+                {gifSearch ? "No results" : "Loading trending…"}
+              </p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+                {gifResults.map((gif) => (
+                  <button
+                    key={gif.id}
+                    type="button"
+                    onClick={() => selectGif(gif)}
+                    style={{
+                      padding: 0,
+                      border: "none",
+                      background: "rgba(255,255,255,0.04)",
+                      cursor: "pointer",
+                      borderRadius: 6,
+                      overflow: "hidden",
+                      aspectRatio: "4/3",
+                      display: "block",
+                    }}
+                  >
+                    <img
+                      src={gif.images.fixed_height_small.url}
+                      alt={gif.title}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      loading="lazy"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* GIPHY attribution */}
+          <div style={{ padding: "4px 8px 6px", textAlign: "right" }}>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", fontFamily: "inherit" }}>
+              Powered by GIPHY
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* URL fallback */}
+      {showUrlFallback && (
         <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <input
             type="url"
@@ -229,47 +400,26 @@ export default function AttachmentPicker({
           <button
             type="button"
             onClick={handleUrlConfirm}
-            style={{
-              height,
-              padding: "0 12px",
-              borderRadius: 8,
-              border: "none",
-              background: "rgba(255,255,255,0.88)",
-              color: "#000",
-              fontSize,
-              fontWeight: 600,
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            style={{ height: h, padding: "0 12px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.88)", color: "#000", fontSize: fs, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
           >
             Use
           </button>
           <button
             type="button"
             onClick={() => { setShowUrlFallback(false); setUrlInput(""); }}
-            style={{
-              height,
-              padding: "0 10px",
-              borderRadius: 8,
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              background: "transparent",
-              color: "rgba(255,255,255,0.38)",
-              fontSize,
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            style={{ height: h, padding: "0 10px", borderRadius: 8, border: "0.5px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.38)", fontSize: fs, cursor: "pointer", flexShrink: 0 }}
           >
             Cancel
           </button>
         </div>
-      ) : null}
+      )}
 
       {/* Upload error */}
-      {uploadError ? (
+      {uploadError && (
         <p style={{ margin: "5px 0 0", fontSize: 11, color: "rgba(255,100,100,0.8)", fontFamily: "inherit" }}>
           {uploadError}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

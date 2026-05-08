@@ -375,14 +375,15 @@ function CommentPanel({
     }
   }, [loading])
 
+  const canSubmit = (body.trim().length > 0 || attachment !== null) && !submitting
+
   async function handleSubmit() {
-    const trimmed = body.trim()
-    if (!trimmed || submitting) return
+    if (!canSubmit) return
     setSubmitting(true)
     setSubmitError(null)
     const result = await createDiaryEntryComment({
       diaryEntryId,
-      body: trimmed,
+      body: body.trim(),
       attachmentUrl: attachment?.url ?? null,
       attachmentType: attachment?.type ?? null,
     })
@@ -398,7 +399,8 @@ function CommentPanel({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    // Enter posts; Shift+Enter inserts a newline (default behaviour)
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       void handleSubmit()
     }
@@ -478,22 +480,16 @@ function CommentPanel({
               <button
                 type="button"
                 onClick={() => void handleSubmit()}
-                disabled={!body.trim() || submitting}
+                disabled={!canSubmit}
                 style={{
                   padding: "7px 14px",
                   borderRadius: 8,
                   fontSize: 12,
                   fontWeight: 600,
                   border: "none",
-                  cursor: body.trim() && !submitting ? "pointer" : "not-allowed",
-                  background:
-                    body.trim() && !submitting
-                      ? "rgba(29,158,117,0.85)"
-                      : "rgba(255,255,255,0.06)",
-                  color:
-                    body.trim() && !submitting
-                      ? "rgba(255,255,255,0.95)"
-                      : "rgba(255,255,255,0.24)",
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  background: canSubmit ? "rgba(29,158,117,0.85)" : "rgba(255,255,255,0.06)",
+                  color: canSubmit ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.24)",
                   transition: "background 0.15s ease, color 0.15s ease",
                   flexShrink: 0,
                   lineHeight: 1,
