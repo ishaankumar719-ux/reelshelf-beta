@@ -197,9 +197,22 @@ function CommentAvatar({
   )
 }
 
+function inferAttachmentType(url: string): "image" | "gif" | null {
+  try {
+    const { hostname, pathname } = new URL(url)
+    const ext = pathname.split(".").pop()?.toLowerCase() ?? ""
+    if (hostname.includes("giphy.com") || hostname.includes("tenor.com") || ext === "gif") return "gif"
+    if (["jpg", "jpeg", "png", "webp", "avif", "bmp"].includes(ext)) return "image"
+    return null
+  } catch {
+    return null
+  }
+}
+
 function CommentRow({ comment }: { comment: PublicComment }) {
   const name = comment.displayName ?? comment.username ?? "Someone"
   const profileHref = comment.username ? `/u/${comment.username}` : null
+  const [imgErr, setImgErr] = useState(false)
 
   return (
     <div
@@ -251,6 +264,42 @@ function CommentRow({ comment }: { comment: PublicComment }) {
         >
           {comment.body}
         </p>
+        {comment.attachmentUrl && !imgErr ? (
+          <div
+            style={{
+              marginTop: 8,
+              borderRadius: 8,
+              overflow: "hidden",
+              maxWidth: 240,
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              position: "relative",
+            }}
+          >
+            {comment.attachmentType === "gif" ? (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 5,
+                  left: 5,
+                  background: "rgba(0,0,0,0.55)",
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  color: "rgba(255,255,255,0.8)",
+                }}
+              >
+                GIF
+              </span>
+            ) : null}
+            <img
+              src={comment.attachmentUrl}
+              alt="Attachment"
+              style={{ width: "100%", display: "block", maxHeight: 180, objectFit: "cover" }}
+              onError={() => setImgErr(true)}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -268,7 +317,13 @@ function CommentPanel({
   const [body, setBody] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showAttach, setShowAttach] = useState(false)
+  const [attachUrl, setAttachUrl] = useState("")
+  const [attachImgErr, setAttachImgErr] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const attachType = attachUrl.trim() ? inferAttachmentType(attachUrl.trim()) : null
+  const attachValid = attachType !== null
 
   useEffect(() => {
     setLoading(true)
@@ -277,25 +332,37 @@ function CommentPanel({
       .finally(() => setLoading(false))
   }, [diaryEntryId])
 
-  // Auto-focus textarea once loaded
   useEffect(() => {
     if (!loading) {
       textareaRef.current?.focus()
     }
   }, [loading])
 
+  // Reset image error state whenever the URL changes
+  useEffect(() => {
+    setAttachImgErr(false)
+  }, [attachUrl])
+
   async function handleSubmit() {
     const trimmed = body.trim()
     if (!trimmed || submitting) return
     setSubmitting(true)
     setSubmitError(null)
-    const result = await createDiaryEntryComment({ diaryEntryId, body: trimmed })
+    const urlToSave = attachUrl.trim() && attachValid ? attachUrl.trim() : null
+    const result = await createDiaryEntryComment({
+      diaryEntryId,
+      body: trimmed,
+      attachmentUrl: urlToSave,
+      attachmentType: urlToSave ? attachType : null,
+    })
     if (result.error) {
       setSubmitError(result.error)
     } else if (result.comment) {
       setComments((prev) => [...prev, result.comment!])
       onCommentAdded()
       setBody("")
+      setAttachUrl("")
+      setShowAttach(false)
     }
     setSubmitting(false)
   }
@@ -348,68 +415,165 @@ function CommentPanel({
           )}
 
           {/* Composer */}
-          <div
-            style={{
-              marginTop: comments.length > 0 ? 10 : 0,
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-end",
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add a comment… (⌘↵ to post)"
-              rows={2}
-              style={{
-                flex: 1,
-                background: "rgba(255,255,255,0.04)",
-                border: "0.5px solid rgba(255,255,255,0.1)",
-                borderRadius: 8,
-                padding: "8px 10px",
-                fontSize: 13,
-                color: "rgba(255,255,255,0.78)",
-                resize: "none",
-                outline: "none",
-                fontFamily: "inherit",
-                lineHeight: 1.5,
-                transition: "border-color 0.15s ease",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={!body.trim() || submitting}
-              style={{
-                padding: "7px 14px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                border: "none",
-                cursor: body.trim() && !submitting ? "pointer" : "not-allowed",
-                background:
-                  body.trim() && !submitting
-                    ? "rgba(29,158,117,0.85)"
-                    : "rgba(255,255,255,0.06)",
-                color:
-                  body.trim() && !submitting
-                    ? "rgba(255,255,255,0.95)"
-                    : "rgba(255,255,255,0.24)",
-                transition: "background 0.15s ease, color 0.15s ease",
-                flexShrink: 0,
-                lineHeight: 1,
-              }}
-            >
-              {submitting ? "…" : "Post"}
-            </button>
+          <div style={{ marginTop: comments.length > 0 ? 10 : 0 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <textarea
+                ref={textareaRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Add a comment… (⌘↵ to post)"
+                rows={2}
+                style={{
+                  flex: 1,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "0.5px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.78)",
+                  resize: "none",
+                  outline: "none",
+                  fontFamily: "inherit",
+                  lineHeight: 1.5,
+                  transition: "border-color 0.15s ease",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={!body.trim() || submitting}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: body.trim() && !submitting ? "pointer" : "not-allowed",
+                  background:
+                    body.trim() && !submitting
+                      ? "rgba(29,158,117,0.85)"
+                      : "rgba(255,255,255,0.06)",
+                  color:
+                    body.trim() && !submitting
+                      ? "rgba(255,255,255,0.95)"
+                      : "rgba(255,255,255,0.24)",
+                  transition: "background 0.15s ease, color 0.15s ease",
+                  flexShrink: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {submitting ? "…" : "Post"}
+              </button>
+            </div>
+
+            {/* Attachment toggle row */}
+            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttach((v) => !v)
+                  if (showAttach) {
+                    setAttachUrl("")
+                  }
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 26,
+                  padding: "0 10px",
+                  borderRadius: 999,
+                  border: `0.5px solid ${showAttach ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.09)"}`,
+                  background: showAttach ? "rgba(255,255,255,0.07)" : "transparent",
+                  color: showAttach ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.38)",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span>📎</span>
+                <span>{showAttach ? "Remove image" : "+ Image / GIF"}</span>
+              </button>
+              {attachUrl.trim() && attachValid ? (
+                <span style={{ fontSize: 10, color: "rgba(29,158,117,0.85)" }}>
+                  ✓ {attachType === "gif" ? "GIF" : "Image"} attached
+                </span>
+              ) : attachUrl.trim() && !attachValid ? (
+                <span style={{ fontSize: 10, color: "rgba(255,100,100,0.7)" }}>
+                  Unrecognised URL — paste a direct .jpg, .png, .gif, .webp link
+                </span>
+              ) : null}
+            </div>
+
+            {/* Attachment URL input + preview */}
+            {showAttach ? (
+              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                <input
+                  type="url"
+                  value={attachUrl}
+                  onChange={(e) => setAttachUrl(e.target.value)}
+                  placeholder="Paste image or GIF URL"
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    border: "0.5px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.78)",
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    outline: "none",
+                    fontFamily: "inherit",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s ease",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)" }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)" }}
+                />
+                {attachUrl.trim() && attachValid && !attachImgErr ? (
+                  <div
+                    style={{
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      maxWidth: 200,
+                      border: "0.5px solid rgba(255,255,255,0.08)",
+                      position: "relative",
+                    }}
+                  >
+                    {attachType === "gif" ? (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 5,
+                          left: 5,
+                          background: "rgba(0,0,0,0.55)",
+                          borderRadius: 4,
+                          padding: "1px 5px",
+                          fontSize: 9,
+                          letterSpacing: "0.1em",
+                          color: "rgba(255,255,255,0.8)",
+                        }}
+                      >
+                        GIF
+                      </span>
+                    ) : null}
+                    <img
+                      src={attachUrl.trim()}
+                      alt="Preview"
+                      style={{ width: "100%", display: "block", maxHeight: 160, objectFit: "cover" }}
+                      onError={() => setAttachImgErr(true)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {submitError ? (
