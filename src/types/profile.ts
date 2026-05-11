@@ -72,6 +72,22 @@ export interface PublicProfileStats {
   cinemaVisits: number
 }
 
+export interface CinemaVisitItem {
+  title: string
+  poster: string | null
+  year: number
+  rating: number | null
+  watchedDate: string
+}
+
+export interface CinemaStats {
+  totalVisits: number
+  mostActiveMonth: string | null
+  latestVisit: CinemaVisitItem | null
+  highestRated: CinemaVisitItem | null
+  recentPosters: Array<{ title: string; poster: string | null; year: number }>
+}
+
 export interface PublicProfileActivityItem {
   id: string
   title: string
@@ -106,4 +122,5 @@ export interface PublicProfileShowcaseData {
   recent_activity: PublicProfileActivityItem[]
   stats: PublicProfileStats
   highest_rated: PublicProfileTopRatedItem[]
+  cinema_stats: CinemaStats
 }

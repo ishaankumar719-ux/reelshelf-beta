@@ -8,6 +8,7 @@ import PublicDiaryEntriesGrid from "@/components/PublicDiaryEntriesGrid"
 import type { ActivityEvent } from "@/lib/activity"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
 import type {
+  CinemaStats,
   MountRushmoreSlot,
   PublicProfileActivityItem,
   PublicProfileShowcaseData,
@@ -342,6 +343,263 @@ function HighestRatedRow({ items }: { items: PublicProfileTopRatedItem[] }) {
   )
 }
 
+function CinemaStatsPoster({
+  poster,
+  title,
+}: {
+  poster: string | null
+  title: string
+}) {
+  const [err, setErr] = useState(false)
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: 48,
+        aspectRatio: "2 / 3",
+        borderRadius: 6,
+        overflow: "hidden",
+        background: "#10111c",
+        flexShrink: 0,
+      }}
+    >
+      {poster && !err ? (
+        <img
+          src={poster}
+          alt={title}
+          onError={() => setErr(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      ) : (
+        <PosterFallback title={title} />
+      )}
+    </div>
+  )
+}
+
+function CinemaStatsModule({ stats }: { stats: CinemaStats }) {
+  return (
+    <div
+      style={{
+        marginTop: 40,
+        borderRadius: 20,
+        border: "0.5px solid rgba(129,140,248,0.22)",
+        background: "linear-gradient(160deg, rgba(99,102,241,0.08) 0%, rgba(10,10,20,0.0) 100%)",
+        padding: "20px 20px 22px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+        <span style={{ fontSize: 14 }}>🎬</span>
+        <span
+          style={{
+            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "rgba(199,210,254,0.6)",
+          }}
+        >
+          Cinema
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+          gap: 10,
+          marginBottom: stats.latestVisit || stats.highestRated || stats.recentPosters.length > 0 ? 18 : 0,
+        }}
+      >
+        <div
+          style={{
+            borderRadius: 12,
+            border: "0.5px solid rgba(255,255,255,0.07)",
+            background: "rgba(255,255,255,0.03)",
+            padding: "12px 14px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 500,
+              letterSpacing: "-0.5px",
+              fontVariantNumeric: "tabular-nums",
+              color: "rgba(255,255,255,0.88)",
+            }}
+          >
+            {stats.totalVisits}
+          </p>
+          <p
+            style={{
+              margin: "5px 0 0",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.3)",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+            }}
+          >
+            Visits
+          </p>
+        </div>
+
+        {stats.mostActiveMonth ? (
+          <div
+            style={{
+              borderRadius: 12,
+              border: "0.5px solid rgba(255,255,255,0.07)",
+              background: "rgba(255,255,255,0.03)",
+              padding: "12px 14px",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 500,
+                letterSpacing: "-0.2px",
+                color: "rgba(255,255,255,0.88)",
+                lineHeight: 1.3,
+              }}
+            >
+              {stats.mostActiveMonth}
+            </p>
+            <p
+              style={{
+                margin: "5px 0 0",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.3)",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              Most active
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {stats.latestVisit ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CinemaStatsPoster poster={stats.latestVisit.poster} title={stats.latestVisit.title} />
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.28)",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Last visit
+              </p>
+              <p
+                style={{
+                  margin: "3px 0 0",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.82)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {stats.latestVisit.title}
+              </p>
+              {stats.latestVisit.rating !== null ? (
+                <p
+                  style={{
+                    margin: "2px 0 0",
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.38)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {stats.latestVisit.rating.toFixed(1)}/10
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {stats.highestRated && stats.highestRated.title !== stats.latestVisit?.title ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CinemaStatsPoster poster={stats.highestRated.poster} title={stats.highestRated.title} />
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.28)",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Highest rated
+              </p>
+              <p
+                style={{
+                  margin: "3px 0 0",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.82)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {stats.highestRated.title}
+              </p>
+              {stats.highestRated.rating !== null ? (
+                <p
+                  style={{
+                    margin: "2px 0 0",
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.38)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {stats.highestRated.rating.toFixed(1)}/10
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {stats.recentPosters.length > 0 ? (
+          <div>
+            <p
+              style={{
+                margin: "6px 0 8px",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.28)",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              Recent
+            </p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {stats.recentPosters.map((item, i) => (
+                <CinemaStatsPoster key={`${item.title}-${i}`} poster={item.poster} title={item.title} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export default function ProfileShowcase({
   profile,
   isOwner,
@@ -560,6 +818,10 @@ export default function ProfileShowcase({
             </div>
           ))}
         </div>
+
+        {profile.cinema_stats && profile.cinema_stats.totalVisits > 0 ? (
+          <CinemaStatsModule stats={profile.cinema_stats} />
+        ) : null}
 
         <div style={{ marginTop: 40 }}>
           <span style={sectionLabelStyle()}>Mount Rushmore</span>

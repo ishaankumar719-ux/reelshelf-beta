@@ -3,7 +3,7 @@ import { buildActivityEventsFromSources } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
 import { getMediaHref } from "@/lib/mediaRoutes"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
-import type { MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
+import type { CinemaStats, MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
 
 export const dynamic = "force-dynamic"
@@ -45,6 +45,7 @@ type DiaryRow = {
   created_at: string
   review_scope: "show" | "season" | "episode" | "title" | null
   watched_in_cinema?: boolean
+  favourite?: boolean
 }
 
 type FullDiaryRow = {
@@ -124,6 +125,77 @@ function normalizeRushmoreRows(rows: RushmoreRow[]): MountRushmoreSlot[] {
     }))
 }
 
+function formatMonth(dateStr: string | null): string | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+}
+
+function computeCinemaStats(rows: DiaryRow[]): CinemaStats {
+  const cinemaRows = rows.filter(
+    (r) => r.media_type === "movie" && r.watched_in_cinema === true
+  )
+
+  if (cinemaRows.length === 0) {
+    return { totalVisits: 0, mostActiveMonth: null, latestVisit: null, highestRated: null, recentPosters: [] }
+  }
+
+  // Most active month
+  const monthCounts: Record<string, number> = {}
+  for (const row of cinemaRows) {
+    if (!row.watched_date) continue
+    const key = row.watched_date.slice(0, 7)
+    monthCounts[key] = (monthCounts[key] ?? 0) + 1
+  }
+  const topMonthKey = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  const mostActiveMonth = topMonthKey ? formatMonth(`${topMonthKey}-01`) : null
+
+  // Latest visit (sorted by watched_date desc)
+  const sorted = [...cinemaRows].sort((a, b) =>
+    (b.watched_date ?? "").localeCompare(a.watched_date ?? "")
+  )
+  const latest = sorted[0]
+  const latestVisit = latest
+    ? {
+        title: latest.title,
+        poster: latest.poster,
+        year: Number(latest.year) || 0,
+        rating: parseRating(latest.rating),
+        watchedDate: latest.watched_date ?? "",
+      }
+    : null
+
+  // Highest rated
+  const rated = cinemaRows
+    .filter((r) => parseRating(r.rating) !== null)
+    .sort((a, b) => (parseRating(b.rating) ?? 0) - (parseRating(a.rating) ?? 0))
+  const top = rated[0]
+  const highestRated = top
+    ? {
+        title: top.title,
+        poster: top.poster,
+        year: Number(top.year) || 0,
+        rating: parseRating(top.rating),
+        watchedDate: top.watched_date ?? "",
+      }
+    : null
+
+  // Recent posters (up to 6 with poster)
+  const recentPosters = sorted
+    .filter((r) => r.poster)
+    .slice(0, 6)
+    .map((r) => ({ title: r.title, poster: r.poster, year: Number(r.year) || 0 }))
+
+  return {
+    totalVisits: cinemaRows.length,
+    mostActiveMonth,
+    latestVisit,
+    highestRated,
+    recentPosters,
+  }
+}
+
 function parseRating(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return null
   const parsed = typeof value === "string" ? parseFloat(value) : value
@@ -187,6 +259,7 @@ export default async function PublicProfilePage({
         cinemaVisits: 0,
       },
       highest_rated: [],
+      cinema_stats: { totalVisits: 0, mostActiveMonth: null, latestVisit: null, highestRated: null, recentPosters: [] },
     }
 
     return <ProfileShowcase profile={privateProfile} isOwner={false} />
@@ -217,7 +290,7 @@ export default async function PublicProfilePage({
       .limit(10),
     supabase
       .from("diary_entries")
-      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope, watched_in_cinema")
+      .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope, watched_in_cinema, favourite")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false }),
@@ -334,6 +407,7 @@ export default async function PublicProfilePage({
       cinemaVisits,
     },
     highest_rated: highestRated,
+    cinema_stats: computeCinemaStats(allRows),
   }
 
   return <ProfileShowcase profile={profile} isOwner={isOwner} activityEvents={activityEvents} recentReviews={recentReviews} />

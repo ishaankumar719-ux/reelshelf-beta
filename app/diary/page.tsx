@@ -15,6 +15,7 @@ import type { MediaType } from "../../lib/media";
 
 type FilterType = "all" | "favourites" | "highest-rated" | "recent";
 type MediaFilterType = "all" | MediaType;
+type VenueFilterType = "all" | "cinema" | "home";
 type TimeGroup = "Today" | "Yesterday" | "This week" | "Earlier";
 
 function getTimeGroup(watchedDate: string): TimeGroup {
@@ -105,6 +106,7 @@ export default function DiaryPage() {
   const [movies, setMovies] = useState<Array<DiaryMovie & { isNew?: boolean }>>([]);
   const [filter, setFilter] = useState<FilterType>("all");
   const [mediaFilter, setMediaFilter] = useState<MediaFilterType>("all");
+  const [venueFilter, setVenueFilter] = useState<VenueFilterType>("all");
   const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -141,21 +143,27 @@ export default function DiaryPage() {
   }, []);
 
   const filteredMovies = useMemo(() => {
-    const mediaFilteredMovies =
+    let base =
       mediaFilter === "all"
         ? movies
         : movies.filter((movie) => movie.mediaType === mediaFilter);
 
+    if (venueFilter === "cinema") {
+      base = base.filter((movie) => movie.mediaType === "movie" && movie.watchedInCinema === true);
+    } else if (venueFilter === "home") {
+      base = base.filter((movie) => !(movie.mediaType === "movie" && movie.watchedInCinema === true));
+    }
+
     if (filter === "favourites") {
-      return sortByNewest(mediaFilteredMovies.filter((movie) => movie.favourite));
+      return sortByNewest(base.filter((movie) => movie.favourite));
     }
 
     if (filter === "highest-rated") {
-      return sortByHighestRated(mediaFilteredMovies);
+      return sortByHighestRated(base);
     }
 
-    return sortByNewest(mediaFilteredMovies);
-  }, [filter, mediaFilter, movies]);
+    return sortByNewest(base);
+  }, [filter, mediaFilter, venueFilter, movies]);
 
   const groupedMovies = useMemo(() => {
     const groups: Record<TimeGroup, DiaryMovie[]> = {
@@ -353,6 +361,19 @@ export default function DiaryPage() {
         <FilterButton active={mediaFilter === "movie"} label="Films" onClick={() => setMediaFilter("movie")} />
         <FilterButton active={mediaFilter === "tv"} label="Series" onClick={() => setMediaFilter("tv")} />
         <FilterButton active={mediaFilter === "book"} label="Books" onClick={() => setMediaFilter("book")} />
+      </section>
+
+      <section
+        style={{
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          marginBottom: 14,
+        }}
+      >
+        <FilterButton active={venueFilter === "all"} label="All" onClick={() => setVenueFilter("all")} />
+        <FilterButton active={venueFilter === "cinema"} label="Cinema" onClick={() => setVenueFilter("cinema")} />
+        <FilterButton active={venueFilter === "home"} label="Home" onClick={() => setVenueFilter("home")} />
       </section>
 
       <section

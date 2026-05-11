@@ -836,24 +836,7 @@ export default function ActivityCard({
           <strong style={{ color: "rgba(255,255,255,0.76)", fontWeight: 500 }}>{event.title}</strong>
         )}
         {event.watchedInCinema && event.media_type === "movie" ? (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 3,
-              marginLeft: 7,
-              padding: "2px 7px",
-              borderRadius: 999,
-              background: "rgba(99,102,241,0.14)",
-              border: "0.5px solid rgba(129,140,248,0.28)",
-              color: "#c7d2fe",
-              fontSize: 10,
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              verticalAlign: "middle",
-            }}
-          >
-            🎬 Cinema
-          </span>
+          <span style={{ color: "rgba(255,255,255,0.42)" }}>{" "}at the cinema</span>
         ) : null}
         {event.rating ? (
           <span style={{ marginLeft: 7, fontWeight: 400 }}>
