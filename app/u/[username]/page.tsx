@@ -234,6 +234,18 @@ export default async function PublicProfilePage({
   const profileRow = profileData as ProfileRow
   const isOwner = user?.id === profileRow.id
 
+  // Check if the viewing user already follows this profile (needed even for private-profile branch)
+  let isFollowing = false
+  if (user && !isOwner) {
+    const { data: followRow } = await supabase
+      .from("followers")
+      .select("follower_id")
+      .eq("follower_id", user.id)
+      .eq("following_id", profileRow.id)
+      .maybeSingle()
+    isFollowing = Boolean(followRow)
+  }
+
   if (!profileRow.is_public && !isOwner) {
     const privateProfile: PublicProfileShowcaseData = {
       id: profileRow.id,
@@ -262,7 +274,7 @@ export default async function PublicProfilePage({
       cinema_stats: { totalVisits: 0, mostActiveMonth: null, latestVisit: null, highestRated: null, recentPosters: [] },
     }
 
-    return <ProfileShowcase profile={privateProfile} isOwner={false} />
+    return <ProfileShowcase profile={privateProfile} isOwner={false} isFollowing={isFollowing} />
   }
 
   const [
@@ -410,5 +422,5 @@ export default async function PublicProfilePage({
     cinema_stats: computeCinemaStats(allRows),
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} activityEvents={activityEvents} recentReviews={recentReviews} />
+  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} />
 }

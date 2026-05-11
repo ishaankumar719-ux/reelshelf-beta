@@ -3,16 +3,20 @@
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { searchMedia } from "@/src/lib/searchMedia"
+import { createClient } from "@/lib/supabase/client"
 
 export interface SearchResult {
-  id: number
-  media_type: "film" | "series" | "book"
+  id: number | string
+  media_type: "film" | "series" | "book" | "user"
   title: string
   year: string | null
   poster_path: string | null
   director?: string | null
   author?: string | null
   href?: string
+  // user-specific
+  username?: string | null
+  avatar_url?: string | null
 }
 
 interface SearchApiResponse {
@@ -28,6 +32,38 @@ export interface UseSearchReturn {
   isLoading: boolean
   error: string | null
   clear: () => void
+}
+
+type ProfileRow = {
+  id: string
+  username: string | null
+  display_name: string | null
+  avatar_url: string | null
+}
+
+async function searchProfiles(query: string): Promise<SearchResult[]> {
+  const client = createClient()
+  if (!client) return []
+
+  const { data } = await client
+    .from("profiles")
+    .select("id, username, display_name, avatar_url")
+    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+    .not("username", "is", null)
+    .limit(4)
+
+  if (!data) return []
+
+  return (data as ProfileRow[]).map((profile) => ({
+    id: profile.id,
+    media_type: "user" as const,
+    title: profile.display_name || profile.username || "Unknown",
+    year: null,
+    poster_path: null,
+    username: profile.username,
+    avatar_url: profile.avatar_url,
+    href: profile.username ? `/u/${encodeURIComponent(profile.username)}` : "/",
+  }))
 }
 
 export function useSearch(): UseSearchReturn {
@@ -62,16 +98,20 @@ export function useSearch(): UseSearchReturn {
       console.log("[SEARCH] request start:", query)
 
       try {
-        const payload = await searchMedia(query, {
-          types: "film,series,book",
-          limit: 7,
-          signal: controller.signal,
-        })
+        const [payload, profileResults] = await Promise.all([
+          searchMedia(query, {
+            types: "film,series,book",
+            limit: 7,
+            signal: controller.signal,
+          }),
+          searchProfiles(query),
+        ])
 
         const nextResults = [
           ...(payload.films || []).slice(0, 3),
           ...(payload.series || []).slice(0, 2),
           ...(payload.books || []).slice(0, 2),
+          ...profileResults,
         ]
         console.log("[SEARCH] Results being set:", nextResults)
         setResults(nextResults)

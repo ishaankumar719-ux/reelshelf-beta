@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
 import type { ActivityEvent } from "@/lib/activity"
 import ActivityCard from "./ActivityCard"
 import { getLikedDiaryEntryIds, getLikeCountsForEntries } from "@/lib/supabase/likes"
 import { getCommentCountsForEntries } from "@/lib/supabase/comments"
+import { createClient } from "@/lib/supabase/client"
+import { fetchFollowingFeed } from "@/lib/supabase/followingFeed"
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -69,7 +72,7 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-function FollowingPlaceholder() {
+function FollowingEmpty({ noFollows }: { noFollows: boolean }) {
   return (
     <div
       style={{
@@ -110,11 +113,47 @@ function FollowingPlaceholder() {
         </svg>
       </div>
       <p style={{ fontSize: 14, color: "rgba(255,255,255,0.32)", margin: "0 0 6px", fontWeight: 500 }}>
-        Following feed coming soon
+        {noFollows ? "You're not following anyone yet" : "Nothing from your follows yet"}
       </p>
-      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)", fontStyle: "italic", margin: 0 }}>
-        Follow other ReelShelf users to see their activity here
-      </p>
+      {noFollows ? (
+        <Link
+          href="/search"
+          style={{
+            display: "inline-block",
+            marginTop: 10,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.45)",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Find people to follow →
+        </Link>
+      ) : (
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)", fontStyle: "italic", margin: 0 }}>
+          Their logs will appear here once they add something
+        </p>
+      )}
+    </div>
+  )
+}
+
+function FollowingLoadingState() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          style={{
+            height: 88,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.025)",
+            border: "0.5px solid rgba(255,255,255,0.05)",
+            animation: "pulse 1.4s ease-in-out infinite",
+            animationDelay: `${i * 180}ms`,
+          }}
+        />
+      ))}
     </div>
   )
 }
@@ -171,6 +210,14 @@ export default function ActivityFeed({
   const [activeTab, setActiveTab] = useState<FeedTab>("mine")
   const [socialData, setSocialData] = useState<Record<string, SocialState>>({})
 
+  // Following feed state
+  const [followingEvents, setFollowingEvents] = useState<ActivityEvent[]>([])
+  const [followingLoading, setFollowingLoading] = useState(false)
+  const [followingLoaded, setFollowingLoaded] = useState(false)
+  const [followingSocialData, setFollowingSocialData] = useState<Record<string, SocialState>>({})
+  const [noFollows, setNoFollows] = useState(false)
+  const fetchedRef = useRef(false)
+
   // Batch-fetch likes + comments for all diary events in one pass
   useEffect(() => {
     const diaryEntryIds = events
@@ -196,6 +243,63 @@ export default function ActivityFeed({
       setSocialData(next)
     })
   }, [events])
+
+  // Load following feed on first tab switch
+  useEffect(() => {
+    if (activeTab !== "following" || fetchedRef.current) return
+    fetchedRef.current = true
+    setFollowingLoading(true)
+
+    void (async () => {
+      const supabase = createClient()
+      if (!supabase) { setFollowingLoading(false); setFollowingLoaded(true); return }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setFollowingLoading(false); setFollowingLoaded(true); return }
+
+      // Check if user follows anyone first
+      const { count: followCount } = await supabase
+        .from("followers")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", session.user.id)
+
+      if ((followCount ?? 0) === 0) {
+        setNoFollows(true)
+        setFollowingLoading(false)
+        setFollowingLoaded(true)
+        return
+      }
+
+      const feedEvents = await fetchFollowingFeed(session.user.id)
+      setFollowingEvents(feedEvents)
+
+      // Batch social data for following feed
+      const entryIds = feedEvents
+        .map((e) => e.diary_entry_id)
+        .filter((id): id is string => Boolean(id))
+
+      if (entryIds.length > 0) {
+        const [likedIds, likeCounts, commentCounts] = await Promise.all([
+          getLikedDiaryEntryIds(entryIds),
+          getLikeCountsForEntries(entryIds),
+          getCommentCountsForEntries(entryIds),
+        ])
+        const likedSet = new Set(likedIds)
+        const next: Record<string, SocialState> = {}
+        for (const id of entryIds) {
+          next[id] = {
+            likeCount: likeCounts[id] ?? 0,
+            commentCount: commentCounts[id] ?? 0,
+            hasLiked: likedSet.has(id),
+          }
+        }
+        setFollowingSocialData(next)
+      }
+
+      setFollowingLoading(false)
+      setFollowingLoaded(true)
+    })()
+  }, [activeTab])
 
   if (!showTabs) {
     return (
@@ -280,8 +384,16 @@ export default function ActivityFeed({
             "No activity yet — start logging films to see your history here"
           }
         />
+      ) : followingLoading || !followingLoaded ? (
+        <FollowingLoadingState />
+      ) : noFollows || followingEvents.length === 0 ? (
+        <FollowingEmpty noFollows={noFollows} />
       ) : (
-        <FollowingPlaceholder />
+        <FeedList
+          events={followingEvents}
+          socialData={followingSocialData}
+          emptyMessage="Nothing from your follows yet"
+        />
       )}
     </div>
   )

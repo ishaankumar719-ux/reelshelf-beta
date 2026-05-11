@@ -7,6 +7,8 @@ import ActivityFeed from "@/components/activity/ActivityFeed"
 import PublicDiaryEntriesGrid from "@/components/PublicDiaryEntriesGrid"
 import type { ActivityEvent } from "@/lib/activity"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/AuthProvider"
 import type {
   CinemaStats,
   MountRushmoreSlot,
@@ -18,6 +20,7 @@ import type {
 interface ProfileShowcaseProps {
   profile: PublicProfileShowcaseData | null
   isOwner: boolean
+  isFollowing?: boolean
   activityEvents?: ActivityEvent[]
   recentReviews?: PublicDiaryEntry[]
 }
@@ -343,6 +346,110 @@ function HighestRatedRow({ items }: { items: PublicProfileTopRatedItem[] }) {
   )
 }
 
+function FollowButton({
+  profileId,
+  initialIsFollowing,
+}: {
+  profileId: string
+  initialIsFollowing: boolean
+}) {
+  const { user } = useAuth()
+  const router = useRouter()
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
+  const [followerDelta, setFollowerDelta] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  if (!user) {
+    return (
+      <Link
+        href="/auth"
+        style={{
+          display: "inline-flex",
+          height: 36,
+          alignItems: "center",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.16)",
+          background: "rgba(255,255,255,0.06)",
+          padding: "0 18px",
+          fontSize: 12,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.82)",
+          textDecoration: "none",
+          flexShrink: 0,
+        }}
+      >
+        Follow
+      </Link>
+    )
+  }
+
+  async function handleToggle() {
+    if (loading || !user) return
+    setLoading(true)
+    const wasFollowing = isFollowing
+    setIsFollowing(!wasFollowing)
+    setFollowerDelta((d) => (wasFollowing ? d - 1 : d + 1))
+
+    const client = createClient()
+    if (!client) {
+      setIsFollowing(wasFollowing)
+      setFollowerDelta((d) => (wasFollowing ? d + 1 : d - 1))
+      setLoading(false)
+      return
+    }
+
+    try {
+      if (wasFollowing) {
+        await client
+          .from("followers")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", profileId)
+      } else {
+        await client.from("followers").insert({
+          follower_id: user.id,
+          following_id: profileId,
+        })
+      }
+      router.refresh()
+    } catch {
+      setIsFollowing(wasFollowing)
+      setFollowerDelta((d) => (wasFollowing ? d + 1 : d - 1))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      disabled={loading}
+      style={{
+        display: "inline-flex",
+        height: 36,
+        alignItems: "center",
+        borderRadius: 999,
+        border: isFollowing
+          ? "1px solid rgba(255,255,255,0.1)"
+          : "1px solid rgba(255,255,255,0.22)",
+        background: isFollowing ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.1)",
+        padding: "0 18px",
+        fontSize: 12,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        color: isFollowing ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.88)",
+        flexShrink: 0,
+        cursor: loading ? "wait" : "pointer",
+        transition: "all 0.15s ease",
+      }}
+    >
+      {loading ? "…" : isFollowing ? "Following" : "Follow"}
+    </button>
+  )
+}
+
 function CinemaStatsPoster({
   poster,
   title,
@@ -603,6 +710,7 @@ function CinemaStatsModule({ stats }: { stats: CinemaStats }) {
 export default function ProfileShowcase({
   profile,
   isOwner,
+  isFollowing: initialIsFollowing = false,
   activityEvents = [],
   recentReviews = [],
 }: ProfileShowcaseProps) {
@@ -667,6 +775,7 @@ export default function ProfileShowcase({
               @{profile.username} has a private profile
             </p>
           </div>
+          <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
         </div>
       </section>
     )
@@ -677,6 +786,8 @@ export default function ProfileShowcase({
     { label: "Series", value: profile.stats.series },
     { label: "Reviews", value: profile.stats.reviews },
     { label: "Watchlist", value: profile.stats.watchlist },
+    { label: "Followers", value: profile.stats.followers },
+    { label: "Following", value: profile.stats.following },
     ...(profile.stats.cinemaVisits > 0
       ? [{ label: "Cinema", value: profile.stats.cinemaVisits }]
       : []),
@@ -778,7 +889,9 @@ export default function ProfileShowcase({
             >
               Edit profile
             </Link>
-          ) : null}
+          ) : (
+            <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+          )}
         </div>
 
         <div

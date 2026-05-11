@@ -48,6 +48,7 @@ export default function SearchResults({
   const films = results.filter((item) => item.media_type === "film")
   const series = results.filter((item) => item.media_type === "series")
   const books = results.filter((item) => item.media_type === "book")
+  const people = results.filter((item) => item.media_type === "user")
   const hasHistory = recentResults.length > 0 || recentQueries.length > 0
   const showNoResults = query.trim().length >= 2 && !isLoading && results.length === 0
   let runningIndex = -1
@@ -154,6 +155,26 @@ export default function SearchResults({
                   return (
                     <SearchResult
                       key={`book-${result.id}`}
+                      id={`global-search-option-${runningIndex}`}
+                      result={result}
+                      onSelect={() => onSelect(result)}
+                      active={activeIndex === runningIndex}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {people.length > 0 ? (
+            <div className="mt-3">
+              <SectionLabel>People</SectionLabel>
+              <div className="space-y-1">
+                {people.map((result) => {
+                  runningIndex += 1
+                  return (
+                    <SearchResult
+                      key={`user-${result.id}`}
                       id={`global-search-option-${runningIndex}`}
                       result={result}
                       onSelect={() => onSelect(result)}

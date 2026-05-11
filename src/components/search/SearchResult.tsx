@@ -56,6 +56,55 @@ function MediaIcon({ mediaType }: { mediaType: SearchResultType["media_type"] })
   )
 }
 
+function UserSearchResult({
+  result,
+  onSelect,
+  active = false,
+  id,
+}: SearchResultProps) {
+  const [imgError, setImgError] = useState(false)
+  const initial = ((result.title || result.username || "?").trim().charAt(0) || "?").toUpperCase()
+
+  return (
+    <div
+      id={id}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect() }
+      }}
+      className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2.5 text-left outline-none transition ${
+        active ? "bg-white/[0.06]" : "hover:bg-white/[0.04]"
+      } focus-visible:ring-1 focus-visible:ring-white/30`}
+    >
+      <div
+        className="flex h-[36px] w-[36px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10"
+        style={{ background: "linear-gradient(135deg, #534AB7 0%, #1D9E75 100%)" }}
+      >
+        {result.avatar_url && !imgError ? (
+          <img
+            src={result.avatar_url}
+            alt={result.title}
+            className="h-full w-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <span className="text-[13px] font-medium text-white/90">{initial}</span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium leading-[1.35] text-white/80">
+          {result.title}
+        </p>
+        {result.username ? (
+          <p className="truncate text-[11px] text-white/36">@{result.username}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export default function SearchResult({
   result,
   onSelect,
@@ -65,6 +114,11 @@ export default function SearchResult({
   const [imgError, setImgError] = useState(false)
   const [watchlistState, setWatchlistState] = useState<WatchlistState>("idle")
   const { openLog } = useDiaryLog()
+
+  if (result.media_type === "user") {
+    return <UserSearchResult result={result} onSelect={onSelect} active={active} id={id} />
+  }
+
   const posterUrl = result.poster_path ? getPosterUrl(result.poster_path, "w92") : null
   const meta =
     result.media_type === "book"
@@ -95,7 +149,7 @@ export default function SearchResult({
       year: Number.parseInt(result.year ?? "0", 10) || 0,
       poster: result.poster_path ? getPosterUrl(result.poster_path, "w342") : null,
       creator: result.director ?? result.author ?? null,
-      tmdb_id: result.media_type === "book" ? null : result.id,
+      tmdb_id: result.media_type === "book" ? null : (typeof result.id === "number" ? result.id : null),
     })
   }
 

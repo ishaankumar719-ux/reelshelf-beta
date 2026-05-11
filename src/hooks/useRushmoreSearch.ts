@@ -37,9 +37,11 @@ interface UseRushmoreSearchReturn {
   clear: () => void
 }
 
-function mapFilmResult(item: SearchApiResponse["films"][number]): RushmoreSearchResult {
+type MediaItem = { id: number | string; title: string; year: string | null; poster_path: string | null; director?: string | null }
+
+function mapFilmResult(item: MediaItem): RushmoreSearchResult {
   return {
-    media_id: item.id,
+    media_id: typeof item.id === "number" ? item.id : parseInt(String(item.id), 10),
     media_type: "film",
     title: item.title,
     year: item.year,
@@ -48,9 +50,9 @@ function mapFilmResult(item: SearchApiResponse["films"][number]): RushmoreSearch
   }
 }
 
-function mapSeriesResult(item: SearchApiResponse["series"][number]): RushmoreSearchResult {
+function mapSeriesResult(item: MediaItem): RushmoreSearchResult {
   return {
-    media_id: item.id,
+    media_id: typeof item.id === "number" ? item.id : parseInt(String(item.id), 10),
     media_type: "series",
     title: item.title,
     year: item.year,
