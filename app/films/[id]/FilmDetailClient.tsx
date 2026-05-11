@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
 import { createClient as createSupabaseClient } from "../../../lib/supabase/client";
 import { useDiaryLog } from "../../../hooks/useDiaryLog";
+import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 
 interface TMDBFilm {
   id: number;
@@ -584,6 +585,16 @@ export default function FilmDetailClient({
         </section>
 
         {topCast.length > 0 ? <CastSection cast={topCast} /> : null}
+
+        <MediaReviewsSection
+          mediaIds={[`tmdb-${film.id}`, `${slugify(film.title)}-${year}`]}
+          mediaType="movie"
+          title={film.title}
+          year={parseInt(year || "0", 10)}
+          poster={posterUrl}
+          creator={null}
+          href={`/films/${film.id}`}
+        />
       </div>
     </main>
   );

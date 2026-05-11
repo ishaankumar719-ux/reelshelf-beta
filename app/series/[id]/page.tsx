@@ -7,6 +7,7 @@ import { getPosterUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
+import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 import SeriesReviewPanel from "../../../components/SeriesReviewPanel";
 import TrackRecentView from "../../../components/TrackRecentView";
 import { getLocalSeriesByRouteId } from "../../../lib/localSeries";
@@ -809,6 +810,15 @@ function SeriesDetailContent({
           currentCreator={creator}
           currentGenres={genres}
           title={`Because you liked ${title}`}
+        />
+        <MediaReviewsSection
+          mediaIds={[actionSeries.id]}
+          mediaType="tv"
+          title={title}
+          year={Number(year) || 0}
+          poster={posterUrl ?? null}
+          creator={creator}
+          href={`/series/${actionSeries.id}`}
         />
       </div>
     </main>

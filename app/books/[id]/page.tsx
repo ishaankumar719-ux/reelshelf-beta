@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
+import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 import TrackRecentView from "../../../components/TrackRecentView";
 import {
   getLocalBookByRouteId,
@@ -551,6 +552,15 @@ export default async function BookDetailPage({
         currentCreator={book.author}
         currentGenres={[book.genre]}
         title={`Because you liked ${book.title}`}
+      />
+      <MediaReviewsSection
+        mediaIds={[book.id]}
+        mediaType="book"
+        title={book.title}
+        year={Number(book.year) || 0}
+        poster={coverUrl}
+        creator={book.author}
+        href={`/books/${book.id}`}
       />
     </main>
   );
