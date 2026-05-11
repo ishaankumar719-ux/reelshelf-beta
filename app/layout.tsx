@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
+import BetaFeedbackButton from "../components/BetaFeedbackButton";
 import { DiaryLogProvider } from "../hooks/useDiaryLog";
 import type { UserProfile } from "../lib/profile";
 import { PROFILE_SELECT } from "../lib/queries";
@@ -109,6 +110,7 @@ export default async function RootLayout({
             <main className="app-shell-main">
               {children}
             </main>
+            <BetaFeedbackButton />
           </DiaryLogProvider>
         </AuthProvider>
       </body>

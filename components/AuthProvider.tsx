@@ -368,6 +368,18 @@ export function AuthProvider({
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        // Claim any pending beta invite stored during email-confirmation signup
+        if (typeof window !== "undefined") {
+          const pendingCode = localStorage.getItem("rsbeta_pending_code");
+          if (pendingCode) {
+            localStorage.removeItem("rsbeta_pending_code");
+            void supabase.rpc("claim_beta_invite", {
+              p_code: pendingCode,
+              p_user_id: session.user.id,
+            });
+          }
+        }
+
         setLoading(true);
         void resolveProfileForUser(session.user).then((profileResult) => {
           if (mounted) {

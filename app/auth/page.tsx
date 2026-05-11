@@ -8,6 +8,20 @@ import { getAuthCallbackUrl, getSiteUrl } from "../../lib/siteUrl";
 
 type AuthMode = "signin" | "signup";
 
+const inputStyle: React.CSSProperties = {
+  height: 50,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(255,255,255,0.03)",
+  color: "white",
+  padding: "0 14px",
+  fontSize: 15,
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+};
+
 function ModeButton({
   active,
   label,
@@ -42,12 +56,19 @@ function ModeButton({
   );
 }
 
+function inviteErrorMessage(reason: string | undefined): string {
+  if (reason === "expired") return "This invite code has expired.";
+  if (reason === "used") return "This invite code has already been claimed.";
+  return "Invalid invite code. Check with whoever sent you the invite.";
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(
     searchParams.get("error")
@@ -58,6 +79,12 @@ export default function AuthPage() {
     () => (mode === "signin" ? "Sign In" : "Create Account"),
     [mode]
   );
+
+  function switchMode(next: AuthMode) {
+    setMode(next);
+    setMessage(null);
+    setInviteCode("");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +118,27 @@ export default function AuthPage() {
         return;
       }
 
+      // ── SIGNUP ──────────────────────────────────────────────────────────────
+
+      // 1. Require invite code
+      const trimmedCode = inviteCode.trim().toUpperCase();
+      if (!trimmedCode) {
+        setMessage("An invite code is required to join ReelShelf Beta.");
+        return;
+      }
+
+      // 2. Validate invite code before creating account
+      const { data: validation, error: validationError } = await supabase.rpc(
+        "validate_beta_invite",
+        { p_code: trimmedCode }
+      );
+
+      if (validationError || !validation?.valid) {
+        setMessage(inviteErrorMessage(validation?.reason as string | undefined));
+        return;
+      }
+
+      // 3. Create account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -104,10 +152,21 @@ export default function AuthPage() {
         return;
       }
 
+      // 4a. Session available immediately — claim the invite code now
       if (data.session) {
+        await supabase.rpc("claim_beta_invite", {
+          p_code: trimmedCode,
+          p_user_id: data.session.user.id,
+        });
         router.replace("/");
         router.refresh();
         return;
+      }
+
+      // 4b. Email confirmation required — store the code so AuthProvider can
+      //     claim it once the user confirms and a session is established.
+      if (typeof window !== "undefined") {
+        localStorage.setItem("rsbeta_pending_code", trimmedCode);
       }
 
       setMessage(
@@ -141,9 +200,7 @@ export default function AuthPage() {
           }
         }
       `}</style>
-      <section
-        className="auth-grid"
-      >
+      <section className="auth-grid">
         <div
           style={{
             position: "relative",
@@ -166,7 +223,7 @@ export default function AuthPage() {
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
-            ReelShelf Account
+            ReelShelf Beta
           </p>
 
           <h1
@@ -195,13 +252,7 @@ export default function AuthPage() {
             profile insights across devices with real backend persistence.
           </p>
 
-          <div
-            style={{
-              display: "grid",
-              gap: 14,
-              marginTop: 26,
-            }}
-          >
+          <div style={{ display: "grid", gap: 14, marginTop: 26 }}>
             {[
               "Diary entries saved to your account",
               "Watchlist and Reading Shelf scoped per user",
@@ -240,12 +291,12 @@ export default function AuthPage() {
             <ModeButton
               active={mode === "signin"}
               label="Sign In"
-              onClick={() => setMode("signin")}
+              onClick={() => switchMode("signin")}
             />
             <ModeButton
               active={mode === "signup"}
               label="Sign Up"
-              onClick={() => setMode("signup")}
+              onClick={() => switchMode("signup")}
             />
           </div>
 
@@ -291,20 +342,11 @@ export default function AuthPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                style={{
-                  height: 50,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "white",
-                  padding: "0 14px",
-                  fontSize: 15,
-                  outline: "none",
-                }}
+                style={inputStyle}
               />
             </label>
 
-            <label style={{ display: "grid", gap: 10, marginBottom: 18 }}>
+            <label style={{ display: "grid", gap: 10, marginBottom: mode === "signup" ? 16 : 18 }}>
               <span
                 style={{
                   color: "#d1d5db",
@@ -320,18 +362,47 @@ export default function AuthPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 minLength={6}
-                style={{
-                  height: 50,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "white",
-                  padding: "0 14px",
-                  fontSize: 15,
-                  outline: "none",
-                }}
+                style={inputStyle}
               />
             </label>
+
+            {mode === "signup" ? (
+              <label style={{ display: "grid", gap: 10, marginBottom: 18 }}>
+                <span
+                  style={{
+                    color: "#d1d5db",
+                    fontSize: 13,
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                  }}
+                >
+                  Invite Code
+                </span>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
+                  required
+                  placeholder="e.g. REEL1234"
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={{
+                    ...inputStyle,
+                    letterSpacing: "0.08em",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.28)",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    marginTop: -4,
+                  }}
+                >
+                  ReelShelf Beta is invite-only. Ask for a code.
+                </span>
+              </label>
+            ) : null}
 
             {message ? (
               <p
@@ -359,6 +430,7 @@ export default function AuthPage() {
                 border: "none",
                 cursor: loading ? "progress" : "pointer",
                 fontWeight: 600,
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
             >
               {loading ? "Working..." : buttonLabel}

@@ -111,6 +111,24 @@ export default function AppNav() {
             <Link href="/" className="shrink-0 text-[16px] font-medium tracking-[0.08em] text-white no-underline">
               ReelShelf
             </Link>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                height: 18,
+                padding: "0 7px",
+                borderRadius: 999,
+                border: "0.5px solid rgba(255,255,255,0.12)",
+                fontSize: 9,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.32)",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                flexShrink: 0,
+              }}
+            >
+              Beta
+            </span>
 
             <nav className="hidden items-center gap-5 md:flex">
               {desktopLinks.map((item) => (
