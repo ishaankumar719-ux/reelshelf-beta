@@ -11,6 +11,7 @@ interface SearchResultProps {
   onSelect: () => void
   active?: boolean
   id?: string
+  mobileFriendly?: boolean
 }
 
 type WatchlistState = "idle" | "saving" | "saved"
@@ -110,6 +111,7 @@ export default function SearchResult({
   onSelect,
   active = false,
   id,
+  mobileFriendly = false,
 }: SearchResultProps) {
   const [imgError, setImgError] = useState(false)
   const [watchlistState, setWatchlistState] = useState<WatchlistState>("idle")
@@ -138,6 +140,10 @@ export default function SearchResult({
   function handleLogClick(event: React.MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
+    // Close search overlay so DiaryLogModal renders on top
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("rs:close-search"))
+    }
     openLog({
       title: result.title,
       media_type:
@@ -220,76 +226,116 @@ export default function SearchResult({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
-      className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2.5 text-left outline-none transition ${
+      className={`flex w-full flex-col rounded-md px-2.5 text-left outline-none transition ${
         active ? "bg-white/[0.06]" : "hover:bg-white/[0.04]"
       } focus-visible:ring-1 focus-visible:ring-white/30`}
     >
-      {/* Poster thumbnail */}
-      <div className="flex h-[44px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#121420] text-white/45">
-        {posterUrl && !imgError ? (
-          <img
-            src={posterUrl}
-            alt={result.title}
-            className="h-full w-full object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <MediaIcon mediaType={result.media_type} />
-        )}
-      </div>
+      {/* Main row: poster + title + meta */}
+      <div className="flex items-center gap-3 py-2.5">
+        {/* Poster thumbnail */}
+        <div className="flex h-[44px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#121420] text-white/45">
+          {posterUrl && !imgError ? (
+            <img
+              src={posterUrl}
+              alt={result.title}
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <MediaIcon mediaType={result.media_type} />
+          )}
+        </div>
 
-      {/* Content — two rows */}
-      <div className="min-w-0 flex-1">
-        {/* Row 1: title, up to 2 lines */}
-        <p className="line-clamp-2 text-[13px] font-medium leading-[1.35] text-white/80">
-          {result.title}
-        </p>
-
-        {/* Row 2: meta on the left, badge + actions on the right */}
-        <div className="mt-1.5 flex items-center gap-2">
-          <p className="min-w-0 flex-1 truncate text-[11px] text-white/36">
-            {meta || "No details yet"}
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[13px] font-medium leading-[1.35] text-white/80">
+            {result.title}
           </p>
 
-          <div className="flex shrink-0 items-center gap-1">
-            <span
-              className={`inline-flex h-[18px] items-center rounded-full border px-1.5 text-[9px] uppercase tracking-[0.12em] ${getBadgeClasses(result.media_type)}`}
-            >
-              {getLabel(result.media_type)}
-            </span>
-
-            {/* Watchlist — films and series only */}
-            {supportsWatchlist ? (
-              <button
-                type="button"
-                onClick={handleWatchlistClick}
-                disabled={watchlistState !== "idle"}
-                className={`rounded border px-1.5 py-0.5 text-[10px] leading-none transition ${
-                  watchlistState === "saved"
-                    ? "cursor-default border-white/[0.08] bg-white/[0.03] text-white/28"
-                    : watchlistState === "saving"
-                      ? "cursor-wait border-white/[0.10] bg-white/[0.03] text-white/28"
-                      : "border-white/[0.16] bg-white/[0.05] text-white/50 hover:bg-white/[0.09] hover:text-white/72"
-                }`}
-              >
-                {watchlistState === "saved"
-                  ? "✓ Saved"
-                  : watchlistState === "saving"
-                    ? "…"
-                    : "+ Watchlist"}
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={handleLogClick}
-              className="rounded border border-[#1D9E75]/38 bg-[#1D9E75]/12 px-1.5 py-0.5 text-[10px] leading-none text-[#9de3c7] transition hover:bg-[#1D9E75]/20"
-            >
-              + Log
-            </button>
-          </div>
+          {mobileFriendly ? (
+            /* Mobile: just meta text, actions go in their own row below */
+            <p className="mt-1 truncate text-[11px] text-white/36">
+              {meta || "No details yet"}
+            </p>
+          ) : (
+            /* Desktop dropdown: meta + badge + actions all inline */
+            <div className="mt-1.5 flex items-center gap-2">
+              <p className="min-w-0 flex-1 truncate text-[11px] text-white/36">
+                {meta || "No details yet"}
+              </p>
+              <div className="flex shrink-0 items-center gap-1">
+                <span
+                  className={`inline-flex h-[18px] items-center rounded-full border px-1.5 text-[9px] uppercase tracking-[0.12em] ${getBadgeClasses(result.media_type)}`}
+                >
+                  {getLabel(result.media_type)}
+                </span>
+                {supportsWatchlist ? (
+                  <button
+                    type="button"
+                    onClick={handleWatchlistClick}
+                    disabled={watchlistState !== "idle"}
+                    className={`rounded border px-1.5 py-0.5 text-[10px] leading-none transition ${
+                      watchlistState === "saved"
+                        ? "cursor-default border-white/[0.08] bg-white/[0.03] text-white/28"
+                        : watchlistState === "saving"
+                          ? "cursor-wait border-white/[0.10] bg-white/[0.03] text-white/28"
+                          : "border-white/[0.16] bg-white/[0.05] text-white/50 hover:bg-white/[0.09] hover:text-white/72"
+                    }`}
+                  >
+                    {watchlistState === "saved" ? "✓ Saved" : watchlistState === "saving" ? "…" : "+ Watchlist"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleLogClick}
+                  className="rounded border border-[#1D9E75]/38 bg-[#1D9E75]/12 px-1.5 py-0.5 text-[10px] leading-none text-[#9de3c7] transition hover:bg-[#1D9E75]/20"
+                >
+                  + Log
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Mobile action row — full-width, min 44px tap targets, overlay only */}
+      {mobileFriendly ? (
+        <div
+          className="flex items-center gap-2 pb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span
+            className={`inline-flex min-h-[40px] items-center rounded-full border px-2.5 text-[10px] uppercase tracking-[0.1em] ${getBadgeClasses(result.media_type)}`}
+          >
+            {getLabel(result.media_type)}
+          </span>
+          {supportsWatchlist ? (
+            <button
+              type="button"
+              onClick={handleWatchlistClick}
+              disabled={watchlistState !== "idle"}
+              style={{ flex: 1, minHeight: 40 }}
+              className={`rounded-xl border px-3 text-[12px] font-medium transition ${
+                watchlistState === "saved"
+                  ? "cursor-default border-white/[0.08] bg-white/[0.03] text-white/30"
+                  : watchlistState === "saving"
+                    ? "cursor-wait border-white/[0.10] bg-white/[0.03] text-white/30"
+                    : "border-white/[0.16] bg-white/[0.06] text-white/55"
+              }`}
+            >
+              {watchlistState === "saved" ? "✓ Saved" : watchlistState === "saving" ? "Saving…" : "+ Watchlist"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleLogClick}
+            style={{ flex: 1, minHeight: 40 }}
+            className="rounded-xl border border-[#1D9E75]/38 bg-[#1D9E75]/12 px-3 text-[12px] font-medium text-[#9de3c7] transition hover:bg-[#1D9E75]/20"
+          >
+            + Log
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

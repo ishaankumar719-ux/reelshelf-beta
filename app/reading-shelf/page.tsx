@@ -62,9 +62,9 @@ export default function ReadingShelfPage() {
           <h1
             style={{
               margin: 0,
-              fontSize: 48,
-              lineHeight: 1.02,
-              letterSpacing: "-1.6px",
+              fontSize: "clamp(26px, 7vw, 48px)",
+              lineHeight: 1.04,
+              letterSpacing: "clamp(-0.6px, -0.2vw, -1.6px)",
               fontWeight: 500,
             }}
           >

@@ -442,9 +442,9 @@ export default function WeeklyChallengesSection() {
           <h2
             style={{
               margin: "8px 0 0",
-              fontSize: 32,
-              lineHeight: 1.02,
-              letterSpacing: "-1px",
+              fontSize: "clamp(20px, 4.5vw, 32px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.7px",
               fontWeight: 500,
             }}
           >

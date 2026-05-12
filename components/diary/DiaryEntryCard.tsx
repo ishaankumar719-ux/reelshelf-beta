@@ -163,8 +163,8 @@ export default function DiaryEntryCard({
         >
           <div
             style={{
-              width: 52,
-              height: 78,
+              width: 56,
+              height: 84,
               borderRadius: 10,
               overflow: "hidden",
               background: "#1a1a2e",
@@ -393,7 +393,8 @@ export default function DiaryEntryCard({
                     type="button"
                     onClick={onDeleteConfirm}
                     style={{
-                      padding: "7px 10px",
+                      padding: "9px 12px",
+                      minHeight: 36,
                       borderRadius: 999,
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(255,255,255,0.12)",
@@ -410,7 +411,8 @@ export default function DiaryEntryCard({
                     type="button"
                     onClick={onDeleteCancel}
                     style={{
-                      padding: "7px 10px",
+                      padding: "9px 12px",
+                      minHeight: 36,
                       borderRadius: 999,
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(255,255,255,0.04)",
@@ -430,7 +432,8 @@ export default function DiaryEntryCard({
                     type="button"
                     onClick={onEdit}
                     style={{
-                      padding: "7px 10px",
+                      padding: "9px 12px",
+                      minHeight: 36,
                       borderRadius: 999,
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(255,255,255,0.04)",
@@ -452,6 +455,7 @@ export default function DiaryEntryCard({
                       border: "1px solid rgba(255,255,255,0.12)",
                       background: "rgba(255,255,255,0.04)",
                       color: "#f3caca",
+                      minHeight: 36,
                       fontSize: 10,
                       letterSpacing: "0.04em",
                       textTransform: "uppercase",

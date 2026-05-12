@@ -134,8 +134,8 @@ function EmptyRow({
       <h3
         style={{
           margin: 0,
-          fontSize: 24,
-          letterSpacing: "-0.8px",
+          fontSize: "clamp(18px, 4vw, 24px)",
+          letterSpacing: "-0.5px",
           fontWeight: 500,
         }}
       >
@@ -143,10 +143,10 @@ function EmptyRow({
       </h3>
       <p
         style={{
-          margin: "12px 0 0",
+          margin: "10px 0 0",
           color: "#b9b9b9",
-          fontSize: 15,
-          lineHeight: 1.7,
+          fontSize: "clamp(13px, 2.8vw, 15px)",
+          lineHeight: 1.65,
           maxWidth: 560,
         }}
       >
@@ -180,7 +180,7 @@ function MediaCard({ item }: { item: DashboardItem }) {
     item.mediaType === "movie" ? "film" : item.mediaType === "tv" ? "series" : "book";
 
   return (
-    <div style={{ width: "min(188px, 43vw)", flexShrink: 0 }}>
+    <div style={{ width: "min(160px, 40vw)", flexShrink: 0 }}>
       <SharedMediaCard
         title={item.title}
         year={item.year || "—"}
@@ -247,7 +247,7 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
       style={{
         textDecoration: "none",
         color: "inherit",
-        width: "min(320px, 82vw)",
+        width: "min(300px, calc(100vw - 28px))",
         flexShrink: 0,
       }}
     >
@@ -380,13 +380,13 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
   return (
     <article
       style={{
-        width: "min(372px, 88vw)",
+        width: "min(316px, calc(100vw - 60px))",
         flexShrink: 0,
         display: "grid",
-        gridTemplateColumns: "96px minmax(0, 1fr)",
-        gap: 16,
-        padding: 16,
-        borderRadius: 24,
+        gridTemplateColumns: "88px minmax(0, 1fr)",
+        gap: 14,
+        padding: 14,
+        borderRadius: 20,
         border: "1px solid rgba(255,255,255,0.08)",
         background:
           "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 28%), linear-gradient(180deg, rgba(18,18,18,0.96) 0%, rgba(8,8,8,0.96) 100%)",
@@ -678,25 +678,25 @@ function Section({
   action?: React.ReactNode;
 }) {
   return (
-    <section style={{ marginBottom: 34 }}>
+    <section style={{ marginBottom: "clamp(22px, 5vw, 38px)" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          gap: 18,
-          alignItems: "end",
+          gap: 12,
+          alignItems: "flex-end",
           flexWrap: "wrap",
-          marginBottom: 16,
+          marginBottom: "clamp(10px, 2.5vw, 16px)",
         }}
       >
         <div>
           {eyebrow ? (
             <p
               style={{
-                margin: "0 0 8px",
+                margin: "0 0 6px",
                 color: "#7f7f7f",
                 fontSize: 11,
-                letterSpacing: "0.06em",
+                letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
               }}
@@ -708,9 +708,9 @@ function Section({
           <h2
             style={{
               margin: 0,
-              fontSize: 32,
-              lineHeight: 1.02,
-              letterSpacing: "-1px",
+              fontSize: "clamp(20px, 4.5vw, 32px)",
+              lineHeight: 1.06,
+              letterSpacing: "clamp(-0.4px, -0.08vw, -1px)",
               fontWeight: 500,
             }}
           >
@@ -719,10 +719,11 @@ function Section({
 
           {body ? (
             <p
+              className="home-section-body"
               style={{
-                margin: "10px 0 0",
+                margin: "8px 0 0",
                 color: "#a8a8a8",
-                fontSize: 15,
+                fontSize: "clamp(13px, 2.5vw, 15px)",
                 lineHeight: 1.65,
                 maxWidth: 760,
               }}
@@ -873,31 +874,41 @@ export default function HomeDashboardClient({
       <style>{`
         .home-row {
           display: flex;
-          gap: 16px;
+          gap: 14px;
           overflow-x: auto;
+          overflow-y: visible;
+          -webkit-overflow-scrolling: touch;
+          scroll-snap-type: x proximity;
+          scrollbar-width: none;
           padding-bottom: 6px;
           scroll-padding-left: 4px;
         }
+        .home-row::-webkit-scrollbar { display: none; }
+        .home-row > * { scroll-snap-align: start; }
 
         .home-hero-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-          gap: 22px;
-          margin-bottom: 26px;
+          grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+          gap: 18px;
+          margin-bottom: 22px;
         }
 
         .home-actions-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 16px;
+          gap: 12px;
         }
 
         .home-priority-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-          gap: 20px;
-          margin-bottom: 30px;
+          grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+          gap: 18px;
+          margin-bottom: 28px;
         }
+
+        /* mobile-only elements hidden by default */
+        .home-mobile-search { display: none; margin-bottom: 12px; }
+        .home-stats-mobile { display: none; }
 
         @media (max-width: 960px) {
           .home-hero-grid,
@@ -907,22 +918,73 @@ export default function HomeDashboardClient({
           }
         }
 
-        @media (max-width: 720px) {
-          .home-row {
-            gap: 12px;
-            margin-right: -4px;
-            padding-right: 4px;
-          }
+        @media (max-width: 760px) {
+          .home-row { gap: 10px; }
+          .home-hero-grid { gap: 0; margin-bottom: 0; }
+          .home-actions-grid { gap: 10px; }
+          .home-priority-grid { gap: 14px; margin-bottom: 22px; }
 
-          .home-hero-grid {
-            gap: 16px;
-            margin-bottom: 20px;
+          .home-mobile-search { display: flex; }
+
+          .home-hero-card { border-radius: 22px !important; padding: 14px 16px 14px !important; }
+          .home-hero-body { display: none !important; }
+          .home-stats-card { display: none !important; }
+          .home-section-body { display: none !important; }
+
+          .home-stats-mobile {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 10px 0 18px;
           }
         }
       `}</style>
 
+      {/* Mobile search bar — only visible on small screens */}
+      <button
+        type="button"
+        className="home-mobile-search"
+        onClick={() => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("rs:open-search"));
+          }
+        }}
+        style={{
+          width: "100%",
+          alignItems: "center",
+          gap: 10,
+          height: 44,
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.1)",
+          background: "rgba(255,255,255,0.04)",
+          color: "#7f7f7f",
+          fontSize: 14,
+          cursor: "pointer",
+          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+          textAlign: "left",
+          padding: "0 14px",
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ flexShrink: 0 }}
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <span>Search films, series, books…</span>
+      </button>
+
       <section className="home-hero-grid">
         <div
+          className="home-hero-card"
           style={{
             position: "relative",
             overflow: "hidden",
@@ -950,9 +1012,9 @@ export default function HomeDashboardClient({
           <h1
             style={{
               margin: 0,
-              fontSize: "clamp(2.1rem, 7vw, 52px)",
-              lineHeight: 0.96,
-              letterSpacing: "-2.4px",
+              fontSize: "clamp(1.6rem, 6vw, 52px)",
+              lineHeight: 1.0,
+              letterSpacing: "clamp(-1px, -0.3vw, -2.4px)",
               fontWeight: 600,
               maxWidth: 720,
             }}
@@ -961,24 +1023,25 @@ export default function HomeDashboardClient({
           </h1>
 
           <p
+            className="home-hero-body"
             style={{
-              margin: "12px 0 0",
+              margin: "10px 0 0",
               color: "#c7c7c7",
-              fontSize: "clamp(14px, 3.8vw, 17px)",
-              lineHeight: 1.52,
+              fontSize: "clamp(13px, 3vw, 16px)",
+              lineHeight: 1.55,
               maxWidth: 760,
             }}
           >
             Pick up where you left off, revisit your latest thoughts, and discover
-            what to watch or read next across films, series, and books.
+            what to watch or read next.
           </p>
 
           <div
             style={{
               display: "flex",
-              gap: 12,
+              gap: 10,
               flexWrap: "wrap",
-              marginTop: 20,
+              marginTop: "clamp(14px, 3vw, 22px)",
             }}
           >
             <Link
@@ -986,15 +1049,16 @@ export default function HomeDashboardClient({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                height: 42,
-                padding: "0 18px",
+                height: 40,
+                padding: "0 16px",
                 borderRadius: 999,
                 background: "white",
                 color: "black",
                 textDecoration: "none",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                letterSpacing: "0.01em",
               }}
             >
               Discover films
@@ -1005,15 +1069,16 @@ export default function HomeDashboardClient({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                height: 42,
-                padding: "0 18px",
+                height: 40,
+                padding: "0 16px",
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.12)",
                 background: "rgba(255,255,255,0.04)",
                 color: "white",
                 textDecoration: "none",
-                fontSize: 14,
+                fontSize: 13,
                 fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                letterSpacing: "0.01em",
               }}
             >
               Explore series
@@ -1022,6 +1087,7 @@ export default function HomeDashboardClient({
         </div>
 
         <div
+          className="home-stats-card"
           style={{
             borderRadius: 30,
             border: "1px solid rgba(255,255,255,0.08)",
@@ -1110,6 +1176,51 @@ export default function HomeDashboardClient({
           </div>
         </div>
       </section>
+
+      {/* Mobile stats strip — replaces the hidden sidebar on small screens */}
+      <div className="home-stats-mobile">
+        {[
+          { label: "Diary", value: quickStats.diaryCount },
+          { label: "Watchlist", value: quickStats.watchlistCount },
+          { label: "Books", value: quickStats.readingShelfCount },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            style={{
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              padding: "10px 12px",
+              textAlign: "center",
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 22,
+                lineHeight: 1,
+                letterSpacing: "-0.8px",
+                fontWeight: 600,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {stat.value}
+            </h3>
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: "#8f8f8f",
+                fontSize: 11,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              {stat.label}
+            </p>
+          </div>
+        ))}
+      </div>
 
       <section style={{ marginBottom: 28 }}>
         <div

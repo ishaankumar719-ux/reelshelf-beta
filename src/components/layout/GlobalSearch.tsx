@@ -49,6 +49,17 @@ export default function GlobalSearch() {
   }, [])
 
   useEffect(() => {
+    function handleOpenSearch() { setIsMobileOpen(true) }
+    function handleCloseSearch() { setIsMobileOpen(false); setIsDesktopOpen(false); setActiveIndex(-1) }
+    window.addEventListener("rs:open-search", handleOpenSearch)
+    window.addEventListener("rs:close-search", handleCloseSearch)
+    return () => {
+      window.removeEventListener("rs:open-search", handleOpenSearch)
+      window.removeEventListener("rs:close-search", handleCloseSearch)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!mounted) return
 
     function onKeyDown(event: KeyboardEvent) {
@@ -225,46 +236,83 @@ export default function GlobalSearch() {
 
   const overlay = mounted && isMobileOpen
     ? createPortal(
-        <div className="absolute inset-0 z-[70] min-h-[100dvh] bg-[#05050b] md:hidden">
-          <div className="mx-auto flex min-h-[100dvh] max-w-[1600px] flex-col px-4 pb-6 pt-4">
-            <div className="flex items-center gap-3 border-b border-white/8 pb-4">
-              <span className="text-white/35">
-                <SearchIcon />
-              </span>
-              <div className="flex-1">
-                <SearchInput
-                  value={query}
-                  onChange={handleInputChange}
-                  onKeyDown={handleInputKeyDown}
-                  inputRef={inputRef}
-                  autoFocus
-                  isFocused
-                  activeDescendantId={activeIndex >= 0 ? `global-search-option-${activeIndex}` : null}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  clear()
-                  closeAll()
-                }}
-                className="text-sm text-white/68"
-              >
-                Cancel
-              </button>
+        <div
+          className="md:hidden"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 70,
+            background: "#05050b",
+            display: "flex",
+            flexDirection: "column",
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+        >
+          {/* Search bar header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "12px 16px 12px",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ color: "rgba(255,255,255,0.35)", flexShrink: 0 }}>
+              <SearchIcon />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SearchInput
+                value={query}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyDown}
+                inputRef={inputRef}
+                autoFocus
+                isFocused
+                activeDescendantId={activeIndex >= 0 ? `global-search-option-${activeIndex}` : null}
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                clear()
+                closeAll()
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "6px 4px",
+                cursor: "pointer",
+                color: "rgba(255,255,255,0.65)",
+                fontSize: 14,
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                flexShrink: 0,
+                minHeight: 44,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
 
-            <SearchResults
-              results={results}
-              recentResults={recentResults}
-              recentQueries={recentQueries}
-              isLoading={isLoading}
-              query={query}
-              onSelect={handleSelect}
-              onQuerySelect={setQuery}
-              variant="overlay"
-              activeIndex={activeIndex}
-            />
+          {/* Scrollable results */}
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div style={{ padding: "0 16px 24px" }}>
+              <SearchResults
+                results={results}
+                recentResults={recentResults}
+                recentQueries={recentQueries}
+                isLoading={isLoading}
+                query={query}
+                onSelect={handleSelect}
+                onQuerySelect={setQuery}
+                variant="overlay"
+                activeIndex={activeIndex}
+              />
+            </div>
           </div>
         </div>,
         document.body
@@ -273,6 +321,7 @@ export default function GlobalSearch() {
 
   return (
     <>
+      {/* Desktop search bar — shown below header, hidden on mobile */}
       <div className="hidden border-b border-white/8 bg-[#07070d] md:block">
         <div className="mx-auto flex h-[52px] max-w-[1600px] items-center justify-end px-6">
           <div ref={desktopShellRef} className="w-full max-w-[400px] min-w-[240px]">
@@ -288,17 +337,6 @@ export default function GlobalSearch() {
             />
           </div>
         </div>
-      </div>
-
-      <div className="sticky top-0 z-40 h-0 md:hidden">
-        <button
-          type="button"
-          onClick={() => setIsMobileOpen(true)}
-          aria-label="Open search"
-          className="absolute right-[52px] top-[10px] inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/82"
-        >
-          <SearchIcon />
-        </button>
       </div>
 
       {dropdown}

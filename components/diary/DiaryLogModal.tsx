@@ -121,16 +121,16 @@ const SLIDER_CSS = `
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 2px;
-    border-radius: 1px;
+    height: 3px;
+    border-radius: 2px;
     outline: none;
     cursor: pointer;
   }
   .rs-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: rgba(255,255,255,0.95);
     box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.55), 0 0 14px rgba(255,255,255,0.08);
@@ -139,15 +139,15 @@ const SLIDER_CSS = `
   }
   .rs-slider:focus::-webkit-slider-thumb,
   .rs-slider:hover::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.1), 0 2px 10px rgba(0,0,0,0.6), 0 0 18px rgba(255,255,255,0.12);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.6), 0 0 18px rgba(255,255,255,0.12);
   }
   .rs-slider:active::-webkit-slider-thumb {
     cursor: grabbing;
-    transform: scale(1.18);
+    transform: scale(1.15);
   }
   .rs-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
+    width: 20px;
+    height: 20px;
     border: none;
     border-radius: 50%;
     background: rgba(255,255,255,0.95);
@@ -604,41 +604,65 @@ export default function DiaryLogModal({
     <>
       <style>{`
         @keyframes reelshelf-log-fade {
-          from { opacity: 0; transform: translateY(8px); }
+          from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
         ${SLIDER_CSS}
+
+        /* Bottom-sheet on mobile, centred overlay on desktop */
+        .rs-log-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.8);
+          z-index: 75;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+        }
+        .rs-log-sheet {
+          width: min(460px, 100%);
+          max-height: 92dvh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          background: #0f0f1e;
+          border: 0.5px solid rgba(255,255,255,0.12);
+          border-radius: 20px 20px 0 0;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 -24px 64px rgba(0,0,0,0.5);
+          padding: 16px 20px max(20px, env(safe-area-inset-bottom, 20px));
+          animation: reelshelf-log-fade 220ms ease-out;
+        }
+        @media (min-width: 520px) {
+          .rs-log-backdrop {
+            align-items: center;
+            padding: 16px;
+          }
+          .rs-log-sheet {
+            border-radius: 18px;
+            max-height: calc(100dvh - 48px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 28px 80px rgba(0,0,0,0.5);
+            padding: 24px;
+          }
+        }
       `}</style>
       <div
         onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.75)",
-          zIndex: 50,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)",
-        }}
+        className="rs-log-backdrop"
       >
         <div
           onClick={(event) => event.stopPropagation()}
-          style={{
-            width: "min(460px, 100%)",
-            maxHeight: "calc(100dvh - 48px)",
-            overflowY: "auto",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            background: "#0f0f1e",
-            border: "0.5px solid rgba(255,255,255,0.12)",
-            borderRadius: 16,
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.06), 0 28px 80px rgba(0,0,0,0.42)",
-            padding: 24,
-            animation: "reelshelf-log-fade 200ms ease-out",
-          }}
+          className="rs-log-sheet"
         >
+          {/* Drag handle — mobile only */}
+          <div
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              background: "rgba(255,255,255,0.14)",
+              margin: "0 auto 16px",
+            }}
+          />
           <div
             style={{
               position: "relative",
@@ -959,16 +983,18 @@ export default function DiaryLogModal({
             disabled={saving}
             style={{
               width: "100%",
-              marginTop: 22,
+              marginTop: 20,
               border: "none",
               borderRadius: 14,
               background: "#1D9E75",
               color: "white",
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: 600,
-              padding: "14px 16px",
+              padding: "16px 16px",
+              minHeight: 52,
               cursor: saving ? "wait" : "pointer",
               opacity: saving ? 0.75 : 1,
+              letterSpacing: "0.01em",
             }}
           >
             {saving ? "Saving…" : "Log to ReelShelf"}

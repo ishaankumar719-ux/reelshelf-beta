@@ -459,9 +459,9 @@ export default async function BookDetailPage({
             <h1
               style={{
                 margin: 0,
-                fontSize: 56,
-                lineHeight: 1.02,
-                letterSpacing: "-2px",
+                fontSize: "clamp(26px, 7vw, 56px)",
+                lineHeight: 1.04,
+                letterSpacing: "clamp(-0.6px, -0.2vw, -2px)",
                 fontWeight: 500,
               }}
             >

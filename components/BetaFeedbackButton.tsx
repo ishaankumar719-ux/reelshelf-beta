@@ -113,7 +113,7 @@ export default function BetaFeedbackButton() {
         aria-label="Send feedback"
         style={{
           position: "fixed",
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 60px)",
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 86px)",
           right: 14,
           zIndex: 48,
           height: 34,

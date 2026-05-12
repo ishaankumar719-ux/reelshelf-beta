@@ -156,12 +156,26 @@ export default function StatsClient({ entries }: StatsClientProps) {
   const unratedCount = totalEntries - ratedEntries.length
 
   return (
-    <main style={{ padding: "32px 20px 56px", background: "#08080f", minHeight: "100vh" }}>
+    <main style={{ minHeight: "100vh" }}>
+      <style>{`
+        .stats-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-bottom: 32px;
+        }
+        @media (min-width: 600px) {
+          .stats-stat-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+          }
+        }
+      `}</style>
       <div style={{ maxWidth: "1020px", margin: "0 auto" }}>
-        <header style={{ marginBottom: "40px" }}>
+        <header style={{ marginBottom: "clamp(24px, 4vw, 40px)" }}>
           <h1
             style={{
-              fontSize: "26px",
+              fontSize: "clamp(22px, 5vw, 28px)",
               fontWeight: 500,
               letterSpacing: "-0.6px",
               color: "rgba(255,255,255,0.92)",
@@ -172,7 +186,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
           </h1>
           <p
             style={{
-              fontSize: "14px",
+              fontSize: "clamp(12px, 2.5vw, 14px)",
               color: "rgba(255,255,255,0.4)",
               marginTop: "6px",
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
@@ -182,14 +196,7 @@ export default function StatsClient({ entries }: StatsClientProps) {
           </p>
         </header>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "12px",
-            marginBottom: "36px",
-          }}
-        >
+        <section className="stats-stat-grid">
           {[
             { label: "Films logged", value: `${filmsCount}` },
             { label: "Avg rating", value: avgRating ? `${avgRating.toFixed(1)} / 10` : "—" },
@@ -202,12 +209,12 @@ export default function StatsClient({ entries }: StatsClientProps) {
                 background: "rgba(255,255,255,0.04)",
                 border: "0.5px solid rgba(255,255,255,0.08)",
                 borderRadius: "12px",
-                padding: "20px",
+                padding: "clamp(14px, 3vw, 20px)",
               }}
             >
               <div
                 style={{
-                  fontSize: "28px",
+                  fontSize: "clamp(20px, 4vw, 28px)",
                   fontWeight: 500,
                   letterSpacing: "-0.5px",
                   fontVariantNumeric: "tabular-nums",
@@ -219,9 +226,9 @@ export default function StatsClient({ entries }: StatsClientProps) {
               </div>
               <div
                 style={{
-                  marginTop: "8px",
+                  marginTop: "6px",
                   fontSize: "10px",
-                  letterSpacing: "0.06em",
+                  letterSpacing: "0.05em",
                   textTransform: "uppercase",
                   color: "rgba(255,255,255,0.34)",
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
@@ -261,9 +268,9 @@ export default function StatsClient({ entries }: StatsClientProps) {
         <section
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "16px",
-            marginBottom: "40px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+            gap: "12px",
+            marginBottom: "36px",
           }}
         >
           <div

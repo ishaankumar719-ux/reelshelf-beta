@@ -80,7 +80,8 @@ function FilterButton({
       type="button"
       onClick={onClick}
       style={{
-        height: 36,
+        height: 40,
+        minHeight: 40,
         padding: "0 14px",
         borderRadius: 999,
         border: active
@@ -352,9 +353,13 @@ export default function DiaryPage() {
       <section
         style={{
           display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 14,
+          gap: 8,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          marginBottom: 10,
+          paddingBottom: 2,
         }}
       >
         <FilterButton active={mediaFilter === "all"} label="All" onClick={() => setMediaFilter("all")} />
@@ -366,9 +371,13 @@ export default function DiaryPage() {
       <section
         style={{
           display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 14,
+          gap: 8,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          marginBottom: 10,
+          paddingBottom: 2,
         }}
       >
         <FilterButton active={venueFilter === "all"} label="All" onClick={() => setVenueFilter("all")} />
@@ -379,9 +388,13 @@ export default function DiaryPage() {
       <section
         style={{
           display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 24,
+          gap: 8,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          marginBottom: 20,
+          paddingBottom: 2,
         }}
       >
         <FilterButton active={filter === "recent" || filter === "all"} label="Recent" onClick={() => setFilter("recent")} />
@@ -417,9 +430,9 @@ export default function DiaryPage() {
           <h2
             style={{
               margin: 0,
-              fontSize: 34,
-              lineHeight: 1.05,
-              letterSpacing: "-1.2px",
+              fontSize: "clamp(22px, 5vw, 34px)",
+              lineHeight: 1.08,
+              letterSpacing: "-0.8px",
               fontWeight: 500,
             }}
           >

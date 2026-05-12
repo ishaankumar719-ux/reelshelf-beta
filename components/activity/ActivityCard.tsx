@@ -533,15 +533,15 @@ function CommentPanel({
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Add a comment… (⌘↵ to post)"
+                placeholder="Add a comment…"
                 rows={2}
                 style={{
                   flex: 1,
                   background: "rgba(255,255,255,0.04)",
                   border: "0.5px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  fontSize: 13,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  fontSize: 14,
                   color: "rgba(255,255,255,0.78)",
                   resize: "none",
                   outline: "none",
@@ -561,9 +561,10 @@ function CommentPanel({
                 onClick={() => void handleSubmit()}
                 disabled={!canSubmit}
                 style={{
-                  padding: "7px 14px",
-                  borderRadius: 8,
-                  fontSize: 12,
+                  padding: "10px 16px",
+                  minHeight: 44,
+                  borderRadius: 10,
+                  fontSize: 13,
                   fontWeight: 600,
                   border: "none",
                   cursor: canSubmit ? "pointer" : "not-allowed",
@@ -638,10 +639,10 @@ function CommentPanel({
                           onChange={(e) => setGifSearch(e.target.value)}
                           placeholder="Search GIFs…"
                           autoFocus
-                          style={{ width: "100%", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", padding: "6px 10px", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                          style={{ width: "100%", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", padding: "10px 12px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", minHeight: 44 }}
                         />
                       </div>
-                      <div style={{ maxHeight: 200, overflowY: "auto", padding: "0 8px 8px" }}>
+                      <div style={{ maxHeight: 240, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 8px 8px" }}>
                         {gifLoading ? (
                           <p style={{ margin: 0, padding: "14px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: "inherit" }}>Loading…</p>
                         ) : gifResults.length === 0 ? (
@@ -1066,7 +1067,7 @@ export default function ActivityCard({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 5,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 500,
                     color: liked
                       ? "rgba(255,90,90,0.9)"
@@ -1074,7 +1075,8 @@ export default function ActivityCard({
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    padding: 0,
+                    padding: "6px 2px",
+                    minHeight: 36,
                     transition: "color 0.15s ease, transform 0.15s cubic-bezier(0.34,1.56,0.64,1)",
                     transform: liked ? "scale(1.08)" : "scale(1)",
                   }}
@@ -1091,7 +1093,7 @@ export default function ActivityCard({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 5,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 500,
                     color: commentsOpen
                       ? "rgba(255,255,255,0.7)"
@@ -1099,7 +1101,8 @@ export default function ActivityCard({
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    padding: 0,
+                    padding: "6px 2px",
+                    minHeight: 36,
                     transition: "color 0.15s ease",
                   }}
                 >

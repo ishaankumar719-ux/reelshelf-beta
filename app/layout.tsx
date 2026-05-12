@@ -99,7 +99,14 @@ export default async function RootLayout({
 
           @media (max-width: 760px) {
             .app-shell-main {
-              padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 86px);
+              /* 72px bottom nav + safe-area so content clears the tab bar */
+              padding: 16px 14px calc(env(safe-area-inset-bottom, 0px) + 80px);
+            }
+          }
+
+          @media (max-width: 390px) {
+            .app-shell-main {
+              padding: 12px 12px calc(env(safe-area-inset-bottom, 0px) + 80px);
             }
           }
         `}</style>
@@ -107,7 +114,7 @@ export default async function RootLayout({
           <DiaryLogProvider>
             <AppNav />
             <GlobalSearch />
-            <main className="app-shell-main">
+            <main className="app-shell-main rs-page-root">
               {children}
             </main>
             <BetaFeedbackButton />

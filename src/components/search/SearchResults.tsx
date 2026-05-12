@@ -94,6 +94,7 @@ export default function SearchResults({
                         result={result}
                         onSelect={() => onSelect(result)}
                         active={activeIndex === runningIndex}
+                        mobileFriendly={variant === "overlay"}
                       />
                     )
                   })}
@@ -119,6 +120,7 @@ export default function SearchResults({
                       result={result}
                       onSelect={() => onSelect(result)}
                       active={activeIndex === runningIndex}
+                      mobileFriendly={variant === "overlay"}
                     />
                   )
                 })}
@@ -139,6 +141,7 @@ export default function SearchResults({
                       result={result}
                       onSelect={() => onSelect(result)}
                       active={activeIndex === runningIndex}
+                      mobileFriendly={variant === "overlay"}
                     />
                   )
                 })}
@@ -159,6 +162,7 @@ export default function SearchResults({
                       result={result}
                       onSelect={() => onSelect(result)}
                       active={activeIndex === runningIndex}
+                      mobileFriendly={variant === "overlay"}
                     />
                   )
                 })}
@@ -179,6 +183,7 @@ export default function SearchResults({
                       result={result}
                       onSelect={() => onSelect(result)}
                       active={activeIndex === runningIndex}
+                      mobileFriendly={variant === "overlay"}
                     />
                   )
                 })}
