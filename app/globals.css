@@ -217,8 +217,3 @@ img {
   }
 }
 
-/* Ensure no element can overflow viewport width on mobile */
-@media (max-width: 760px) {
-  .rs-page-root * { max-width: 100vw; }
-  .rs-page-root img { max-width: 100%; }
-}

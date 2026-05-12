@@ -316,8 +316,11 @@ export function AuthProvider({
   const [profileResolved, setProfileResolved] = useState(
     !initialUser || Boolean(initialProfile)
   );
+  // Only start in loading state when we have a user from SSR but no profile yet.
+  // Never start as loading for unauthenticated visitors — that caused a permanent
+  // "Loading profile..." overlay on mobile Safari for every anonymous user.
   const [loading, setLoading] = useState(
-    configured ? Boolean(initialUser && !initialProfile) || !initialUser : false
+    configured && Boolean(initialUser) && !initialProfile
   );
   const [syncing, setSyncing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -337,25 +340,48 @@ export function AuthProvider({
     let mounted = true;
 
     async function bootstrap() {
-      setLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        // Fetch session first — do NOT show loading overlay yet. Anonymous
+        // users must never see "Loading profile…"; we only show it once we
+        // confirm there is a signed-in user whose profile we need to fetch.
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      setUser(session?.user ?? null);
-      const profileResult = await resolveProfileForUser(session?.user ?? null);
-      if (!mounted) return;
-      setProfile((current) => profileResult.profile ?? current ?? null);
-      setProfileResolved(profileResult.resolved);
-      setLoading(false);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
+        if (!session?.user) {
+          // No session — resolve immediately, no loading state needed.
+          setProfile(null);
+          setProfileResolved(true);
+          return;
+        }
+
+        // Authenticated user: show loading while we fetch their profile.
+        setLoading(true);
+        const profileResult = await resolveProfileForUser(session.user);
+        if (!mounted) return;
+        setProfile((current) => profileResult.profile ?? current ?? null);
+        setProfileResolved(profileResult.resolved);
+
         setSyncing(true);
         await syncAllUserData();
         if (mounted) {
           setSyncing(false);
+        }
+      } catch (err) {
+        // Network error or Supabase outage — always clear loading so the app
+        // remains usable. User can refresh if they need to sign in.
+        console.error("[AUTH] bootstrap error:", err);
+        if (mounted) {
+          setProfileResolved(true);
+        }
+      } finally {
+        // Guarantee loading is cleared regardless of success or failure.
+        if (mounted) {
+          setLoading(false);
         }
       }
     }
@@ -381,13 +407,21 @@ export function AuthProvider({
         }
 
         setLoading(true);
-        void resolveProfileForUser(session.user).then((profileResult) => {
-          if (mounted) {
-            setProfile((current) => profileResult.profile ?? current ?? null);
-            setProfileResolved(profileResult.resolved);
-            setLoading(false);
-          }
-        });
+        void resolveProfileForUser(session.user)
+          .then((profileResult) => {
+            if (mounted) {
+              setProfile((current) => profileResult.profile ?? current ?? null);
+              setProfileResolved(profileResult.resolved);
+              setLoading(false);
+            }
+          })
+          .catch((err) => {
+            console.error("[AUTH] onAuthStateChange profile error:", err);
+            if (mounted) {
+              setProfileResolved(true);
+              setLoading(false);
+            }
+          });
         setSyncing(true);
         void syncAllUserData().finally(() => {
           if (mounted) {

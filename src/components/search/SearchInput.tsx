@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import type { KeyboardEventHandler, RefObject } from "react"
 
 interface SearchInputProps {
@@ -37,9 +38,14 @@ export default function SearchInput({
   isFocused = false,
   activeDescendantId = null,
 }: SearchInputProps) {
-  const isMac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
+  // navigator is not available on the server — must be read after mount to avoid
+  // hydration mismatch (React error #418). Start false (Ctrl K) on both server
+  // and client; update after mount to the correct platform-specific value.
+  const [isMac, setIsMac] = useState(false)
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent))
+  }, [])
 
   return (
     <div

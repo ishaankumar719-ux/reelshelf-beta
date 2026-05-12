@@ -22,7 +22,6 @@ function resolveHref(result: SearchResult) {
 }
 
 export default function GlobalSearch() {
-  console.log("[SEARCH] GlobalSearch rendered")
   const pathname = usePathname()
   const router = useRouter()
   const { query, setQuery, results, isLoading, clear } = useSearch()
