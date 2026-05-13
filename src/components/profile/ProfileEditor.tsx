@@ -106,6 +106,8 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     authProfileRef.current = authProfile
   })
 
+  const [loadKey, setLoadKey] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "success" | "error">("idle")
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
@@ -138,9 +140,13 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
 
     const client = supabase
 
+    // cancelled prevents stale form-state writes when the effect re-runs,
+    // but it must NEVER block setIsBootstrapping(false) — that always runs
+    // in finally so the page can never be permanently stuck.
     let cancelled = false
 
     async function load() {
+      setLoadFailed(false)
       try {
         const [
           { data: authData },
@@ -169,21 +175,27 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
             .eq("user_id", userId),
         ])
 
+        // Effect was cleaned up while awaiting — don't write stale form state,
+        // but still fall through to finally so isBootstrapping is cleared.
         if (cancelled) return
 
         if (error || rushmoreError || diaryCountError) {
+          setLoadFailed(true)
           setSaveState("error")
-          setSaveMessage(error?.message || rushmoreError?.message || diaryCountError?.message || "Could not load your profile settings.")
+          setSaveMessage(
+            error?.message ||
+            rushmoreError?.message ||
+            diaryCountError?.message ||
+            "Could not load your profile settings."
+          )
           return
         }
 
         const settings = (data || {}) as Partial<OwnerProfileSettings>
         const authUser = authData.user
-        // Read authProfile from ref — snapshot at load-completion time, not dep
         const cachedProfile = authProfileRef.current
         const loadedUsername = settings.username ?? cachedProfile?.username ?? ""
         console.log("[PROFILE LOAD] row:", data || null)
-        console.log("[PROFILE LOAD] error:", "none")
         console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
         const normalizedRushmore = ((rushmoreRows || []) as Array<{
           position: 1 | 2 | 3 | 4
@@ -229,18 +241,15 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
         setRushmore(normalizedRushmore)
         setOriginalRushmore(normalizedRushmore)
       } catch (err) {
-        if (cancelled) return
         console.error("[PROFILE LOAD] unexpected error:", err)
+        setLoadFailed(true)
         setSaveState("error")
         setSaveMessage("Could not load your profile settings. Please refresh the page.")
       } finally {
-        // Always clear the loading state — even if cancelled, a subsequent
-        // load() will set it false. The only risk of leaking true is if this
-        // is the last load() run and it errored without the catch above —
-        // the finally block prevents that entirely.
-        if (!cancelled) {
-          setIsBootstrapping(false)
-        }
+        // Unconditional — must not be gated on `cancelled`. If gated,
+        // React StrictMode's double-invoke (or any other cleanup timing)
+        // leaves isBootstrapping=true permanently and the page is stuck.
+        setIsBootstrapping(false)
       }
     }
 
@@ -249,13 +258,12 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     return () => {
       cancelled = true
     }
-    // authProfile is intentionally excluded from deps — it changes reference on
-    // every AuthProvider render (useMemo produces new objects for loading/syncing
-    // transitions). Including it caused load() to be cancelled before reaching
-    // setIsBootstrapping(false), permanently freezing the settings page.
-    // The ref (authProfileRef) provides the fallback values without the instability.
+    // authProfile intentionally excluded — changes object reference on every
+    // AuthProvider render, which would restart load() and re-cancel it before
+    // setIsBootstrapping(false) runs. The ref (authProfileRef) gives load()
+    // the fallback values without the dep-array instability.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
+  }, [userId, loadKey])
 
   useEffect(() => {
     if (!username.trim()) {
@@ -520,7 +528,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
 
         {saveMessage ? (
           <div
-            className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+            className={`mt-5 flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-sm ${
               saveState === "error"
                 ? "border-rose-500/30 bg-rose-500/10 text-rose-100"
                 : saveState === "success"
@@ -528,7 +536,21 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
                   : "border-white/10 bg-white/[0.04] text-white/70"
             }`}
           >
-            {saveMessage}
+            <span>{saveMessage}</span>
+            {loadFailed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveState("idle")
+                  setSaveMessage(null)
+                  setIsBootstrapping(true)
+                  setLoadKey((k) => k + 1)
+                }}
+                className="shrink-0 rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-rose-200 hover:bg-rose-500/20"
+              >
+                Retry
+              </button>
+            ) : null}
           </div>
         ) : null}
 
