@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export type BadgeRarity = "common" | "rare" | "epic" | "legendary"
-export type BadgeCategory = "film" | "tv" | "book" | "cinema" | "reviews" | "streaks" | "social" | "prestige"
+export type BadgeCategory = "film" | "tv" | "book" | "cinema" | "reviews" | "streaks" | "social" | "prestige" | "legacy"
 
 export interface BadgeDefinition {
   id: string
@@ -15,7 +15,14 @@ export interface BadgeDefinition {
   requirement_type: string
   requirement_value: number
   xp: number
+  is_limited: boolean
+  retired_at: string | null
 }
+
+// Configurable cutoff: accounts created before this date qualify for founding badges.
+// Update this when public launch occurs.
+export const BETA_LAUNCH_CUTOFF =
+  process.env.NEXT_PUBLIC_BETA_LAUNCH_CUTOFF ?? "2026-09-01T00:00:00.000Z"
 
 export interface DisplayBadge extends BadgeDefinition {
   earned: boolean
@@ -43,6 +50,13 @@ export const RARITY_GLOW: Record<BadgeRarity, string> = {
   epic:      "rgba(167,139,250,0.18)",
   legendary: "rgba(251,191,36,0.22)",
 }
+
+// Legacy badges: gold/platinum/obsidian aesthetic — distinct from normal rarity
+export const LEGACY_BORDER_COLOR = "rgba(212,175,55,0.85)"      // antique gold
+export const LEGACY_GLOW_COLOR   = "rgba(212,175,55,0.22)"
+export const LEGACY_TEXT_COLOR   = "rgba(218,185,75,0.95)"
+export const LEGACY_BG_GRADIENT  =
+  "radial-gradient(circle at 40% 30%, rgba(212,175,55,0.14), rgba(8,8,16,0.97))"
 
 export type LevelTier = "Collector" | "Enthusiast" | "Critic" | "Curator" | "Auteur"
 
@@ -160,7 +174,7 @@ export async function fetchBadgesForProfile(
   const [defsResult, userResult] = await Promise.all([
     supabase
       .from("badges")
-      .select("id, slug, name, description, category, rarity, icon, hidden, requirement_type, requirement_value, xp")
+      .select("id, slug, name, description, category, rarity, icon, hidden, requirement_type, requirement_value, xp, is_limited, retired_at")
       .order("category", { ascending: true })
       .order("xp", { ascending: true }),
     supabase
