@@ -257,10 +257,48 @@ img {
   100% { opacity: 0.55; }
 }
 
+/* Whiplash — stage light beam pulse */
+@keyframes rs-drum-pulse {
+  0%   { opacity: 0.18; }
+  40%  { opacity: 0.55; }
+  55%  { opacity: 0.28; }
+  75%  { opacity: 0.60; }
+  100% { opacity: 0.18; }
+}
+
+/* Babylon — film grain position shift (stepped for noise effect) */
+@keyframes rs-grain-shift {
+  0%   { background-position: 0 0; }
+  20%  { background-position: -12px 8px; }
+  40%  { background-position: 4px -16px; }
+  60%  { background-position: -8px 12px; }
+  80%  { background-position: 10px -4px; }
+  100% { background-position: 0 0; }
+}
+
+/* Fight Club — brief chromatic glitch on mount */
+@keyframes rs-glitch-kick {
+  0%   { opacity: 0;   transform: translate(0,0); }
+  8%   { opacity: 0.7; transform: translate(-3px, 1px); filter: hue-rotate(-30deg); }
+  16%  { opacity: 0.3; transform: translate(3px, -1px); filter: hue-rotate(20deg); }
+  24%  { opacity: 0.5; transform: translate(-1px, 2px); }
+  32%  { opacity: 0;   transform: translate(0,0); }
+  100% { opacity: 0; }
+}
+
+/* LOTR — golden ring glow breathe */
+@keyframes rs-ring-breathe {
+  0%   { opacity: 0.4; transform: scale(1); }
+  50%  { opacity: 0.9; transform: scale(1.04); }
+  100% { opacity: 0.4; transform: scale(1); }
+}
+
 /* Mobile: disable heavy particle animations to protect performance */
 @media (max-width: 760px) {
   @keyframes rs-sand-drift    { 0%,100% { opacity: 0; } }
   @keyframes rs-sparkle-float { 0%,100% { opacity: 0; } }
+  @keyframes rs-drum-pulse    { 0%,100% { opacity: 0; } }
+  @keyframes rs-ring-breathe  { 0%,100% { opacity: 0.4; transform: scale(1); } }
 }
 
 /* ─── Mobile-only overrides ──────────────────────────────────────────────── */
