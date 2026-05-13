@@ -381,6 +381,41 @@ export async function deleteDiaryEntryFromBackend(
     .eq("episode_number", options?.episodeNumber || 0);
 }
 
+// Delete a diary entry by its database UUID (RLS enforces ownership).
+export async function deleteEntryByDbId(entryDbId: string): Promise<{ error: string | null }> {
+  const client = createSupabaseBrowserClient();
+  const user = await getCurrentUser();
+
+  if (!client || !user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { error } = await client
+    .from("diary_entries")
+    .delete()
+    .eq("id", entryDbId)
+    .eq("user_id", user.id);
+
+  return { error: error?.message ?? null };
+}
+
+// Fetch a single diary entry by UUID (owner-only via RLS).
+export async function fetchEntryByDbId(entryDbId: string): Promise<import("../../types/diary").DiaryEntry | null> {
+  const client = createSupabaseBrowserClient();
+  const user = await getCurrentUser();
+
+  if (!client || !user) return null;
+
+  const { data } = await client
+    .from("diary_entries")
+    .select("*")
+    .eq("id", entryDbId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return (data as import("../../types/diary").DiaryEntry | null) ?? null;
+}
+
 export async function syncSavedItemsWithBackend(localEntries: PersistedSavedItem[]) {
   const client = createSupabaseBrowserClient();
   const user = await getCurrentUser();

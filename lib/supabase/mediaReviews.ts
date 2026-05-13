@@ -18,12 +18,13 @@ export type MediaReview = {
   favourite: boolean
   rewatch: boolean
   containsSpoilers: boolean
+  watchedInCinema: boolean
   attachmentUrl: string | null
   attachmentType: "image" | "gif" | null
 }
 
 const ENTRY_SELECT =
-  "id, user_id, rating, reelshelf_score, review, watched_date, saved_at, favourite, rewatch, contains_spoilers, attachment_url, attachment_type, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating"
+  "id, user_id, rating, reelshelf_score, review, watched_date, saved_at, favourite, rewatch, contains_spoilers, watched_in_cinema, attachment_url, attachment_type, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating"
 
 type RawEntry = {
   id: string
@@ -36,6 +37,7 @@ type RawEntry = {
   favourite: boolean
   rewatch: boolean
   contains_spoilers: boolean
+  watched_in_cinema: boolean
   attachment_url: string | null
   attachment_type: "image" | "gif" | null
   score_rating: number | null
@@ -86,6 +88,7 @@ function toMediaReview(row: RawEntry, profile: ProfileRow): MediaReview {
     favourite: row.favourite,
     rewatch: row.rewatch,
     containsSpoilers: row.contains_spoilers,
+    watchedInCinema: row.watched_in_cinema ?? false,
     attachmentUrl: row.attachment_url,
     attachmentType: row.attachment_type,
   }

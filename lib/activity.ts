@@ -5,6 +5,7 @@ export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | 
 export interface ActivityEvent {
   id: string
   type: ActivityType
+  user_id: string
   profile: {
     username: string | null
     display_name: string | null
@@ -126,12 +127,14 @@ export function buildActivityEventsFromSources({
   savedRows = [],
   rushmoreRows = [],
   profile,
+  userId,
   limit = 50,
 }: {
   diaryRows: DiaryActivityRow[]
   savedRows?: SavedActivityRow[]
   rushmoreRows?: RushmoreActivityRow[]
   profile: ActivityEvent["profile"]
+  userId: string
   limit?: number
 }): ActivityEvent[] {
   const diaryEvents: ActivityEvent[] = diaryRows.map((row) => {
@@ -141,6 +144,7 @@ export function buildActivityEventsFromSources({
     return {
       id: `diary-${row.id}`,
       type,
+      user_id: userId,
       profile,
       title: row.title,
       media_type: row.media_type,
@@ -160,6 +164,7 @@ export function buildActivityEventsFromSources({
   const savedEvents: ActivityEvent[] = savedRows.map((row) => ({
     id: `saved-${row.id}`,
     type: "watchlisted",
+    user_id: userId,
     profile,
     title: row.title,
     media_type: row.media_type,
@@ -177,6 +182,7 @@ export function buildActivityEventsFromSources({
           {
             id: "rushmore-update",
             type: "rushmore",
+            user_id: userId,
             profile,
             title: "Mount Rushmore",
             media_type: "movie",
@@ -236,6 +242,7 @@ export async function fetchActivityEvents(
     savedRows: (savedRes.data ?? []) as SavedActivityRow[],
     rushmoreRows: (rushmoreRes.data ?? []) as RushmoreActivityRow[],
     profile,
+    userId,
     limit,
   })
 }

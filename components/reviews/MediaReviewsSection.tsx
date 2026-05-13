@@ -438,6 +438,7 @@ export default function MediaReviewsSection({
                   ownerUsername={review.username}
                   ownerDisplayName={review.displayName}
                   ownerAvatarUrl={review.avatarUrl}
+                  watchedInCinema={review.watchedInCinema}
                   initialLikeCount={s?.likeCount ?? 0}
                   initialCommentCount={s?.commentCount ?? 0}
                   isLiked={s?.isLiked ?? false}

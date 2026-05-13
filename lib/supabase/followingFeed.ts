@@ -86,6 +86,7 @@ export async function fetchFollowingFeed(
     return {
       id: `following-diary-${row.id}`,
       type,
+      user_id: row.user_id,
       profile: {
         username: profile.username,
         display_name: profile.display_name,

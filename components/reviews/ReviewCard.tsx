@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "../AuthProvider";
-import { getLayerDefs, hasReviewLayers } from "../../types/diary";
+import { getLayerDefs, hasReviewLayers, EMPTY_REVIEW_LAYERS } from "../../types/diary";
 import type { ReviewLayers } from "../../types/diary";
 import { toggleDiaryEntryLike } from "../../lib/supabase/likes";
 import { createDiaryEntryComment } from "../../lib/supabase/comments";
 import type { PublicComment } from "../../lib/supabase/comments";
 import { getProfileInitials } from "../../lib/profile";
 import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
+import { deleteEntryByDbId } from "../../lib/supabase/persistence";
+import { useDiaryLog } from "../../hooks/useDiaryLog";
 
 export interface ReviewCardEntry {
   entryId: string;
@@ -28,6 +30,7 @@ export interface ReviewCardEntry {
   favourite: boolean;
   rewatch: boolean;
   containsSpoilers: boolean;
+  watchedInCinema?: boolean;
   reviewLayers: ReviewLayers | null;
   ownerUserId: string;
   ownerUsername?: string | null;
@@ -39,6 +42,7 @@ export interface ReviewCardEntry {
   initialComments?: PublicComment[];
   attachmentUrl?: string | null;
   attachmentType?: "image" | "gif" | null;
+  onDeleted?: () => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -526,6 +530,7 @@ export default function ReviewCard({
   favourite,
   rewatch,
   containsSpoilers,
+  watchedInCinema = false,
   reviewLayers,
   ownerUserId,
   ownerUsername,
@@ -537,8 +542,10 @@ export default function ReviewCard({
   initialComments = [],
   attachmentUrl,
   attachmentType,
+  onDeleted,
 }: ReviewCardEntry) {
   const { user } = useAuth();
+  const { openLog } = useDiaryLog();
   const [liked, setLiked] = useState(isLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -548,9 +555,55 @@ export default function ReviewCard({
   const [postLoading, setPostLoading] = useState(false);
   const [replyLoading, setReplyLoading] = useState<string | null>(null);
   const [reviewExpanded, setReviewExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  const isOwner = !!user && user.id === ownerUserId;
   const badge = getMediaBadgeStyles(mediaType);
   const canLike = !!user && user.id !== ownerUserId;
+
+  function handleEditClick() {
+    setMenuOpen(false);
+    openLog(
+      {
+        title,
+        media_type: mediaType,
+        year,
+        poster,
+        creator,
+        media_id: mediaId,
+      },
+      {
+        rating,
+        review,
+        watchedDate,
+        favourite,
+        rewatch,
+        containsSpoilers,
+        watchedInCinema,
+        reviewLayers: reviewLayers ?? EMPTY_REVIEW_LAYERS,
+        attachmentUrl: attachmentUrl ?? null,
+        attachmentType: attachmentType ?? null,
+      }
+    );
+  }
+
+  async function handleDeleteConfirm() {
+    setDeleteLoading(true);
+    const { error } = await deleteEntryByDbId(entryId);
+    setDeleteLoading(false);
+    if (!error) {
+      setDeleted(true);
+      onDeleted?.();
+    } else {
+      setConfirmDelete(false);
+    }
+  }
+
+  if (deleted) return null;
   const showScore = reelshelfScore !== null;
   const showRating = rating !== null;
   const scoresDiffer = showScore && showRating && reelshelfScore !== rating;
@@ -635,6 +688,119 @@ export default function ReviewCard({
             <span style={{ marginLeft: "auto", color: "rgba(255,255,255,0.24)", fontSize: 11, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
               {timeAgo(savedAt)}
             </span>
+            {isOwner ? (
+              <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => { setMenuOpen((v) => !v); setConfirmDelete(false); }}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "rgba(255,255,255,0.3)", fontSize: 16, lineHeight: 1,
+                    padding: "4px 6px", borderRadius: 6,
+                    transition: "color 0.12s ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = menuOpen ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"; }}
+                  aria-label="Entry options"
+                >
+                  ···
+                </button>
+                {menuOpen ? (
+                  <>
+                    <div
+                      style={{ position: "fixed", inset: 0, zIndex: 60 }}
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 4px)", right: 0,
+                      zIndex: 61, minWidth: 130,
+                      background: "#141420", border: "0.5px solid rgba(255,255,255,0.12)",
+                      borderRadius: 10, overflow: "hidden",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    }}>
+                      <button
+                        type="button"
+                        onClick={handleEditClick}
+                        style={{
+                          width: "100%", display: "block", padding: "10px 14px",
+                          background: "none", border: "none", cursor: "pointer",
+                          textAlign: "left", fontSize: 13,
+                          color: "rgba(255,255,255,0.78)",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                          borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+                          transition: "background 0.1s ease",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        Edit entry
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}
+                        style={{
+                          width: "100%", display: "block", padding: "10px 14px",
+                          background: "none", border: "none", cursor: "pointer",
+                          textAlign: "left", fontSize: 13,
+                          color: "rgba(239,68,68,0.85)",
+                          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                          transition: "background 0.1s ease",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        Delete entry
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ── Delete confirmation ── */}
+        {confirmDelete ? (
+          <div style={{
+            margin: "10px 16px 0",
+            padding: "12px 14px",
+            borderRadius: 10,
+            background: "rgba(239,68,68,0.06)",
+            border: "0.5px solid rgba(239,68,68,0.2)",
+          }}>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "rgba(255,255,255,0.78)", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
+              Delete this review? This cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => void handleDeleteConfirm()}
+                disabled={deleteLoading}
+                style={{
+                  padding: "7px 14px", borderRadius: 7, border: "none",
+                  background: "rgba(239,68,68,0.75)", color: "white",
+                  fontSize: 12, fontWeight: 600, cursor: deleteLoading ? "wait" : "pointer",
+                  opacity: deleteLoading ? 0.7 : 1,
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                {deleteLoading ? "Deleting…" : "Delete"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleteLoading}
+                style={{
+                  padding: "7px 14px", borderRadius: 7,
+                  border: "0.5px solid rgba(255,255,255,0.12)",
+                  background: "none", color: "rgba(255,255,255,0.5)",
+                  fontSize: 12, cursor: "pointer",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         ) : null}
 

@@ -442,6 +442,7 @@ export default async function PublicProfilePage({
       display_name: profileRow.display_name,
       avatar_url: profileRow.avatar_url,
     },
+    userId: profileRow.id,
     limit: 5,
   })
 

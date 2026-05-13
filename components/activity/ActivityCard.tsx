@@ -11,6 +11,10 @@ import {
 } from "@/lib/supabase/comments"
 import { type AttachmentValue } from "@/components/AttachmentPicker"
 import { uploadAttachment } from "@/lib/supabase/storage"
+import { useAuth } from "@/components/AuthProvider"
+import { deleteEntryByDbId, fetchEntryByDbId } from "@/lib/supabase/persistence"
+import { useDiaryLog } from "@/hooks/useDiaryLog"
+import { EMPTY_REVIEW_LAYERS } from "@/types/diary"
 
 // ─── GIPHY ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +51,7 @@ interface ActivityCardProps {
   initialLikeCount?: number
   initialCommentCount?: number
   initialHasLiked?: boolean
+  onDeleted?: () => void
 }
 
 // ─── config ──────────────────────────────────────────────────────────────────
@@ -769,18 +774,85 @@ export default function ActivityCard({
   initialLikeCount = 0,
   initialCommentCount = 0,
   initialHasLiked = false,
+  onDeleted,
 }: ActivityCardProps) {
+  const { user } = useAuth()
+  const { openLog } = useDiaryLog()
   const [hovered, setHovered] = useState(false)
   const [liked, setLiked] = useState(initialHasLiked)
   const [likeCount, setLikeCount] = useState(initialLikeCount)
   const [commentCount, setCommentCount] = useState(initialCommentCount)
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [avatarErr, setAvatarErr] = useState(false)
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleted, setDeleted] = useState(false)
+
+  const isOwner = !!user && user.id === event.user_id
+  const isDiaryOwnerEvent = isOwner && Boolean(event.diary_entry_id)
+
+  async function handleOwnerEdit() {
+    if (!event.diary_entry_id) return
+    setOwnerMenuOpen(false)
+    setEditLoading(true)
+    const entry = await fetchEntryByDbId(event.diary_entry_id)
+    setEditLoading(false)
+    if (!entry) return
+
+    openLog(
+      {
+        title: entry.title,
+        media_type: entry.media_type,
+        year: entry.year,
+        poster: entry.poster,
+        creator: entry.creator,
+        media_id: entry.media_id,
+      },
+      {
+        rating: entry.rating,
+        review: entry.review,
+        watchedDate: entry.watched_date,
+        favourite: entry.favourite,
+        rewatch: entry.rewatch,
+        containsSpoilers: entry.contains_spoilers,
+        watchedInCinema: entry.watched_in_cinema ?? false,
+        reviewLayers: {
+          score_rating: entry.score_rating,
+          cinematography_rating: entry.cinematography_rating,
+          writing_rating: entry.writing_rating,
+          performances_rating: entry.performances_rating,
+          direction_rating: entry.direction_rating,
+          rewatchability_rating: entry.rewatchability_rating,
+          emotional_impact_rating: entry.emotional_impact_rating,
+          entertainment_rating: entry.entertainment_rating,
+        },
+        attachmentUrl: entry.attachment_url,
+        attachmentType: entry.attachment_type,
+      }
+    )
+  }
+
+  async function handleOwnerDelete() {
+    if (!event.diary_entry_id) return
+    setDeleteLoading(true)
+    const { error } = await deleteEntryByDbId(event.diary_entry_id)
+    setDeleteLoading(false)
+    if (!error) {
+      setDeleted(true)
+      onDeleted?.()
+    } else {
+      setConfirmDelete(false)
+    }
+  }
 
   // Sync from feed when batch social data arrives
   useEffect(() => { setLiked(initialHasLiked) }, [initialHasLiked])
   useEffect(() => { setLikeCount(initialLikeCount) }, [initialLikeCount])
   useEffect(() => { setCommentCount(initialCommentCount) }, [initialCommentCount])
+
+  if (deleted) return null
 
   const cfg = TYPE_CONFIG[event.type]
   const name = event.profile.display_name ?? event.profile.username ?? "You"
@@ -1134,7 +1206,112 @@ export default function ActivityCard({
                 Open ↗
               </Link>
             ) : null}
+
+            {/* Owner actions (own diary events only) */}
+            {isDiaryOwnerEvent ? (
+              <div style={{ position: "relative", marginLeft: "auto" }}>
+                <button
+                  type="button"
+                  onClick={() => { setOwnerMenuOpen((v) => !v); setConfirmDelete(false); }}
+                  disabled={editLoading}
+                  style={{
+                    background: "none", border: "none", cursor: editLoading ? "wait" : "pointer",
+                    color: "rgba(255,255,255,0.28)", fontSize: 15, lineHeight: 1,
+                    padding: "6px 4px", opacity: editLoading ? 0.5 : 1,
+                  }}
+                  aria-label="Entry options"
+                >
+                  {editLoading ? "…" : "···"}
+                </button>
+                {ownerMenuOpen ? (
+                  <>
+                    <div
+                      style={{ position: "fixed", inset: 0, zIndex: 60 }}
+                      onClick={() => setOwnerMenuOpen(false)}
+                    />
+                    <div style={{
+                      position: "absolute", bottom: "calc(100% + 4px)", right: 0,
+                      zIndex: 61, minWidth: 130,
+                      background: "#141420", border: "0.5px solid rgba(255,255,255,0.12)",
+                      borderRadius: 10, overflow: "hidden",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => void handleOwnerEdit()}
+                        style={{
+                          width: "100%", display: "block", padding: "10px 14px",
+                          background: "none", border: "none", cursor: "pointer",
+                          textAlign: "left", fontSize: 13,
+                          color: "rgba(255,255,255,0.78)",
+                          borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+                          transition: "background 0.1s ease",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        Edit entry
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setOwnerMenuOpen(false); setConfirmDelete(true); }}
+                        style={{
+                          width: "100%", display: "block", padding: "10px 14px",
+                          background: "none", border: "none", cursor: "pointer",
+                          textAlign: "left", fontSize: 13,
+                          color: "rgba(239,68,68,0.85)",
+                          transition: "background 0.1s ease",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                      >
+                        Delete entry
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
+
+          {/* Delete confirmation */}
+          {confirmDelete ? (
+            <div style={{
+              marginTop: 10, padding: "10px 12px", borderRadius: 8,
+              background: "rgba(239,68,68,0.06)", border: "0.5px solid rgba(239,68,68,0.18)",
+            }}>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+                Delete this entry? This cannot be undone.
+              </p>
+              <div style={{ display: "flex", gap: 7 }}>
+                <button
+                  type="button"
+                  onClick={() => void handleOwnerDelete()}
+                  disabled={deleteLoading}
+                  style={{
+                    padding: "5px 12px", borderRadius: 6, border: "none",
+                    background: "rgba(239,68,68,0.7)", color: "white",
+                    fontSize: 12, fontWeight: 600, cursor: deleteLoading ? "wait" : "pointer",
+                    opacity: deleteLoading ? 0.7 : 1,
+                  }}
+                >
+                  {deleteLoading ? "Deleting…" : "Delete"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleteLoading}
+                  style={{
+                    padding: "5px 12px", borderRadius: 6,
+                    border: "0.5px solid rgba(255,255,255,0.1)",
+                    background: "none", color: "rgba(255,255,255,0.45)", fontSize: 12, cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Poster */}

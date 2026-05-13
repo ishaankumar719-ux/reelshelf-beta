@@ -469,6 +469,11 @@ export default function DiaryLogModal({
       setContainsSpoilers(initialEntry.containsSpoilers);
       setWatchedInCinema(initialEntry.watchedInCinema ?? false);
       setLayers(initialEntry.reviewLayers ?? EMPTY_LAYERS);
+      setAttachment(
+        initialEntry.attachmentUrl && initialEntry.attachmentType
+          ? { url: initialEntry.attachmentUrl, type: initialEntry.attachmentType }
+          : null
+      );
     } else if (!isOpen) {
       setWatchedDate(todayIso());
       setRating(null);
@@ -775,6 +780,22 @@ export default function DiaryLogModal({
                       >
                         {getMediaLabel(media.media_type)}
                       </span>
+                      {initialEntry ? (
+                        <span
+                          style={{
+                            borderRadius: 999,
+                            padding: "3px 8px",
+                            fontSize: 10,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            background: "rgba(255,255,255,0.07)",
+                            border: "0.5px solid rgba(255,255,255,0.14)",
+                            color: "rgba(255,255,255,0.45)",
+                          }}
+                        >
+                          Editing
+                        </span>
+                      ) : null}
                     </div>
                     {media.creator ? (
                       <p
@@ -997,7 +1018,7 @@ export default function DiaryLogModal({
               letterSpacing: "0.01em",
             }}
           >
-            {saving ? "Saving…" : "Log to ReelShelf"}
+            {saving ? "Saving…" : initialEntry ? "Update entry" : "Log to ReelShelf"}
           </button>
         </div>
       </div>

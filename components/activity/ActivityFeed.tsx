@@ -169,20 +169,24 @@ function FeedList({
   socialData: Record<string, SocialState>
   emptyMessage?: string
 }) {
-  if (events.length === 0) {
+  const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set())
+
+  const visible = events.filter((e) => !removedIds.has(e.id))
+
+  if (visible.length === 0) {
     return <EmptyState message={emptyMessage ?? "No activity yet"} />
   }
 
   return (
     <div>
-      {events.map((event, index) => {
+      {visible.map((event, index) => {
         const social = event.diary_entry_id ? socialData[event.diary_entry_id] : undefined
         return (
           <div
             key={event.id}
             style={{
               borderBottom:
-                index === events.length - 1
+                index === visible.length - 1
                   ? "none"
                   : "0.5px solid rgba(255,255,255,0.055)",
             }}
@@ -192,6 +196,7 @@ function FeedList({
               initialLikeCount={social?.likeCount ?? 0}
               initialCommentCount={social?.commentCount ?? 0}
               initialHasLiked={social?.hasLiked ?? false}
+              onDeleted={() => setRemovedIds((prev) => new Set(Array.from(prev).concat(event.id)))}
             />
           </div>
         )

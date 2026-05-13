@@ -132,6 +132,9 @@ export interface InitialEntryData {
   containsSpoilers: boolean
   reviewLayers: ReviewLayers
   watchedInCinema: boolean
+  // Pre-fill existing attachment when editing
+  attachmentUrl?: string | null
+  attachmentType?: "image" | "gif" | null
 }
 
 export interface LogMediaInput {
