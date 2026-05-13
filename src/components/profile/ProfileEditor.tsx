@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, type ChangeEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import { useAuth } from "@/components/AuthProvider"
 import { PROFILE_SELECT } from "@/lib/queries"
 import { normalizeDisplayName, normalizeUsername } from "@/lib/profile"
@@ -96,6 +96,16 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
   const router = useRouter()
   const { profile: authProfile } = useAuth()
 
+  // Keep a ref so load() can read the latest authProfile as a fallback without
+  // making it a useEffect dependency. authProfile changes reference on every
+  // AuthProvider re-render (useMemo produces new objects), which caused the
+  // in-flight load() to be repeatedly cancelled before setIsBootstrapping(false)
+  // could be reached — the root cause of the infinite "Loading…" screen.
+  const authProfileRef = useRef(authProfile)
+  useEffect(() => {
+    authProfileRef.current = authProfile
+  })
+
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "success" | "error">("idle")
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
@@ -131,92 +141,107 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     let cancelled = false
 
     async function load() {
-      const [
-        { data: authData },
-        { data, error },
-        { data: rushmoreRows, error: rushmoreError },
-        { count: diaryCount, error: diaryCountError },
-      ] = await Promise.all([
-        client.auth.getUser(),
-        (() => {
-          console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
-          return client
-            .from("profiles")
-            .select(PROFILE_SELECT)
-            .eq("id", userId)
-            .maybeSingle()
-        })(),
-        client
-          .from("mount_rushmore")
-          .select("position, media_id, media_type, title, year, poster_path")
-          .eq("user_id", userId)
-          .order("media_type", { ascending: true })
-          .order("position", { ascending: true }),
-        client
-          .from("diary_entries")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", userId),
-      ])
+      try {
+        const [
+          { data: authData },
+          { data, error },
+          { data: rushmoreRows, error: rushmoreError },
+          { count: diaryCount, error: diaryCountError },
+        ] = await Promise.all([
+          client.auth.getUser(),
+          (() => {
+            console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
+            return client
+              .from("profiles")
+              .select(PROFILE_SELECT)
+              .eq("id", userId)
+              .maybeSingle()
+          })(),
+          client
+            .from("mount_rushmore")
+            .select("position, media_id, media_type, title, year, poster_path")
+            .eq("user_id", userId)
+            .order("media_type", { ascending: true })
+            .order("position", { ascending: true }),
+          client
+            .from("diary_entries")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId),
+        ])
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (error || rushmoreError || diaryCountError) {
+        if (error || rushmoreError || diaryCountError) {
+          setSaveState("error")
+          setSaveMessage(error?.message || rushmoreError?.message || diaryCountError?.message || "Could not load your profile settings.")
+          return
+        }
+
+        const settings = (data || {}) as Partial<OwnerProfileSettings>
+        const authUser = authData.user
+        // Read authProfile from ref — snapshot at load-completion time, not dep
+        const cachedProfile = authProfileRef.current
+        const loadedUsername = settings.username ?? cachedProfile?.username ?? ""
+        console.log("[PROFILE LOAD] row:", data || null)
+        console.log("[PROFILE LOAD] error:", "none")
+        console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
+        const normalizedRushmore = ((rushmoreRows || []) as Array<{
+          position: 1 | 2 | 3 | 4
+          media_id: string | null
+          media_type: "movie" | "tv" | "book" | null
+          title: string | null
+          year: string | null
+          poster_path: string | null
+        }>).filter(
+          (slot): slot is MountRushmoreSlot =>
+            slot.position >= 1 &&
+            slot.position <= 4 &&
+            (slot.media_type === "movie" || slot.media_type === "tv" || slot.media_type === "book") &&
+            typeof slot.media_id === "string"
+        )
+
+        setLoadedProfile({
+          id: settings.id || userId,
+          email: settings.email || null,
+          created_at: settings.created_at || null,
+          username: settings.username || null,
+          display_name: settings.display_name || null,
+          avatar_url: settings.avatar_url || null,
+          bio: settings.bio || "",
+          favourite_film: settings.favourite_film || "",
+          favourite_series: settings.favourite_series || "",
+          favourite_book: settings.favourite_book || "",
+          website_url: settings.website_url || "",
+          is_public: settings.is_public ?? true,
+        })
+        setDebugAuthUser({ id: authUser?.id || null, email: authUser?.email || null })
+        setDebugDiaryCount(typeof diaryCount === "number" ? diaryCount : 0)
+        setUsername(loadedUsername)
+        setOriginalUsername(loadedUsername)
+        setDisplayName(settings.display_name ?? cachedProfile?.displayName ?? "")
+        setAvatarUrl(settings.avatar_url ?? cachedProfile?.avatarUrl ?? null)
+        setBio(settings.bio || "")
+        setFavouriteFilm(settings.favourite_film ?? cachedProfile?.favouriteFilm ?? "")
+        setFavouriteSeries(settings.favourite_series ?? cachedProfile?.favouriteSeries ?? "")
+        setFavouriteBook(settings.favourite_book ?? cachedProfile?.favouriteBook ?? "")
+        setWebsiteUrl(settings.website_url || "")
+        setIsPublic(settings.is_public ?? true)
+        setRushmore(normalizedRushmore)
+        setOriginalRushmore(normalizedRushmore)
+      } catch (err) {
+        if (cancelled) return
+        console.error("[PROFILE LOAD] unexpected error:", err)
         setSaveState("error")
-        setSaveMessage(error?.message || rushmoreError?.message || diaryCountError?.message || "Could not load your profile settings.")
-        setIsBootstrapping(false)
-        return
+        setSaveMessage("Could not load your profile settings. Please refresh the page.")
+      } finally {
+        // Always clear the loading state — even if cancelled, a subsequent
+        // load() will set it false. The only risk of leaking true is if this
+        // is the last load() run and it errored without the catch above —
+        // the finally block prevents that entirely.
+        if (!cancelled) {
+          setIsBootstrapping(false)
+        }
       }
-
-      const settings = (data || {}) as Partial<OwnerProfileSettings>
-      const authUser = authData.user
-      const loadedUsername = settings.username || authProfile?.username || ""
-      console.log("[PROFILE LOAD] row:", data || null)
-      console.log("[PROFILE LOAD] error:", "none")
-      console.log("[RUSHMORE LOAD] Existing slots:", rushmoreRows || [])
-      const normalizedRushmore = ((rushmoreRows || []) as Array<{
-        position: 1 | 2 | 3 | 4
-        media_id: string | null
-        media_type: "movie" | "tv" | "book" | null
-        title: string | null
-        year: string | null
-        poster_path: string | null
-      }>).filter(
-        (slot): slot is MountRushmoreSlot =>
-          slot.position >= 1 &&
-          slot.position <= 4 &&
-          (slot.media_type === "movie" || slot.media_type === "tv" || slot.media_type === "book") &&
-          typeof slot.media_id === "string"
-      )
-
-      setLoadedProfile({
-        id: settings.id || userId,
-        email: settings.email || null,
-        created_at: settings.created_at || null,
-        username: settings.username || null,
-        display_name: settings.display_name || null,
-        avatar_url: settings.avatar_url || null,
-        bio: settings.bio || "",
-        favourite_film: settings.favourite_film || "",
-        favourite_series: settings.favourite_series || "",
-        favourite_book: settings.favourite_book || "",
-        website_url: settings.website_url || "",
-        is_public: settings.is_public ?? true,
-      })
-      setDebugAuthUser({ id: authUser?.id || null, email: authUser?.email || null })
-      setDebugDiaryCount(typeof diaryCount === "number" ? diaryCount : 0)
-      setUsername(loadedUsername)
-      setOriginalUsername(loadedUsername)
-      setDisplayName(settings.display_name || authProfile?.displayName || "")
-      setAvatarUrl(settings.avatar_url || authProfile?.avatarUrl || null)
-      setBio(settings.bio || "")
-      setFavouriteFilm(settings.favourite_film || authProfile?.favouriteFilm || "")
-      setFavouriteSeries(settings.favourite_series || authProfile?.favouriteSeries || "")
-      setFavouriteBook(settings.favourite_book || authProfile?.favouriteBook || "")
-      setWebsiteUrl(settings.website_url || "")
-      setIsPublic(settings.is_public ?? true)
-      setRushmore(normalizedRushmore)
-      setOriginalRushmore(normalizedRushmore)
-      setIsBootstrapping(false)
     }
 
     void load()
@@ -224,7 +249,13 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     return () => {
       cancelled = true
     }
-  }, [userId, authProfile])
+    // authProfile is intentionally excluded from deps — it changes reference on
+    // every AuthProvider render (useMemo produces new objects for loading/syncing
+    // transitions). Including it caused load() to be cancelled before reaching
+    // setIsBootstrapping(false), permanently freezing the settings page.
+    // The ref (authProfileRef) provides the fallback values without the instability.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   useEffect(() => {
     if (!username.trim()) {
