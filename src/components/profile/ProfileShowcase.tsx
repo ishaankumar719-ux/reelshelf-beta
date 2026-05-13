@@ -786,15 +786,16 @@ export default function ProfileShowcase({
     )
   }
 
+  const u = profile.username
   const stats = [
-    { label: "Films", value: profile.stats.films },
-    { label: "Series", value: profile.stats.series },
-    { label: "Reviews", value: profile.stats.reviews },
-    { label: "Watchlist", value: profile.stats.watchlist },
-    { label: "Followers", value: profile.stats.followers },
-    { label: "Following", value: profile.stats.following },
+    { label: "Films",      value: profile.stats.films,        href: `/u/${u}/films` },
+    { label: "Series",     value: profile.stats.series,       href: `/u/${u}/series` },
+    { label: "Reviews",    value: profile.stats.reviews,      href: `/u/${u}/reviews` },
+    { label: "Watchlist",  value: profile.stats.watchlist,    href: `/u/${u}/watchlist` },
+    { label: "Followers",  value: profile.stats.followers,    href: `/u/${u}/followers` },
+    { label: "Following",  value: profile.stats.following,    href: `/u/${u}/following` },
     ...(profile.stats.cinemaVisits > 0
-      ? [{ label: "Cinema", value: profile.stats.cinemaVisits }]
+      ? [{ label: "Cinema", value: profile.stats.cinemaVisits, href: null as string | null }]
       : []),
   ]
 
@@ -841,6 +842,7 @@ export default function ProfileShowcase({
           }
           .pf-stat-card { padding: 10px 12px !important; }
           .pf-stat-value { font-size: 15px !important; }
+          .pf-stat-link:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.16) !important; transform: translateY(-1px); }
 
           /* Mount Rushmore: 2×2 grid — eliminates orphan tile at 3-col */
           .pf-rushmore-grid {
@@ -963,35 +965,37 @@ export default function ProfileShowcase({
             marginTop: 28,
           }}
         >
-          {stats.map((item) => (
-            <div
-              key={item.label}
-              className="pf-stat-card"
-              style={{
-                textAlign: "center",
-                border: "0.5px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.03)",
-                borderRadius: 14,
-                padding: "16px 12px",
-              }}
-            >
-              <p className="pf-stat-value" style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.88)", margin: 0 }}>
-                {item.value}
-              </p>
-              <p
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.3)",
-                  margin: "6px 0 0",
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                }}
-              >
-                {item.label}
-              </p>
-            </div>
-          ))}
+          {stats.map((item) => {
+            const cardStyle: React.CSSProperties = {
+              textAlign: "center",
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              borderRadius: 14,
+              padding: "16px 12px",
+              transition: "background 0.14s ease, border-color 0.14s ease, transform 0.14s ease",
+              display: "block",
+              textDecoration: "none",
+            }
+            const inner = (
+              <>
+                <p className="pf-stat-value" style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.88)", margin: 0 }}>
+                  {item.value}
+                </p>
+                <p style={{ fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", margin: "6px 0 0", fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
+                  {item.label}
+                </p>
+              </>
+            )
+            return item.href ? (
+              <Link key={item.label} href={item.href} className="pf-stat-card pf-stat-link" style={cardStyle}>
+                {inner}
+              </Link>
+            ) : (
+              <div key={item.label} className="pf-stat-card" style={cardStyle}>
+                {inner}
+              </div>
+            )
+          })}
         </div>
 
         {badges.length > 0 ? <BadgeShelf badges={badges} /> : null}
