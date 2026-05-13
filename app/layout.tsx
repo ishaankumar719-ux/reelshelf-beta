@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
 import BetaFeedbackButton from "../components/BetaFeedbackButton";
+import DynamicThemeLayer from "../components/easter-eggs/DynamicThemeLayer";
 import { DiaryLogProvider } from "../hooks/useDiaryLog";
 import type { UserProfile } from "../lib/profile";
 import { PROFILE_SELECT } from "../lib/queries";
@@ -118,6 +119,7 @@ export default async function RootLayout({
               {children}
             </main>
             <BetaFeedbackButton />
+            <DynamicThemeLayer />
           </DiaryLogProvider>
         </AuthProvider>
       </body>

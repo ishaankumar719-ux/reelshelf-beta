@@ -1,0 +1,450 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
+import {
+  matchEasterEgg,
+  getThemeMode,
+  recordSecretView,
+  type EasterEggTheme,
+  type ThemeMode,
+  THEME_MODE_KEY,
+} from "@/lib/easterEggs"
+
+// ── Star positions (pre-computed for Interstellar / space effects) ─────────────
+const STAR_SHADOW = [
+  "12px 88px","156px 234px","303px 52px","78px 412px","445px 167px",
+  "192px 340px","520px 88px","67px 520px","380px 295px","244px 44px",
+  "108px 180px","490px 360px","35px 280px","600px 210px","320px 480px",
+  "168px 140px","430px 70px","22px 360px","560px 130px","88px 470px",
+  "270px 190px","710px 310px","145px 60px","480px 420px","350px 120px",
+  "630px 380px","195px 260px","520px 240px","80px 140px","420px 510px",
+  "290px 330px","650px 80px","110px 310px","740px 200px","360px 450px",
+].map((s, i) => `${s} ${i % 3 === 0 ? "2px" : "1px"} rgba(255,255,255,${i % 2 === 0 ? "0.75" : "0.45"})`).join(", ")
+
+// ── Per-effect renderers ──────────────────────────────────────────────────────
+
+function SpiderWebCorners({ opacity }: { opacity: number }) {
+  return (
+    <>
+      {(["tl", "tr", "bl", "br"] as const).map((corner) => {
+        const top    = corner.startsWith("t") ? 60 : undefined  // 60px below nav
+        const bottom = corner.startsWith("b") ? 0 : undefined
+        const left   = corner.endsWith("l") ? 0 : undefined
+        const right  = corner.endsWith("r") ? 0 : undefined
+        const scaleX = corner.endsWith("r") ? -1 : 1
+        const scaleY = corner.startsWith("b") ? -1 : 1
+
+        return (
+          <div
+            key={corner}
+            style={{
+              position: "fixed",
+              top, bottom, left, right,
+              width: 160,
+              height: 160,
+              pointerEvents: "none",
+              zIndex: 44,
+              opacity,
+              animation: "rs-egg-fadein 1.4s ease forwards",
+            }}
+          >
+            <svg
+              viewBox="0 0 160 160"
+              width="160"
+              height="160"
+              style={{ transform: `scale(${scaleX},${scaleY})`, transformOrigin: "80px 80px", display: "block" }}
+            >
+              {/* Radial lines from (0,0) */}
+              <line x1="0" y1="0" x2="170" y2="0"   stroke="#c41e3a" strokeWidth="0.7" opacity="0.7"/>
+              <line x1="0" y1="0" x2="0"   y2="170"  stroke="#c41e3a" strokeWidth="0.7" opacity="0.7"/>
+              <line x1="0" y1="0" x2="160" y2="55"   stroke="#c41e3a" strokeWidth="0.55" opacity="0.6"/>
+              <line x1="0" y1="0" x2="55"  y2="160"  stroke="#c41e3a" strokeWidth="0.55" opacity="0.6"/>
+              <line x1="0" y1="0" x2="160" y2="160"  stroke="#c41e3a" strokeWidth="0.45" opacity="0.5"/>
+              {/* Web arc rings */}
+              <path d="M 38 0 Q 19 19 0 38"   fill="none" stroke="#c41e3a" strokeWidth="0.65" opacity="0.65"/>
+              <path d="M 76 0 Q 38 38 0 76"   fill="none" stroke="#c41e3a" strokeWidth="0.6"  opacity="0.58"/>
+              <path d="M 114 0 Q 57 57 0 114" fill="none" stroke="#c41e3a" strokeWidth="0.55" opacity="0.5"/>
+              <path d="M 152 0 Q 76 76 0 152" fill="none" stroke="#c41e3a" strokeWidth="0.5"  opacity="0.4"/>
+            </svg>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+// Dune — amber warm ambient + floating dust motes
+const MOTE_CONFIGS = [
+  { left: "15%",  delay: "0s",    dur: "9s",  size: 3 },
+  { left: "35%",  delay: "2.2s",  dur: "11s", size: 2 },
+  { left: "55%",  delay: "0.8s",  dur: "8s",  size: 4 },
+  { left: "72%",  delay: "3.5s",  dur: "12s", size: 2 },
+  { left: "88%",  delay: "1.6s",  dur: "10s", size: 3 },
+  { left: "6%",   delay: "4.1s",  dur: "13s", size: 2 },
+]
+
+function SandEffect({ opacity }: { opacity: number }) {
+  return (
+    <>
+      {/* Warm amber gradient rising from bottom */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 1,
+          background: "linear-gradient(0deg, rgba(120,60,0,0.22) 0%, rgba(90,40,0,0.1) 30%, transparent 70%)",
+          opacity,
+          animation: "rs-egg-fadein 2s ease forwards",
+        }}
+      />
+      {/* Dust motes */}
+      {MOTE_CONFIGS.map((m, i) => (
+        <div
+          key={i}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: m.left,
+            width: m.size,
+            height: m.size,
+            borderRadius: "50%",
+            background: "rgba(220,170,60,0.6)",
+            pointerEvents: "none",
+            zIndex: 2,
+            animationName: "rs-sand-drift",
+            animationDuration: m.dur,
+            animationDelay: m.delay,
+            animationTimingFunction: "ease-out",
+            animationIterationCount: "infinite",
+            animationFillMode: "both",
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+// Interstellar — starfield with twinkling
+function StarfieldEffect({ opacity }: { opacity: number }) {
+  return (
+    <>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "radial-gradient(ellipse at 50% 0%, rgba(20,30,80,0.3) 0%, transparent 65%)",
+          pointerEvents: "none",
+          zIndex: 1,
+          opacity,
+          animation: "rs-egg-fadein 2.5s ease forwards",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: 1,
+          height: 1,
+          pointerEvents: "none",
+          zIndex: 2,
+          boxShadow: STAR_SHADOW,
+          opacity,
+          animation: "rs-stars-twinkle 6s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+        }}
+      />
+    </>
+  )
+}
+
+// Invincible — comic flash on mount + yellow/blue corner accents
+function ComicEffect({ opacity }: { opacity: number }) {
+  return (
+    <>
+      {/* Brief flash on enter */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(255,220,0,0.25)",
+          pointerEvents: "none",
+          zIndex: 50,
+          animation: "rs-comic-flash 0.7s ease forwards",
+        }}
+      />
+      {/* Top-left accent bar */}
+      <div
+        style={{
+          position: "fixed",
+          top: 60,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: "linear-gradient(90deg, rgba(255,210,0,0.6) 0%, rgba(30,100,255,0.3) 50%, transparent 100%)",
+          pointerEvents: "none",
+          zIndex: 44,
+          opacity,
+          animation: "rs-egg-fadein 1s ease forwards",
+        }}
+      />
+      {/* Bottom accent bar */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 80,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: "linear-gradient(90deg, transparent 0%, rgba(30,100,255,0.3) 30%, rgba(255,210,0,0.5) 100%)",
+          pointerEvents: "none",
+          zIndex: 44,
+          opacity,
+          animation: "rs-egg-fadein 1.2s ease forwards",
+        }}
+      />
+    </>
+  )
+}
+
+// La La Land — dreamy purple-blue + sparkles
+const SPARKLE_CONFIGS = [
+  { left: "22%",  bottom: "25%", delay: "0s",    dur: "7s",  size: 4 },
+  { left: "68%",  bottom: "40%", delay: "1.8s",  dur: "9s",  size: 3 },
+  { left: "45%",  bottom: "60%", delay: "0.5s",  dur: "8s",  size: 5 },
+  { left: "80%",  bottom: "30%", delay: "3.2s",  dur: "6s",  size: 3 },
+  { left: "10%",  bottom: "50%", delay: "2.1s",  dur: "10s", size: 4 },
+  { left: "55%",  bottom: "20%", delay: "4s",    dur: "7s",  size: 3 },
+]
+
+function DreamyEffect({ opacity }: { opacity: number }) {
+  return (
+    <>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "radial-gradient(ellipse at 30% 70%, rgba(80,20,160,0.18) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(40,60,200,0.12) 0%, transparent 50%)",
+          pointerEvents: "none",
+          zIndex: 1,
+          opacity,
+          animation: "rs-egg-fadein 2s ease forwards",
+        }}
+      />
+      {SPARKLE_CONFIGS.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            position: "fixed",
+            left: s.left,
+            bottom: s.bottom,
+            width: s.size,
+            height: s.size,
+            borderRadius: "50%",
+            background: "rgba(200,160,255,0.9)",
+            pointerEvents: "none",
+            zIndex: 2,
+            animationName: "rs-sparkle-float",
+            animationDuration: s.dur,
+            animationDelay: s.delay,
+            animationTimingFunction: "ease-out",
+            animationIterationCount: "infinite",
+            animationFillMode: "both",
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
+// The Batman / Blade Runner — rain + dark desaturated overlay
+function RainEffect({ theme, opacity }: { theme: EasterEggTheme; opacity: number }) {
+  const isBatman = theme.id === "the-batman"
+  return (
+    <>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: isBatman
+            ? "rgba(0,5,20,0.18)"
+            : "rgba(20,8,0,0.15)",
+          pointerEvents: "none",
+          zIndex: 1,
+          opacity,
+          animation: "rs-egg-fadein 1.5s ease forwards",
+        }}
+      />
+      {/* Rain texture overlay */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundImage: `repeating-linear-gradient(
+            ${isBatman ? "173deg" : "168deg"},
+            transparent 0%,
+            transparent 97%,
+            ${isBatman ? "rgba(80,120,200,0.05)" : "rgba(200,100,30,0.05)"} 97%,
+            ${isBatman ? "rgba(80,120,200,0.05)" : "rgba(200,100,30,0.05)"} 100%
+          )`,
+          backgroundSize: "3px 36px",
+          pointerEvents: "none",
+          zIndex: 2,
+          opacity,
+          animation: "rs-rain-fall 1.8s linear infinite",
+        }}
+      />
+    </>
+  )
+}
+
+// Space / Hail Mary / Arrival — teal nebula glow
+function SpaceEffect({ theme, opacity }: { theme: EasterEggTheme; opacity: number }) {
+  const accent = theme.accentColor
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: `radial-gradient(ellipse at 60% 40%, ${accent.replace(/[\d.]+\)$/, "0.15)")} 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, ${accent.replace(/[\d.]+\)$/, "0.08)")} 0%, transparent 50%)`,
+        pointerEvents: "none",
+        zIndex: 1,
+        opacity,
+        animation: "rs-space-pulse 8s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+      }}
+    />
+  )
+}
+
+// ── Secret unlock toast ───────────────────────────────────────────────────────
+
+function SecretToast({ message }: { message: string }) {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setVisible(false), 4200)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 130px)",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 90,
+        padding: "10px 18px",
+        borderRadius: 999,
+        border: "0.5px solid rgba(195,28,28,0.4)",
+        background: "rgba(10,4,4,0.92)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        color: "rgba(255,255,255,0.88)",
+        fontSize: 12,
+        letterSpacing: "0.03em",
+        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+        pointerEvents: "none",
+        animation: "rs-egg-fadein 0.4s ease forwards",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {message}
+    </div>
+  )
+}
+
+// ── Effect renderer ───────────────────────────────────────────────────────────
+
+function EffectRenderer({ theme, mode }: { theme: EasterEggTheme; mode: ThemeMode }) {
+  const baseOpacity = mode === "full" ? 1 : 0.55
+  const { effectType } = theme
+
+  if (effectType === "spiderweb") return <SpiderWebCorners opacity={baseOpacity * 0.85} />
+  if (effectType === "sand")       return <SandEffect opacity={baseOpacity} />
+  if (effectType === "starfield")  return <StarfieldEffect opacity={baseOpacity} />
+  if (effectType === "comic")      return <ComicEffect opacity={baseOpacity} />
+  if (effectType === "dreamy")     return <DreamyEffect opacity={baseOpacity} />
+  if (effectType === "rain")       return <RainEffect theme={theme} opacity={baseOpacity} />
+  if (effectType === "space")      return <SpaceEffect theme={theme} opacity={baseOpacity} />
+  return null
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+function parseMediaFromPath(pathname: string): { mediaId: string; mediaType: "movie" | "tv" | "book" } | null {
+  const filmMatch  = pathname.match(/^\/films\/(\d+)/)
+  if (filmMatch)  return { mediaId: filmMatch[1],  mediaType: "movie" }
+  const seriesMatch = pathname.match(/^\/series\/(\d+)/)
+  if (seriesMatch) return { mediaId: seriesMatch[1], mediaType: "tv" }
+  const bookMatch  = pathname.match(/^\/books\/([^/]+)/)
+  if (bookMatch)  return { mediaId: bookMatch[1],  mediaType: "book" }
+  return null
+}
+
+export default function DynamicThemeLayer() {
+  const pathname = usePathname()
+  const [mode, setMode]           = useState<ThemeMode>("subtle")
+  const [secretMsg, setSecretMsg] = useState<string | null>(null)
+  const shownSecretRef            = useRef<Set<string>>(new Set())
+
+  // Read theme mode from localStorage on mount + listen for changes
+  useEffect(() => {
+    setMode(getThemeMode())
+
+    function onStorage(e: StorageEvent) {
+      if (e.key === THEME_MODE_KEY && e.newValue) {
+        const v = e.newValue
+        if (v === "full" || v === "subtle" || v === "off") setMode(v)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [])
+
+  // Also re-read when the mode might have changed (custom event from settings page)
+  useEffect(() => {
+    function onThemeChange() { setMode(getThemeMode()) }
+    window.addEventListener("rs-theme-change", onThemeChange)
+    return () => window.removeEventListener("rs-theme-change", onThemeChange)
+  }, [])
+
+  const parsed = parseMediaFromPath(pathname)
+  const theme  = parsed ? matchEasterEgg(parsed.mediaId, parsed.mediaType) : null
+
+  // Secret progress tracking
+  useEffect(() => {
+    if (!theme?.secretKey || !parsed?.mediaId) return
+
+    const { unlocked, threshold } = recordSecretView(theme.secretKey, parsed.mediaId)
+    const key = `${theme.secretKey}-unlocked`
+
+    if (unlocked && !shownSecretRef.current.has(key)) {
+      shownSecretRef.current.add(key)
+      // Only show the toast once per session
+      try {
+        const already = sessionStorage.getItem(key)
+        if (!already) {
+          sessionStorage.setItem(key, "1")
+          setSecretMsg("🕸️ Web-Slinger — you've earned a hidden distinction.")
+          window.setTimeout(() => setSecretMsg(null), 5000)
+        }
+      } catch { /* ignore */ }
+    } else if (!unlocked && threshold > 0) {
+      // no visible feedback for in-progress — keeps it secret
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  if (mode === "off" || !theme) return null
+
+  return (
+    <>
+      <EffectRenderer theme={theme} mode={mode} />
+      {secretMsg ? <SecretToast message={secretMsg} /> : null}
+    </>
+  )
+}
