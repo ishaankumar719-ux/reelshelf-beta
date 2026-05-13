@@ -186,6 +186,14 @@ img {
   overflow-x: hidden;
 }
 
+/* ─── Beta feedback button — move to left on mobile so it never covers posters ── */
+@media (max-width: 760px) {
+  .beta-feedback-trigger {
+    right: auto !important;
+    left: 14px !important;
+  }
+}
+
 /* ─── Reduced-motion respect ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

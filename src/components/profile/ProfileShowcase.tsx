@@ -802,6 +802,7 @@ export default function ProfileShowcase({
 
   return (
     <section
+      className="pf-section"
       style={{
         maxWidth: 1020,
         margin: "0 auto",
@@ -809,7 +810,52 @@ export default function ProfileShowcase({
         background: "#08080f",
       }}
     >
+      <style>{`
+        @media (max-width: 760px) {
+          .pf-section { padding: 12px 12px 80px !important; }
+          .pf-card { padding: 16px !important; border-radius: 20px !important; }
+
+          /* Header: avatar + name top row, bio full-width below */
+          .pf-header-top { align-items: center !important; }
+          .pf-header-top > div:first-child { align-items: center !important; }
+
+          /* Bio sits cleanly below the header row */
+          .pf-bio {
+            margin-top: 14px !important;
+            font-size: 13px !important;
+            line-height: 1.7 !important;
+            max-width: 100% !important;
+            -webkit-line-clamp: 5 !important;
+          }
+
+          /* Stats: force 2-column on mobile, tighter cards */
+          .pf-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+            margin-top: 18px !important;
+          }
+          .pf-stat-card { padding: 10px 12px !important; }
+          .pf-stat-value { font-size: 15px !important; }
+
+          /* Mount Rushmore: 2×2 grid — eliminates orphan tile at 3-col */
+          .pf-rushmore-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+
+          /* Tabs: stretch to fill, 40px minimum tap target */
+          .pf-tab-bar { gap: 6px !important; margin-bottom: 14px !important; }
+          .pf-tab-btn {
+            flex: 1 !important;
+            min-height: 40px !important;
+            padding: 6px 10px !important;
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
+
       <div
+        className="pf-card"
         style={{
           background: "rgba(255,255,255,0.03)",
           border: "0.5px solid rgba(255,255,255,0.08)",
@@ -818,83 +864,93 @@ export default function ProfileShowcase({
           boxShadow: "0 28px 90px rgba(0,0,0,0.42)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, minWidth: 0 }}>
-            <Avatar
-              avatarUrl={profile.avatar_url}
-              displayName={profile.display_name}
-              username={profile.username}
-            />
-            <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.92)", margin: 0 }}>
-                {identityName}
-              </h1>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", margin: "4px 0 0" }}>
-                @{profile.username}
-              </p>
-              {profile.bio ? (
-                <p
-                  style={{
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    color: "rgba(255,255,255,0.6)",
-                    margin: "10px 0 0",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    maxWidth: 560,
-                  }}
-                >
-                  {profile.bio}
+        {/* Header: identity row + bio extracted below for full-width on mobile */}
+        <div>
+          <div
+            className="pf-header-top"
+            style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 16, minWidth: 0, flex: 1 }}>
+              <Avatar
+                avatarUrl={profile.avatar_url}
+                displayName={profile.display_name}
+                username={profile.username}
+              />
+              <div style={{ minWidth: 0 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.92)", margin: 0 }}>
+                  {identityName}
+                </h1>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", margin: "4px 0 0" }}>
+                  @{profile.username}
                 </p>
-              ) : null}
-              {profile.website_url ? (
-                <a
-                  href={profile.website_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    display: "inline-flex",
-                    marginTop: 10,
-                    fontSize: 12,
-                    color: "#67d7b2",
-                    textDecoration: "none",
-                  }}
-                >
-                  {profile.website_url}
-                </a>
-              ) : null}
+              </div>
             </div>
+
+            {isOwner ? (
+              <Link
+                href="/profile"
+                style={{
+                  display: "inline-flex",
+                  height: 36,
+                  alignItems: "center",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.25)",
+                  padding: "0 16px",
+                  fontSize: 11,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.82)",
+                  textDecoration: "none",
+                  flexShrink: 0,
+                }}
+              >
+                Edit profile
+              </Link>
+            ) : (
+              <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+            )}
           </div>
 
-          {isOwner ? (
-            <Link
-              href="/profile"
+          {/* Bio — full-width row, works cleanly on both desktop and mobile */}
+          {profile.bio ? (
+            <p
+              className="pf-bio"
               style={{
-                display: "inline-flex",
-                height: 36,
-                alignItems: "center",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(0,0,0,0.25)",
-                padding: "0 16px",
-                fontSize: 11,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.82)",
-                textDecoration: "none",
-                flexShrink: 0,
+                fontSize: 13,
+                lineHeight: 1.65,
+                color: "rgba(255,255,255,0.6)",
+                margin: "12px 0 0",
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                maxWidth: 680,
               }}
             >
-              Edit profile
-            </Link>
-          ) : (
-            <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
-          )}
+              {profile.bio}
+            </p>
+          ) : null}
+          {profile.website_url ? (
+            <a
+              href={profile.website_url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                marginTop: 10,
+                fontSize: 12,
+                color: "#67d7b2",
+                textDecoration: "none",
+              }}
+            >
+              {profile.website_url}
+            </a>
+          ) : null}
         </div>
 
         <div
+          className="pf-stats-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
@@ -905,6 +961,7 @@ export default function ProfileShowcase({
           {stats.map((item) => (
             <div
               key={item.label}
+              className="pf-stat-card"
               style={{
                 textAlign: "center",
                 border: "0.5px solid rgba(255,255,255,0.08)",
@@ -913,7 +970,7 @@ export default function ProfileShowcase({
                 padding: "16px 12px",
               }}
             >
-              <p style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.88)", margin: 0 }}>
+              <p className="pf-stat-value" style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.88)", margin: 0 }}>
                 {item.value}
               </p>
               <p
@@ -938,7 +995,7 @@ export default function ProfileShowcase({
 
         <div style={{ marginTop: 40 }}>
           <span style={sectionLabelStyle()}>Mount Rushmore</span>
-          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+          <div className="pf-tab-bar" style={{ display: "flex", gap: 4, marginBottom: 16 }}>
             {([
               { key: "movie", label: "Films" },
               { key: "tv", label: "Series" },
@@ -947,6 +1004,7 @@ export default function ProfileShowcase({
               <button
                 key={tab.key}
                 type="button"
+                className="pf-tab-btn"
                 onClick={() => setActiveTab(tab.key)}
                 style={{
                   padding: "5px 14px",
@@ -971,6 +1029,7 @@ export default function ProfileShowcase({
 
           <div style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}>
             <div
+              className="pf-rushmore-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",

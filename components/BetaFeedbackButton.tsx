@@ -131,7 +131,7 @@ export default function BetaFeedbackButton() {
           boxShadow: "0 2px 12px rgba(0,0,0,0.28)",
           transition: "color 0.15s ease, border-color 0.15s ease",
         }}
-        className="md:bottom-4"
+        className="beta-feedback-trigger md:bottom-4"
         onMouseEnter={(ev) => {
           ev.currentTarget.style.color = "rgba(255,255,255,0.78)"
           ev.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"
