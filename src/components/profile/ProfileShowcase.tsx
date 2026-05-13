@@ -7,8 +7,10 @@ import ActivityFeed from "@/components/activity/ActivityFeed"
 import PublicDiaryEntriesGrid from "@/components/PublicDiaryEntriesGrid"
 import type { ActivityEvent } from "@/lib/activity"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
+import type { DisplayBadge } from "@/lib/supabase/badges"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/AuthProvider"
+import BadgeShelf from "@/src/components/profile/BadgeShelf"
 import type {
   CinemaStats,
   MountRushmoreSlot,
@@ -23,6 +25,8 @@ interface ProfileShowcaseProps {
   isFollowing?: boolean
   activityEvents?: ActivityEvent[]
   recentReviews?: PublicDiaryEntry[]
+  badges?: DisplayBadge[]
+  totalXP?: number
 }
 
 type RushmoreTab = "movie" | "tv" | "book"
@@ -713,6 +717,7 @@ export default function ProfileShowcase({
   isFollowing: initialIsFollowing = false,
   activityEvents = [],
   recentReviews = [],
+  badges = [],
 }: ProfileShowcaseProps) {
   const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
   const [visible, setVisible] = useState(true)
@@ -988,6 +993,8 @@ export default function ProfileShowcase({
             </div>
           ))}
         </div>
+
+        {badges.length > 0 ? <BadgeShelf badges={badges} /> : null}
 
         {profile.cinema_stats && profile.cinema_stats.totalVisits > 0 ? (
           <CinemaStatsModule stats={profile.cinema_stats} />

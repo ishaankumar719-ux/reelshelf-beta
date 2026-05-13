@@ -2,6 +2,13 @@ import { notFound } from "next/navigation"
 import { buildActivityEventsFromSources } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
 import { getMediaHref } from "@/lib/mediaRoutes"
+import {
+  buildDisplayBadges,
+  computeEarnedBadgeSlugs,
+  computeTotalXP,
+  fetchBadgesForProfile,
+  syncEarnedBadges,
+} from "@/lib/supabase/badges"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
 import type { CinemaStats, MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
@@ -285,6 +292,8 @@ export default async function PublicProfilePage({
     watchlistRes,
     { count: followersCount },
     { count: followingCount },
+    { count: reviewTextCount },
+    { data: gamificationData },
   ] = await Promise.all([
     supabase
       .from("mount_rushmore")
@@ -327,12 +336,66 @@ export default async function PublicProfilePage({
       .from("followers")
       .select("*", { count: "exact", head: true })
       .eq("follower_id", profileRow.id),
+    supabase
+      .from("diary_entries")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", profileRow.id)
+      .not("review", "is", null)
+      .neq("review", ""),
+    supabase
+      .from("user_gamification")
+      .select("longest_streak, comments_received, likes_received")
+      .eq("user_id", profileRow.id)
+      .maybeSingle(),
   ])
 
   const rushmoreRows = (rushmoreData ?? []) as RushmoreRow[]
   const recentRows = (recentDiaryData ?? []) as DiaryRow[]
   const allRows = (allDiaryData ?? []) as DiaryRow[]
   const watchlistCount = watchlistRes.count ?? 0
+
+  // Badge data ────────────────────────────────────────────────────────────────
+  const { allDefs, earnedMap } = await fetchBadgesForProfile(supabase, profileRow.id)
+
+  const gamRow = gamificationData as { longest_streak?: number; comments_received?: number; likes_received?: number } | null
+  const badgeSyncStats = {
+    filmCount:        allRows.filter((r) => r.media_type === "movie").length,
+    tvCount:          allRows.filter((r) => r.media_type === "tv").length,
+    bookCount:        allRows.filter((r) => r.media_type === "book").length,
+    reviewCount:      reviewTextCount ?? 0,
+    longestStreak:    gamRow?.longest_streak ?? 0,
+    cinemaCount:      allRows.filter((r) => r.media_type === "movie" && r.watched_in_cinema === true).length,
+    followersCount:   followersCount ?? 0,
+    commentsReceived: gamRow?.comments_received ?? 0,
+    likesReceived:    gamRow?.likes_received ?? 0,
+  }
+
+  // Count manual/hidden badges already stored (e.g. founding_member) to inform prestige thresholds
+  const existingManualCount = Array.from(earnedMap.values()).length
+  const earnedSlugs = computeEarnedBadgeSlugs(badgeSyncStats, existingManualCount)
+
+  // Sync new badges only when the viewer is the profile owner
+  if (isOwner && earnedSlugs.length > 0) {
+    await syncEarnedBadges(supabase, profileRow.id, earnedSlugs, earnedMap, allDefs)
+    // Refresh earned map after sync so newly unlocked badges display immediately
+    const { earnedMap: refreshed } = await fetchBadgesForProfile(supabase, profileRow.id).then(
+      (r) => ({ earnedMap: r.earnedMap })
+    )
+    Array.from(refreshed.entries()).forEach(([k, v]) => earnedMap.set(k, v))
+  } else if (earnedSlugs.length > 0) {
+    // For non-owner views, mark computed badges as earned in the display map
+    // without writing to DB (we use slug→id lookup from allDefs)
+    const slugToId = new Map(allDefs.map((d) => [d.slug, d.id]))
+    for (const slug of earnedSlugs) {
+      const id = slugToId.get(slug)
+      if (id && !earnedMap.has(id)) {
+        earnedMap.set(id, { unlocked_at: new Date().toISOString(), showcased: false })
+      }
+    }
+  }
+
+  const displayBadges = buildDisplayBadges(allDefs, earnedMap)
+  const totalXP = computeTotalXP(displayBadges)
 
   const recentReviews = ((reviewsData ?? []) as FullDiaryRow[])
     .filter((row) => row.review && row.review.trim().length > 0)
@@ -422,5 +485,5 @@ export default async function PublicProfilePage({
     cinema_stats: computeCinemaStats(allRows),
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} />
+  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} />
 }
