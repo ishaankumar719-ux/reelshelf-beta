@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export type BadgeRarity = "common" | "rare" | "epic" | "legendary"
-export type BadgeCategory = "film" | "tv" | "book" | "cinema" | "reviews" | "streaks" | "social" | "prestige" | "legacy"
+export type BadgeCategory = "film" | "tv" | "book" | "cinema" | "reviews" | "streaks" | "social" | "prestige" | "legacy" | "trivia"
 
 export interface BadgeDefinition {
   id: string
