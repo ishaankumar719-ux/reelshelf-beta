@@ -75,7 +75,7 @@ export default function DailyReelCard() {
   return (
     <section style={{ marginBottom: 40 }}>
       <Link
-        href="/trivia"
+        href="/daily-reel"
         style={{ textDecoration: "none", display: "block" }}
       >
         <div

@@ -13,7 +13,7 @@ const desktopLinks = [
   { href: "/books", label: "Books" },
   { href: "/diary", label: "Diary" },
   { href: "/watchlist", label: "Watchlist" },
-  { href: "/trivia", label: "Daily Reel" },
+  { href: "/daily-reel", label: "Daily Reel" },
 ] as const
 
 // ─── Bottom nav items with SVG icons ─────────────────────────────────────────
@@ -87,7 +87,7 @@ const mobileNavItems = [
   { href: "/diary", label: "Diary", Icon: DiaryIcon, exact: false },
   { href: "/watchlist", label: "Watchlist", Icon: WatchlistIcon, exact: false },
   { href: "/discover", label: "Discover", Icon: DiscoverIcon, exact: false },
-  { href: "/trivia", label: "Reel", Icon: DailyReelIcon, exact: false },
+  { href: "/daily-reel", label: "Reel", Icon: DailyReelIcon, exact: false },
 ] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export default function AppNav() {
             <nav className="hidden items-center gap-5 md:flex">
               {desktopLinks.map((item) => {
                 const active = isActive(pathname, item.href)
-                const isReel = item.href === "/trivia"
+                const isReel = item.href === "/daily-reel"
                 return (
                   <Link
                     key={item.href}
