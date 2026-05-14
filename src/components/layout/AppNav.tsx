@@ -13,6 +13,7 @@ const desktopLinks = [
   { href: "/books", label: "Books" },
   { href: "/diary", label: "Diary" },
   { href: "/watchlist", label: "Watchlist" },
+  { href: "/trivia", label: "Daily Reel" },
 ] as const
 
 // ─── Bottom nav items with SVG icons ─────────────────────────────────────────
@@ -52,6 +53,17 @@ function DiscoverIcon({ active }: { active: boolean }) {
   )
 }
 
+function DailyReelIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="14" rx="2" />
+      <path d="M3 10h18M7 6V4M12 6V4M17 6V4" />
+      <path d="M9 15a3 3 0 1 1 6 0" />
+      <circle cx="12" cy="17.5" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 function ProfileIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -75,6 +87,7 @@ const mobileNavItems = [
   { href: "/diary", label: "Diary", Icon: DiaryIcon, exact: false },
   { href: "/watchlist", label: "Watchlist", Icon: WatchlistIcon, exact: false },
   { href: "/discover", label: "Discover", Icon: DiscoverIcon, exact: false },
+  { href: "/trivia", label: "Reel", Icon: DailyReelIcon, exact: false },
 ] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -197,17 +210,24 @@ export default function AppNav() {
             </span>
 
             <nav className="hidden items-center gap-5 md:flex">
-              {desktopLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`text-[13px] no-underline transition ${
-                    isActive(pathname, item.href) ? "text-white/85" : "text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {desktopLinks.map((item) => {
+                const active = isActive(pathname, item.href)
+                const isReel = item.href === "/trivia"
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="text-[13px] no-underline transition"
+                    style={{
+                      color: active
+                        ? isReel ? "rgba(212,175,55,0.95)" : "rgba(255,255,255,0.85)"
+                        : isReel ? "rgba(212,175,55,0.55)" : "rgba(255,255,255,0.40)",
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
             </nav>
           </div>
 
@@ -296,7 +316,7 @@ export default function AppNav() {
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        <div className="mx-auto grid max-w-[1600px] grid-cols-5">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-6">
           {mobileNavItems.map(({ href, label, Icon, exact }) => {
             const active = exact ? pathname === href : isActive(pathname, href)
             return (

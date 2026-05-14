@@ -9,6 +9,7 @@ import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
+import DailyReelCard from "./DailyReelCard";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
 import {
@@ -1249,6 +1250,7 @@ export default function HomeDashboardClient({
       />
 
       <GamificationWidgets variant="home" />
+      <DailyReelCard />
       <WeeklyChallengesSection />
 
       <section className="home-priority-grid">
