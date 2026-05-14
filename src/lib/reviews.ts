@@ -100,22 +100,46 @@ export async function upsertReview(
     updated_at: new Date().toISOString(),
   }
 
-  const { data, error } = await supabase
-    .from("diary_entries")
-    .upsert(payload, {
-      onConflict:
-        "user_id,media_type,media_id,review_scope,season_number,episode_number",
-    })
-    .select(DIARY_SELECT)
-    .maybeSingle()
+  try {
+    const { data, error } = await supabase
+      .from("diary_entries")
+      .upsert(payload, {
+        onConflict:
+          "user_id,media_type,media_id,review_scope,season_number,episode_number",
+      })
+      .select(DIARY_SELECT)
+      .maybeSingle()
 
-  if (error) {
-    return { data: null, error: error.message || "Could not save review." }
-  }
+    if (error) {
+      return { data: null, error: error.message || "Could not save review." }
+    }
 
-  return {
-    data: data ? mapRowToReview((data as unknown) as DiaryReviewRow) : null,
-    error: null,
+    if (data) {
+      return { data: mapRowToReview((data as unknown) as DiaryReviewRow), error: null }
+    }
+
+    // Fallback: upsert succeeded but PostgREST returned no row — fetch it directly
+    const { data: fallback, error: fallbackError } = await supabase
+      .from("diary_entries")
+      .select(DIARY_SELECT)
+      .eq("user_id", userId)
+      .eq("media_type", payload.media_type)
+      .eq("media_id", payload.media_id)
+      .eq("review_scope", payload.review_scope)
+      .eq("season_number", payload.season_number)
+      .eq("episode_number", payload.episode_number)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (fallbackError || !fallback) {
+      return { data: null, error: "Could not save review." }
+    }
+
+    return { data: mapRowToReview((fallback as unknown) as DiaryReviewRow), error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not save review."
+    return { data: null, error: message }
   }
 }
 

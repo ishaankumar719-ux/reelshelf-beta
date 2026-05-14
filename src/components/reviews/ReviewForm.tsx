@@ -180,31 +180,36 @@ export default function ReviewForm({
     setStatus("saving")
     setMessage(null)
 
-    const { data, error } = await upsertReview(user.id, {
-      media_id: mediaId,
-      media_type: mediaType,
-      review_scope: scope,
-      season_number: seasonNumber ?? null,
-      episode_number: episodeNumber ?? null,
-      rating,
-      body: trimmedBody || null,
-      contains_spoilers: compact ? false : containsSpoilers,
-      watched_on: compact ? null : watchedOn || null,
-      title: title || null,
-      year: year ?? null,
-      poster_path: posterPath ?? null,
-      creator: creator ?? null,
-    })
+    try {
+      const { data, error } = await upsertReview(user.id, {
+        media_id: mediaId,
+        media_type: mediaType,
+        review_scope: scope,
+        season_number: seasonNumber ?? null,
+        episode_number: episodeNumber ?? null,
+        rating,
+        body: trimmedBody || null,
+        contains_spoilers: compact ? false : containsSpoilers,
+        watched_on: compact ? null : watchedOn || null,
+        title: title || null,
+        year: year ?? null,
+        poster_path: posterPath ?? null,
+        creator: creator ?? null,
+      })
 
-    if (error || !data) {
+      if (error || !data) {
+        setStatus("error")
+        setMessage(error || "Could not save review.")
+        return
+      }
+
+      setStatus("success")
+      setMessage("Saved.")
+      onSaved?.(data)
+    } catch {
       setStatus("error")
-      setMessage(error || "Could not save review.")
-      return
+      setMessage("Could not save review.")
     }
-
-    setStatus("success")
-    setMessage("Saved.")
-    onSaved?.(data)
   }
 
   async function handleDelete() {

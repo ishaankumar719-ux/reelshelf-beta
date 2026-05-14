@@ -591,6 +591,8 @@ export default function ReviewCard({
         reviewLayers: reviewLayers ?? EMPTY_REVIEW_LAYERS,
         attachmentUrl: attachmentUrl ?? null,
         attachmentType: attachmentType ?? null,
+        reviewCoverUrl: reviewCoverUrl ?? null,
+        reviewCoverSource: reviewCoverSource ?? undefined,
       }
     );
   }

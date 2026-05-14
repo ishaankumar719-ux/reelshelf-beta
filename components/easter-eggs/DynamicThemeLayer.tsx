@@ -26,35 +26,34 @@ const STAR_SHADOW = [
 function SpiderWebCorners({ opacity }: { opacity: number }) {
   return (
     <>
-      {(["tl", "tr", "bl", "br"] as const).map((corner) => {
-        const top    = corner.startsWith("t") ? 60 : undefined
-        const bottom = corner.startsWith("b") ? 0  : undefined
-        const left   = corner.endsWith("l")   ? 0  : undefined
-        const right  = corner.endsWith("r")   ? 0  : undefined
-        const scaleX = corner.endsWith("r")   ? -1 : 1
-        const scaleY = corner.startsWith("b") ? -1 : 1
+      {(["tl", "br"] as const).map((corner) => {
+        const top    = corner === "tl" ? 60 : undefined
+        const bottom = corner === "br" ? 0  : undefined
+        const left   = corner === "tl" ? 0  : undefined
+        const right  = corner === "br" ? 0  : undefined
+        const scaleX = corner === "br" ? -1 : 1
+        const scaleY = corner === "br" ? -1 : 1
         return (
           <div
             key={corner}
             style={{
               position: "fixed", top, bottom, left, right,
-              width: 160, height: 160,
+              width: 90, height: 90,
               pointerEvents: "none", zIndex: 44,
-              opacity, animation: "rs-egg-fadein 1.4s ease forwards",
+              opacity, animation: "rs-egg-fadein 2s ease forwards",
             }}
           >
-            <svg viewBox="0 0 160 160" width="160" height="160"
-              style={{ transform: `scale(${scaleX},${scaleY})`, transformOrigin: "80px 80px", display: "block" }}
+            <svg viewBox="0 0 90 90" width="90" height="90"
+              style={{ transform: `scale(${scaleX},${scaleY})`, transformOrigin: "45px 45px", display: "block" }}
             >
-              <line x1="0" y1="0" x2="170" y2="0"   stroke="#c41e3a" strokeWidth="0.7"  opacity="0.7"/>
-              <line x1="0" y1="0" x2="0"   y2="170"  stroke="#c41e3a" strokeWidth="0.7"  opacity="0.7"/>
-              <line x1="0" y1="0" x2="160" y2="55"   stroke="#c41e3a" strokeWidth="0.55" opacity="0.6"/>
-              <line x1="0" y1="0" x2="55"  y2="160"  stroke="#c41e3a" strokeWidth="0.55" opacity="0.6"/>
-              <line x1="0" y1="0" x2="160" y2="160"  stroke="#c41e3a" strokeWidth="0.45" opacity="0.5"/>
-              <path d="M 38 0 Q 19 19 0 38"   fill="none" stroke="#c41e3a" strokeWidth="0.65" opacity="0.65"/>
-              <path d="M 76 0 Q 38 38 0 76"   fill="none" stroke="#c41e3a" strokeWidth="0.6"  opacity="0.58"/>
-              <path d="M 114 0 Q 57 57 0 114" fill="none" stroke="#c41e3a" strokeWidth="0.55" opacity="0.5"/>
-              <path d="M 152 0 Q 76 76 0 152" fill="none" stroke="#c41e3a" strokeWidth="0.5"  opacity="0.4"/>
+              <line x1="0" y1="0" x2="95" y2="0"   stroke="#c41e3a" strokeWidth="0.5" opacity="0.18"/>
+              <line x1="0" y1="0" x2="0"  y2="95"  stroke="#c41e3a" strokeWidth="0.5" opacity="0.18"/>
+              <line x1="0" y1="0" x2="90" y2="30"  stroke="#c41e3a" strokeWidth="0.4" opacity="0.13"/>
+              <line x1="0" y1="0" x2="30" y2="90"  stroke="#c41e3a" strokeWidth="0.4" opacity="0.13"/>
+              <line x1="0" y1="0" x2="90" y2="90"  stroke="#c41e3a" strokeWidth="0.35" opacity="0.10"/>
+              <path d="M 22 0 Q 11 11 0 22"  fill="none" stroke="#c41e3a" strokeWidth="0.45" opacity="0.16"/>
+              <path d="M 44 0 Q 22 22 0 44"  fill="none" stroke="#c41e3a" strokeWidth="0.4"  opacity="0.12"/>
+              <path d="M 66 0 Q 33 33 0 66"  fill="none" stroke="#c41e3a" strokeWidth="0.35" opacity="0.09"/>
             </svg>
           </div>
         )
@@ -120,21 +119,16 @@ function ComicEffect({ opacity }: { opacity: number }) {
   return (
     <>
       <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50,
-        background: "rgba(255,220,0,0.25)",
-        animation: "rs-comic-flash 0.7s ease forwards",
+        position: "fixed", top: 60, left: 0, right: 0, height: 1,
+        background: "linear-gradient(90deg, transparent 5%, rgba(255,210,0,0.18) 30%, rgba(30,100,255,0.10) 65%, transparent 95%)",
+        pointerEvents: "none", zIndex: 44,
+        opacity: opacity * 0.9, animation: "rs-egg-fadein 1.4s ease forwards",
       }} />
       <div style={{
-        position: "fixed", top: 60, left: 0, right: 0, height: 3,
-        background: "linear-gradient(90deg, rgba(255,210,0,0.6) 0%, rgba(30,100,255,0.3) 50%, transparent 100%)",
+        position: "fixed", bottom: 80, left: 0, right: 0, height: 1,
+        background: "linear-gradient(90deg, transparent 5%, rgba(30,100,255,0.10) 35%, rgba(255,210,0,0.14) 70%, transparent 95%)",
         pointerEvents: "none", zIndex: 44,
-        opacity, animation: "rs-egg-fadein 1s ease forwards",
-      }} />
-      <div style={{
-        position: "fixed", bottom: 80, left: 0, right: 0, height: 2,
-        background: "linear-gradient(90deg, transparent 0%, rgba(30,100,255,0.3) 30%, rgba(255,210,0,0.5) 100%)",
-        pointerEvents: "none", zIndex: 44,
-        opacity, animation: "rs-egg-fadein 1.2s ease forwards",
+        opacity: opacity * 0.75, animation: "rs-egg-fadein 1.8s ease forwards",
       }} />
     </>
   )
@@ -219,35 +213,35 @@ function DrumLightEffect({ opacity }: { opacity: number }) {
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 50% 100%, rgba(30,20,0,0.2) 0%, transparent 65%)",
-        opacity, animation: "rs-egg-fadein 1.5s ease forwards",
+        background: "radial-gradient(ellipse at 50% 100%, rgba(30,20,0,0.08) 0%, transparent 60%)",
+        opacity, animation: "rs-egg-fadein 2s ease forwards",
       }} />
-      {/* Left beam */}
+      {/* Left beam — 1px, very faint */}
       <div style={{
-        position: "fixed", top: 0, left: "15%", pointerEvents: "none", zIndex: 2,
-        width: 2, height: "70vh",
-        background: "linear-gradient(180deg, rgba(255,230,80,0.45) 0%, rgba(255,200,0,0.08) 70%, transparent 100%)",
+        position: "fixed", top: 60, left: "18%", pointerEvents: "none", zIndex: 2,
+        width: 1, height: "30vh",
+        background: "linear-gradient(180deg, rgba(255,230,80,0.10) 0%, transparent 100%)",
         transformOrigin: "top center",
-        transform: "rotate(-12deg)",
-        opacity, animation: "rs-drum-pulse 2.4s ease-in-out infinite",
+        transform: "rotate(-10deg)",
+        opacity, animation: "rs-drum-pulse 2.8s ease-in-out infinite",
       }} />
       {/* Center beam */}
       <div style={{
-        position: "fixed", top: 0, left: "48%", pointerEvents: "none", zIndex: 2,
-        width: 3, height: "85vh",
-        background: "linear-gradient(180deg, rgba(255,240,100,0.55) 0%, rgba(255,220,0,0.12) 60%, transparent 100%)",
+        position: "fixed", top: 60, left: "50%", pointerEvents: "none", zIndex: 2,
+        width: 1, height: "35vh",
+        background: "linear-gradient(180deg, rgba(255,240,100,0.09) 0%, transparent 100%)",
         transformOrigin: "top center",
-        transform: "rotate(2deg)",
-        opacity, animation: "rs-drum-pulse 1.8s ease-in-out infinite 0.4s",
+        transform: "rotate(1deg)",
+        opacity, animation: "rs-drum-pulse 2.2s ease-in-out infinite 0.5s",
       }} />
       {/* Right beam */}
       <div style={{
-        position: "fixed", top: 0, right: "18%", pointerEvents: "none", zIndex: 2,
-        width: 2, height: "75vh",
-        background: "linear-gradient(180deg, rgba(255,220,60,0.4) 0%, rgba(255,190,0,0.08) 70%, transparent 100%)",
+        position: "fixed", top: 60, right: "20%", pointerEvents: "none", zIndex: 2,
+        width: 1, height: "28vh",
+        background: "linear-gradient(180deg, rgba(255,220,60,0.08) 0%, transparent 100%)",
         transformOrigin: "top center",
-        transform: "rotate(10deg)",
-        opacity, animation: "rs-drum-pulse 2.1s ease-in-out infinite 0.9s",
+        transform: "rotate(9deg)",
+        opacity, animation: "rs-drum-pulse 2.5s ease-in-out infinite 1.1s",
       }} />
     </>
   )
@@ -305,19 +299,11 @@ function RingGlowEffect({ opacity }: { opacity: number }) {
 
 function GlitchEffect({ opacity }: { opacity: number }) {
   return (
-    <>
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 70% 30%, rgba(200,40,80,0.08) 0%, transparent 60%)",
-        opacity, animation: "rs-egg-fadein 1s ease forwards",
-      }} />
-      {/* Chromatic flash on mount */}
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50,
-        background: "rgba(220,60,100,0.12)",
-        animation: "rs-glitch-kick 0.9s ease forwards",
-      }} />
-    </>
+    <div style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+      background: "radial-gradient(ellipse at 70% 30%, rgba(200,40,80,0.07) 0%, transparent 55%)",
+      opacity, animation: "rs-egg-fadein 1.5s ease forwards",
+    }} />
   )
 }
 
@@ -417,7 +403,7 @@ function EffectRenderer({ theme, mode }: { theme: EggTheme; mode: ThemeMode }) {
   const o = mode === "full" ? 1 : 0.55
   const { effectType } = theme
 
-  if (effectType === "spiderweb") return <SpiderWebCorners opacity={o * 0.85} />
+  if (effectType === "spiderweb") return <SpiderWebCorners opacity={o * 0.25} />
   if (effectType === "sand")      return <SandEffect opacity={o} />
   if (effectType === "starfield") return <StarfieldEffect opacity={o} />
   if (effectType === "comic")     return <ComicEffect opacity={o} />
