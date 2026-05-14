@@ -21,10 +21,12 @@ export type MediaReview = {
   watchedInCinema: boolean
   attachmentUrl: string | null
   attachmentType: "image" | "gif" | null
+  reviewCoverUrl: string | null
+  reviewCoverSource: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
 }
 
 const ENTRY_SELECT =
-  "id, user_id, rating, reelshelf_score, review, watched_date, saved_at, favourite, rewatch, contains_spoilers, watched_in_cinema, attachment_url, attachment_type, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating"
+  "id, user_id, rating, reelshelf_score, review, watched_date, saved_at, favourite, rewatch, contains_spoilers, watched_in_cinema, attachment_url, attachment_type, review_cover_url, review_cover_source, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating"
 
 type RawEntry = {
   id: string
@@ -40,6 +42,8 @@ type RawEntry = {
   watched_in_cinema: boolean
   attachment_url: string | null
   attachment_type: "image" | "gif" | null
+  review_cover_url: string | null
+  review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
   score_rating: number | null
   cinematography_rating: number | null
   writing_rating: number | null
@@ -91,6 +95,8 @@ function toMediaReview(row: RawEntry, profile: ProfileRow): MediaReview {
     watchedInCinema: row.watched_in_cinema ?? false,
     attachmentUrl: row.attachment_url,
     attachmentType: row.attachment_type,
+    reviewCoverUrl: row.review_cover_url ?? null,
+    reviewCoverSource: row.review_cover_source ?? null,
   }
 }
 

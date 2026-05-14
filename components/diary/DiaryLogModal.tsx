@@ -9,7 +9,8 @@ import { computeStreak } from "../../lib/streak";
 import type { DiaryEntry, InitialEntryData, LayerDef, LogMediaInput, ReviewLayers } from "../../types/diary";
 import { EMPTY_REVIEW_LAYERS as EMPTY_LAYERS, getLayerDefs } from "../../types/diary";
 import { calculateReelShelfScore } from "../../lib/scoring";
-import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
+import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker"
+import ReviewCoverPicker, { type ReviewCoverValue } from "./ReviewCoverPicker";
 
 interface DiaryLogModalProps {
   isOpen: boolean;
@@ -439,6 +440,7 @@ export default function DiaryLogModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<AttachmentValue | null>(null);
+  const [reviewCover, setReviewCover] = useState<ReviewCoverValue>({ url: null, source: "default" });
 
   useEffect(() => {
     setMounted(true);
@@ -474,6 +476,10 @@ export default function DiaryLogModal({
           ? { url: initialEntry.attachmentUrl, type: initialEntry.attachmentType }
           : null
       );
+      setReviewCover({
+        url: initialEntry.reviewCoverUrl ?? null,
+        source: initialEntry.reviewCoverSource ?? "default",
+      });
     } else if (!isOpen) {
       setWatchedDate(todayIso());
       setRating(null);
@@ -487,6 +493,7 @@ export default function DiaryLogModal({
       setSaving(false);
       setError(null);
       setAttachment(null);
+      setReviewCover({ url: null, source: "default" });
     }
   }, [isOpen, initialEntry]);
 
@@ -563,6 +570,8 @@ export default function DiaryLogModal({
       attachment_url: attachment?.url ?? null,
       attachment_type: attachment?.type ?? null,
       watched_in_cinema: media.media_type === "movie" ? watchedInCinema : false,
+      review_cover_url: reviewCover.source === "default" ? null : (reviewCover.url ?? null),
+      review_cover_source: reviewCover.source !== "default" && reviewCover.url ? reviewCover.source : null,
     };
 
     const { data, error: saveError } = await supabase
@@ -905,6 +914,14 @@ export default function DiaryLogModal({
             <AttachmentPicker
               value={attachment}
               onChange={setAttachment}
+            />
+
+            <ReviewCoverPicker
+              mediaType={media.media_type}
+              tmdbId={media.tmdb_id}
+              defaultPosterUrl={media.poster ?? null}
+              value={reviewCover}
+              onChange={setReviewCover}
             />
           </div>
 

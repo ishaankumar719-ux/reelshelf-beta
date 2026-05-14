@@ -28,6 +28,8 @@ export type PublicDiaryEntry = {
   reviewLayers: ReviewLayers | null;
   attachmentUrl: string | null;
   attachmentType: "image" | "gif" | null;
+  reviewCoverUrl: string | null;
+  reviewCoverSource: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
 };
 
 export type PublicProfileData = {
@@ -83,6 +85,8 @@ type DiaryRow = {
   reelshelf_score: number | null;
   attachment_url: string | null;
   attachment_type: "image" | "gif" | null;
+  review_cover_url: string | null;
+  review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
   score_rating: number | null;
   cinematography_rating: number | null;
   writing_rating: number | null;
@@ -133,6 +137,8 @@ function mapDiaryRow(row: DiaryRow): PublicDiaryEntry {
     reelshelfScore: typeof row.reelshelf_score === "number" ? row.reelshelf_score : null,
     attachmentUrl: row.attachment_url ?? null,
     attachmentType: row.attachment_type ?? null,
+    reviewCoverUrl: row.review_cover_url ?? null,
+    reviewCoverSource: row.review_cover_source ?? null,
     reviewLayers: {
       score_rating: row.score_rating ?? null,
       cinematography_rating: row.cinematography_rating ?? null,

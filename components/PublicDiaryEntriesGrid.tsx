@@ -122,6 +122,8 @@ export default function PublicDiaryEntriesGrid({
           initialComments={commentsByEntry[entry.entryId] ?? []}
           attachmentUrl={entry.attachmentUrl}
           attachmentType={entry.attachmentType}
+          reviewCoverUrl={entry.reviewCoverUrl}
+          reviewCoverSource={entry.reviewCoverSource}
         />
       ))}
     </div>

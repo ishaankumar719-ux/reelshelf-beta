@@ -81,6 +81,8 @@ type FullDiaryRow = {
   reelshelf_score: number | null
   attachment_url: string | null
   attachment_type: "image" | "gif" | null
+  review_cover_url: string | null
+  review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
   watched_in_cinema: boolean
 }
 
@@ -106,6 +108,8 @@ function mapToPublicEntry(row: FullDiaryRow): PublicDiaryEntry {
     reelshelfScore: row.reelshelf_score ?? null,
     attachmentUrl: row.attachment_url ?? null,
     attachmentType: row.attachment_type ?? null,
+    reviewCoverUrl: row.review_cover_url ?? null,
+    reviewCoverSource: row.review_cover_source ?? null,
     reviewLayers: {
       score_rating: row.score_rating ?? null,
       cinematography_rating: row.cinematography_rating ?? null,

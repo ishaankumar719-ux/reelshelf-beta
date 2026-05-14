@@ -20,6 +20,8 @@ export interface ActivityEvent {
   review: string | null
   attachmentUrl?: string | null
   attachmentType?: "image" | "gif" | null
+  reviewCoverUrl?: string | null
+  reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
   watchedInCinema?: boolean
   timestamp: string
   isBatch: boolean
@@ -36,6 +38,8 @@ type DiaryActivityRow = {
   review: string | null
   attachment_url?: string | null
   attachment_type?: "image" | "gif" | null
+  review_cover_url?: string | null
+  review_cover_source?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
   watched_date?: string | null
   created_at: string
   watched_in_cinema?: boolean
@@ -155,6 +159,8 @@ export function buildActivityEventsFromSources({
       review: row.review?.trim() || null,
       attachmentUrl: row.attachment_url ?? null,
       attachmentType: row.attachment_type ?? null,
+      reviewCoverUrl: row.review_cover_url ?? null,
+      reviewCoverSource: row.review_cover_source ?? null,
       watchedInCinema: row.watched_in_cinema ?? false,
       timestamp: row.created_at,
       isBatch: false,
@@ -217,7 +223,7 @@ export async function fetchActivityEvents(
   const [diaryRes, savedRes, rushmoreRes] = await Promise.all([
     supabase
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, watched_in_cinema, watched_date, created_at")
+      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at")
       .eq("user_id", userId)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })

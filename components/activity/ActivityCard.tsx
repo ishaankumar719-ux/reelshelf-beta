@@ -711,9 +711,13 @@ function PosterThumbnail({
 }) {
   const [err, setErr] = useState(false)
 
-  const inner = event.poster && !err ? (
+  const thumbUrl = (event.reviewCoverSource && event.reviewCoverSource !== "default" && event.reviewCoverSource !== "tmdb_backdrop" && event.reviewCoverUrl)
+    ? event.reviewCoverUrl
+    : event.poster
+
+  const inner = thumbUrl && !err ? (
     <img
-      src={event.poster}
+      src={thumbUrl}
       onError={() => setErr(true)}
       alt={event.title}
       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
@@ -828,8 +832,10 @@ export default function ActivityCard({
           emotional_impact_rating: entry.emotional_impact_rating,
           entertainment_rating: entry.entertainment_rating,
         },
-        attachmentUrl: entry.attachment_url,
-        attachmentType: entry.attachment_type,
+        attachmentUrl: entry.attachment_url ?? null,
+        attachmentType: entry.attachment_type ?? null,
+        reviewCoverUrl: (entry as import("../../types/diary").DiaryEntry).review_cover_url ?? null,
+        reviewCoverSource: (entry as import("../../types/diary").DiaryEntry).review_cover_source ?? null,
       }
     )
   }
@@ -1118,6 +1124,17 @@ export default function ActivityCard({
           {/* Entry attachment */}
           {event.attachmentUrl && !event.isBatch ? (
             <EntryAttachment url={event.attachmentUrl} type={event.attachmentType ?? null} />
+          ) : null}
+
+          {/* Backdrop review cover */}
+          {event.reviewCoverSource === "tmdb_backdrop" && event.reviewCoverUrl && !event.isBatch ? (
+            <div style={{ marginTop: 10, borderRadius: 8, overflow: "hidden", height: 90 }}>
+              <img
+                src={event.reviewCoverUrl}
+                alt={event.title}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            </div>
           ) : null}
 
           {/* Interaction bar */}

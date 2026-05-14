@@ -42,6 +42,8 @@ export interface ReviewCardEntry {
   initialComments?: PublicComment[];
   attachmentUrl?: string | null;
   attachmentType?: "image" | "gif" | null;
+  reviewCoverUrl?: string | null;
+  reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
   onDeleted?: () => void;
 }
 
@@ -542,6 +544,8 @@ export default function ReviewCard({
   initialComments = [],
   attachmentUrl,
   attachmentType,
+  reviewCoverUrl,
+  reviewCoverSource,
   onDeleted,
 }: ReviewCardEntry) {
   const { user } = useAuth();
@@ -804,9 +808,28 @@ export default function ReviewCard({
           </div>
         ) : null}
 
+        {/* ── Backdrop cover banner (only when source is tmdb_backdrop) ── */}
+        {reviewCoverSource === "tmdb_backdrop" && reviewCoverUrl ? (
+          <Link href={href} style={{ textDecoration: "none", display: "block" }}>
+            <div style={{ position: "relative", width: "100%", height: 110, overflow: "hidden", background: "#0a0a14" }}>
+              <img
+                src={reviewCoverUrl}
+                alt={title}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+              <div style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 100%)",
+                pointerEvents: "none",
+              }} />
+            </div>
+          </Link>
+        ) : null}
+
         {/* ── Main body ── */}
         <div style={{ padding: 16, display: "flex", gap: 14, alignItems: "flex-start" }}>
-          {/* Poster */}
+          {/* Poster / cover thumbnail */}
           <Link href={href} style={{ textDecoration: "none", flexShrink: 0 }}>
             <div
               style={{
@@ -821,13 +844,18 @@ export default function ReviewCard({
                 boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
               }}
             >
-              {poster ? (
-                <img src={poster} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              ) : (
-                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 20, fontWeight: 700 }}>
-                  {title.charAt(0).toUpperCase()}
-                </span>
-              )}
+              {(() => {
+                const thumbUrl = reviewCoverSource && reviewCoverSource !== "default" && reviewCoverSource !== "tmdb_backdrop" && reviewCoverUrl
+                  ? reviewCoverUrl
+                  : poster;
+                return thumbUrl ? (
+                  <img src={thumbUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 20, fontWeight: 700 }}>
+                    {title.charAt(0).toUpperCase()}
+                  </span>
+                );
+              })()}
             </div>
           </Link>
 

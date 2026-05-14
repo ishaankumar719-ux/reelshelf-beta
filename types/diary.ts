@@ -121,6 +121,9 @@ export interface DiaryEntry {
   attachment_type: "image" | "gif" | null
   // Cinema logging (migration: 20260508_watched_in_cinema.sql)
   watched_in_cinema: boolean
+  // Review cover (migration: 20260514_review_cover.sql)
+  review_cover_url: string | null
+  review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
 }
 
 export interface InitialEntryData {
@@ -135,6 +138,9 @@ export interface InitialEntryData {
   // Pre-fill existing attachment when editing
   attachmentUrl?: string | null
   attachmentType?: "image" | "gif" | null
+  // Pre-fill existing review cover when editing
+  reviewCoverUrl?: string | null
+  reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
 }
 
 export interface LogMediaInput {

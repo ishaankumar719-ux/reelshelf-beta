@@ -39,6 +39,9 @@ export const DIARY_SELECT = [
   "attachment_type",
   // Cinema logging (migration: 20260508_watched_in_cinema.sql)
   "watched_in_cinema",
+  // Review cover (migration: 20260514_review_cover.sql)
+  "review_cover_url",
+  "review_cover_source",
 ].join(", ")
 
 export const PROFILE_SELECT =

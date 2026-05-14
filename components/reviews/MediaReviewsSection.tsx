@@ -444,6 +444,8 @@ export default function MediaReviewsSection({
                   isLiked={s?.isLiked ?? false}
                   attachmentUrl={review.attachmentUrl}
                   attachmentType={review.attachmentType}
+                  reviewCoverUrl={review.reviewCoverUrl}
+                  reviewCoverSource={review.reviewCoverSource}
                 />
               )
             })}

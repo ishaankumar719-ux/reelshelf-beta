@@ -21,6 +21,8 @@ type ReviewRow = {
   saved_at: string
   contains_spoilers: boolean
   rewatch: boolean
+  review_cover_url: string | null
+  review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
 }
 
 const MEDIA_TYPE_LABEL: Record<string, string> = {
@@ -46,7 +48,11 @@ function StarRating({ rating }: { rating: number | null }) {
 
 function ReviewCard({ entry }: { entry: ReviewRow }) {
   const href = getMediaHref({ id: entry.media_id, mediaType: entry.media_type as MediaType })
-  const posterSrc = entry.poster ? `https://image.tmdb.org/t/p/w92${entry.poster}` : null
+  const hasCover = entry.review_cover_source && entry.review_cover_source !== "default" && entry.review_cover_url
+  const thumbSrc = hasCover && entry.review_cover_source !== "tmdb_backdrop"
+    ? entry.review_cover_url
+    : entry.poster ? `https://image.tmdb.org/t/p/w92${entry.poster}` : null
+  const posterSrc = thumbSrc
   const dateStr = entry.watched_date
     ? new Date(entry.watched_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : null
@@ -155,7 +161,7 @@ export default async function ReviewsPage({ params }: { params: Promise<{ userna
 
   const { data: rows } = await supabase
     .from("diary_entries")
-    .select("id, media_id, media_type, title, poster, year, rating, review, watched_date, saved_at, contains_spoilers, rewatch")
+    .select("id, media_id, media_type, title, poster, year, rating, review, watched_date, saved_at, contains_spoilers, rewatch, review_cover_url, review_cover_source")
     .eq("user_id", profile.id)
     .not("review", "is", null)
     .neq("review", "")
