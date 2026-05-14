@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { DisplayBadge } from "@/lib/supabase/badges"
 import {
   RARITY_COLOR,
@@ -23,9 +23,297 @@ const TIER_COLOR: Record<string, string> = {
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 
+// ─── Badge detail modal ───────────────────────────────────────────────────────
+
+function BadgeDetailModal({
+  badge,
+  onClose,
+}: {
+  badge: DisplayBadge
+  onClose: () => void
+}) {
+  const isLegacy  = badge.category === "legacy"
+  const rarityColor = isLegacy ? LEGACY_TEXT_COLOR : RARITY_COLOR[badge.rarity]
+  const rarityGlow  = isLegacy ? LEGACY_GLOW_COLOR  : RARITY_GLOW[badge.rarity]
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKey)
+    // Prevent body scroll while open
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.body.style.overflow = prev
+    }
+  }, [onClose])
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric", month: "long", day: "numeric",
+    })
+  }
+
+  return (
+    // Backdrop
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={badge.earned ? badge.name : "Locked badge"}
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px 16px",
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        animation: "bdFadeIn 0.18s ease both",
+      }}
+    >
+      {/* Panel */}
+      <div
+        role="document"
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          borderRadius: 20,
+          border: `1px solid ${badge.earned ? rarityColor.replace(/[\d.]+\)$/, "0.3)") : "rgba(255,255,255,0.1)"}`,
+          background: isLegacy
+            ? "radial-gradient(circle at 30% 20%, rgba(212,175,55,0.1) 0%, rgba(8,8,16,0.98) 60%)"
+            : badge.earned
+              ? `radial-gradient(circle at 30% 20%, ${rarityGlow} 0%, rgba(8,8,16,0.98) 60%)`
+              : "rgba(10,10,18,0.98)",
+          boxShadow: badge.earned
+            ? `0 24px 80px rgba(0,0,0,0.7), 0 0 40px ${rarityGlow}`
+            : "0 24px 80px rgba(0,0,0,0.7)",
+          overflow: "hidden",
+          animation: "bdSlideUp 0.22s ease both",
+          position: "relative",
+        }}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            border: "0.5px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 14,
+            fontFamily: FONT,
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Icon area */}
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          paddingTop: 32,
+          paddingBottom: 20,
+          background: isLegacy
+            ? "radial-gradient(ellipse 100% 80% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)"
+            : badge.earned
+              ? `radial-gradient(ellipse 100% 80% at 50% 0%, ${rarityGlow} 0%, transparent 70%)`
+              : "none",
+        }}>
+          {isLegacy && badge.earned ? (
+            <div style={{
+              width: 88,
+              height: 88,
+              borderRadius: "50%",
+              background: `conic-gradient(
+                rgba(212,175,55,0.9) 0deg,
+                rgba(255,236,130,0.95) 60deg,
+                rgba(212,175,55,0.9) 120deg,
+                rgba(180,140,30,0.85) 180deg,
+                rgba(212,175,55,0.9) 240deg,
+                rgba(255,236,130,0.95) 300deg,
+                rgba(212,175,55,0.9) 360deg
+              )`,
+              padding: 2,
+              boxShadow: `0 0 24px ${LEGACY_GLOW_COLOR}, 0 0 48px rgba(212,175,55,0.1)`,
+            }}>
+              <div style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: LEGACY_BG_GRADIENT,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 36,
+              }}>
+                {badge.icon}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              border: `2px solid ${badge.earned ? rarityColor : "rgba(255,255,255,0.1)"}`,
+              background: badge.earned
+                ? `radial-gradient(circle at 40% 35%, ${rarityGlow}, rgba(10,10,18,0.95))`
+                : "rgba(255,255,255,0.03)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+              boxShadow: badge.earned ? `0 0 20px ${rarityGlow}` : "none",
+              filter: badge.earned ? "none" : "grayscale(1)",
+              opacity: badge.earned ? 1 : 0.35,
+            }}>
+              {badge.earned ? badge.icon : "🔒"}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "0 24px 28px" }}>
+          {/* Name + rarity row */}
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <h2 style={{
+              margin: "0 0 6px",
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: badge.earned
+                ? (isLegacy ? LEGACY_TEXT_COLOR : "rgba(255,255,255,0.96)")
+                : "rgba(255,255,255,0.4)",
+              fontFamily: FONT,
+            }}>
+              {badge.earned ? badge.name : (badge.hidden ? "???" : badge.name)}
+            </h2>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {badge.earned ? (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase" as const,
+                  color: rarityColor,
+                  border: `0.5px solid ${rarityColor.replace(/[\d.]+\)$/, "0.3)")}`,
+                  borderRadius: 4,
+                  padding: "2px 7px",
+                }}>
+                  {isLegacy ? "Legacy · Founding Era" : badge.rarity}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "rgba(255,255,255,0.28)",
+                  border: "0.5px solid rgba(255,255,255,0.12)",
+                  borderRadius: 4,
+                  padding: "2px 7px",
+                }}>
+                  Locked
+                </span>
+              )}
+              {badge.earned && (
+                <span style={{
+                  fontSize: 10,
+                  color: "rgba(29,200,120,0.8)",
+                  fontWeight: 600,
+                  fontFamily: FONT,
+                }}>
+                  +{badge.xp} XP
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          <p style={{
+            margin: "0 0 16px",
+            fontSize: 13,
+            lineHeight: 1.65,
+            color: badge.earned ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.32)",
+            textAlign: "center",
+            fontFamily: FONT,
+          }}>
+            {badge.earned || !badge.hidden ? badge.description : "Keep exploring ReelShelf to discover this badge."}
+          </p>
+
+          {/* Earned date */}
+          {badge.earned && badge.unlocked_at && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingTop: 14,
+              borderTop: `0.5px solid ${isLegacy ? "rgba(212,175,55,0.15)" : "rgba(255,255,255,0.07)"}`,
+            }}>
+              <span style={{ fontSize: 12 }}>✓</span>
+              <span style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.3)",
+                fontFamily: FONT,
+              }}>
+                Earned {formatDate(badge.unlocked_at)}
+              </span>
+            </div>
+          )}
+
+          {/* Unlock hint for locked badges */}
+          {!badge.earned && !badge.hidden && (
+            <div style={{
+              paddingTop: 14,
+              borderTop: "0.5px solid rgba(255,255,255,0.06)",
+              textAlign: "center",
+            }}>
+              <p style={{
+                margin: 0,
+                fontSize: 11,
+                color: "rgba(255,255,255,0.22)",
+                fontStyle: "italic",
+                fontFamily: FONT,
+              }}>
+                Keep going — you'll unlock this one.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Standard badge token ─────────────────────────────────────────────────────
 
-function BadgeToken({ badge }: { badge: DisplayBadge }) {
+function BadgeToken({
+  badge,
+  onSelect,
+}: {
+  badge: DisplayBadge
+  onSelect: (badge: DisplayBadge) => void
+}) {
   const [hovered, setHovered] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<"above" | "below">("above")
   const rarityColor = RARITY_COLOR[badge.rarity]
@@ -41,11 +329,12 @@ function BadgeToken({ badge }: { badge: DisplayBadge }) {
     <div style={{ position: "relative", flexShrink: 0 }}>
       <button
         type="button"
+        onClick={() => onSelect(badge)}
         onMouseEnter={(e) => openTooltip(e.currentTarget)}
         onMouseLeave={() => setHovered(false)}
         onFocus={(e) => openTooltip(e.currentTarget)}
         onBlur={() => setHovered(false)}
-        aria-label={badge.name}
+        aria-label={badge.earned ? badge.name : (badge.hidden ? "Hidden badge" : badge.name)}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -54,7 +343,7 @@ function BadgeToken({ badge }: { badge: DisplayBadge }) {
           background: "transparent",
           border: "none",
           padding: "4px 2px",
-          cursor: badge.earned ? "pointer" : "default",
+          cursor: "pointer",
           outline: "none",
           WebkitTapHighlightColor: "transparent",
         }}
@@ -79,7 +368,7 @@ function BadgeToken({ badge }: { badge: DisplayBadge }) {
                 ? `0 0 8px ${rarityGlow}`
                 : "none",
             transition: "box-shadow 0.18s ease, transform 0.18s ease",
-            transform: badge.earned && hovered ? "scale(1.08)" : "scale(1)",
+            transform: hovered ? "scale(1.08)" : "scale(1)",
             filter: badge.earned ? "none" : "grayscale(1)",
             opacity: badge.earned ? 1 : 0.28,
           }}
@@ -120,6 +409,7 @@ function BadgeToken({ badge }: { badge: DisplayBadge }) {
         </span>
       </button>
 
+      {/* Desktop-only tooltip (hidden on pointer:coarse / mobile) */}
       {hovered ? (
         <BadgeTooltip badge={badge} pos={tooltipPos} borderColor={rarityColor} />
       ) : null}
@@ -129,7 +419,13 @@ function BadgeToken({ badge }: { badge: DisplayBadge }) {
 
 // ─── Legacy badge token ───────────────────────────────────────────────────────
 
-function LegacyBadgeToken({ badge }: { badge: DisplayBadge }) {
+function LegacyBadgeToken({
+  badge,
+  onSelect,
+}: {
+  badge: DisplayBadge
+  onSelect: (badge: DisplayBadge) => void
+}) {
   const [hovered, setHovered] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<"above" | "below">("above")
 
@@ -143,6 +439,7 @@ function LegacyBadgeToken({ badge }: { badge: DisplayBadge }) {
     <div style={{ position: "relative", flexShrink: 0 }}>
       <button
         type="button"
+        onClick={() => onSelect(badge)}
         onMouseEnter={(e) => openTooltip(e.currentTarget)}
         onMouseLeave={() => setHovered(false)}
         onFocus={(e) => openTooltip(e.currentTarget)}
@@ -243,7 +540,7 @@ function LegacyBadgeToken({ badge }: { badge: DisplayBadge }) {
   )
 }
 
-// ─── Tooltips ─────────────────────────────────────────────────────────────────
+// ─── Tooltips (desktop hover only) ───────────────────────────────────────────
 
 function BadgeTooltip({
   badge,
@@ -261,7 +558,7 @@ function BadgeTooltip({
         [pos === "above" ? "bottom" : "top"]: "calc(100% + 8px)",
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 80,
+        zIndex: 8000,
         minWidth: 160,
         maxWidth: 210,
         borderRadius: 12,
@@ -272,7 +569,7 @@ function BadgeTooltip({
         padding: "10px 12px",
         boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
         pointerEvents: "none",
-      }}
+      } as React.CSSProperties}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
         <span style={{ fontSize: 16 }}>{badge.icon}</span>
@@ -291,6 +588,9 @@ function BadgeTooltip({
           </span>
         </div>
       ) : null}
+      <p style={{ margin: "7px 0 0", fontSize: 10, color: "rgba(255,255,255,0.2)", fontStyle: "italic", fontFamily: FONT }}>
+        Tap for details
+      </p>
     </div>
   )
 }
@@ -316,7 +616,6 @@ function LegacyBadgeTooltip({ badge, pos }: { badge: DisplayBadge; pos: "above" 
         pointerEvents: "none",
       }}
     >
-      {/* "Legacy" label */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
         <span style={{ fontSize: 15 }}>{badge.icon}</span>
         <div>
@@ -344,6 +643,8 @@ function LegacyBadgeTooltip({ badge, pos }: { badge: DisplayBadge; pos: "above" 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
+  const [selectedBadge, setSelectedBadge] = useState<DisplayBadge | null>(null)
+
   if (badges.length === 0) return null
 
   const legacyBadges  = badges.filter((b) => b.category === "legacy" && b.earned)
@@ -354,151 +655,164 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
   const tierColor     = TIER_COLOR[tier] ?? TIER_COLOR.Collector
 
   return (
-    <div style={{ marginTop: 32 }}>
+    <>
+      <style>{`
+        @keyframes bdFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bdSlideUp { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
+      `}</style>
 
-      {/* ── Legacy section (only if user has any) ── */}
-      {legacyBadges.length > 0 ? (
-        <div
-          style={{
-            marginBottom: 28,
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: `0.5px solid rgba(212,175,55,0.22)`,
-            background: "rgba(212,175,55,0.04)",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Subtle corner glow */}
-          <div
-            style={{
-              position: "absolute",
-              top: -30,
-              right: -30,
-              width: 120,
-              height: 120,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(212,175,55,0.07), transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-
-          {/* Section label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: LEGACY_TEXT_COLOR,
-                fontFamily: FONT,
-              }}
-            >
-              Legacy
-            </span>
-            <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.18)" }} />
-            <span style={{ fontSize: 9, color: "rgba(212,175,55,0.45)", fontFamily: FONT, letterSpacing: "0.04em" }}>
-              Founding Era
-            </span>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {legacyBadges.map((badge) => (
-              <LegacyBadgeToken key={badge.id} badge={badge} />
-            ))}
-          </div>
-        </div>
+      {selectedBadge ? (
+        <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
       ) : null}
 
-      {/* ── Normal badges section ── */}
-      {normalBadges.length > 0 ? (
-        <>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <span
-              style={{
-                fontFamily: FONT,
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.34)",
-              }}
-            >
-              Badges
-            </span>
+      <div style={{ marginTop: 32 }}>
 
-            {earnedNormal.length > 0 ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(255,255,255,0.3)",
-                    fontVariantNumeric: "tabular-nums",
-                    fontFamily: FONT,
-                  }}
-                >
-                  {totalXP.toLocaleString()} XP
-                </span>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    height: 20,
-                    padding: "0 8px",
-                    borderRadius: 999,
-                    border: `0.5px solid ${tierColor}`,
-                    background: `${tierColor.replace(/[\d.]+\)$/, "0.1)")}`,
-                  }}
-                >
+        {/* ── Legacy section (only if user has any) ── */}
+        {legacyBadges.length > 0 ? (
+          <div
+            style={{
+              marginBottom: 28,
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: `0.5px solid rgba(212,175,55,0.22)`,
+              background: "rgba(212,175,55,0.04)",
+              position: "relative",
+              overflow: "visible",
+            }}
+          >
+            {/* Subtle corner glow */}
+            <div
+              style={{
+                position: "absolute",
+                top: -30,
+                right: -30,
+                width: 120,
+                height: 120,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(212,175,55,0.07), transparent 70%)",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* Section label */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: LEGACY_TEXT_COLOR,
+                  fontFamily: FONT,
+                }}
+              >
+                Legacy
+              </span>
+              <div style={{ flex: 1, height: "0.5px", background: "rgba(212,175,55,0.18)" }} />
+              <span style={{ fontSize: 9, color: "rgba(212,175,55,0.45)", fontFamily: FONT, letterSpacing: "0.04em" }}>
+                Founding Era
+              </span>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {legacyBadges.map((badge) => (
+                <LegacyBadgeToken key={badge.id} badge={badge} onSelect={setSelectedBadge} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* ── Normal badges section ── */}
+        {normalBadges.length > 0 ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <span
+                style={{
+                  fontFamily: FONT,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.34)",
+                }}
+              >
+                Badges
+              </span>
+
+              {earnedNormal.length > 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span
                     style={{
-                      fontSize: 9,
-                      fontWeight: 600,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: tierColor,
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.3)",
+                      fontVariantNumeric: "tabular-nums",
                       fontFamily: FONT,
                     }}
                   >
-                    {tier}
+                    {totalXP.toLocaleString()} XP
                   </span>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      height: 20,
+                      padding: "0 8px",
+                      borderRadius: 999,
+                      border: `0.5px solid ${tierColor}`,
+                      background: `${tierColor.replace(/[\d.]+\)$/, "0.1)")}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 600,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: tierColor,
+                        fontFamily: FONT,
+                      }}
+                    >
+                      {tier}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              overflowX: "auto",
-              scrollbarWidth: "none",
-              paddingBottom: 6,
-              paddingTop: 2,
-            }}
-            className="[&::-webkit-scrollbar]:hidden"
-          >
-            {normalBadges.map((badge) => (
-              <BadgeToken key={badge.id} badge={badge} />
-            ))}
-          </div>
-
-          {earnedNormal.length === 0 ? (
-            <p
+            {/* Scroll container — overflow:visible on y so tooltips/modal aren't clipped */}
+            <div
               style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.22)",
-                fontStyle: "italic",
-                margin: "8px 0 0",
-                fontFamily: FONT,
+                display: "flex",
+                gap: 8,
+                overflowX: "auto",
+                overflowY: "visible",
+                scrollbarWidth: "none",
+                paddingBottom: 6,
+                paddingTop: 2,
               }}
+              className="[&::-webkit-scrollbar]:hidden"
             >
-              No badges earned yet — start logging to unlock them.
-            </p>
-          ) : null}
-        </>
-      ) : null}
-    </div>
+              {normalBadges.map((badge) => (
+                <BadgeToken key={badge.id} badge={badge} onSelect={setSelectedBadge} />
+              ))}
+            </div>
+
+            {earnedNormal.length === 0 ? (
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.22)",
+                  fontStyle: "italic",
+                  margin: "8px 0 0",
+                  fontFamily: FONT,
+                }}
+              >
+                No badges earned yet — start logging to unlock them.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </>
   )
 }
