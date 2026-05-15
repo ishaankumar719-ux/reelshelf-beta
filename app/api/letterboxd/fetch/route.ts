@@ -1,29 +1,7 @@
 import { NextResponse } from "next/server"
+import type { RssWizardEntry, LetterboxdFetchResponse } from "@/lib/import/types"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type RssWizardEntry = {
-  sourceRow: number
-  title: string
-  year: number
-  rating: number | null       // converted to 1–10 scale
-  watchedDate: string         // YYYY-MM-DD
-  review: string
-  rewatch: boolean
-  containsSpoilers: boolean
-  favourite: boolean
-  mediaType: "movie" | "tv"
-  mediaId: string             // "tmdb-{id}" when TMDB ID present, else slug
-  posterUrl: string | null    // letterboxd CDN poster from RSS description
-}
-
-export type FetchResponse = {
-  entries: RssWizardEntry[]
-  displayName: string
-  total: number
-  limited: boolean            // true when RSS was capped (~50–100 entries)
-  error?: string
-}
+export type { RssWizardEntry } from "@/lib/import/types"
 
 // ─── XML helpers ──────────────────────────────────────────────────────────────
 
@@ -113,7 +91,7 @@ function parseItem(item: string, index: number): RssWizardEntry | null {
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 
-export async function GET(request: Request): Promise<NextResponse<FetchResponse>> {
+export async function GET(request: Request): Promise<NextResponse<LetterboxdFetchResponse>> {
   const username = new URL(request.url).searchParams.get("username")?.trim()
 
   if (!username) {

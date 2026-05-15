@@ -12,7 +12,7 @@ import {
   type BatchImportProgress,
 } from "@/lib/supabase/letterboxdBatchImport"
 import type { DiaryMovie } from "@/lib/diary"
-import type { RssWizardEntry } from "@/app/api/letterboxd/fetch/route"
+import type { RssWizardEntry } from "@/lib/import/types"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -233,70 +233,89 @@ function InputStep({
   }
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
-      {/* Primary card */}
-      <div style={{ borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", background: "linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))", padding: 24, display: "grid", gap: 18 }}>
+    <div style={{ display: "grid", gap: 16 }}>
+
+      {/* ── Primary: Import with Letterboxd username ── */}
+      <div style={{ borderRadius: 20, border: "1px solid rgba(255,255,255,0.09)", background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))", padding: "22px 24px", display: "grid", gap: 18 }}>
+
         <div>
-          <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: FONT }}>Letterboxd username</p>
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(29,158,117,0.7)", fontFamily: FONT, fontWeight: 600 }}>
+            Import with Letterboxd username
+          </p>
           <p style={{ margin: "6px 0 0", fontSize: 15, color: "rgba(255,255,255,0.45)", fontFamily: FONT, lineHeight: 1.6 }}>
-            Enter your Letterboxd username to import your recent diary entries, ratings, and reviews.
+            Enter your Letterboxd username and ReelShelf will fetch your diary entries, ratings, and reviews automatically.
           </p>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "rgba(255,255,255,0.25)", fontFamily: FONT, pointerEvents: "none" }}>letterboxd.com/</span>
+            <span style={{
+              position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+              fontSize: 13, color: "rgba(255,255,255,0.22)", fontFamily: FONT, pointerEvents: "none",
+              whiteSpace: "nowrap",
+            }}>letterboxd.com/</span>
             <input
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") submit() }}
               placeholder="your-username"
+              autoComplete="off"
               style={{
-                width: "100%", height: 46, borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
+                width: "100%", height: 48, borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.13)",
                 background: "rgba(255,255,255,0.05)",
                 color: "rgba(255,255,255,0.88)", fontSize: 14, fontFamily: FONT,
-                paddingLeft: 122, paddingRight: 14,
+                paddingLeft: 126, paddingRight: 14,
                 outline: "none", boxSizing: "border-box",
+                transition: "border-color 0.15s",
               }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(29,158,117,0.5)" }}
+              onBlur={(e)  => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.13)" }}
             />
           </div>
-          <Btn onClick={submit} disabled={value.trim().length < 1}>
-            Import my diary →
+          <Btn onClick={submit} disabled={value.trim().length < 1} style={{ height: 48 }}>
+            Find my Letterboxd
           </Btn>
         </div>
 
         {error ? <Err msg={error} /> : null}
 
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "0.5px solid rgba(255,255,255,0.06)" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: FONT, lineHeight: 1.6 }}>
-            Imports your most recent ~50–100 diary entries. For your full history, use the CSV export from Letterboxd Settings → Export your data.
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT, lineHeight: 1.6 }}>
+            Imports your most recent ~50–100 diary entries from your public Letterboxd profile. For your complete history, use the CSV export below.
           </p>
         </div>
       </div>
 
-      {/* Advanced: CSV */}
-      <div style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
+      {/* ── Advanced: Upload CSV export ── */}
+      <div style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)", overflow: "hidden" }}>
         <button
           type="button"
           onClick={() => setCsvOpen((o) => !o)}
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "14px 18px", background: "none", border: "none", cursor: "pointer",
-            color: "rgba(255,255,255,0.4)", fontSize: 13, fontFamily: FONT,
-            textAlign: "left",
+            padding: "13px 18px", background: "none", border: "none", cursor: "pointer",
+            color: "rgba(255,255,255,0.38)", fontFamily: FONT, textAlign: "left",
           }}
         >
-          <span>Advanced: Upload CSV export</span>
-          <span style={{ fontSize: 11, transition: "transform 0.15s", display: "inline-block", transform: csvOpen ? "rotate(180deg)" : "none" }}>▾</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span style={{ fontSize: 13 }}>Advanced: Upload CSV export</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", fontFamily: FONT }}>— for complete history</span>
+          </div>
+          <span style={{ fontSize: 10, display: "inline-block", transform: csvOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▾</span>
         </button>
 
         {csvOpen ? (
-          <div style={{ padding: "0 18px 18px", display: "grid", gap: 12 }}>
-            <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT, lineHeight: 1.6 }}>
-              Upload <strong style={{ color: "rgba(255,255,255,0.5)" }}>diary.csv</strong> for full history or <strong style={{ color: "rgba(255,255,255,0.5)" }}>ratings.csv</strong> for ratings only. Go to letterboxd.com → Settings → Import &amp; Export → Export your data.
+          <div style={{ padding: "0 18px 18px", display: "grid", gap: 12, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: FONT, lineHeight: 1.6 }}>
+              Download your export from <strong style={{ color: "rgba(255,255,255,0.5)" }}>letterboxd.com → Settings → Import &amp; Export → Export your data</strong>, then upload <strong style={{ color: "rgba(255,255,255,0.5)" }}>diary.csv</strong> (full history with dates) or <strong style={{ color: "rgba(255,255,255,0.5)" }}>ratings.csv</strong>.
             </p>
 
             <div
@@ -306,17 +325,17 @@ function InputStep({
               onClick={() => fileRef.current?.click()}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
-                minHeight: 120, borderRadius: 14,
-                border: dragActive ? "1.5px dashed rgba(29,158,117,0.6)" : "1.5px dashed rgba(255,255,255,0.12)",
-                background: dragActive ? "rgba(29,158,117,0.05)" : "rgba(255,255,255,0.02)",
+                minHeight: 110, borderRadius: 12,
+                border: dragActive ? "1.5px dashed rgba(29,158,117,0.55)" : "1.5px dashed rgba(255,255,255,0.1)",
+                background: dragActive ? "rgba(29,158,117,0.04)" : "rgba(255,255,255,0.015)",
                 cursor: "pointer", transition: "all 0.15s", padding: 20, textAlign: "center",
               }}
             >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                 <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
               </svg>
-              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.5)", fontFamily: FONT }}>Drop CSV file here or click to browse</p>
+              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.42)", fontFamily: FONT }}>Drop .csv file here or click to browse</p>
               <input ref={fileRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsvFile(f); e.target.value = "" }} />
             </div>
@@ -755,8 +774,8 @@ export default function ImportWizard() {
         <h1 style={{ margin: 0, fontSize: "clamp(24px,5vw,38px)", fontWeight: 700, letterSpacing: "-0.9px", lineHeight: 1.05, color: "rgba(255,255,255,0.95)" }}>
           Import from Letterboxd
         </h1>
-        <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6, maxWidth: 500 }}>
-          Import your diary entries, ratings, and reviews into ReelShelf.
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6, maxWidth: 520 }}>
+          Import by entering your Letterboxd username, or upload your CSV export manually for your complete history.
         </p>
       </div>
 
