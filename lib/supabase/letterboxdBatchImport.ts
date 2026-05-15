@@ -79,6 +79,7 @@ function buildRow(userId: string, entry: DiaryMovie) {
     reelshelf_score: null,
     attachment_url: null,
     attachment_type: null,
+    letterboxd_rating: typeof entry.letterboxdRating === "number" ? entry.letterboxdRating : null,
   }
 }
 
@@ -166,6 +167,7 @@ export async function batchImportLetterboxd(
       const { error } = await client.from("diary_entries").upsert(rows, {
         onConflict:
           "user_id,media_type,media_id,review_scope,season_number,episode_number",
+        ignoreDuplicates: true,
       })
 
       if (error) {

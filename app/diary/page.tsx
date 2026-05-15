@@ -199,6 +199,7 @@ export default function DiaryPage() {
       },
       {
         rating: movie.rating,
+        letterboxdRating: movie.letterboxdRating ?? null,
         review: movie.review,
         watchedDate: movie.watchedDate,
         favourite: movie.favourite,

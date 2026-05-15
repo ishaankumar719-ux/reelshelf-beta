@@ -7,6 +7,7 @@ import { DIARY_SELECT } from "../queries";
 
 export type PersistedDiaryEntry = SavedMediaItem & {
   rating: number | null;
+  letterboxdRating?: number | null;
   review: string;
   watchedDate: string;
   favourite: boolean;
@@ -62,6 +63,8 @@ type DiaryRow = {
   attachment_type?: "image" | "gif" | null;
   // Cinema logging — migration 20260508_watched_in_cinema.sql
   watched_in_cinema?: boolean;
+  // Letterboxd import — migration add_letterboxd_rating_column
+  letterboxd_rating?: number | null;
 };
 
 type SavedItemRow = {
@@ -193,6 +196,7 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     attachment_url: entry.attachmentUrl ?? null,
     attachment_type: entry.attachmentType ?? null,
     watched_in_cinema: entry.watchedInCinema ?? false,
+    letterboxd_rating: typeof entry.letterboxdRating === "number" ? entry.letterboxdRating : null,
   };
 }
 
@@ -233,6 +237,7 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     attachmentUrl: row.attachment_url ?? null,
     attachmentType: row.attachment_type ?? null,
     watchedInCinema: row.watched_in_cinema ?? false,
+    letterboxdRating: typeof row.letterboxd_rating === "number" ? row.letterboxd_rating : null,
   };
 }
 

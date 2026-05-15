@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { RssWizardEntry, LetterboxdFetchResponse } from "@/lib/import/types"
+import { convertLetterboxdRating } from "@/lib/import/types"
 
 export type { RssWizardEntry } from "@/lib/import/types"
 
@@ -51,7 +52,8 @@ function parseItem(item: string, index: number): RssWizardEntry | null {
   if (!year) return null
 
   const ratingRaw = parseFloat(xmlText(item, "letterboxd:memberRating"))
-  const rating = Number.isNaN(ratingRaw) ? null : Math.round(ratingRaw * 2 * 10) / 10
+  const letterboxdRating = Number.isNaN(ratingRaw) ? null : ratingRaw
+  const rating = letterboxdRating !== null ? convertLetterboxdRating(letterboxdRating) : null
 
   const watchedDate =
     xmlText(item, "letterboxd:watchedDate") || new Date().toISOString().slice(0, 10)
@@ -78,6 +80,7 @@ function parseItem(item: string, index: number): RssWizardEntry | null {
     title,
     year,
     rating,
+    letterboxdRating,
     watchedDate,
     review:   extractReview(descHtml),
     rewatch,

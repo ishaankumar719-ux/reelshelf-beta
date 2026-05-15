@@ -42,6 +42,8 @@ export const DIARY_SELECT = [
   // Review cover (migration: 20260514_review_cover.sql)
   "review_cover_url",
   "review_cover_source",
+  // Letterboxd import (migration: add_letterboxd_rating_column)
+  "letterboxd_rating",
 ].join(", ")
 
 export const PROFILE_SELECT =

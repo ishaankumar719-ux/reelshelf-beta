@@ -44,6 +44,7 @@ export interface ReviewCardEntry {
   attachmentType?: "image" | "gif" | null;
   reviewCoverUrl?: string | null;
   reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
+  letterboxdRating?: number | null;
   onDeleted?: () => void;
 }
 
@@ -546,6 +547,7 @@ export default function ReviewCard({
   attachmentType,
   reviewCoverUrl,
   reviewCoverSource,
+  letterboxdRating,
   onDeleted,
 }: ReviewCardEntry) {
   const { user } = useAuth();
@@ -582,6 +584,7 @@ export default function ReviewCard({
       },
       {
         rating,
+        letterboxdRating: letterboxdRating ?? null,
         review,
         watchedDate,
         favourite,

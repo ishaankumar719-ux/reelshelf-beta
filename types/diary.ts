@@ -124,6 +124,8 @@ export interface DiaryEntry {
   // Review cover (migration: 20260514_review_cover.sql)
   review_cover_url: string | null
   review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
+  // Letterboxd import (migration: add_letterboxd_rating_column)
+  letterboxd_rating: number | null
 }
 
 export interface InitialEntryData {
@@ -141,6 +143,8 @@ export interface InitialEntryData {
   // Pre-fill existing review cover when editing
   reviewCoverUrl?: string | null
   reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
+  // Original Letterboxd star rating, shown as a hint when editing an imported entry
+  letterboxdRating?: number | null
 }
 
 export interface LogMediaInput {

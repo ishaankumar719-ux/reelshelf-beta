@@ -68,19 +68,20 @@ async function matchCsvEntries(
     const mediaId   = tmdb ? `tmdb-${tmdb.id}` : e.diaryEntry.id
     const posterUrl = tmdb?.posterPath ? `${TMDB_W}${tmdb.posterPath}` : null
     results[i] = {
-      sourceRow:       e.sourceRow,
-      title:           tmdb?.title ?? e.title,
-      year:            tmdb?.year  ?? e.year,
-      rating:          e.rating,
-      watchedDate:     e.watchedDate,
-      review:          e.review,
-      rewatch:         e.rewatch,
+      sourceRow:        e.sourceRow,
+      title:            tmdb?.title ?? e.title,
+      year:             tmdb?.year  ?? e.year,
+      rating:           e.rating,
+      letterboxdRating: e.letterboxdRating,
+      watchedDate:      e.watchedDate,
+      review:           e.review,
+      rewatch:          e.rewatch,
       containsSpoilers: e.containsSpoilers,
-      favourite:       false,
-      mediaType:       "movie",
+      favourite:        false,
+      mediaType:        "movie",
       mediaId,
       posterUrl,
-      skipped:         false,
+      skipped:          false,
     }
     onProgress(++done, entries.length)
   }
@@ -105,6 +106,7 @@ function toDiary(e: WizardEntry): DiaryMovie {
     poster:           e.posterUrl ?? undefined,
     genres:           [],
     rating:           e.rating,
+    letterboxdRating: e.letterboxdRating ?? null,
     review:           e.review,
     watchedDate:      e.watchedDate,
     favourite:        e.favourite,

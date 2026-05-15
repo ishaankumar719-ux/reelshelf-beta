@@ -399,6 +399,7 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
     voteAverage:
       typeof entry.vote_average === "number" ? entry.vote_average : undefined,
     rating: typeof entry.rating === "number" ? entry.rating : null,
+    letterboxdRating: typeof entry.letterboxd_rating === "number" ? entry.letterboxd_rating : null,
     review: entry.review,
     watchedDate: entry.watched_date,
     favourite: entry.favourite,
@@ -430,6 +431,7 @@ export default function DiaryLogModal({
   const [mounted, setMounted] = useState(false);
   const [watchedDate, setWatchedDate] = useState(todayIso());
   const [rating, setRating] = useState<number | null>(null);
+  const [letterboxdRating, setLetterboxdRating] = useState<number | null>(null);
   const [review, setReview] = useState("");
   const [favourite, setFavourite] = useState(false);
   const [rewatch, setRewatch] = useState(false);
@@ -464,6 +466,7 @@ export default function DiaryLogModal({
   useEffect(() => {
     if (isOpen && initialEntry) {
       setRating(initialEntry.rating);
+      setLetterboxdRating(initialEntry.letterboxdRating ?? null);
       setReview(initialEntry.review);
       setWatchedDate(initialEntry.watchedDate);
       setFavourite(initialEntry.favourite);
@@ -483,6 +486,7 @@ export default function DiaryLogModal({
     } else if (!isOpen) {
       setWatchedDate(todayIso());
       setRating(null);
+      setLetterboxdRating(null);
       setReview("");
       setFavourite(false);
       setRewatch(false);
@@ -873,6 +877,19 @@ export default function DiaryLogModal({
 
           <div style={{ marginTop: -18 }}>
             <RatingWidget value={rating} onChange={setRating} />
+            {letterboxdRating !== null ? (
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  textAlign: "center",
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.28)",
+                  letterSpacing: "0.03em",
+                }}
+              >
+                Imported from Letterboxd: {letterboxdRating}★
+              </p>
+            ) : null}
           </div>
 
           <Divider />

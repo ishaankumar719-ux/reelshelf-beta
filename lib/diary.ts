@@ -9,6 +9,7 @@ import {
 
 export type DiaryMovie = SavedMediaItem & {
   rating: number | null;
+  letterboxdRating?: number | null; // raw Letterboxd star rating (0.5–5.0), set on imported entries
   review: string;
   watchedDate: string;
   favourite: boolean;

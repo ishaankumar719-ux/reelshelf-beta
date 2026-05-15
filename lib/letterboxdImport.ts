@@ -1,5 +1,6 @@
 import type { DiaryMovie } from "./diary";
 import { localMovies } from "./localMovies";
+import { convertLetterboxdRating } from "./import/types";
 
 export type LetterboxdImportPreviewItem = {
   sourceIndex: number;
@@ -109,21 +110,19 @@ function parseYear(value: string) {
   return match ? Number(match[0]) : 0;
 }
 
-function parseRating(value: string) {
+function parseRawLetterboxdRating(value: string): number | null {
   const trimmed = value.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
+  if (!trimmed) return null;
   const numeric = Number(trimmed.replace(",", ".").replace(/[^0-9.]+/g, ""));
+  if (Number.isNaN(numeric)) return null;
+  // CSV ratings are on the 0.5–5.0 scale; some exports use 0–10 — normalize
+  return numeric <= 5 ? numeric : numeric / 2;
+}
 
-  if (Number.isNaN(numeric)) {
-    return null;
-  }
-
-  const normalized = numeric <= 5 ? numeric * 2 : numeric;
-  return Number(Math.min(10, Math.max(0, normalized)).toFixed(1));
+function parseRating(value: string): number | null {
+  const raw = parseRawLetterboxdRating(value);
+  if (raw === null) return null;
+  return convertLetterboxdRating(raw);
 }
 
 function parseWatchedDate(value: string) {
@@ -178,7 +177,8 @@ export type ParsedLetterboxdEntry = {
   sourceRow: number
   title: string
   year: number
-  rating: number | null
+  rating: number | null          // converted 0–10 ReelShelf scale
+  letterboxdRating: number | null // raw Letterboxd star rating (0.5–5.0)
   watchedDate: string
   review: string
   rewatch: boolean
@@ -243,9 +243,9 @@ export function parseLetterboxdCsvV2(csvText: string): LetterboxdParseResult {
 
     if (!title || !year) continue
 
-    const rating = parseRating(
-      getRecordValue(record, ["rating", "yourrating", "memberrating"])
-    )
+    const rawRatingStr = getRecordValue(record, ["rating", "yourrating", "memberrating"])
+    const letterboxdRating = parseRawLetterboxdRating(rawRatingStr)
+    const rating = parseRating(rawRatingStr)
     const review = getRecordValue(record, ["review", "reviewtext", "comments"])
     const watchedDate = parseWatchedDate(
       getRecordValue(record, [
@@ -295,6 +295,7 @@ export function parseLetterboxdCsvV2(csvText: string): LetterboxdParseResult {
       title: diaryEntry.title,
       year: diaryEntry.year,
       rating,
+      letterboxdRating,
       watchedDate,
       review,
       rewatch,
