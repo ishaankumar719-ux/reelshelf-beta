@@ -558,22 +558,24 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
           <p style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 600, letterSpacing: "-0.4px", color: "rgba(255,255,255,0.88)" }}>
             {!started
               ? `Ready to import ${diaryMovies.length} entr${diaryMovies.length === 1 ? "y" : "ies"}`
-              : progress
-                ? `${progress.completed} of ${progress.total} saved`
-                : "Starting…"}
+              : !progress
+                ? "Starting…"
+                : progress.batchCount === 0
+                  ? (progress.currentTitle || "Starting…")
+                  : `${progress.completed} of ${progress.total} saved`}
           </p>
           {!started ? (
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6 }}>
               Imports one entry at a time. Existing entries are skipped to protect your edits.
             </p>
-          ) : progress?.currentTitle ? (
+          ) : progress && progress.batchCount > 0 && progress.currentTitle ? (
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
               Saving: {progress.currentTitle}
             </p>
           ) : null}
         </div>
 
-        {started && progress ? <Bar pct={pct} /> : null}
+        {started && progress && progress.batchCount > 0 ? <Bar pct={pct} /> : null}
 
         {isRunning ? (
           <div style={{ display: "flex", gap: 6 }}>

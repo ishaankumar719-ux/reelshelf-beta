@@ -147,20 +147,41 @@ export async function batchImportLetterboxd(
   onProgress: ProgressCallback,
   signal?: AbortSignal
 ): Promise<BatchImportResult> {
-  console.log(`[IMPORT] starting — ${entries.length} entries`)
+  console.log(`[IMPORT] ▶ start — ${entries.length} entries`)
+
+  // Fire immediately so the UI leaves "Starting…" and shows a status
+  onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Connecting to database…" })
 
   const client = createClient()
+  console.log("[IMPORT] client:", client ? "ok" : "NULL — Supabase not configured")
   if (!client) throw new Error("Database connection unavailable.")
 
-  const { data: { session } } = await client.auth.getSession()
+  onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Authenticating…" })
+  console.log("[IMPORT] calling getSession()")
+
+  // getSession() can hang indefinitely if the token refresh network request stalls.
+  // Guard with an 8-second timeout so we always surface the error instead of freezing.
+  const { data: { session } } = await Promise.race([
+    client.auth.getSession(),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Authentication timed out — please refresh the page and try again.")),
+        8_000
+      )
+    ),
+  ])
+
   if (!session) throw new Error("Sign in to import your diary.")
+  console.log("[IMPORT] session ok — user:", session.user.id)
+
+  onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Preparing entries…" })
 
   const userId     = session.user.id
   const deduped    = deduplicateEntries(entries)
   const total      = deduped.length
   const batchCount = Math.ceil(total / BATCH_SIZE)
 
-  console.log(`[IMPORT] ${deduped.length} unique entries across ${batchCount} batches`)
+  console.log(`[IMPORT] ${deduped.length} unique entries → ${batchCount} batches of ${BATCH_SIZE}`)
 
   let inserted     = 0
   let errors       = 0
