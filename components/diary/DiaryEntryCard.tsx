@@ -338,6 +338,18 @@ export default function DiaryEntryCard({
                     </div>
                   ) : null}
                 </div>
+              ) : (movie.review || hasReviewLayers(movie.reviewLayers ?? null)) ? (
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                    No score
+                  </span>
+                  {typeof movie.reelshelfScore === "number" ? (
+                    <span style={{ marginLeft: 10, color: "#EF9F27", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                      {movie.reelshelfScore.toFixed(1)}
+                      <span style={{ color: "rgba(239,159,39,0.45)", marginLeft: 3, fontSize: 11 }}>/ 10</span>
+                    </span>
+                  ) : null}
+                </div>
               ) : null}
 
               {reviewSnippet ? (

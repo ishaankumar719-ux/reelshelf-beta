@@ -43,6 +43,28 @@ type DiaryActivityRow = {
   watched_date?: string | null
   created_at: string
   watched_in_cinema?: boolean
+  score_rating?: number | null
+  cinematography_rating?: number | null
+  writing_rating?: number | null
+  performances_rating?: number | null
+  direction_rating?: number | null
+  rewatchability_rating?: number | null
+  emotional_impact_rating?: number | null
+  entertainment_rating?: number | null
+}
+
+function rowHasReviewContent(row: DiaryActivityRow): boolean {
+  if (row.review?.trim()) return true
+  return !!(
+    row.score_rating !== null && row.score_rating !== undefined ||
+    row.cinematography_rating !== null && row.cinematography_rating !== undefined ||
+    row.writing_rating !== null && row.writing_rating !== undefined ||
+    row.performances_rating !== null && row.performances_rating !== undefined ||
+    row.direction_rating !== null && row.direction_rating !== undefined ||
+    row.rewatchability_rating !== null && row.rewatchability_rating !== undefined ||
+    row.emotional_impact_rating !== null && row.emotional_impact_rating !== undefined ||
+    row.entertainment_rating !== null && row.entertainment_rating !== undefined
+  )
 }
 
 type SavedActivityRow = {
@@ -143,7 +165,7 @@ export function buildActivityEventsFromSources({
 }): ActivityEvent[] {
   const diaryEvents: ActivityEvent[] = diaryRows.map((row) => {
     const isTV = row.media_type === "tv"
-    const hasReview = Boolean(row.review?.trim())
+    const hasReview = rowHasReviewContent(row)
     const type: ActivityType = isTV ? "finished_series" : hasReview ? "reviewed" : "logged"
     return {
       id: `diary-${row.id}`,
@@ -223,7 +245,7 @@ export async function fetchActivityEvents(
   const [diaryRes, savedRes, rushmoreRes] = await Promise.all([
     supabase
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at")
+      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
       .eq("user_id", userId)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })

@@ -14,6 +14,28 @@ type FeedDiaryRow = {
   watched_in_cinema: boolean | null
   created_at: string
   user_id: string
+  score_rating: number | null
+  cinematography_rating: number | null
+  writing_rating: number | null
+  performances_rating: number | null
+  direction_rating: number | null
+  rewatchability_rating: number | null
+  emotional_impact_rating: number | null
+  entertainment_rating: number | null
+}
+
+function feedRowHasReviewContent(row: FeedDiaryRow): boolean {
+  if (row.review?.trim()) return true
+  return !!(
+    row.score_rating !== null ||
+    row.cinematography_rating !== null ||
+    row.writing_rating !== null ||
+    row.performances_rating !== null ||
+    row.direction_rating !== null ||
+    row.rewatchability_rating !== null ||
+    row.emotional_impact_rating !== null ||
+    row.entertainment_rating !== null
+  )
 }
 
 type FeedProfile = {
@@ -50,7 +72,7 @@ export async function fetchFollowingFeed(
   const [{ data: diaryData }, { data: profileData }] = await Promise.all([
     client
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, watched_in_cinema, created_at, user_id")
+      .select("id, media_id, title, media_type, poster, rating, review, watched_in_cinema, created_at, user_id, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
       .in("user_id", followedIds)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })
@@ -75,7 +97,7 @@ export async function fetchFollowingFeed(
       avatar_url: null,
     }
 
-    const hasReview = Boolean(row.review?.trim())
+    const hasReview = feedRowHasReviewContent(row)
     const isTV = row.media_type === "tv"
     const type: ActivityType = isTV
       ? "finished_series"

@@ -557,8 +557,8 @@ export default function DiaryLogModal({
       favourite,
       rewatch,
       contains_spoilers: containsSpoilers,
-      review_scope: "show",
-      show_id: "",
+      review_scope: media.media_type === "tv" ? "show" : "title",
+      show_id: media.media_type === "tv" ? (media.media_id ?? "") : "",
       season_number: 0,
       episode_number: 0,
       // Review layers — nullable for all media types

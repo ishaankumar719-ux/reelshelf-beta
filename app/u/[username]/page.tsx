@@ -324,7 +324,7 @@ export default async function PublicProfilePage({
       .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score, attachment_url, attachment_type")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
-      .not("review", "is", null)
+      .or("review.neq.,score_rating.not.is.null,cinematography_rating.not.is.null,writing_rating.not.is.null,performances_rating.not.is.null,direction_rating.not.is.null,rewatchability_rating.not.is.null,emotional_impact_rating.not.is.null,entertainment_rating.not.is.null")
       .order("saved_at", { ascending: false })
       .limit(8),
     supabase
@@ -344,8 +344,7 @@ export default async function PublicProfilePage({
       .from("diary_entries")
       .select("*", { count: "exact", head: true })
       .eq("user_id", profileRow.id)
-      .not("review", "is", null)
-      .neq("review", ""),
+      .or("review.neq.,score_rating.not.is.null,cinematography_rating.not.is.null,writing_rating.not.is.null,performances_rating.not.is.null,direction_rating.not.is.null,rewatchability_rating.not.is.null,emotional_impact_rating.not.is.null,entertainment_rating.not.is.null"),
     supabase
       .from("user_gamification")
       .select("longest_streak, comments_received, likes_received")

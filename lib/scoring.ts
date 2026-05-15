@@ -63,8 +63,6 @@ export function calculateReelShelfScore(
   overallRating: number | null,
   reviewLayers: ReviewLayers | null | undefined,
 ): number | null {
-  if (overallRating === null) return null;
-
   const layerWeights = getLayerWeights(mediaType);
 
   // Collect layer entries that have defined weights AND non-null values.
@@ -77,14 +75,22 @@ export function calculateReelShelfScore(
     }
   }
 
+  if (overallRating === null) {
+    // Layers-only entry: calculate score purely from present layers.
+    // Returns null only when there are no layers at all (pure diary log).
+    if (presentLayers.length === 0) return null;
+    const totalWeight = presentLayers.reduce((sum, l) => sum + l.weight, 0);
+    const score = presentLayers.reduce((sum, l) => sum + (l.weight / totalWeight) * l.value, 0);
+    return Math.round(Math.min(10, Math.max(1, score)) * 10) / 10;
+  }
+
   if (presentLayers.length === 0) {
     return overallRating;
   }
 
-  const presentLayerWeightSum = presentLayers.reduce((sum, l) => sum + l.weight, 0);
-
   // Effective total weight = fixed overall weight + sum of weights for present layers.
   // This is always <= 1.0. We normalise all components against it so they sum to 1.
+  const presentLayerWeightSum = presentLayers.reduce((sum, l) => sum + l.weight, 0);
   const totalWeight = OVERALL_WEIGHT + presentLayerWeightSum;
 
   let score = (OVERALL_WEIGHT / totalWeight) * overallRating;

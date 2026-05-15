@@ -23,6 +23,28 @@ type ReviewRow = {
   rewatch: boolean
   review_cover_url: string | null
   review_cover_source: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null
+  score_rating: number | null
+  cinematography_rating: number | null
+  writing_rating: number | null
+  performances_rating: number | null
+  direction_rating: number | null
+  rewatchability_rating: number | null
+  emotional_impact_rating: number | null
+  entertainment_rating: number | null
+}
+
+function hasReviewContent(entry: ReviewRow): boolean {
+  if (entry.review && entry.review.trim().length > 0) return true
+  return (
+    entry.score_rating !== null ||
+    entry.cinematography_rating !== null ||
+    entry.writing_rating !== null ||
+    entry.performances_rating !== null ||
+    entry.direction_rating !== null ||
+    entry.rewatchability_rating !== null ||
+    entry.emotional_impact_rating !== null ||
+    entry.entertainment_rating !== null
+  )
 }
 
 const MEDIA_TYPE_LABEL: Record<string, string> = {
@@ -32,7 +54,7 @@ const MEDIA_TYPE_LABEL: Record<string, string> = {
 }
 
 function StarRating({ rating }: { rating: number | null }) {
-  if (!rating) return null
+  if (rating === null) return <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em" }}>No score</span>
   const full = Math.floor(rating / 2)
   const half = rating % 2 >= 1
   return (
@@ -161,14 +183,13 @@ export default async function ReviewsPage({ params }: { params: Promise<{ userna
 
   const { data: rows } = await supabase
     .from("diary_entries")
-    .select("id, media_id, media_type, title, poster, year, rating, review, watched_date, saved_at, contains_spoilers, rewatch, review_cover_url, review_cover_source")
+    .select("id, media_id, media_type, title, poster, year, rating, review, watched_date, saved_at, contains_spoilers, rewatch, review_cover_url, review_cover_source, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
     .eq("user_id", profile.id)
-    .not("review", "is", null)
-    .neq("review", "")
+    .or("review.neq.,score_rating.not.is.null,cinematography_rating.not.is.null,writing_rating.not.is.null,performances_rating.not.is.null,direction_rating.not.is.null,rewatchability_rating.not.is.null,emotional_impact_rating.not.is.null,entertainment_rating.not.is.null")
     .order("saved_at", { ascending: false })
     .limit(200)
 
-  const reviews = (rows ?? []) as ReviewRow[]
+  const reviews = ((rows ?? []) as ReviewRow[]).filter(hasReviewContent)
   const displayName = profile.display_name || profile.username || username
 
   return (
