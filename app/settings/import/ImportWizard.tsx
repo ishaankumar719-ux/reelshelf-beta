@@ -275,7 +275,7 @@ function InputStep({
             />
           </div>
           <Btn onClick={submit} disabled={value.trim().length < 1} style={{ height: 48 }}>
-            Find my Letterboxd
+            Find Profile
           </Btn>
         </div>
 
@@ -306,7 +306,7 @@ function InputStep({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
             </svg>
-            <span style={{ fontSize: 13 }}>Advanced: Upload CSV export</span>
+            <span style={{ fontSize: 13 }}>Advanced CSV Import</span>
             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", fontFamily: FONT }}>— for complete history</span>
           </div>
           <span style={{ fontSize: 10, display: "inline-block", transform: csvOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▾</span>
@@ -772,10 +772,10 @@ export default function ImportWizard() {
           ← Settings
         </Link>
         <h1 style={{ margin: 0, fontSize: "clamp(24px,5vw,38px)", fontWeight: 700, letterSpacing: "-0.9px", lineHeight: 1.05, color: "rgba(255,255,255,0.95)" }}>
-          Import from Letterboxd
+          Import your Letterboxd world into ReelShelf.
         </h1>
         <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6, maxWidth: 520 }}>
-          Import by entering your Letterboxd username, or upload your CSV export manually for your complete history.
+          Import using your Letterboxd username or upload your export manually.
         </p>
       </div>
 
