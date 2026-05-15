@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useMemo } from "react"
 import Link from "next/link"
 import {
   parseLetterboxdCsvV2,
@@ -529,20 +529,25 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
   const [error,    setError]    = useState<string | null>(null)
   const abortRef                = useRef<AbortController | null>(null)
 
-  const toImport   = entries.filter((e) => !e.skipped)
-  const diaryMovies = toImport.map(toDiary)
-  const pct = progress && progress.total > 0 ? (progress.completed / progress.total) * 100 : 0
+  const toImport    = useMemo(() => entries.filter((e) => !e.skipped), [entries])
+  const diaryMovies = useMemo(() => toImport.map(toDiary), [toImport])
+  const pct = progress && progress.total > 0 ? ((progress.completed + 1) / progress.total) * 100 : 0
+  const isRunning = started && progress !== null && progress.completed < progress.total
 
   const start = useCallback(async () => {
-    setStarted(true); setError(null)
-    const ctrl = new AbortController(); abortRef.current = ctrl
-    setProgress({ completed: 0, total: diaryMovies.length, batchIndex: 0, batchCount: 0 })
+    setStarted(true)
+    setError(null)
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
     try {
       const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal)
       onDone(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Import failed."); setStarted(false)
-    } finally { abortRef.current = null }
+      setError(err instanceof Error ? err.message : "Import failed.")
+      setStarted(false)
+    } finally {
+      abortRef.current = null
+    }
   }, [diaryMovies, onDone])
 
   return (
@@ -551,24 +556,30 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
         <div>
           <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: FONT }}>Importing</p>
           <p style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 600, letterSpacing: "-0.4px", color: "rgba(255,255,255,0.88)" }}>
-            {started ? `${progress?.completed ?? 0} of ${diaryMovies.length} saved` : `Ready to import ${diaryMovies.length} entr${diaryMovies.length === 1 ? "y" : "ies"}`}
+            {!started
+              ? `Ready to import ${diaryMovies.length} entr${diaryMovies.length === 1 ? "y" : "ies"}`
+              : progress
+                ? `${progress.completed} of ${progress.total} saved`
+                : "Starting…"}
           </p>
           {!started ? (
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6 }}>
-              Saved in batches of 25. Duplicates are automatically updated, not doubled.
+              Imports one entry at a time. Existing entries are skipped to protect your edits.
             </p>
-          ) : progress && progress.batchCount > 0 ? (
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>
-              Batch {progress.batchIndex} of {progress.batchCount}
+          ) : progress?.currentTitle ? (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+              Saving: {progress.currentTitle}
             </p>
           ) : null}
         </div>
 
         {started && progress ? <Bar pct={pct} /> : null}
 
-        {started && (progress?.completed ?? 0) < (progress?.total ?? 1) ? (
+        {isRunning ? (
           <div style={{ display: "flex", gap: 6 }}>
-            {[0, 1, 2].map((i) => <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(29,158,117,0.5)", animation: "pulse 1.4s ease-in-out infinite", animationDelay: `${i * 180}ms`, display: "inline-block" }} />)}
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(29,158,117,0.5)", animation: "pulse 1.4s ease-in-out infinite", animationDelay: `${i * 180}ms`, display: "inline-block" }} />
+            ))}
           </div>
         ) : null}
 
@@ -595,43 +606,63 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
 // ─── Step: Complete ───────────────────────────────────────────────────────────
 
 function CompleteStep({ result, skipped, onReset }: { result: BatchImportResult; skipped: number; onReset: () => void }) {
+  const [showFailed, setShowFailed] = useState(false)
+  const hasFailed = result.failedTitles.length > 0
+
   return (
-    <div style={{ borderRadius: 24, border: "1px solid rgba(29,158,117,0.2)", background: "linear-gradient(180deg,rgba(29,158,117,0.07),rgba(29,158,117,0.03))", padding: "28px 24px", display: "grid", gap: 16 }}>
-      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ borderRadius: 24, border: "1px solid rgba(29,158,117,0.2)", background: "linear-gradient(180deg,rgba(29,158,117,0.07),rgba(29,158,117,0.03))", padding: "28px 24px", display: "grid", gap: 16 }}>
+        <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
 
-      <div>
-        <p style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.6px", color: "rgba(255,255,255,0.92)" }}>
-          {result.cancelled ? "Import stopped" : "Import complete"}
-        </p>
-        <p style={{ margin: "6px 0 0", fontSize: 15, color: "rgba(255,255,255,0.5)", fontFamily: FONT, lineHeight: 1.6 }}>
-          {result.cancelled
-            ? `Saved ${result.total} entries before cancelling.`
-            : `${result.total} ${result.total === 1 ? "entry" : "entries"} added to your ReelShelf diary.`}
-        </p>
-      </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.6px", color: "rgba(255,255,255,0.92)" }}>
+            {result.cancelled ? "Import stopped" : "Import complete"}
+          </p>
+          <p style={{ margin: "6px 0 0", fontSize: 15, color: "rgba(255,255,255,0.5)", fontFamily: FONT, lineHeight: 1.6 }}>
+            {result.cancelled
+              ? `Saved ${result.inserted} ${result.inserted === 1 ? "entry" : "entries"} before cancelling.`
+              : `${result.inserted} ${result.inserted === 1 ? "entry" : "entries"} imported successfully to your ReelShelf diary.`}
+          </p>
+        </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-        <Stat value={result.inserted} label="New"      accent />
-        <Stat value={result.updated}  label="Updated"        />
-        <Stat value={skipped}         label="Skipped"        />
-        <Stat value={result.errors}   label="Errors"         />
-      </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+          <Stat value={result.inserted} label="Imported" accent />
+          <Stat value={skipped}         label="Skipped"        />
+          <Stat value={result.errors}   label="Errors"         />
+        </div>
 
-      {result.errors > 0 ? (
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(239,68,68,0.6)", fontFamily: FONT, lineHeight: 1.5 }}>
-          {result.errors} entries failed — usually a network blip. Re-importing the same file will upsert them safely.
-        </p>
-      ) : null}
+        {hasFailed ? (
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(239,68,68,0.65)", fontFamily: FONT, lineHeight: 1.5 }}>
+              {result.errors} {result.errors === 1 ? "entry" : "entries"} failed — usually a network blip.{" "}
+              <button type="button" onClick={() => setShowFailed((v) => !v)}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(239,68,68,0.5)", fontSize: 12, textDecoration: "underline", fontFamily: FONT }}>
+                {showFailed ? "Hide" : "Show"} failed entries
+              </button>
+            </p>
+            {showFailed ? (
+              <div style={{ maxHeight: 120, overflowY: "auto", borderRadius: 8, background: "rgba(239,68,68,0.04)", border: "0.5px solid rgba(239,68,68,0.12)", padding: "8px 12px" }}>
+                {result.failedTitles.map((t, i) => (
+                  <p key={i} style={{ margin: "2px 0", fontSize: 11, color: "rgba(239,68,68,0.5)", fontFamily: FONT }}>{t}</p>
+                ))}
+              </div>
+            ) : null}
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: FONT }}>
+              Re-importing will retry failed entries safely.
+            </p>
+          </div>
+        ) : null}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link href="/diary" style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 20px", borderRadius: 999, background: "white", color: "black", textDecoration: "none", fontSize: 13, fontWeight: 600, fontFamily: FONT }}>
-          Open Diary
-        </Link>
-        <button type="button" onClick={onReset} style={{ height: 42, padding: "0 20px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 13, fontFamily: FONT, cursor: "pointer" }}>
-          Import another
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link href="/diary" style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 20px", borderRadius: 999, background: "white", color: "black", textDecoration: "none", fontSize: 13, fontWeight: 600, fontFamily: FONT }}>
+            Open Diary
+          </Link>
+          <button type="button" onClick={onReset} style={{ height: 42, padding: "0 20px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 13, fontFamily: FONT, cursor: "pointer" }}>
+            Import another
+          </button>
+        </div>
       </div>
     </div>
   )

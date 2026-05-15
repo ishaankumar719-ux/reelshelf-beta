@@ -5,16 +5,17 @@ import type { DiaryMovie } from "@/lib/diary"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 25
+const BATCH_SIZE    = 8   // small batches → frequent progress updates
+const ENTRY_TIMEOUT = 12_000 // ms per entry before we skip and continue
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type BatchImportResult = {
   inserted: number
-  updated: number
   errors: number
   total: number
   cancelled: boolean
+  failedTitles: string[]
 }
 
 export type BatchImportProgress = {
@@ -22,6 +23,7 @@ export type BatchImportProgress = {
   total: number
   batchIndex: number
   batchCount: number
+  currentTitle: string
 }
 
 export type ProgressCallback = (progress: BatchImportProgress) => void
@@ -67,7 +69,6 @@ function buildRow(userId: string, entry: DiaryMovie) {
     contains_spoilers: entry.containsSpoilers ?? false,
     watched_in_cinema: entry.watchedInCinema ?? false,
     saved_at: entry.savedAt || `${entry.watchedDate}T12:00:00.000Z`,
-    // Import leaves review layers and score null — user can enrich via modal later
     score_rating: null,
     cinematography_rating: null,
     writing_rating: null,
@@ -85,9 +86,6 @@ function buildRow(userId: string, entry: DiaryMovie) {
 
 // ─── Deduplication ────────────────────────────────────────────────────────────
 
-// When the CSV has multiple entries for the same film (rewatches), keep all of
-// them unless they share the exact same (media_id, review_scope, watched_date).
-// Letterboxd diary.csv legitimately has multiple rows for rewatches.
 function deduplicateEntries(entries: DiaryMovie[]): DiaryMovie[] {
   const seen = new Set<string>()
   const out: DiaryMovie[] = []
@@ -103,6 +101,45 @@ function deduplicateEntries(entries: DiaryMovie[]): DiaryMovie[] {
   return out
 }
 
+// ─── Single-row insert with timeout ──────────────────────────────────────────
+
+async function insertRow(
+  client: NonNullable<ReturnType<typeof createClient>>,
+  row: ReturnType<typeof buildRow>
+): Promise<{ error: string | null }> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.warn(`[IMPORT] timeout inserting: ${row.title}`)
+      resolve({ error: "Timed out" })
+    }, ENTRY_TIMEOUT)
+
+    void (async () => {
+      try {
+        const { error } = await client
+          .from("diary_entries")
+          .upsert(row, {
+            onConflict:
+              "user_id,media_type,media_id,review_scope,season_number,episode_number",
+            ignoreDuplicates: true,
+          })
+        clearTimeout(timer)
+        if (error) {
+          console.error(`[IMPORT] DB error for "${row.title}":`, error.message, error.code)
+          resolve({ error: error.message })
+        } else {
+          console.log(`[IMPORT] saved: "${row.title}" (${row.watched_date})`)
+          resolve({ error: null })
+        }
+      } catch (err: unknown) {
+        clearTimeout(timer)
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        console.error(`[IMPORT] exception for "${row.title}":`, msg)
+        resolve({ error: msg })
+      }
+    })()
+  })
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function batchImportLetterboxd(
@@ -110,87 +147,79 @@ export async function batchImportLetterboxd(
   onProgress: ProgressCallback,
   signal?: AbortSignal
 ): Promise<BatchImportResult> {
+  console.log(`[IMPORT] starting — ${entries.length} entries`)
+
   const client = createClient()
   if (!client) throw new Error("Database connection unavailable.")
 
-  const {
-    data: { session },
-  } = await client.auth.getSession()
+  const { data: { session } } = await client.auth.getSession()
   if (!session) throw new Error("Sign in to import your diary.")
 
-  const userId = session.user.id
-  const deduped = deduplicateEntries(entries)
-  const total = deduped.length
+  const userId     = session.user.id
+  const deduped    = deduplicateEntries(entries)
+  const total      = deduped.length
   const batchCount = Math.ceil(total / BATCH_SIZE)
 
-  // Fetch existing media_ids so we can count inserted vs updated
-  const existingKeys = new Set<string>()
-  try {
-    let offset = 0
-    while (true) {
-      const { data } = await client
-        .from("diary_entries")
-        .select("media_id, media_type, review_scope, season_number, episode_number")
-        .eq("user_id", userId)
-        .range(offset, offset + 999)
-      if (!data || data.length === 0) break
-      for (const row of data) {
-        existingKeys.add(
-          `${row.media_type}::${row.media_id}::${row.review_scope}::${row.season_number ?? 0}::${row.episode_number ?? 0}`
-        )
-      }
-      if (data.length < 1000) break
-      offset += 1000
-    }
-  } catch {
-    // Non-fatal — just won't distinguish inserted from updated
-  }
+  console.log(`[IMPORT] ${deduped.length} unique entries across ${batchCount} batches`)
 
-  let inserted = 0
-  let updated = 0
-  let errors = 0
-  let cancelled = false
+  let inserted     = 0
+  let errors       = 0
+  let cancelled    = false
+  const failedTitles: string[] = []
 
-  onProgress({ completed: 0, total, batchIndex: 0, batchCount })
+  onProgress({ completed: 0, total, batchIndex: 0, batchCount, currentTitle: "" })
 
   for (let i = 0; i < deduped.length; i += BATCH_SIZE) {
     if (signal?.aborted) {
+      console.log("[IMPORT] cancelled by user")
       cancelled = true
       break
     }
 
-    const chunk = deduped.slice(i, i + BATCH_SIZE)
-    const rows = chunk.map((e) => buildRow(userId, e))
+    const chunk      = deduped.slice(i, i + BATCH_SIZE)
     const batchIndex = Math.floor(i / BATCH_SIZE) + 1
 
-    try {
-      const { error } = await client.from("diary_entries").upsert(rows, {
-        onConflict:
-          "user_id,media_type,media_id,review_scope,season_number,episode_number",
-        ignoreDuplicates: true,
+    console.log(`[IMPORT] batch ${batchIndex}/${batchCount} — ${chunk.length} entries`)
+
+    for (let j = 0; j < chunk.length; j++) {
+      if (signal?.aborted) { cancelled = true; break }
+
+      const entry = chunk[j]!
+      const row   = buildRow(userId, entry)
+      const completed = i + j
+
+      console.log(`[IMPORT] inserting (${completed + 1}/${total}): "${entry.title}"`)
+
+      onProgress({
+        completed,
+        total,
+        batchIndex,
+        batchCount,
+        currentTitle: entry.title,
       })
 
+      const { error } = await insertRow(client, row)
+
       if (error) {
-        errors += chunk.length
+        errors++
+        failedTitles.push(entry.title)
       } else {
-        for (const row of rows) {
-          const key = `${row.media_type}::${row.media_id}::${row.review_scope}::${row.season_number ?? 0}::${row.episode_number ?? 0}`
-          if (existingKeys.has(key)) {
-            updated++
-          } else {
-            inserted++
-          }
-        }
+        inserted++
       }
-    } catch {
-      errors += chunk.length
+
+      // Yield to the React event loop so the progress bar re-renders
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
     }
 
-    onProgress({ completed: Math.min(i + BATCH_SIZE, total), total, batchIndex, batchCount })
+    console.log(`[IMPORT] batch ${batchIndex} done — ${inserted} saved so far, ${errors} errors`)
 
-    // Yield to the UI thread between batches so the progress bar actually renders
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    // Brief pause between batches to avoid overwhelming the connection pool
+    if (!signal?.aborted && i + BATCH_SIZE < deduped.length) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 80))
+    }
   }
 
-  return { inserted, updated, errors, total: inserted + updated, cancelled }
+  console.log(`[IMPORT] complete — ${inserted} inserted, ${errors} errors`)
+
+  return { inserted, errors, total: inserted, cancelled, failedTitles }
 }

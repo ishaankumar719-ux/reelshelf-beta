@@ -520,7 +520,7 @@ export default function ImportClient() {
   async function handleImport() {
     if (!parseResult) return
     setImportError(null)
-    setProgress({ completed: 0, total: parseResult.entries.length, batchIndex: 0, batchCount: 0 })
+    setProgress({ completed: 0, total: parseResult.entries.length, batchIndex: 0, batchCount: 0, currentTitle: "" })
     setStage("importing")
 
     const controller = new AbortController()
@@ -1021,8 +1021,7 @@ export default function ImportClient() {
                 gap: 10,
               }}
             >
-              <StatCard value={importResult.inserted} label="New entries" accent />
-              <StatCard value={importResult.updated} label="Updated" />
+              <StatCard value={importResult.inserted} label="Imported" accent />
               <StatCard value={importResult.errors} label="Errors" />
             </div>
 
