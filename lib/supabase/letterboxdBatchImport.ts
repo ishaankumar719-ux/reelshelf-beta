@@ -44,7 +44,10 @@ function buildRow(userId: string, entry: DiaryMovie) {
     entry.id ||
     `letterboxd-${slugify(entry.title)}-${entry.year}`
 
-  const reviewScope = entry.reviewScope || (entry.mediaType === "tv" ? "show" : "title")
+  // All Letterboxd entries are show/title level (not season or episode).
+  // Migration 20260409_tv_review_scopes.sql converted all "title" rows to "show"
+  // and created a partial unique index on (user_id, media_id) WHERE review_scope = 'show'.
+  const reviewScope = "show"
 
   return {
     user_id: userId,
@@ -52,8 +55,8 @@ function buildRow(userId: string, entry: DiaryMovie) {
     media_type: entry.mediaType,
     review_scope: reviewScope,
     show_id: entry.showId || (entry.mediaType === "tv" ? mediaId : ""),
-    season_number: entry.seasonNumber ?? 0,
-    episode_number: entry.episodeNumber ?? 0,
+    season_number: null,
+    episode_number: null,
     title: entry.title,
     poster: entry.poster ?? null,
     year: Number(entry.year) || 0,
@@ -118,8 +121,9 @@ async function insertRow(
         const { error } = await client
           .from("diary_entries")
           .upsert(row, {
-            onConflict:
-              "user_id,media_type,media_id,review_scope,season_number,episode_number",
+            // Matches diary_entries_unique_show partial index:
+            // (user_id, media_id) WHERE review_scope = 'show'
+            onConflict: "user_id,media_id",
             ignoreDuplicates: true,
           })
         clearTimeout(timer)
@@ -145,9 +149,19 @@ async function insertRow(
 export async function batchImportLetterboxd(
   entries: DiaryMovie[],
   onProgress: ProgressCallback,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  userId?: string | null
 ): Promise<BatchImportResult> {
-  console.log(`[IMPORT] ▶ start — ${entries.length} entries`)
+  console.log(`[IMPORT] ▶ start — ${entries.length} entries, userId: ${userId ?? "not provided"}`)
+
+  // userId is passed from the React auth context (useAuth().user?.id).
+  // We do not call getSession() here — that triggers a network token refresh
+  // that can hang for 8+ seconds. The browser Supabase client handles token
+  // refresh automatically during the actual insert requests.
+  if (!userId) {
+    console.error("[IMPORT] no userId — user is not authenticated")
+    throw new Error("You must be signed in to import your diary. Please refresh and try again.")
+  }
 
   // Fire immediately so the UI leaves "Starting…" and shows a status
   onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Connecting to database…" })
@@ -156,27 +170,9 @@ export async function batchImportLetterboxd(
   console.log("[IMPORT] client:", client ? "ok" : "NULL — Supabase not configured")
   if (!client) throw new Error("Database connection unavailable.")
 
-  onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Authenticating…" })
-  console.log("[IMPORT] calling getSession()")
-
-  // getSession() can hang indefinitely if the token refresh network request stalls.
-  // Guard with an 8-second timeout so we always surface the error instead of freezing.
-  const { data: { session } } = await Promise.race([
-    client.auth.getSession(),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Authentication timed out — please refresh the page and try again.")),
-        8_000
-      )
-    ),
-  ])
-
-  if (!session) throw new Error("Sign in to import your diary.")
-  console.log("[IMPORT] session ok — user:", session.user.id)
-
+  console.log("[IMPORT] user:", userId)
   onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Preparing entries…" })
 
-  const userId     = session.user.id
   const deduped    = deduplicateEntries(entries)
   const total      = deduped.length
   const batchCount = Math.ceil(total / BATCH_SIZE)

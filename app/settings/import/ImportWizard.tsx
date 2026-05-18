@@ -13,6 +13,7 @@ import {
 } from "@/lib/supabase/letterboxdBatchImport"
 import type { DiaryMovie } from "@/lib/diary"
 import type { RssWizardEntry } from "@/lib/import/types"
+import { useAuth } from "@/components/AuthProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -524,6 +525,7 @@ function PreviewStep({
 // ─── Step: Import ─────────────────────────────────────────────────────────────
 
 function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDone: (r: BatchImportResult) => void; onBack: () => void }) {
+  const { user }                = useAuth()
   const [progress, setProgress] = useState<BatchImportProgress | null>(null)
   const [started,  setStarted]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
@@ -535,12 +537,17 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
   const isRunning = started && progress !== null && progress.completed < progress.total
 
   const start = useCallback(async () => {
+    const userId = user?.id
+    if (!userId) {
+      setError("You must be signed in to import. Please refresh the page.")
+      return
+    }
     setStarted(true)
     setError(null)
     const ctrl = new AbortController()
     abortRef.current = ctrl
     try {
-      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal)
+      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId)
       onDone(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
@@ -548,7 +555,7 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
     } finally {
       abortRef.current = null
     }
-  }, [diaryMovies, onDone])
+  }, [diaryMovies, onDone, user?.id])
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
