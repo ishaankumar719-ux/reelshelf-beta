@@ -81,14 +81,31 @@ export async function upsertReview(
     return { data: null, error: "Supabase is not configured." }
   }
 
+  const scope = input.review_scope ?? "show"
+  const isEpisode = scope === "episode"
+  const isSeason = scope === "season"
+
+  const seasonNumber = isSeason || isEpisode ? (input.season_number ?? null) : null
+  const episodeNumber = isEpisode ? (input.episode_number ?? null) : null
+
+  // Match the partial unique indexes created in 20260409_tv_review_scopes.sql:
+  //   diary_entries_unique_show    → (user_id, media_id)          WHERE review_scope = 'show'
+  //   diary_entries_unique_season  → (user_id, media_id, season_number) WHERE review_scope = 'season'
+  //   diary_entries_unique_episode → (user_id, media_id, season_number, episode_number) WHERE review_scope = 'episode'
+  const conflictColumns = isEpisode
+    ? "user_id,media_id,season_number,episode_number"
+    : isSeason
+      ? "user_id,media_id,season_number"
+      : "user_id,media_id"
+
   const payload = {
     user_id: userId,
     media_id: String(input.media_id),
     show_id: String(input.media_id),
     media_type: toDbMediaType(input.media_type),
-    review_scope: input.review_scope ?? "show",
-    season_number: input.season_number ?? 0,
-    episode_number: input.episode_number ?? 0,
+    review_scope: scope,
+    season_number: seasonNumber,
+    episode_number: episodeNumber,
     rating: typeof input.rating === "number" ? input.rating : null,
     review: input.body?.trim() || "",
     contains_spoilers: Boolean(input.contains_spoilers),
@@ -103,10 +120,7 @@ export async function upsertReview(
   try {
     const { data, error } = await supabase
       .from("diary_entries")
-      .upsert(payload, {
-        onConflict:
-          "user_id,media_type,media_id,review_scope,season_number,episode_number",
-      })
+      .upsert(payload, { onConflict: conflictColumns })
       .select(DIARY_SELECT)
       .maybeSingle()
 
@@ -118,16 +132,25 @@ export async function upsertReview(
       return { data: mapRowToReview((data as unknown) as DiaryReviewRow), error: null }
     }
 
-    // Fallback: upsert succeeded but PostgREST returned no row — fetch it directly
-    const { data: fallback, error: fallbackError } = await supabase
+    // Fallback: upsert succeeded but PostgREST returned no row — fetch it directly.
+    // Use .is() for nullable season/episode columns (eq(col, null) is always false in SQL).
+    let fallbackQuery = supabase
       .from("diary_entries")
       .select(DIARY_SELECT)
       .eq("user_id", userId)
       .eq("media_type", payload.media_type)
       .eq("media_id", payload.media_id)
       .eq("review_scope", payload.review_scope)
-      .eq("season_number", payload.season_number)
-      .eq("episode_number", payload.episode_number)
+
+    fallbackQuery = seasonNumber !== null
+      ? fallbackQuery.eq("season_number", seasonNumber)
+      : fallbackQuery.is("season_number", null)
+
+    fallbackQuery = episodeNumber !== null
+      ? fallbackQuery.eq("episode_number", episodeNumber)
+      : fallbackQuery.is("episode_number", null)
+
+    const { data: fallback, error: fallbackError } = await fallbackQuery
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle()

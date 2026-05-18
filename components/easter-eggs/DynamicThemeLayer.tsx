@@ -500,6 +500,12 @@ export default function DynamicThemeLayer() {
 
   if (mode === "off" || !theme) return null
 
+  // Effects are hidden behind the modal backdrop (z-index 75) when the diary
+  // is open — render only the toast (z-index 90) so it still appears above it.
+  if (diaryOpen) {
+    return secretMsg ? <SecretToast message={secretMsg} /> : null
+  }
+
   return (
     <>
       <EffectRenderer theme={theme} mode={mode} />

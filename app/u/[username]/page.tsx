@@ -298,6 +298,7 @@ export default async function PublicProfilePage({
     { count: followingCount },
     { count: reviewTextCount },
     { data: gamificationData },
+    { allDefs, earnedMap },
   ] = await Promise.all([
     supabase
       .from("mount_rushmore")
@@ -321,7 +322,7 @@ export default async function PublicProfilePage({
       .order("created_at", { ascending: false }),
     supabase
       .from("diary_entries")
-      .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score, attachment_url, attachment_type")
+      .select("id, media_id, media_type, title, poster, year, creator, rating, review, watched_date, favourite, rewatch, contains_spoilers, saved_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating, reelshelf_score, attachment_url, attachment_type, review_cover_url, review_cover_source")
       .eq("user_id", profileRow.id)
       .in("review_scope", ["show", "title"])
       .or("review.neq.,score_rating.not.is.null,cinematography_rating.not.is.null,writing_rating.not.is.null,performances_rating.not.is.null,direction_rating.not.is.null,rewatchability_rating.not.is.null,emotional_impact_rating.not.is.null,entertainment_rating.not.is.null")
@@ -350,15 +351,13 @@ export default async function PublicProfilePage({
       .select("longest_streak, comments_received, likes_received")
       .eq("user_id", profileRow.id)
       .maybeSingle(),
+    fetchBadgesForProfile(supabase, profileRow.id),
   ])
 
   const rushmoreRows = (rushmoreData ?? []) as RushmoreRow[]
   const recentRows = (recentDiaryData ?? []) as DiaryRow[]
   const allRows = (allDiaryData ?? []) as DiaryRow[]
   const watchlistCount = watchlistRes.count ?? 0
-
-  // Badge data ────────────────────────────────────────────────────────────────
-  const { allDefs, earnedMap } = await fetchBadgesForProfile(supabase, profileRow.id)
 
   const gamRow = gamificationData as { longest_streak?: number; comments_received?: number; likes_received?: number } | null
   const badgeSyncStats = {
