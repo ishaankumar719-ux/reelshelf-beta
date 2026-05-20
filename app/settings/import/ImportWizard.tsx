@@ -14,6 +14,7 @@ import {
 import type { DiaryMovie } from "@/lib/diary"
 import type { RssWizardEntry } from "@/lib/import/types"
 import { useAuth } from "@/components/AuthProvider"
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -390,6 +391,16 @@ function LoadingStep({ source, progress }: { source: ImportSource; progress: Loa
 
 // ─── Step: Preview ────────────────────────────────────────────────────────────
 
+type LimitChoice = 1 | 5 | 10 | 25 | "all"
+
+const LIMIT_OPTIONS: Array<{ value: LimitChoice; label: string }> = [
+  { value: 1,     label: "1"   },
+  { value: 5,     label: "5"   },
+  { value: 10,    label: "10"  },
+  { value: 25,    label: "25"  },
+  { value: "all", label: "All" },
+]
+
 function PreviewStep({
   entries,
   source,
@@ -405,10 +416,15 @@ function PreviewStep({
   onContinue: (final: WizardEntry[]) => void
   onBack: () => void
 }) {
-  const [list, setList] = useState(entries)
-  const shown    = list.slice(0, 20)
-  const toImport = list.filter((e) => !e.skipped).length
-  const skipped  = list.filter((e) => e.skipped).length
+  const [list,        setList]        = useState(entries)
+  const [limitChoice, setLimitChoice] = useState<LimitChoice>("all")
+
+  const shown         = list.slice(0, 20)
+  const manualSkipped = list.filter((e) => e.skipped).length
+  const activeEntries = list.filter((e) => !e.skipped)
+  const importCount   = limitChoice === "all"
+    ? activeEntries.length
+    : Math.min(limitChoice as number, activeEntries.length)
 
   const withRating  = list.filter((e) => e.rating !== null).length
   const withReview  = list.filter((e) => e.review.trim().length > 0).length
@@ -418,6 +434,14 @@ function PreviewStep({
 
   function toggleSkip(sourceRow: number) {
     setList((prev) => prev.map((e) => e.sourceRow === sourceRow ? { ...e, skipped: !e.skipped } : e))
+  }
+
+  function handleContinue() {
+    // Take the first N active (non-skipped) entries; mark the rest as skipped
+    // so the complete-step skipped count reflects the full picture.
+    const selectedRows = new Set(activeEntries.slice(0, importCount).map((e) => e.sourceRow))
+    const final = list.map((e) => ({ ...e, skipped: e.skipped || !selectedRows.has(e.sourceRow) }))
+    onContinue(final)
   }
 
   return (
@@ -508,13 +532,46 @@ function PreviewStep({
         ) : null}
       </div>
 
-      {skipped > 0 ? (
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>{skipped} entr{skipped > 1 ? "ies" : "y"} skipped.</p>
+      {manualSkipped > 0 ? (
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>{manualSkipped} entr{manualSkipped > 1 ? "ies" : "y"} skipped.</p>
       ) : null}
 
+      {/* Import amount selector */}
+      <div style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", padding: "14px 16px", display: "grid", gap: 10 }}>
+        <p style={{ margin: 0, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>
+          How many to import
+        </p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {LIMIT_OPTIONS.map(({ value, label }) => {
+            const active = limitChoice === value
+            const count  = value === "all" ? activeEntries.length : Math.min(value as number, activeEntries.length)
+            return (
+              <button
+                key={String(value)}
+                type="button"
+                onClick={() => setLimitChoice(value)}
+                style={{
+                  height: 30, padding: "0 13px", borderRadius: 999,
+                  border: `1px solid ${active ? "rgba(29,158,117,0.55)" : "rgba(255,255,255,0.1)"}`,
+                  background: active ? "rgba(29,158,117,0.1)" : "transparent",
+                  color: active ? "#6eddb8" : "rgba(255,255,255,0.42)",
+                  fontSize: 12, fontFamily: FONT, cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {value === "all" ? `All (${count})` : label}
+              </button>
+            )
+          })}
+        </div>
+        <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: FONT }}>
+          Start small if this is your first import.
+        </p>
+      </div>
+
       <div style={{ display: "flex", gap: 10 }}>
-        <Btn onClick={() => onContinue(list)} disabled={toImport === 0}>
-          Import {toImport} entr{toImport === 1 ? "y" : "ies"} →
+        <Btn onClick={handleContinue} disabled={importCount === 0}>
+          Import {importCount} entr{importCount === 1 ? "y" : "ies"} →
         </Btn>
         <Ghost onClick={onBack}>Back</Ghost>
       </div>
@@ -538,16 +595,38 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
 
   const start = useCallback(async () => {
     const userId = user?.id
-    if (!userId || !accessToken) {
+
+    console.log("[IMPORT] auth check — userId:", userId ? "ok" : "MISSING", "contextToken:", accessToken ? "ok" : "null")
+
+    if (!userId) {
       setError("You must be signed in to import. Please refresh the page.")
       return
     }
+
+    // accessToken from context may be null if SSR pre-populated the user but the
+    // client-side bootstrap hasn't finished yet. Fall back to a single getSession()
+    // call — this is safe because it runs once before import, not per insert.
+    let token = accessToken
+    if (!token) {
+      const client = createSupabaseBrowserClient()
+      if (client) {
+        const { data: { session } } = await client.auth.getSession()
+        token = session?.access_token ?? null
+        console.log("[IMPORT] fallback getSession —", token ? "token ok" : "no token")
+      }
+    }
+
+    if (!token) {
+      setError("Auth token unavailable. Please refresh the page and try again.")
+      return
+    }
+
     setStarted(true)
     setError(null)
     const ctrl = new AbortController()
     abortRef.current = ctrl
     try {
-      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, accessToken)
+      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, token)
       onDone(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
