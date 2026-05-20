@@ -14,7 +14,6 @@ import {
 import type { DiaryMovie } from "@/lib/diary"
 import type { RssWizardEntry } from "@/lib/import/types"
 import { useAuth } from "@/components/AuthProvider"
-import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -602,7 +601,6 @@ function PreviewStep({
 
 // ─── Step: Import ─────────────────────────────────────────────────────────────
 
-const AUTH_TIMEOUT   = 6_000   // ms to wait for getSession() before giving up
 const IMPORT_WATCHDOG = 15_000  // ms before we surface an error if no progress event fires
 
 function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDone: (r: BatchImportResult) => void; onBack: () => void }) {
@@ -615,8 +613,9 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
 
   const toImport    = useMemo(() => entries.filter((e) => !e.skipped), [entries])
   const diaryMovies = useMemo(() => toImport.map(toDiary), [toImport])
-  const pct = progress && progress.total > 0 ? ((progress.completed + 1) / progress.total) * 100 : 0
-  // Show pulsing dots as soon as import starts, not just when progress is flowing.
+  // Use completed / total so the bar reflects actual work done, not (done+1).
+  // For 1 entry: starts at 0%, reaches 100% only after the insert returns.
+  const pct = progress && progress.total > 0 ? (progress.completed / progress.total) * 100 : 0
   const isRunning = started && !error
 
   // Watchdog: if started but no progress event fires within IMPORT_WATCHDOG ms,
@@ -681,16 +680,16 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
             {!started
               ? `Ready to import ${diaryMovies.length} entr${diaryMovies.length === 1 ? "y" : "ies"}`
               : !progress
-                ? phase === "auth" ? "Resolving auth…" : "Connecting to database…"
+                ? "Connecting to database…"
                 : progress.batchCount === 0
                   ? (progress.currentTitle || "Connecting to database…")
                   : `${progress.completed} of ${progress.total} saved`}
           </p>
           {!started ? (
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6 }}>
-              Imports one entry at a time. Existing entries are skipped to protect your edits.
+              Existing entries are skipped to protect your edits.
             </p>
-          ) : progress && progress.batchCount > 0 && progress.currentTitle ? (
+          ) : progress && progress.batchCount > 0 && progress.completed < progress.total && progress.currentTitle ? (
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
               Saving: {progress.currentTitle}
             </p>
@@ -729,7 +728,7 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
 
 // ─── Step: Complete ───────────────────────────────────────────────────────────
 
-function CompleteStep({ result, skipped, onReset }: { result: BatchImportResult; skipped: number; onReset: () => void }) {
+function CompleteStep({ result, userSkipped, onReset }: { result: BatchImportResult; userSkipped: number; onReset: () => void }) {
   const [showFailed, setShowFailed] = useState(false)
   const hasFailed = result.failedTitles.length > 0
 
@@ -747,14 +746,15 @@ function CompleteStep({ result, skipped, onReset }: { result: BatchImportResult;
           <p style={{ margin: "6px 0 0", fontSize: 15, color: "rgba(255,255,255,0.5)", fontFamily: FONT, lineHeight: 1.6 }}>
             {result.cancelled
               ? `Saved ${result.inserted} ${result.inserted === 1 ? "entry" : "entries"} before cancelling.`
-              : `${result.inserted} ${result.inserted === 1 ? "entry" : "entries"} imported successfully to your ReelShelf diary.`}
+              : `${result.inserted} ${result.inserted === 1 ? "entry" : "entries"} added${result.skipped > 0 ? `, ${result.skipped} already existed and were left unchanged` : ""}.`}
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-          <Stat value={result.inserted} label="Imported" accent />
-          <Stat value={skipped}         label="Skipped"        />
-          <Stat value={result.errors}   label="Errors"         />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+          <Stat value={result.inserted} label="Imported"  accent />
+          <Stat value={result.skipped}  label="Dupes"           />
+          <Stat value={userSkipped}     label="Skipped"         />
+          <Stat value={result.errors}   label="Errors"          />
         </div>
 
         {hasFailed ? (
@@ -977,7 +977,7 @@ export default function ImportWizard() {
       ) : null}
 
       {step === "complete" && importResult ? (
-        <CompleteStep result={importResult} skipped={skippedCount} onReset={handleReset} />
+        <CompleteStep result={importResult} userSkipped={skippedCount} onReset={handleReset} />
       ) : null}
     </main>
   )
