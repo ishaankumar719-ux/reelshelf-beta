@@ -6,7 +6,7 @@ import type { DiaryMovie } from "@/lib/diary"
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BATCH_SIZE    = 50   // bulk-insert up to 50 rows per request
-const BATCH_TIMEOUT = 30_000 // ms before we abort a batch request
+const BATCH_TIMEOUT = 10_000 // ms before we abort a batch request
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -133,8 +133,11 @@ async function bulkInsert(
     signal.addEventListener("abort", () => ctrl.abort(), { once: true })
   }
 
+  const url = `${supabaseUrl}/rest/v1/diary_entries`
+  console.log(`[IMPORT] fetch → POST ${url} (${rows.length} rows, timeout ${BATCH_TIMEOUT / 1000}s)`)
+
   try {
-    const resp = await fetch(`${supabaseUrl}/rest/v1/diary_entries`, {
+    const resp = await fetch(url, {
       method:  "POST",
       headers: {
         "Content-Type":  "application/json",
@@ -149,12 +152,13 @@ async function bulkInsert(
     })
 
     clearTimeout(timer)
+    console.log(`[IMPORT] fetch ← ${resp.status} ${resp.statusText}`)
 
     if (!resp.ok) {
       const body = await resp.json().catch(() => null) as Record<string, unknown> | null
       const code    = (body?.code as string | undefined)    ?? String(resp.status)
       const message = (body?.message as string | undefined) ?? resp.statusText
-      console.error(`[IMPORT] batch failed — HTTP ${resp.status}, code: ${code}, message: ${message}`)
+      console.error(`[IMPORT] batch failed — HTTP ${resp.status}, code: ${code}, message: ${message}`, body)
       return { error: `${code}: ${message}`, httpStatus: resp.status }
     }
 
@@ -164,8 +168,8 @@ async function bulkInsert(
 
     if (err instanceof Error && err.name === "AbortError") {
       if (signal?.aborted) return { error: "Cancelled" }
-      console.error(`[IMPORT] batch timed out after ${BATCH_TIMEOUT / 1000}s`)
-      return { error: "Timed out" }
+      console.error(`[IMPORT] batch timed out after ${BATCH_TIMEOUT / 1000}s — supabaseUrl: ${supabaseUrl}`)
+      return { error: `Timed out after ${BATCH_TIMEOUT / 1000}s — the insert request did not respond. Check Supabase RLS or network connectivity.` }
     }
 
     const msg = err instanceof Error ? err.message : "Network error"
@@ -198,9 +202,14 @@ export async function batchImportLetterboxd(
   }
 
   const { url: supabaseUrl, publishableKey: supabaseKey } = getSupabaseEnv()
-  console.log(`[IMPORT] supabaseUrl: ${supabaseUrl ? "ok" : "MISSING"}`)
+  console.log(`[IMPORT] supabaseUrl: ${supabaseUrl ? "ok" : "MISSING"}, entries: ${entries.length}`)
 
+  // Firing onProgress immediately confirms the function was entered and the
+  // React state setter is reachable. If the UI stays on "Starting…" after this
+  // log, the issue is between here and the first batch — not in the auth step.
+  console.log("[IMPORT] firing first onProgress — if UI still shows Starting… after this, check React rendering")
   onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Preparing entries…" })
+  console.log("[IMPORT] first onProgress fired")
 
   const deduped    = deduplicateEntries(entries)
   const total      = deduped.length
@@ -231,6 +240,21 @@ export async function batchImportLetterboxd(
     onProgress({ completed: i, total, batchIndex, batchCount, currentTitle: firstTitle })
 
     const rows = chunk.map((entry) => buildRow(userId, entry))
+
+    // Log the first row payload so we can verify user_id, media_id, etc. before insert
+    if (batchIndex === 1) {
+      const sample = rows[0]
+      console.log("[IMPORT] first row payload:", {
+        user_id:      sample?.user_id ? `${sample.user_id.slice(0, 8)}…` : "MISSING",
+        media_id:     sample?.media_id,
+        media_type:   sample?.media_type,
+        review_scope: sample?.review_scope,
+        title:        sample?.title,
+        rating:       sample?.rating,
+        watched_date: sample?.watched_date,
+      })
+    }
+
     const { error, httpStatus } = await bulkInsert(supabaseUrl, supabaseKey, accessToken, rows, signal)
 
     if (error) {

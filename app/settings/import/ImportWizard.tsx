@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useCallback, useMemo } from "react"
+import { useRef, useState, useCallback, useMemo, useEffect } from "react"
 import Link from "next/link"
 import {
   parseLetterboxdCsvV2,
@@ -602,22 +602,50 @@ function PreviewStep({
 
 // ─── Step: Import ─────────────────────────────────────────────────────────────
 
+const AUTH_TIMEOUT   = 6_000   // ms to wait for getSession() before giving up
+const IMPORT_WATCHDOG = 15_000  // ms before we surface an error if no progress event fires
+
 function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDone: (r: BatchImportResult) => void; onBack: () => void }) {
   const { user, accessToken }   = useAuth()
   const [progress, setProgress] = useState<BatchImportProgress | null>(null)
   const [started,  setStarted]  = useState(false)
+  const [phase,    setPhase]    = useState<"idle" | "auth" | "inserting">("idle")
   const [error,    setError]    = useState<string | null>(null)
   const abortRef                = useRef<AbortController | null>(null)
 
   const toImport    = useMemo(() => entries.filter((e) => !e.skipped), [entries])
   const diaryMovies = useMemo(() => toImport.map(toDiary), [toImport])
   const pct = progress && progress.total > 0 ? ((progress.completed + 1) / progress.total) * 100 : 0
-  const isRunning = started && progress !== null && progress.completed < progress.total
+  // Show pulsing dots as soon as import starts, not just when progress is flowing.
+  const isRunning = started && !error
+
+  // Watchdog: if started but no progress event fires within IMPORT_WATCHDOG ms,
+  // surface an actionable error instead of freezing on "Starting…" forever.
+  useEffect(() => {
+    if (!started || progress !== null) return
+    const timer = setTimeout(() => {
+      console.error("[IMPORT] watchdog fired — no progress event after", IMPORT_WATCHDOG / 1000, "s")
+      setError(
+        `Import did not respond after ${IMPORT_WATCHDOG / 1000}s. ` +
+        "Check the browser console for the exact hang point. " +
+        "The most common causes are: RLS not allowing insert, bad Supabase URL, or expired auth token."
+      )
+      setStarted(false)
+      setPhase("idle")
+      abortRef.current?.abort()
+    }, IMPORT_WATCHDOG)
+    return () => clearTimeout(timer)
+  }, [started, progress])
 
   const start = useCallback(async () => {
     const userId = user?.id
 
-    console.log("[IMPORT] start clicked — userId:", userId ? "ok" : "MISSING", "contextToken:", accessToken ? "ok" : "null", "entries:", diaryMovies.length)
+    console.log(
+      "[IMPORT] Start import clicked — userId:", userId ? userId.slice(0, 8) + "…" : "MISSING",
+      "| contextToken:", accessToken ? "ok" : "null",
+      "| entriesToImport:", diaryMovies.length,
+      "| first entry:", diaryMovies[0]?.title ?? "none",
+    )
 
     if (!userId) {
       setError("You must be signed in to import. Please refresh the page.")
@@ -625,8 +653,6 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
     }
 
     // Show loading state immediately so there is instant visual feedback.
-    // We resolve the auth token async below — without this, clicking the button
-    // appears to do nothing while getSession() is in flight.
     setStarted(true)
     setError(null)
     const ctrl = new AbortController()
@@ -637,26 +663,36 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
       // before the client bootstrap completed — fall back to a single getSession() call.
       let token = accessToken
       if (!token) {
+        setPhase("auth")
+        console.log("[IMPORT] contextToken null — falling back to getSession() with", AUTH_TIMEOUT / 1000, "s timeout")
         const client = createSupabaseBrowserClient()
         if (client) {
-          const { data: { session } } = await client.auth.getSession()
-          token = session?.access_token ?? null
-          console.log("[IMPORT] fallback getSession —", token ? "token ok" : "no token")
+          // Race getSession() against a hard timeout so this step can't hang forever.
+          const settled = await Promise.race([
+            client.auth.getSession().then((r) => r.data.session?.access_token ?? null),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), AUTH_TIMEOUT)),
+          ])
+          token = settled
+          console.log("[IMPORT] getSession result —", token ? "token ok" : "timed out / no session")
         }
       }
 
       if (!token) {
-        setError("Auth token unavailable. Please refresh the page and try again.")
+        setError("Could not resolve your auth token. Please refresh the page and try again.")
         setStarted(false)
+        setPhase("idle")
         return
       }
 
-      console.log("[IMPORT] token resolved, starting batch — entries:", diaryMovies.length)
+      setPhase("inserting")
+      console.log("[IMPORT] token resolved, calling batchImportLetterboxd — entries:", diaryMovies.length)
+      console.log("[IMPORT] session exists: true, userId:", userId.slice(0, 8) + "…")
       const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, token)
       onDone(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
       setStarted(false)
+      setPhase("idle")
     } finally {
       abortRef.current = null
     }
@@ -671,9 +707,9 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
             {!started
               ? `Ready to import ${diaryMovies.length} entr${diaryMovies.length === 1 ? "y" : "ies"}`
               : !progress
-                ? "Starting…"
+                ? phase === "auth" ? "Resolving auth…" : "Connecting to database…"
                 : progress.batchCount === 0
-                  ? (progress.currentTitle || "Starting…")
+                  ? (progress.currentTitle || "Connecting to database…")
                   : `${progress.completed} of ${progress.total} saved`}
           </p>
           {!started ? (
