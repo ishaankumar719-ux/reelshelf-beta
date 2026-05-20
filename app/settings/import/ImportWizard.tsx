@@ -437,10 +437,28 @@ function PreviewStep({
   }
 
   function handleContinue() {
-    // Take the first N active (non-skipped) entries; mark the rest as skipped
-    // so the complete-step skipped count reflects the full picture.
-    const selectedRows = new Set(activeEntries.slice(0, importCount).map((e) => e.sourceRow))
-    const final = list.map((e) => ({ ...e, skipped: e.skipped || !selectedRows.has(e.sourceRow) }))
+    console.log(
+      "[PREVIEW] Import clicked — selectedAmount:", limitChoice,
+      "| activeEntries:", activeEntries.length,
+      "| importCount:", importCount,
+    )
+
+    if (importCount === 0) {
+      console.warn("[PREVIEW] importCount is 0 — button should have been disabled")
+      return
+    }
+
+    const chosen    = activeEntries.slice(0, importCount)
+    const chosenSet = new Set(chosen.map((e) => e.sourceRow))
+
+    console.log("[PREVIEW] entriesToImport:", chosen.length, "sourceRows sample:", chosen.slice(0, 3).map((e) => e.sourceRow))
+
+    // All entries not in chosenSet become skipped (includes previously manual-skipped
+    // entries that were not active, so they stay skipped too).
+    const final = list.map((e) => ({ ...e, skipped: !chosenSet.has(e.sourceRow) }))
+
+    console.log("[PREVIEW] final — active:", final.filter((e) => !e.skipped).length, "skipped:", final.filter((e) => e.skipped).length)
+
     onContinue(final)
   }
 
@@ -549,7 +567,10 @@ function PreviewStep({
               <button
                 key={String(value)}
                 type="button"
-                onClick={() => setLimitChoice(value)}
+                onClick={() => {
+                  console.log("[PREVIEW] selector changed →", value, "| effective count:", count)
+                  setLimitChoice(value)
+                }}
                 style={{
                   height: 30, padding: "0 13px", borderRadius: 999,
                   border: `1px solid ${active ? "rgba(29,158,117,0.55)" : "rgba(255,255,255,0.1)"}`,
@@ -596,36 +617,41 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
   const start = useCallback(async () => {
     const userId = user?.id
 
-    console.log("[IMPORT] auth check — userId:", userId ? "ok" : "MISSING", "contextToken:", accessToken ? "ok" : "null")
+    console.log("[IMPORT] start clicked — userId:", userId ? "ok" : "MISSING", "contextToken:", accessToken ? "ok" : "null", "entries:", diaryMovies.length)
 
     if (!userId) {
       setError("You must be signed in to import. Please refresh the page.")
       return
     }
 
-    // accessToken from context may be null if SSR pre-populated the user but the
-    // client-side bootstrap hasn't finished yet. Fall back to a single getSession()
-    // call — this is safe because it runs once before import, not per insert.
-    let token = accessToken
-    if (!token) {
-      const client = createSupabaseBrowserClient()
-      if (client) {
-        const { data: { session } } = await client.auth.getSession()
-        token = session?.access_token ?? null
-        console.log("[IMPORT] fallback getSession —", token ? "token ok" : "no token")
-      }
-    }
-
-    if (!token) {
-      setError("Auth token unavailable. Please refresh the page and try again.")
-      return
-    }
-
+    // Show loading state immediately so there is instant visual feedback.
+    // We resolve the auth token async below — without this, clicking the button
+    // appears to do nothing while getSession() is in flight.
     setStarted(true)
     setError(null)
     const ctrl = new AbortController()
     abortRef.current = ctrl
+
     try {
+      // Resolve auth token. Context token may be null if SSR pre-populated the user
+      // before the client bootstrap completed — fall back to a single getSession() call.
+      let token = accessToken
+      if (!token) {
+        const client = createSupabaseBrowserClient()
+        if (client) {
+          const { data: { session } } = await client.auth.getSession()
+          token = session?.access_token ?? null
+          console.log("[IMPORT] fallback getSession —", token ? "token ok" : "no token")
+        }
+      }
+
+      if (!token) {
+        setError("Auth token unavailable. Please refresh the page and try again.")
+        setStarted(false)
+        return
+      }
+
+      console.log("[IMPORT] token resolved, starting batch — entries:", diaryMovies.length)
       const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, token)
       onDone(result)
     } catch (err) {
@@ -768,6 +794,9 @@ export default function ImportWizard() {
   const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
   const [inputError,   setInputError]   = useState<string | null>(null)
   const abortRef                        = useRef<AbortController | null>(null)
+  // Stores entries as they were fetched (no limit-applied skips). Used to restore
+  // PreviewStep to a clean state when the user goes back from ImportStep.
+  const fetchedEntriesRef               = useRef<WizardEntry[] | null>(null)
 
   const skippedCount = entries ? entries.filter((e) => e.skipped).length : 0
 
@@ -799,7 +828,9 @@ export default function ImportWizard() {
         return
       }
 
-      setEntries((body.entries ?? []).map((e) => ({ ...e, skipped: false })))
+      const loaded = (body.entries ?? []).map((e) => ({ ...e, skipped: false }))
+      fetchedEntriesRef.current = loaded
+      setEntries(loaded)
       setDisplayName(body.displayName ?? username)
       setLimited(body.limited ?? false)
       setStep("preview")
@@ -843,6 +874,7 @@ export default function ImportWizard() {
           ctrl.signal
         )
         if (!ctrl.signal.aborted) {
+          fetchedEntriesRef.current = matched
           setEntries(matched)
           setStep("preview")
         }
@@ -925,7 +957,12 @@ export default function ImportWizard() {
         <ImportStep
           entries={entries}
           onDone={(r) => void handleImportDone(r)}
-          onBack={() => setStep("preview")}
+          onBack={() => {
+            // Restore the original fetched entries (no limit-applied skips) so the
+            // PreviewStep doesn't open with 49 entries dimmed from a previous run.
+            if (fetchedEntriesRef.current) setEntries(fetchedEntriesRef.current)
+            setStep("preview")
+          }}
         />
       ) : null}
 
