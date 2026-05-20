@@ -1,6 +1,7 @@
 "use client"
 
 import { getSupabaseEnv, isSupabaseConfigured } from "@/lib/supabase/config"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import type { DiaryMovie } from "@/lib/diary"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -105,111 +106,34 @@ function deduplicateEntries(entries: DiaryMovie[]): DiaryMovie[] {
   return out
 }
 
-// ─── Bulk insert via raw fetch ────────────────────────────────────────────────
-//
-// We bypass the Supabase JS client for actual inserts. The client internally
-// calls getSession() before every request to build auth headers. If the access
-// token has just expired, getSession() triggers a network token-refresh call
-// that can hang indefinitely — causing every insert to timeout.
-//
-// Instead we use raw fetch() with the access token that AuthProvider already
-// resolved when the user loaded the page. onAuthStateChange keeps it current.
-//
-// Prefer: resolution=ignore-duplicates → ON CONFLICT DO NOTHING (no target
-// column list needed, so it works with partial unique indexes).
-
-async function bulkInsert(
-  supabaseUrl: string,
-  supabaseKey: string,
-  accessToken: string,
-  rows: DiaryRow[],
-  signal?: AbortSignal
-): Promise<{ error: string | null; httpStatus?: number }> {
-  const ctrl  = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), BATCH_TIMEOUT)
-
-  // Merge our timeout signal with the caller's cancel signal
-  if (signal) {
-    signal.addEventListener("abort", () => ctrl.abort(), { once: true })
-  }
-
-  const url = `${supabaseUrl}/rest/v1/diary_entries`
-  console.log(`[IMPORT] fetch → POST ${url} (${rows.length} rows, timeout ${BATCH_TIMEOUT / 1000}s)`)
-
-  try {
-    const resp = await fetch(url, {
-      method:  "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${accessToken}`,
-        "apikey":        supabaseKey,
-        // ON CONFLICT DO NOTHING — works with partial unique indexes unlike
-        // the onConflict column-list approach (which requires a non-partial index).
-        "Prefer":        "return=minimal,resolution=ignore-duplicates",
-      },
-      body:   JSON.stringify(rows),
-      signal: ctrl.signal,
-    })
-
-    clearTimeout(timer)
-    console.log(`[IMPORT] fetch ← ${resp.status} ${resp.statusText}`)
-
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => null) as Record<string, unknown> | null
-      const code    = (body?.code as string | undefined)    ?? String(resp.status)
-      const message = (body?.message as string | undefined) ?? resp.statusText
-      console.error(`[IMPORT] batch failed — HTTP ${resp.status}, code: ${code}, message: ${message}`, body)
-      return { error: `${code}: ${message}`, httpStatus: resp.status }
-    }
-
-    return { error: null }
-  } catch (err) {
-    clearTimeout(timer)
-
-    if (err instanceof Error && err.name === "AbortError") {
-      if (signal?.aborted) return { error: "Cancelled" }
-      console.error(`[IMPORT] batch timed out after ${BATCH_TIMEOUT / 1000}s — supabaseUrl: ${supabaseUrl}`)
-      return { error: `Timed out after ${BATCH_TIMEOUT / 1000}s — the insert request did not respond. Check Supabase RLS or network connectivity.` }
-    }
-
-    const msg = err instanceof Error ? err.message : "Network error"
-    console.error("[IMPORT] batch exception:", msg)
-    return { error: msg }
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 // ─── Main export ──────────────────────────────────────────────────────────────
+//
+// Uses the Supabase JS client directly (like normal diary saves do), rather than
+// raw fetch + token management. The client handles auth internally and will call
+// getSession() once per batch. For 1-entry imports, that's 1 call; for 50-entry
+// imports, that's 1 call. This matches the production diary save pattern.
 
 export async function batchImportLetterboxd(
   entries: DiaryMovie[],
   onProgress: ProgressCallback,
   signal?: AbortSignal,
-  userId?: string | null,
-  accessToken?: string | null
+  userId?: string | null
 ): Promise<BatchImportResult> {
-  console.log(`[IMPORT] ▶ start — ${entries.length} entries, userId: ${userId ? "ok" : "missing"}, token: ${accessToken ? "ok" : "missing"}`)
+  console.log(`[IMPORT] ▶ start — ${entries.length} entries, userId: ${userId ? "ok" : "missing"}`)
 
   if (!userId) {
     throw new Error("You must be signed in to import your diary. Please refresh and try again.")
-  }
-  if (!accessToken) {
-    throw new Error("Auth token unavailable. Please refresh the page and try again.")
   }
   if (!isSupabaseConfigured()) {
     throw new Error("Database connection unavailable.")
   }
 
-  const { url: supabaseUrl, publishableKey: supabaseKey } = getSupabaseEnv()
-  console.log(`[IMPORT] supabaseUrl: ${supabaseUrl ? "ok" : "MISSING"}, entries: ${entries.length}`)
+  const supabase = createSupabaseClient()
+  if (!supabase) {
+    throw new Error("Supabase client not available.")
+  }
 
-  // Firing onProgress immediately confirms the function was entered and the
-  // React state setter is reachable. If the UI stays on "Starting…" after this
-  // log, the issue is between here and the first batch — not in the auth step.
-  console.log("[IMPORT] firing first onProgress — if UI still shows Starting… after this, check React rendering")
   onProgress({ completed: 0, total: entries.length, batchIndex: 0, batchCount: 0, currentTitle: "Preparing entries…" })
-  console.log("[IMPORT] first onProgress fired")
 
   const deduped    = deduplicateEntries(entries)
   const total      = deduped.length
@@ -241,11 +165,11 @@ export async function batchImportLetterboxd(
 
     const rows = chunk.map((entry) => buildRow(userId, entry))
 
-    // Log the first row payload so we can verify user_id, media_id, etc. before insert
+    // Log first row payload for debugging
     if (batchIndex === 1) {
       const sample = rows[0]
       console.log("[IMPORT] first row payload:", {
-        user_id:      sample?.user_id ? `${sample.user_id.slice(0, 8)}…` : "MISSING",
+        user_id:      sample?.user_id.slice(0, 8) + "…",
         media_id:     sample?.media_id,
         media_type:   sample?.media_type,
         review_scope: sample?.review_scope,
@@ -255,21 +179,41 @@ export async function batchImportLetterboxd(
       })
     }
 
-    const { error, httpStatus } = await bulkInsert(supabaseUrl, supabaseKey, accessToken, rows, signal)
+    try {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), BATCH_TIMEOUT)
 
-    if (error) {
-      if (httpStatus === 401 || httpStatus === 403) {
-        // Auth error — no point continuing, every subsequent batch will fail too
-        console.error("[IMPORT] auth error — stopping import")
-        throw new Error("Session expired during import. Please refresh and try again.")
+      // Merge timeout signal with caller's cancel signal
+      if (signal) {
+        signal.addEventListener("abort", () => ctrl.abort(), { once: true })
       }
 
+      console.log(`[IMPORT] inserting batch ${batchIndex} — ${rows.length} rows`)
+
+      const { error } = await supabase
+        .from("diary_entries")
+        .insert(rows)
+        .abortSignal(ctrl.signal as any) // Note: type mismatch but Supabase supports this
+
+      clearTimeout(timer)
+
+      if (error) {
+        console.error(`[IMPORT] batch ${batchIndex} failed — code: ${error.code}, message: ${error.message}`)
+        errors += chunk.length
+        chunk.forEach((e) => failedTitles.push(e.title))
+      } else {
+        inserted += chunk.length
+        console.log(`[IMPORT] batch ${batchIndex} ok — ${chunk.length} rows saved`)
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        console.error(`[IMPORT] batch ${batchIndex} timed out after ${BATCH_TIMEOUT / 1000}s`)
+      } else {
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        console.error(`[IMPORT] batch ${batchIndex} exception:`, msg)
+      }
       errors += chunk.length
       chunk.forEach((e) => failedTitles.push(e.title))
-      console.error(`[IMPORT] batch ${batchIndex} failed: ${error}`)
-    } else {
-      inserted += chunk.length
-      console.log(`[IMPORT] batch ${batchIndex} ok — ${chunk.length} rows saved`)
     }
 
     // Advance progress to end of this batch
