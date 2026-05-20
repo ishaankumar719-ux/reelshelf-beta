@@ -659,35 +659,9 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
     abortRef.current = ctrl
 
     try {
-      // Resolve auth token. Context token may be null if SSR pre-populated the user
-      // before the client bootstrap completed — fall back to a single getSession() call.
-      let token = accessToken
-      if (!token) {
-        setPhase("auth")
-        console.log("[IMPORT] contextToken null — falling back to getSession() with", AUTH_TIMEOUT / 1000, "s timeout")
-        const client = createSupabaseBrowserClient()
-        if (client) {
-          // Race getSession() against a hard timeout so this step can't hang forever.
-          const settled = await Promise.race([
-            client.auth.getSession().then((r) => r.data.session?.access_token ?? null),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), AUTH_TIMEOUT)),
-          ])
-          token = settled
-          console.log("[IMPORT] getSession result —", token ? "token ok" : "timed out / no session")
-        }
-      }
-
-      if (!token) {
-        setError("Could not resolve your auth token. Please refresh the page and try again.")
-        setStarted(false)
-        setPhase("idle")
-        return
-      }
-
       setPhase("inserting")
-      console.log("[IMPORT] token resolved, calling batchImportLetterboxd — entries:", diaryMovies.length)
-      console.log("[IMPORT] session exists: true, userId:", userId.slice(0, 8) + "…")
-      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, token)
+      console.log("[IMPORT] starting batchImportLetterboxd — entries:", diaryMovies.length, "userId:", userId.slice(0, 8) + "…")
+      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId)
       onDone(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
