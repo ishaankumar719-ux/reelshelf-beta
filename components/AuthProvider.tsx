@@ -52,6 +52,7 @@ type AuthContextValue = {
   displayName: string | null;
   handle: string | null;
   avatarUrl: string | null;
+  accessToken: string | null;
   needsProfileCompletion: boolean;
   loading: boolean;
   configured: boolean;
@@ -67,6 +68,7 @@ const AuthContext = createContext<AuthContextValue>({
   displayName: null,
   handle: null,
   avatarUrl: null,
+  accessToken: null,
   needsProfileCompletion: false,
   loading: true,
   configured: false,
@@ -313,6 +315,7 @@ export function AuthProvider({
   const configured = isSupabaseConfigured();
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profileResolved, setProfileResolved] = useState(
     !initialUser || Boolean(initialProfile)
   );
@@ -351,6 +354,7 @@ export function AuthProvider({
         if (!mounted) return;
 
         setUser(session?.user ?? null);
+        setAccessToken(session?.access_token ?? null);
 
         if (!session?.user) {
           // No session — resolve immediately, no loading state needed.
@@ -392,6 +396,7 @@ export function AuthProvider({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAccessToken(session?.access_token ?? null);
 
       if (session?.user) {
         // Claim any pending beta invite stored during email-confirmation signup
@@ -450,6 +455,7 @@ export function AuthProvider({
       displayName: getProfileDisplayName(profile),
       handle: getProfileHandle(profile),
       avatarUrl: profile?.avatarUrl ?? null,
+      accessToken,
       needsProfileCompletion,
       loading,
       configured,
@@ -689,6 +695,7 @@ export function AuthProvider({
       },
     }),
     [
+      accessToken,
       configured,
       loading,
       needsProfileCompletion,

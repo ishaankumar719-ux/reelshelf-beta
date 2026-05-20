@@ -525,7 +525,7 @@ function PreviewStep({
 // ─── Step: Import ─────────────────────────────────────────────────────────────
 
 function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDone: (r: BatchImportResult) => void; onBack: () => void }) {
-  const { user }                = useAuth()
+  const { user, accessToken }   = useAuth()
   const [progress, setProgress] = useState<BatchImportProgress | null>(null)
   const [started,  setStarted]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
@@ -538,7 +538,7 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
 
   const start = useCallback(async () => {
     const userId = user?.id
-    if (!userId) {
+    if (!userId || !accessToken) {
       setError("You must be signed in to import. Please refresh the page.")
       return
     }
@@ -547,7 +547,7 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
     const ctrl = new AbortController()
     abortRef.current = ctrl
     try {
-      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId)
+      const result = await batchImportLetterboxd(diaryMovies, setProgress, ctrl.signal, userId, accessToken)
       onDone(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.")
@@ -555,7 +555,7 @@ function ImportStep({ entries, onDone, onBack }: { entries: WizardEntry[]; onDon
     } finally {
       abortRef.current = null
     }
-  }, [diaryMovies, onDone, user?.id])
+  }, [diaryMovies, onDone, user?.id, accessToken])
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
