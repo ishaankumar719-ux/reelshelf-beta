@@ -32,6 +32,8 @@ export type FriendsActivityEntry = {
   episodeNumber?: number | null;
   rating: number | null;
   review: string;
+  watchedDate: string | null;
+  watchedInCinema: boolean;
   savedAt: string;
   href: string;
 };
@@ -425,9 +427,13 @@ export async function getPeopleToFollow(limit = 6) {
     .map(({ score, ...suggestion }) => suggestion);
 }
 
-export async function getFriendsActivity() {
+// userId param bypasses the async auth lookup — pass it directly from the component
+// where the user object is already resolved, avoiding SSR/hydration timing races.
+export async function getFriendsActivity(userId?: string | null) {
   const client = createSupabaseBrowserClient();
-  const currentUserId = await getCurrentUserId();
+
+  // Fall back to session lookup only if caller didn't supply the id
+  const currentUserId = userId || (await getCurrentUserId());
 
   if (!client || !currentUserId) {
     return [] as FriendsActivityEntry[];
@@ -456,7 +462,7 @@ export async function getFriendsActivity() {
         .select(DIARY_SELECT)
         .in("user_id", followedIds)
         .order("saved_at", { ascending: false })
-        .limit(12),
+        .limit(24),
       client
         .from("profiles")
         .select("id, username, display_name, avatar_url")
@@ -497,6 +503,8 @@ export async function getFriendsActivity() {
     creator: string | null;
     rating: number | null;
     review: string | null;
+    watched_date: string | null;
+    watched_in_cinema: boolean | null;
     saved_at: string;
   }>).map((row) => {
     const owner = profileMap.get(row.user_id);
@@ -517,6 +525,8 @@ export async function getFriendsActivity() {
       episodeNumber: row.episode_number ?? null,
       rating: typeof row.rating === "number" ? row.rating : null,
       review: row.review || "",
+      watchedDate: row.watched_date ?? null,
+      watchedInCinema: Boolean(row.watched_in_cinema),
       savedAt: row.saved_at,
       href: getMediaHref({
         id: row.media_id,

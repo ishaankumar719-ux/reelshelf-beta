@@ -377,32 +377,38 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
   const ownerLabel = entry.displayName || (entry.username ? `@${entry.username}` : "Friend");
   const activityType = getActivityType(entry);
   const recency = formatRecencyLabel(entry.savedAt);
+  const watchedOn = entry.watchedDate
+    ? new Date(entry.watchedDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <article
       style={{
-        width: "min(316px, calc(100vw - 60px))",
+        width: "min(320px, calc(100vw - 48px))",
         flexShrink: 0,
         display: "grid",
-        gridTemplateColumns: "88px minmax(0, 1fr)",
+        gridTemplateColumns: "84px minmax(0, 1fr)",
         gap: 14,
         padding: 14,
         borderRadius: 20,
         border: "1px solid rgba(255,255,255,0.08)",
         background:
-          "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 28%), linear-gradient(180deg, rgba(18,18,18,0.96) 0%, rgba(8,8,8,0.96) 100%)",
-        boxShadow: "0 18px 48px rgba(0,0,0,0.24)",
+          "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 28%), linear-gradient(180deg, rgba(18,18,18,0.97) 0%, rgba(8,8,8,0.97) 100%)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.28)",
       }}
     >
+      {/* Poster */}
       <Link
         href={entry.href}
         style={{
           position: "relative",
           aspectRatio: "2 / 3",
-          borderRadius: 16,
+          borderRadius: 14,
           overflow: "hidden",
           background:
             "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
+          display: "block",
+          flexShrink: 0,
         }}
       >
         {entry.poster ? (
@@ -410,6 +416,8 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
             src={entry.poster}
             alt={entry.title}
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
               objectFit: "cover",
@@ -419,6 +427,34 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
         ) : (
           <CardFallback label={entry.mediaType === "book" ? "B" : "R"} />
         )}
+        {entry.watchedInCinema ? (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                padding: "3px 6px",
+                borderRadius: 6,
+                background: "rgba(0,0,0,0.72)",
+                backdropFilter: "blur(4px)",
+                color: "rgba(255,255,255,0.9)",
+                fontSize: 8,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              Cinema
+            </span>
+          </div>
+        ) : null}
       </Link>
 
       <div style={{ minWidth: 0 }}>
@@ -639,6 +675,7 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
           >
             {entry.year || "—"}
             {entry.creator ? ` · ${entry.creator}` : ""}
+            {watchedOn ? ` · ${watchedOn}` : ""}
           </p>
 
           <p
@@ -756,6 +793,7 @@ export default function HomeDashboardClient({
   const [recentEntries, setRecentEntries] = useState<RecentMediaItem[]>([]);
   const [watchlistEntries, setWatchlistEntries] = useState<WatchlistEntry[]>([]);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
+  const [friendsActivityLoading, setFriendsActivityLoading] = useState(false);
 
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
@@ -778,30 +816,32 @@ export default function HomeDashboardClient({
     let mounted = true;
 
     async function loadFriendsActivity() {
-      const activity = await getFriendsActivity();
-
-      if (mounted) {
-        setFriendsActivity(activity);
+      if (!user?.id) return;
+      setFriendsActivityLoading(true);
+      try {
+        // Pass user.id directly — avoids the async auth.getSession() lookup
+        // that can race with SSR-hydration and return null before the singleton
+        // Supabase client has read its session from cookies.
+        const activity = await getFriendsActivity(user.id);
+        if (mounted) setFriendsActivity(activity);
+      } finally {
+        if (mounted) setFriendsActivityLoading(false);
       }
     }
 
     if (user) {
       void loadFriendsActivity();
-      const unsubscribe = subscribeToFollows(() => {
-        void loadFriendsActivity();
-      });
-
+      const unsubscribe = subscribeToFollows(() => void loadFriendsActivity());
       return () => {
         mounted = false;
         unsubscribe();
       };
     } else {
       setFriendsActivity([]);
+      setFriendsActivityLoading(false);
     }
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [user]);
 
   const continueWatching = useMemo(
@@ -886,6 +926,8 @@ export default function HomeDashboardClient({
         }
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; }
+        @keyframes rs-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        .friends-skeleton { animation: rs-pulse 1.6s ease-in-out infinite; }
 
         .home-hero-grid {
           display: grid;
@@ -1363,10 +1405,27 @@ export default function HomeDashboardClient({
 
       <Section
         eyebrow="Social"
-        title="Friends activity"
-        body="Recent diary entries from the shelves you follow."
+        title="What friends are watching"
+        body="Recent watches, reads, and reviews from people you follow."
       >
-        {friendsActivity.length > 0 ? (
+        {friendsActivityLoading && friendsActivity.length === 0 ? (
+          <div className="home-row">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="friends-skeleton"
+                style={{
+                  width: "min(320px, calc(100vw - 48px))",
+                  height: 180,
+                  flexShrink: 0,
+                  borderRadius: 20,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.04)",
+                }}
+              />
+            ))}
+          </div>
+        ) : friendsActivity.length > 0 ? (
           <div className="home-row">
             {friendsActivity.map((entry) => (
               <FriendActivityCard
