@@ -106,13 +106,20 @@ type MountRushmoreRow = {
   poster_path: string | null;
 };
 
+// TMDB stores relative paths like "/abc123.jpg"; book covers are already absolute URLs.
+function resolvePosterPath(raw: string | null): string | null {
+  if (!raw) return null;
+  if (raw.startsWith("http")) return raw;
+  return `https://image.tmdb.org/t/p/w342${raw}`;
+}
+
 function mapMountRushmoreRow(row: MountRushmoreRow): PublicDiaryEntry {
   return {
     entryId: `mr-${row.media_id}-${row.position}`,
     id: row.media_id,
     mediaType: row.media_type as MediaType,
     title: row.title,
-    poster: row.poster_path ?? null,
+    poster: resolvePosterPath(row.poster_path),
     year: Number(row.year) || 0,
     creator: null,
     rating: null,

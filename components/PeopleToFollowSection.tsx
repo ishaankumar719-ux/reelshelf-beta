@@ -46,8 +46,38 @@ function PosterSlot({
             display: "block",
           }}
         />
+      ) : title ? (
+        // Poster missing but title known — show title text as fallback
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "flex-end",
+            padding: 8,
+            background:
+              "radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 55%), linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "rgba(255,255,255,0.55)",
+              fontSize: 9,
+              lineHeight: 1.35,
+              letterSpacing: "0.01em",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {title}
+          </p>
+        </div>
       ) : (
-        // Clean empty slot — no broken icon, no text
+        // Truly empty slot — subtle placeholder dot
         <div
           style={{
             position: "absolute",
@@ -59,11 +89,11 @@ function PosterSlot({
         >
           <span
             style={{
-              width: 18,
-              height: 18,
+              width: 16,
+              height: 16,
               borderRadius: 999,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.07)",
               display: "inline-block",
             }}
           />

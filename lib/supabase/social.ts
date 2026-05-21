@@ -9,6 +9,13 @@ import { DIARY_SELECT } from "../queries";
 
 const FOLLOW_EVENT = "reelshelf:follows-updated";
 
+// TMDB poster_path values are relative (e.g. "/abc.jpg"). Book/other covers are absolute.
+function resolveTmdbPoster(raw: string | null): string | null {
+  if (!raw) return null;
+  if (raw.startsWith("http")) return raw;
+  return `https://image.tmdb.org/t/p/w342${raw}`;
+}
+
 export type FriendsActivityEntry = {
   profileId: string;
   username: string | null;
@@ -395,7 +402,7 @@ export async function getPeopleToFollow(limit = 6) {
       mountRushmore: mrEntries.map((entry) => ({
         id: entry.media_id,
         title: entry.title,
-        poster: entry.poster_path ?? null,
+        poster: resolveTmdbPoster(entry.poster_path),
         href: getMediaHref({ id: entry.media_id, mediaType: "movie" }),
       })),
       score,
