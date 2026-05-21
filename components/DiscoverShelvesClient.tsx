@@ -7,6 +7,26 @@ import PeopleToFollowSection from "./PeopleToFollowSection";
 import type { DiscoverProfileCardData } from "../lib/publicProfiles";
 import { getProfileHandle, getProfileInitials } from "../lib/profile";
 
+function RushmoreImage({ poster, title }: { poster: string; title: string }) {
+  const [errored, setErrored] = useState(false);
+  if (errored) return null;
+  return (
+    <img
+      src={poster}
+      alt={title}
+      onError={() => setErrored(true)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+      }}
+    />
+  );
+}
+
 export default function DiscoverShelvesClient({
   profiles,
   followingIds,
@@ -437,16 +457,7 @@ export default function DiscoverShelvesClient({
                               }}
                             >
                               {film?.poster ? (
-                                <img
-                                  src={film.poster}
-                                  alt={film.title}
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    display: "block",
-                                  }}
-                                />
+                                <RushmoreImage poster={film.poster} title={film.title} />
                               ) : (
                                 <div
                                   style={{

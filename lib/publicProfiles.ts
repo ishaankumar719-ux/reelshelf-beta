@@ -279,6 +279,7 @@ export async function getPublicProfileByUsername(
       .from("mount_rushmore")
       .select("position,media_id,media_type,title,year,poster_path")
       .eq("user_id", typedProfileRow.id)
+      .eq("media_type", "movie")
       .order("position", { ascending: true })
       .limit(4),
   ]);
@@ -339,6 +340,7 @@ export async function getDiscoverProfiles(
         .from("mount_rushmore")
         .select("user_id,position,media_id,media_type,title,year,poster_path")
         .in("user_id", userIds)
+        .eq("media_type", "movie")
         .order("position", { ascending: true }),
     ]);
 

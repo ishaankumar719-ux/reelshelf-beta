@@ -78,11 +78,13 @@ async function getCurrentUserId() {
     return null;
   }
 
+  // Use getSession (local cache) — avoids a server round-trip that can fail
+  // during initial hydration before the JWT refresh completes.
   const {
-    data: { user },
-  } = await client.auth.getUser();
+    data: { session },
+  } = await client.auth.getSession();
 
-  return user?.id || null;
+  return session?.user.id || null;
 }
 
 function notifyFollowListeners() {
@@ -265,7 +267,7 @@ export async function getPeopleToFollow(limit = 6) {
 
   const candidateIds = candidateProfiles.map((profile) => profile.id);
 
-  const [candidateDiaryResponse, followerCountsResponse, followingCountsResponse] =
+  const [candidateDiaryResponse, followerCountsResponse, followingCountsResponse, mountRushmoreResponse] =
     await Promise.all([
       client
         .from("diary_entries")
@@ -275,6 +277,12 @@ export async function getPeopleToFollow(limit = 6) {
         .limit(360),
       client.from("followers").select("following_id").in("following_id", candidateIds),
       client.from("followers").select("follower_id").in("follower_id", candidateIds),
+      client
+        .from("mount_rushmore")
+        .select("user_id,position,media_id,title,poster_path")
+        .in("user_id", candidateIds)
+        .eq("media_type", "movie")
+        .order("position", { ascending: true }),
     ]);
 
   if (candidateDiaryResponse.error) {
@@ -291,6 +299,16 @@ export async function getPeopleToFollow(limit = 6) {
     const current = diaryByUser.get(row.user_id) || [];
     current.push(row);
     diaryByUser.set(row.user_id, current);
+  }
+
+  // Build mount rushmore map from the real table (movie only, ordered by position)
+  type SuggestionMrRow = { user_id: string; position: number; media_id: string; title: string; poster_path: string | null };
+  const mrRows = ((mountRushmoreResponse.data || []) as unknown) as SuggestionMrRow[];
+  const mrByUser = new Map<string, SuggestionMrRow[]>();
+  for (const row of mrRows) {
+    const current = mrByUser.get(row.user_id) || [];
+    current.push(row);
+    mrByUser.set(row.user_id, current);
   }
 
   const followerCounts = new Map<string, number>();
@@ -322,25 +340,10 @@ export async function getPeopleToFollow(limit = 6) {
 
   const suggestions = candidateProfiles.map((profile) => {
     const entries = diaryByUser.get(profile.id) || [];
-    const movieEntries = entries.filter((entry) => entry.media_type === "movie");
-    const mountRushmore = [...movieEntries]
-      .sort((left, right) => {
-        if (left.favourite !== right.favourite) {
-          return Number(right.favourite) - Number(left.favourite);
-        }
+    // Use real mount rushmore data (already filtered to movie, ordered by position)
+    const mrEntries = mrByUser.get(profile.id) || [];
 
-        const leftRating = left.rating ?? -1;
-        const rightRating = right.rating ?? -1;
-
-        if (rightRating !== leftRating) {
-          return rightRating - leftRating;
-        }
-
-        return new Date(right.saved_at).getTime() - new Date(left.saved_at).getTime();
-      })
-      .slice(0, 4);
-
-    const overlapFilm = mountRushmore.find((entry) => topMovieIds.has(entry.media_id));
+    const overlapFilm = mrEntries.find((entry) => topMovieIds.has(entry.media_id));
 
     const overlapCreator = entries.find((entry) => {
       const creator = entry.creator?.trim();
@@ -360,7 +363,7 @@ export async function getPeopleToFollow(limit = 6) {
     const overlapFilmScore = overlapFilm ? 48 : 0;
     const creatorScore = overlapCreator ? 16 : 0;
     const genreScore = overlapGenre ? 10 : 0;
-    const mountRushmoreScore = mountRushmore.length * 2;
+    const mountRushmoreScore = mrEntries.length * 2;
     const followerScore = Math.min(followers, 18);
     const score =
       overlapFilmScore +
@@ -379,7 +382,7 @@ export async function getPeopleToFollow(limit = 6) {
       followers,
       following,
       href: profile.username ? getPublicProfileHref(profile.username) : "/discover",
-      featuredFilm: profile.favourite_film || mountRushmore[0]?.title || null,
+      featuredFilm: profile.favourite_film || mrEntries[0]?.title || null,
       reason: getReasonForSuggestion({
         overlapFilmTitle: overlapFilm?.title || null,
         overlapCreator: overlapCreator?.creator || null,
@@ -387,16 +390,13 @@ export async function getPeopleToFollow(limit = 6) {
           genreSet.has(genre.trim())
         ) || null,
         recentTitle: recentEntry?.title || null,
-        hasMountRushmore: mountRushmore.length > 0,
+        hasMountRushmore: mrEntries.length > 0,
       }),
-      mountRushmore: mountRushmore.map((entry) => ({
+      mountRushmore: mrEntries.map((entry) => ({
         id: entry.media_id,
         title: entry.title,
-        poster: entry.poster ?? null,
-        href: getMediaHref({
-          id: entry.media_id,
-          mediaType: entry.media_type,
-        }),
+        poster: entry.poster_path ?? null,
+        href: getMediaHref({ id: entry.media_id, mediaType: "movie" }),
       })),
       score,
     };
