@@ -97,6 +97,43 @@ type DiaryRow = {
   entertainment_rating: number | null;
 };
 
+type MountRushmoreRow = {
+  position: number;
+  media_id: string;
+  media_type: string;
+  title: string;
+  year: string | null;
+  poster_path: string | null;
+};
+
+function mapMountRushmoreRow(row: MountRushmoreRow): PublicDiaryEntry {
+  return {
+    entryId: `mr-${row.media_id}-${row.position}`,
+    id: row.media_id,
+    mediaType: row.media_type as MediaType,
+    title: row.title,
+    poster: row.poster_path ?? null,
+    year: Number(row.year) || 0,
+    creator: null,
+    rating: null,
+    review: "",
+    watchedDate: "",
+    favourite: false,
+    rewatch: false,
+    containsSpoilers: false,
+    savedAt: "",
+    href: getMediaHref({ id: row.media_id, mediaType: row.media_type as MediaType }),
+    likeCount: 0,
+    commentCount: 0,
+    reelshelfScore: null,
+    reviewLayers: null,
+    attachmentUrl: null,
+    attachmentType: null,
+    reviewCoverUrl: null,
+    reviewCoverSource: null,
+  };
+}
+
 function mapProfileRow(row: ProfileRow): UserProfile {
   return {
     id: row.id,
@@ -236,25 +273,19 @@ export async function getPublicProfileByUsername(
     commentCount: commentCounts.get(entry.entryId) || 0,
   }));
 
-  const mountRushmore = [...hydratedRecentEntries]
-    .filter((entry) => entry.mediaType === "movie")
-    .sort((left, right) => {
-      if (left.favourite !== right.favourite) {
-        return Number(right.favourite) - Number(left.favourite);
-      }
+  const [counts, { data: mrRows }] = await Promise.all([
+    getFollowCounts(supabase, typedProfileRow.id),
+    supabase
+      .from("mount_rushmore")
+      .select("position,media_id,media_type,title,year,poster_path")
+      .eq("user_id", typedProfileRow.id)
+      .order("position", { ascending: true })
+      .limit(4),
+  ]);
 
-      const leftRating = left.rating ?? -1;
-      const rightRating = right.rating ?? -1;
-
-      if (rightRating !== leftRating) {
-        return rightRating - leftRating;
-      }
-
-      return new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime();
-    })
-    .slice(0, 4);
-
-  const counts = await getFollowCounts(supabase, typedProfileRow.id);
+  const mountRushmore = ((mrRows || []) as unknown as MountRushmoreRow[])
+    .sort((a, b) => a.position - b.position)
+    .map(mapMountRushmoreRow);
 
   return {
     profile: mapProfileRow(typedProfileRow),
@@ -295,7 +326,7 @@ export async function getDiscoverProfiles(
 
   const userIds = typedProfiles.map((profile) => profile.id);
 
-  const [{ data: diaryRows, error: diaryError }, { data: followerRows }, { data: followingRows }] =
+  const [{ data: diaryRows, error: diaryError }, { data: followerRows }, { data: followingRows }, { data: mrRows }] =
     await Promise.all([
       supabase
         .from("diary_entries")
@@ -304,6 +335,11 @@ export async function getDiscoverProfiles(
         .order("saved_at", { ascending: false }),
       supabase.from("followers").select("following_id").in("following_id", userIds),
       supabase.from("followers").select("follower_id").in("follower_id", userIds),
+      supabase
+        .from("mount_rushmore")
+        .select("user_id,position,media_id,media_type,title,year,poster_path")
+        .in("user_id", userIds)
+        .order("position", { ascending: true }),
     ]);
 
   if (diaryError) {
@@ -318,6 +354,13 @@ export async function getDiscoverProfiles(
     const current = diaryByUser.get(row.user_id) || [];
     current.push(mapDiaryRow(row));
     diaryByUser.set(row.user_id, current);
+  }
+
+  const mrByUser = new Map<string, MountRushmoreRow[]>();
+  for (const row of ((mrRows || []) as unknown as (MountRushmoreRow & { user_id: string })[]) ) {
+    const current = mrByUser.get(row.user_id) || [];
+    current.push(row);
+    mrByUser.set(row.user_id, current);
   }
 
   const followerCounts = new Map<string, number>();
@@ -337,28 +380,13 @@ export async function getDiscoverProfiles(
   }
 
   return typedProfiles.map((row) => {
-    const entries = diaryByUser.get(row.id) || [];
-    const mountRushmore = [...entries]
-      .filter((entry) => entry.mediaType === "movie")
-      .sort((left, right) => {
-        if (left.favourite !== right.favourite) {
-          return Number(right.favourite) - Number(left.favourite);
-        }
-
-        const leftRating = left.rating ?? -1;
-        const rightRating = right.rating ?? -1;
-
-        if (rightRating !== leftRating) {
-          return rightRating - leftRating;
-        }
-
-        return new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime();
-      })
-      .slice(0, 4);
+    const mrEntries = (mrByUser.get(row.id) || [])
+      .sort((a, b) => a.position - b.position)
+      .map(mapMountRushmoreRow);
 
     return {
       profile: mapProfileRow(row),
-      mountRushmore,
+      mountRushmore: mrEntries,
       counts: {
         followers: followerCounts.get(row.id) || 0,
         following: followingCounts.get(row.id) || 0,

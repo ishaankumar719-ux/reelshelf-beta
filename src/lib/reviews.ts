@@ -85,18 +85,13 @@ export async function upsertReview(
   const isEpisode = scope === "episode"
   const isSeason = scope === "season"
 
-  const seasonNumber = isSeason || isEpisode ? (input.season_number ?? null) : null
-  const episodeNumber = isEpisode ? (input.episode_number ?? null) : null
+  const seasonNumber = isSeason || isEpisode ? (input.season_number ?? 0) : 0
+  const episodeNumber = isEpisode ? (input.episode_number ?? 0) : 0
 
-  // Match the partial unique indexes created in 20260409_tv_review_scopes.sql:
-  //   diary_entries_unique_show    → (user_id, media_id)          WHERE review_scope = 'show'
-  //   diary_entries_unique_season  → (user_id, media_id, season_number) WHERE review_scope = 'season'
-  //   diary_entries_unique_episode → (user_id, media_id, season_number, episode_number) WHERE review_scope = 'episode'
-  const conflictColumns = isEpisode
-    ? "user_id,media_id,season_number,episode_number"
-    : isSeason
-      ? "user_id,media_id,season_number"
-      : "user_id,media_id"
+  // Use the full composite index diary_entries_scope_unique_idx:
+  //   (user_id, media_type, media_id, review_scope, season_number, episode_number)
+  // PostgREST cannot target partial indexes by column list — the full index is always safe.
+  const conflictColumns = "user_id,media_type,media_id,review_scope,season_number,episode_number"
 
   const payload = {
     user_id: userId,
@@ -142,13 +137,8 @@ export async function upsertReview(
       .eq("media_id", payload.media_id)
       .eq("review_scope", payload.review_scope)
 
-    fallbackQuery = seasonNumber !== null
-      ? fallbackQuery.eq("season_number", seasonNumber)
-      : fallbackQuery.is("season_number", null)
-
-    fallbackQuery = episodeNumber !== null
-      ? fallbackQuery.eq("episode_number", episodeNumber)
-      : fallbackQuery.is("episode_number", null)
+    fallbackQuery = fallbackQuery.eq("season_number", seasonNumber)
+    fallbackQuery = fallbackQuery.eq("episode_number", episodeNumber)
 
     const { data: fallback, error: fallbackError } = await fallbackQuery
       .order("updated_at", { ascending: false })
