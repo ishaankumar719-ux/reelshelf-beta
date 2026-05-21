@@ -17,9 +17,7 @@ import { useAuth } from "@/components/AuthProvider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FONT    = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
-const TMDB_W  = "https://image.tmdb.org/t/p/w185"
-const CONCURRENCY = 6
+const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,68 +30,26 @@ type LoadProgress =
   | { phase: "fetch" }
   | { phase: "match"; done: number; total: number }
 
-type TmdbCandidate = { id: number; title: string; year: number; posterPath: string | null }
-
-// ─── TMDB search (used for CSV matching only) ─────────────────────────────────
-
-async function tmdbSearch(title: string, year: number): Promise<TmdbCandidate | null> {
-  try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(title)}&type=film&limit=5`)
-    if (!res.ok) return null
-    const body = (await res.json()) as {
-      films?: Array<{ id: number; title: string; year: string | null; poster_path: string | null }>
-    }
-    const results = body.films ?? []
-    if (!results.length) return null
-    const exact = results.find((r) => r.year !== null && Math.abs(Number(r.year) - year) <= 1)
-    const pick  = exact ?? results[0]
-    if (!pick) return null
-    return { id: pick.id, title: pick.title, year: Number(pick.year ?? year), posterPath: pick.poster_path ?? null }
-  } catch {
-    return null
+// Convert a parsed CSV entry directly to a WizardEntry.
+// Uses the local catalogue match already resolved by parseLetterboxdCsvV2 —
+// no TMDB API call needed for the fast import path.
+function csvEntryToWizard(e: ParsedLetterboxdEntry): WizardEntry {
+  return {
+    sourceRow:        e.sourceRow,
+    title:            e.title,
+    year:             e.year,
+    rating:           e.rating,
+    letterboxdRating: e.letterboxdRating,
+    watchedDate:      e.watchedDate,
+    review:           e.review,
+    rewatch:          e.rewatch,
+    containsSpoilers: e.containsSpoilers,
+    favourite:        false,
+    mediaType:        "movie",
+    mediaId:          e.diaryEntry.id,
+    posterUrl:        e.diaryEntry.poster ?? null,
+    skipped:          false,
   }
-}
-
-async function matchCsvEntries(
-  entries: ParsedLetterboxdEntry[],
-  onProgress: (done: number, total: number) => void,
-  signal: AbortSignal
-): Promise<WizardEntry[]> {
-  const results: WizardEntry[] = new Array(entries.length)
-  let done = 0
-
-  async function one(i: number) {
-    if (signal.aborted) return
-    const e = entries[i]!
-    const tmdb = await tmdbSearch(e.title, e.year)
-    const mediaId   = tmdb ? `tmdb-${tmdb.id}` : e.diaryEntry.id
-    const posterUrl = tmdb?.posterPath ? `${TMDB_W}${tmdb.posterPath}` : null
-    results[i] = {
-      sourceRow:        e.sourceRow,
-      title:            tmdb?.title ?? e.title,
-      year:             tmdb?.year  ?? e.year,
-      rating:           e.rating,
-      letterboxdRating: e.letterboxdRating,
-      watchedDate:      e.watchedDate,
-      review:           e.review,
-      rewatch:          e.rewatch,
-      containsSpoilers: e.containsSpoilers,
-      favourite:        false,
-      mediaType:        "movie",
-      mediaId,
-      posterUrl,
-      skipped:          false,
-    }
-    onProgress(++done, entries.length)
-  }
-
-  for (let i = 0; i < entries.length; i += CONCURRENCY) {
-    if (signal.aborted) break
-    await Promise.all(entries.slice(i, i + CONCURRENCY).map((_, j) => one(i + j)))
-    await new Promise<void>((r) => setTimeout(r, 0))
-  }
-
-  return results
 }
 
 // ─── Conversion to DiaryMovie ─────────────────────────────────────────────────
@@ -220,13 +176,13 @@ function InputStep({
   onCsvFile: (file: File) => void
   error: string | null
 }) {
-  const [value, setValue]       = useState("")
-  const [csvOpen, setCsvOpen]   = useState(false)
+  const [username, setUsername] = useState("")
+  const [expOpen,  setExpOpen]  = useState(false)
   const [dragActive, setDrag]   = useState(false)
   const fileRef                 = useRef<HTMLInputElement>(null)
 
-  function submit() {
-    const trimmed = value.trim().replace(/^@/, "")
+  function submitUsername() {
+    const trimmed = username.trim().replace(/^@/, "")
     if (trimmed.length >= 1) onUsername(trimmed)
   }
 
@@ -236,111 +192,132 @@ function InputStep({
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 14 }}>
 
-      {/* ── Primary: Import with Letterboxd username ── */}
-      <div style={{ borderRadius: 20, border: "1px solid rgba(255,255,255,0.09)", background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))", padding: "22px 24px", display: "grid", gap: 18 }}>
-
+      {/* ── Primary: Upload CSV export ── */}
+      <div style={{
+        borderRadius: 20,
+        border: "1px solid rgba(29,158,117,0.2)",
+        background: "linear-gradient(180deg,rgba(29,158,117,0.06),rgba(29,158,117,0.02))",
+        padding: "22px 24px",
+        display: "grid",
+        gap: 16,
+      }}>
         <div>
           <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(29,158,117,0.7)", fontFamily: FONT, fontWeight: 600 }}>
-            Import with Letterboxd username
+            Upload Letterboxd CSV export
           </p>
-          <p style={{ margin: "6px 0 0", fontSize: 15, color: "rgba(255,255,255,0.45)", fontFamily: FONT, lineHeight: 1.6 }}>
-            Enter your Letterboxd username and ReelShelf will fetch your diary entries, ratings, and reviews automatically.
+          <p style={{ margin: "5px 0 0", fontSize: 15, color: "rgba(255,255,255,0.6)", fontFamily: FONT, lineHeight: 1.55 }}>
+            The fastest and most reliable way to import your full diary history.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-            <span style={{
-              position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-              fontSize: 13, color: "rgba(255,255,255,0.22)", fontFamily: FONT, pointerEvents: "none",
-              whiteSpace: "nowrap",
-            }}>letterboxd.com/</span>
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submit() }}
-              placeholder="your-username"
-              autoComplete="off"
-              style={{
-                width: "100%", height: 48, borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.13)",
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.88)", fontSize: 14, fontFamily: FONT,
-                paddingLeft: 126, paddingRight: 14,
-                outline: "none", boxSizing: "border-box",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(29,158,117,0.5)" }}
-              onBlur={(e)  => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.13)" }}
-            />
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={handleDrop}
+          onClick={() => fileRef.current?.click()}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12,
+            minHeight: 130, borderRadius: 14,
+            border: dragActive ? "1.5px dashed rgba(29,158,117,0.7)" : "1.5px dashed rgba(29,158,117,0.3)",
+            background: dragActive ? "rgba(29,158,117,0.07)" : "rgba(29,158,117,0.02)",
+            cursor: "pointer", transition: "all 0.15s", padding: "24px 20px", textAlign: "center",
+          }}
+        >
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(29,158,117,0.5)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 12 15 15"/>
+          </svg>
+          <div>
+            <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.75)", fontFamily: FONT, fontWeight: 600 }}>Drop diary.csv here or click to browse</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.32)", fontFamily: FONT }}>Supports diary.csv, ratings.csv, watched.csv, reviews.csv</p>
           </div>
-          <Btn onClick={submit} disabled={value.trim().length < 1} style={{ height: 48 }}>
-            Find Profile
-          </Btn>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsvFile(f); e.target.value = "" }} />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "10px 13px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.26)", fontFamily: FONT, lineHeight: 1.6 }}>
+            Go to <strong style={{ color: "rgba(255,255,255,0.42)" }}>letterboxd.com → Settings → Import &amp; Export → Export your data</strong> to download your CSV. Use <strong style={{ color: "rgba(255,255,255,0.42)" }}>diary.csv</strong> for full history with dates.
+          </p>
         </div>
 
         {error ? <Err msg={error} /> : null}
-
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT, lineHeight: 1.6 }}>
-            Imports your most recent ~50–100 diary entries from your public Letterboxd profile. For your complete history, use the CSV export below.
-          </p>
-        </div>
       </div>
 
-      {/* ── Advanced: Upload CSV export ── */}
-      <div style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)", overflow: "hidden" }}>
+      {/* ── Experimental: Import by username ── */}
+      <div style={{ borderRadius: 14, border: "1px solid rgba(245,158,11,0.18)", background: "rgba(245,158,11,0.02)", overflow: "hidden" }}>
         <button
           type="button"
-          onClick={() => setCsvOpen((o) => !o)}
+          onClick={() => setExpOpen((o) => !o)}
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "13px 18px", background: "none", border: "none", cursor: "pointer",
-            color: "rgba(255,255,255,0.38)", fontFamily: FONT, textAlign: "left",
+            padding: "12px 16px", background: "none", border: "none", cursor: "pointer",
+            color: "rgba(245,158,11,0.65)", fontFamily: FONT, textAlign: "left",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span style={{ fontSize: 13 }}>Advanced CSV Import</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", fontFamily: FONT }}>— for complete history</span>
+            <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em" }}>Experimental</span>
+            <span style={{ fontSize: 12, color: "rgba(245,158,11,0.45)" }}>— Import by Letterboxd username</span>
           </div>
-          <span style={{ fontSize: 10, display: "inline-block", transform: csvOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▾</span>
+          <span style={{ fontSize: 10, display: "inline-block", transform: expOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "rgba(245,158,11,0.4)" }}>▾</span>
         </button>
 
-        {csvOpen ? (
-          <div style={{ padding: "0 18px 18px", display: "grid", gap: 12, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>
-            <p style={{ margin: "12px 0 0", fontSize: 12, color: "rgba(255,255,255,0.3)", fontFamily: FONT, lineHeight: 1.6 }}>
-              Download your export from <strong style={{ color: "rgba(255,255,255,0.5)" }}>letterboxd.com → Settings → Import &amp; Export → Export your data</strong>, then upload <strong style={{ color: "rgba(255,255,255,0.5)" }}>diary.csv</strong> (full history with dates) or <strong style={{ color: "rgba(255,255,255,0.5)" }}>ratings.csv</strong>.
-            </p>
+        {expOpen ? (
+          <div style={{ padding: "0 16px 16px", display: "grid", gap: 12, borderTop: "0.5px solid rgba(245,158,11,0.12)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12, padding: "10px 12px", borderRadius: 9, background: "rgba(245,158,11,0.05)", border: "0.5px solid rgba(245,158,11,0.15)" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(245,158,11,0.7)", fontFamily: FONT, lineHeight: 1.6 }}>
+                Username import may stall at auth or fetch stages during beta. Limited to your most recent ~50–100 diary entries. Use the CSV export above for your complete history.
+              </p>
+            </div>
 
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={handleDrop}
-              onClick={() => fileRef.current?.click()}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
-                minHeight: 110, borderRadius: 12,
-                border: dragActive ? "1.5px dashed rgba(29,158,117,0.55)" : "1.5px dashed rgba(255,255,255,0.1)",
-                background: dragActive ? "rgba(29,158,117,0.04)" : "rgba(255,255,255,0.015)",
-                cursor: "pointer", transition: "all 0.15s", padding: 20, textAlign: "center",
-              }}
-            >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.42)", fontFamily: FONT }}>Drop .csv file here or click to browse</p>
-              <input ref={fileRef} type="file" accept=".csv,text/csv" style={{ display: "none" }}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsvFile(f); e.target.value = "" }} />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+                <span style={{
+                  position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)",
+                  fontSize: 12, color: "rgba(255,255,255,0.2)", fontFamily: FONT, pointerEvents: "none",
+                  whiteSpace: "nowrap",
+                }}>letterboxd.com/</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") submitUsername() }}
+                  placeholder="your-username"
+                  autoComplete="off"
+                  style={{
+                    width: "100%", height: 44, borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.11)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.82)", fontSize: 13, fontFamily: FONT,
+                    paddingLeft: 120, paddingRight: 13,
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={submitUsername}
+                disabled={username.trim().length < 1}
+                style={{
+                  height: 44, padding: "0 20px", borderRadius: 10, border: "1px solid rgba(245,158,11,0.3)",
+                  background: username.trim().length < 1 ? "transparent" : "rgba(245,158,11,0.1)",
+                  color: username.trim().length < 1 ? "rgba(245,158,11,0.3)" : "rgba(245,158,11,0.8)",
+                  fontSize: 13, fontFamily: FONT, cursor: username.trim().length < 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                Find Profile
+              </button>
             </div>
           </div>
         ) : null}
@@ -750,7 +727,7 @@ function CompleteStep({ result, userSkipped, onReset }: { result: BatchImportRes
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+        <div className="import-complete-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
           <Stat value={result.inserted} label="Imported"  accent />
           <Stat value={result.skipped}  label="Dupes"           />
           <Stat value={userSkipped}     label="Skipped"         />
@@ -855,48 +832,27 @@ export default function ImportWizard() {
   }
 
   // ── CSV flow ───────────────────────────────────────────────────────────────
+  // Parsing is synchronous and uses only the local catalogue — no TMDB calls,
+  // no loading step. Goes directly from input → preview.
 
   function handleCsvFile(file: File) {
     setInputError(null)
-    file.text().then(async (text) => {
-      let parsed: ParsedLetterboxdEntry[]
+    file.text().then((text) => {
+      let entries: WizardEntry[]
       try {
         const result = parseLetterboxdCsvV2(text)
-        parsed = result.entries
+        entries = result.entries.map(csvEntryToWizard)
       } catch (err) {
         setInputError(err instanceof Error ? err.message : "Could not parse CSV.")
         return
       }
 
       setSource("csv")
-      setStep("loading")
       setDisplayName(file.name)
       setLimited(false)
-
-      const ctrl = new AbortController()
-      abortRef.current = ctrl
-      setLoadProgress({ phase: "match", done: 0, total: parsed.length })
-
-      try {
-        const matched = await matchCsvEntries(
-          parsed,
-          (done, total) => setLoadProgress({ phase: "match", done, total }),
-          ctrl.signal
-        )
-        if (!ctrl.signal.aborted) {
-          fetchedEntriesRef.current = matched
-          setEntries(matched)
-          setStep("preview")
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setStep("input")
-          setInputError("Matching failed. Try again.")
-        }
-      } finally {
-        abortRef.current = null
-        setLoadProgress(null)
-      }
+      fetchedEntriesRef.current = entries
+      setEntries(entries)
+      setStep("preview")
     }).catch(() => {
       setInputError("Could not read that file.")
     })
@@ -927,6 +883,7 @@ export default function ImportWizard() {
       <style>{`
         @keyframes pulse { 0%,100%{opacity:.3;transform:scale(.9)} 50%{opacity:1;transform:scale(1.1)} }
         @media(max-width:580px){ .import-stats{grid-template-columns:repeat(3,1fr)!important} }
+        @media(max-width:480px){ .import-complete-stats{grid-template-columns:repeat(2,1fr)!important} }
       `}</style>
 
       {/* Header */}
@@ -938,7 +895,7 @@ export default function ImportWizard() {
           Import your Letterboxd world into ReelShelf.
         </h1>
         <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.38)", fontFamily: FONT, lineHeight: 1.6, maxWidth: 520 }}>
-          Import using your Letterboxd username or upload your export manually.
+          Upload your Letterboxd CSV export to bring your full diary history into ReelShelf.
         </p>
       </div>
 
