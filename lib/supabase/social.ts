@@ -427,16 +427,24 @@ export async function getPeopleToFollow(limit = 6) {
     .map(({ score, ...suggestion }) => suggestion);
 }
 
+export type FriendsActivityResult = {
+  entries: FriendsActivityEntry[];
+  hasFollows: boolean;
+};
+
 // userId param bypasses the async auth lookup — pass it directly from the component
 // where the user object is already resolved, avoiding SSR/hydration timing races.
-export async function getFriendsActivity(userId?: string | null) {
+export async function getFriendsActivity(userId?: string | null): Promise<FriendsActivityResult> {
   const client = createSupabaseBrowserClient();
 
   // Fall back to session lookup only if caller didn't supply the id
   const currentUserId = userId || (await getCurrentUserId());
 
+  console.log("[FRIENDS_ACTIVITY] currentUserId:", currentUserId);
+
   if (!client || !currentUserId) {
-    return [] as FriendsActivityEntry[];
+    console.log("[FRIENDS_ACTIVITY] no client or userId — returning empty");
+    return { entries: [], hasFollows: false };
   }
 
   const { data: followRows, error: followError } = await client
@@ -445,14 +453,16 @@ export async function getFriendsActivity(userId?: string | null) {
     .eq("follower_id", currentUserId);
 
   if (followError) {
-    console.error("[ReelShelf follows] load followed users failed", followError);
-    return [];
+    console.error("[FRIENDS_ACTIVITY] follow query error:", followError.message, followError);
+    return { entries: [], hasFollows: false };
   }
 
   const followedIds = (followRows || []).map((row) => row.following_id).filter(Boolean);
 
+  console.log("[FRIENDS_ACTIVITY] followingIds:", followedIds);
+
   if (followedIds.length === 0) {
-    return [];
+    return { entries: [], hasFollows: false };
   }
 
   const [{ data: diaryRows, error: diaryError }, { data: profileRows, error: profileError }] =
@@ -469,14 +479,16 @@ export async function getFriendsActivity(userId?: string | null) {
         .in("id", followedIds),
     ]);
 
+  console.log("[FRIENDS_ACTIVITY] rawEntries:", diaryRows?.length ?? 0, diaryError ? `error: ${diaryError.message}` : "ok");
+
   if (diaryError) {
-    console.error("[ReelShelf follows] load friends activity diary failed", diaryError);
-    return [];
+    console.error("[FRIENDS_ACTIVITY] diary query error:", diaryError.message, diaryError);
+    return { entries: [], hasFollows: true };
   }
 
   if (profileError) {
-    console.error("[ReelShelf follows] load friends activity profiles failed", profileError);
-    return [];
+    console.error("[FRIENDS_ACTIVITY] profile query error:", profileError.message, profileError);
+    return { entries: [], hasFollows: true };
   }
 
   const profileMap = new Map(
@@ -490,7 +502,7 @@ export async function getFriendsActivity(userId?: string | null) {
     ])
   );
 
-  return (((diaryRows || []) as unknown) as Array<{
+  const entries = (((diaryRows || []) as unknown) as Array<{
     user_id: string;
     media_id: string;
     media_type: MediaType;
@@ -501,7 +513,7 @@ export async function getFriendsActivity(userId?: string | null) {
     poster: string | null;
     year: number;
     creator: string | null;
-    rating: number | null;
+    rating: number | string | null;
     review: string | null;
     watched_date: string | null;
     watched_in_cinema: boolean | null;
@@ -517,13 +529,14 @@ export async function getFriendsActivity(userId?: string | null) {
       id: row.media_id,
       mediaType: row.media_type as MediaType,
       title: row.title,
-      poster: row.poster ?? null,
+      poster: resolveTmdbPoster(row.poster ?? null),
       year: Number(row.year) || 0,
       creator: row.creator ?? null,
       reviewScope: row.review_scope ?? "title",
       seasonNumber: row.season_number ?? null,
       episodeNumber: row.episode_number ?? null,
-      rating: typeof row.rating === "number" ? row.rating : null,
+      // rating is stored as a numeric string in Postgres ("9.5") — coerce to number
+      rating: row.rating != null ? Number(row.rating) : null,
       review: row.review || "",
       watchedDate: row.watched_date ?? null,
       watchedInCinema: Boolean(row.watched_in_cinema),
@@ -534,4 +547,8 @@ export async function getFriendsActivity(userId?: string | null) {
       }),
     } satisfies FriendsActivityEntry;
   });
+
+  console.log("[FRIENDS_ACTIVITY] mappedCards:", entries.length, entries[0] ?? "none");
+
+  return { entries, hasFollows: true };
 }

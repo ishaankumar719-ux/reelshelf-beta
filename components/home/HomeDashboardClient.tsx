@@ -31,6 +31,7 @@ import {
   type FriendsActivityEntry,
 } from "../../lib/supabase/social";
 
+
 type DashboardItem = {
   id: string;
   mediaType: MediaType;
@@ -793,6 +794,7 @@ export default function HomeDashboardClient({
   const [recentEntries, setRecentEntries] = useState<RecentMediaItem[]>([]);
   const [watchlistEntries, setWatchlistEntries] = useState<WatchlistEntry[]>([]);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
+  const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
   const [friendsActivityLoading, setFriendsActivityLoading] = useState(false);
 
   useEffect(() => {
@@ -822,8 +824,11 @@ export default function HomeDashboardClient({
         // Pass user.id directly — avoids the async auth.getSession() lookup
         // that can race with SSR-hydration and return null before the singleton
         // Supabase client has read its session from cookies.
-        const activity = await getFriendsActivity(user.id);
-        if (mounted) setFriendsActivity(activity);
+        const result = await getFriendsActivity(user.id);
+        if (mounted) {
+          setFriendsActivity(result.entries);
+          setFriendsHasFollows(result.hasFollows);
+        }
       } finally {
         if (mounted) setFriendsActivityLoading(false);
       }
@@ -838,6 +843,7 @@ export default function HomeDashboardClient({
       };
     } else {
       setFriendsActivity([]);
+      setFriendsHasFollows(null);
       setFriendsActivityLoading(false);
     }
 
@@ -1434,6 +1440,13 @@ export default function HomeDashboardClient({
               />
             ))}
           </div>
+        ) : friendsHasFollows ? (
+          <EmptyRow
+            title="No recent activity from your shelves yet"
+            body="The people you follow haven't logged anything recently. Check back soon."
+            href="/discover"
+            cta="Explore ReelShelf"
+          />
         ) : (
           <EmptyRow
             title="Follow a few shelves to light this up"
