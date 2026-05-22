@@ -31,6 +31,7 @@ import {
   type FriendsActivityEntry,
 } from "../../lib/supabase/social";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type DashboardItem = {
   id: string;
@@ -41,6 +42,22 @@ type DashboardItem = {
   poster?: string | null;
   href: string;
 };
+
+// ─── Font stacks ──────────────────────────────────────────────────────────────
+
+const SANS = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif';
+const SERIF = 'Georgia, "Times New Roman", serif';
+
+// ─── Pure utilities ───────────────────────────────────────────────────────────
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 5) return "night";
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  if (h < 21) return "evening";
+  return "night";
+}
 
 function formatDiaryRating(rating: number | null) {
   return typeof rating === "number" ? `${rating.toFixed(1)} / 10` : "No rating";
@@ -54,51 +71,32 @@ function getActivityType(entry: FriendsActivityEntry) {
 
 function getSeriesScopeBadge(entry: FriendsActivityEntry) {
   if (entry.mediaType !== "tv") return null;
-
-  if (entry.reviewScope === "season" && entry.seasonNumber) {
+  if (entry.reviewScope === "season" && entry.seasonNumber)
     return `S${entry.seasonNumber} review`;
-  }
-
-  if (entry.reviewScope === "episode" && entry.seasonNumber && entry.episodeNumber) {
-    return `S${entry.seasonNumber} E${entry.episodeNumber} review`;
-  }
-
-  if (entry.reviewScope === "show") {
-    return "Show review";
-  }
-
+  if (entry.reviewScope === "episode" && entry.seasonNumber && entry.episodeNumber)
+    return `S${entry.seasonNumber} E${entry.episodeNumber}`;
+  if (entry.reviewScope === "show") return "Show review";
   return null;
 }
 
 function formatRecencyLabel(date: string) {
   const deltaMs = Date.now() - new Date(date).getTime();
   const minutes = Math.max(1, Math.floor(deltaMs / 60000));
-
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return `${days}d ago`;
-  }
-
-  return new Date(date).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+  if (days < 7) return `${days}d ago`;
+  return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function getMediaBadgeLabel(mediaType: MediaType) {
-  if (mediaType === "movie") return "FILM";
-  if (mediaType === "tv") return "SERIES";
-  return "BOOK";
+  if (mediaType === "movie") return "Film";
+  if (mediaType === "tv") return "Series";
+  return "Book";
 }
+
+// ─── Shared UI ────────────────────────────────────────────────────────────────
 
 function EmptyRow({
   title,
@@ -114,21 +112,21 @@ function EmptyRow({
   return (
     <div
       style={{
-        borderRadius: 22,
-        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 20,
+        border: "1px solid rgba(255,255,255,0.07)",
         background:
-          "linear-gradient(180deg, rgba(18,18,18,0.92) 0%, rgba(10,10,10,0.94) 100%)",
-        padding: 22,
+          "linear-gradient(180deg, rgba(15,15,15,0.92) 0%, rgba(9,9,9,0.94) 100%)",
+        padding: "clamp(20px, 4vw, 28px)",
       }}
     >
       <p
         style={{
-          margin: "0 0 8px",
-          color: "#7f7f7f",
+          margin: "0 0 6px",
+          color: "#585858",
           fontSize: 11,
-          letterSpacing: "0.04em",
+          letterSpacing: "0.05em",
           textTransform: "uppercase",
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+          fontFamily: SANS,
         }}
       >
         Nothing here yet
@@ -136,8 +134,8 @@ function EmptyRow({
       <h3
         style={{
           margin: 0,
-          fontSize: "clamp(18px, 4vw, 24px)",
-          letterSpacing: "-0.5px",
+          fontSize: "clamp(16px, 3.5vw, 21px)",
+          letterSpacing: "-0.35px",
           fontWeight: 500,
         }}
       >
@@ -145,11 +143,11 @@ function EmptyRow({
       </h3>
       <p
         style={{
-          margin: "10px 0 0",
-          color: "#b9b9b9",
-          fontSize: "clamp(13px, 2.8vw, 15px)",
+          margin: "8px 0 0",
+          color: "#9a9a9a",
+          fontSize: "clamp(13px, 2.5vw, 14px)",
           lineHeight: 1.65,
-          maxWidth: 560,
+          maxWidth: 520,
         }}
       >
         {body}
@@ -157,18 +155,19 @@ function EmptyRow({
       <Link
         href={href}
         style={{
-          marginTop: 16,
+          marginTop: 14,
           display: "inline-flex",
           alignItems: "center",
-          height: 40,
+          height: 38,
           padding: "0 16px",
           borderRadius: 999,
           background: "white",
           color: "black",
           textDecoration: "none",
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 600,
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+          fontFamily: SANS,
+          letterSpacing: "0.01em",
         }}
       >
         {cta}
@@ -180,9 +179,8 @@ function EmptyRow({
 function MediaCard({ item }: { item: DashboardItem }) {
   const mediaType =
     item.mediaType === "movie" ? "film" : item.mediaType === "tv" ? "series" : "book";
-
   return (
-    <div style={{ width: "min(160px, 40vw)", flexShrink: 0 }}>
+    <div style={{ width: "min(150px, 38vw)", flexShrink: 0 }}>
       <SharedMediaCard
         title={item.title}
         year={item.year || "—"}
@@ -195,53 +193,6 @@ function MediaCard({ item }: { item: DashboardItem }) {
   );
 }
 
-function CardFallback({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: 14,
-        background:
-          "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
-      }}
-    >
-      <span
-        style={{
-          color: "rgba(255,255,255,0.36)",
-          fontSize: 10,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-        }}
-      >
-        ReelShelf
-      </span>
-
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.04)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(255,255,255,0.58)",
-          fontSize: 16,
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
-
 function DiaryCard({ entry }: { entry: DiaryMovie }) {
   return (
     <Link
@@ -249,30 +200,29 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
       style={{
         textDecoration: "none",
         color: "inherit",
-        width: "min(300px, calc(100vw - 28px))",
+        width: "min(272px, calc(100vw - 28px))",
         flexShrink: 0,
       }}
     >
       <article
         style={{
           display: "grid",
-          gridTemplateColumns: "88px minmax(0, 1fr)",
-          gap: 14,
-          padding: 14,
-          borderRadius: 22,
-          border: "1px solid rgba(255,255,255,0.08)",
+          gridTemplateColumns: "78px minmax(0, 1fr)",
+          gap: 12,
+          padding: 13,
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.07)",
           background:
-            "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(8,8,8,0.95) 100%)",
+            "linear-gradient(180deg, rgba(15,15,15,0.97) 0%, rgba(8,8,8,0.97) 100%)",
         }}
       >
         <div
           style={{
             position: "relative",
             aspectRatio: "2 / 3",
-            borderRadius: 14,
+            borderRadius: 12,
             overflow: "hidden",
-            background:
-              "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
+            background: "linear-gradient(180deg, #141414 0%, #0b0b0b 100%)",
           }}
         >
           {entry.poster ? (
@@ -280,6 +230,8 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
               src={entry.poster}
               alt={entry.title}
               style={{
+                position: "absolute",
+                inset: 0,
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
@@ -287,7 +239,20 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
               }}
             />
           ) : (
-            <CardFallback label={entry.mediaType === "book" ? "B" : "R"} />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(255,255,255,0.18)",
+                fontSize: 22,
+                fontWeight: 700,
+              }}
+            >
+              {entry.mediaType === "book" ? "B" : "R"}
+            </div>
           )}
         </div>
 
@@ -296,30 +261,27 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
             style={{
               display: "flex",
               justifyContent: "space-between",
-              gap: 8,
               alignItems: "center",
-              marginBottom: 10,
+              marginBottom: 7,
             }}
           >
             <span
               style={{
-                color: "#8f8f8f",
-                fontSize: 10,
-                lineHeight: 1,
-                letterSpacing: "0.04em",
+                color: "#585858",
+                fontSize: 9,
+                letterSpacing: "0.05em",
                 textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                fontFamily: SANS,
               }}
             >
               {getMediaBadgeLabel(entry.mediaType)}
             </span>
-
             <span
               style={{
                 color: "white",
-                fontSize: 16,
+                fontSize: 14,
                 lineHeight: 1,
-                letterSpacing: "-0.4px",
+                letterSpacing: "-0.3px",
                 fontWeight: 600,
               }}
             >
@@ -330,35 +292,33 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
           <h3
             style={{
               margin: 0,
-              fontSize: 18,
-              lineHeight: 1.18,
-              letterSpacing: "-0.5px",
+              fontSize: 15,
+              lineHeight: 1.2,
+              letterSpacing: "-0.35px",
               fontWeight: 500,
             }}
           >
             {entry.title}
           </h3>
-
           <p
             style={{
-              margin: "7px 0 0",
-              color: "#9ca3af",
-              fontSize: 13,
-              lineHeight: 1.55,
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              margin: "4px 0 0",
+              color: "#787878",
+              fontSize: 12,
+              lineHeight: 1.5,
+              fontFamily: SANS,
             }}
           >
             {entry.year || "—"}
             {entry.director ? ` · ${entry.director}` : ""}
           </p>
-
           {entry.review.trim() ? (
             <p
               style={{
-                margin: "10px 0 0",
-                color: "#d1d5db",
-                fontSize: 13,
-                lineHeight: 1.65,
+                margin: "7px 0 0",
+                color: "#c0c0c0",
+                fontSize: 12,
+                lineHeight: 1.6,
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
@@ -374,42 +334,120 @@ function DiaryCard({ entry }: { entry: DiaryMovie }) {
   );
 }
 
+// Poster-first cinematic card for friends activity
 function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
-  const ownerLabel = entry.displayName || (entry.username ? `@${entry.username}` : "Friend");
-  const activityType = getActivityType(entry);
+  const ownerLabel =
+    entry.displayName || (entry.username ? `@${entry.username}` : "Friend");
   const recency = formatRecencyLabel(entry.savedAt);
   const watchedOn = entry.watchedDate
-    ? new Date(entry.watchedDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    ? new Date(entry.watchedDate).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
     : null;
+  const scopeBadge = getSeriesScopeBadge(entry);
 
   return (
     <article
       style={{
-        width: "min(320px, calc(100vw - 48px))",
+        position: "relative",
+        width: "min(200px, 44vw)",
         flexShrink: 0,
-        display: "grid",
-        gridTemplateColumns: "84px minmax(0, 1fr)",
-        gap: 14,
-        padding: 14,
-        borderRadius: 20,
+        borderRadius: 16,
+        overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.08)",
-        background:
-          "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 28%), linear-gradient(180deg, rgba(18,18,18,0.97) 0%, rgba(8,8,8,0.97) 100%)",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.28)",
+        background: "#0f0f0f",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
       }}
     >
-      {/* Poster */}
+      {/* Avatar badge — sibling of poster link, absolutely positioned at z-index 10 */}
+      <Link
+        href={entry.username ? `/u/${entry.username}` : "#"}
+        style={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          zIndex: 10,
+          display: "block",
+          textDecoration: "none",
+          borderRadius: 999,
+        }}
+        aria-label={ownerLabel}
+      >
+        <div
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            overflow: "hidden",
+            border: "1.5px solid rgba(255,255,255,0.32)",
+            background: "#222",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          {entry.avatarUrl ? (
+            <img
+              src={entry.avatarUrl}
+              alt={ownerLabel}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <span
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 9,
+                fontWeight: 700,
+                fontFamily: SANS,
+              }}
+            >
+              {getProfileInitials({
+                displayName: entry.displayName,
+                username: entry.username,
+              })}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      {/* Rating badge — absolutely positioned, not clickable */}
+      {typeof entry.rating === "number" && (
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            zIndex: 10,
+            background: "rgba(0,0,0,0.72)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 7,
+            padding: "4px 7px",
+            color: "#f0c060",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "-0.2px",
+            fontFamily: SANS,
+          }}
+        >
+          {entry.rating.toFixed(1)}
+        </div>
+      )}
+
+      {/* Poster link — covers the full poster area */}
       <Link
         href={entry.href}
         style={{
-          position: "relative",
-          aspectRatio: "2 / 3",
-          borderRadius: 14,
-          overflow: "hidden",
-          background:
-            "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #151515 0%, #0b0b0b 100%)",
           display: "block",
-          flexShrink: 0,
+          position: "relative",
+          paddingBottom: "150%",
+          textDecoration: "none",
+          color: "inherit",
         }}
       >
         {entry.poster ? (
@@ -426,13 +464,45 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
             }}
           />
         ) : (
-          <CardFallback label={entry.mediaType === "book" ? "B" : "R"} />
-        )}
-        {entry.watchedInCinema ? (
           <div
             style={{
               position: "absolute",
-              bottom: 6,
+              inset: 0,
+              background: "linear-gradient(180deg, #1a1a1a 0%, #101010 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                color: "rgba(255,255,255,0.16)",
+                fontSize: 40,
+                fontWeight: 700,
+                fontFamily: SANS,
+              }}
+            >
+              {entry.mediaType === "book" ? "B" : "R"}
+            </span>
+          </div>
+        )}
+
+        {/* Bottom gradient */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.94) 100%)",
+          }}
+        />
+
+        {/* Cinema badge */}
+        {entry.watchedInCinema && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 46,
               left: 0,
               right: 0,
               display: "flex",
@@ -441,265 +511,301 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
           >
             <span
               style={{
-                padding: "3px 6px",
-                borderRadius: 6,
-                background: "rgba(0,0,0,0.72)",
-                backdropFilter: "blur(4px)",
-                color: "rgba(255,255,255,0.9)",
+                background: "rgba(0,0,0,0.7)",
+                backdropFilter: "blur(6px)",
+                borderRadius: 5,
+                padding: "3px 7px",
                 fontSize: 8,
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                color: "rgba(255,255,255,0.82)",
+                fontFamily: SANS,
               }}
             >
               Cinema
             </span>
           </div>
-        ) : null}
-      </Link>
+        )}
 
-      <div style={{ minWidth: 0 }}>
+        {/* Scope badge */}
+        {scopeBadge && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: entry.watchedInCinema ? 62 : 46,
+              right: 8,
+            }}
+          >
+            <span
+              style={{
+                background: "rgba(45,212,191,0.14)",
+                backdropFilter: "blur(6px)",
+                border: "1px solid rgba(45,212,191,0.22)",
+                borderRadius: 5,
+                padding: "2px 6px",
+                fontSize: 8,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: "rgba(45,212,191,0.88)",
+                fontFamily: SANS,
+              }}
+            >
+              {scopeBadge}
+            </span>
+          </div>
+        )}
+
+        {/* Bottom overlay: type + recency + title + username */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 12,
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "10px",
           }}
         >
-          <Link
-            href={entry.username ? `/u/${entry.username}` : "#"}
-            style={{
-              textDecoration: "none",
-              color: "inherit",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 999,
-                overflow: "hidden",
-                background:
-                  "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 60%), linear-gradient(180deg, #171717 0%, #0b0b0b 100%)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                display: "grid",
-                placeItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              {entry.avatarUrl ? (
-                <img
-                  src={entry.avatarUrl}
-                  alt={ownerLabel}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  }}
-                >
-                  {getProfileInitials({
-                    displayName: entry.displayName,
-                    username: entry.username,
-                  })}
-                </span>
-              )}
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <p
-                style={{
-                  margin: 0,
-                  color: "white",
-                  fontSize: 13,
-                  lineHeight: 1.2,
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                }}
-              >
-                {ownerLabel}
-              </p>
-              <p
-                style={{
-                  margin: "4px 0 0",
-                  color: "#7f7f7f",
-                  fontSize: 10,
-                  lineHeight: 1,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                }}
-              >
-                {entry.username ? `@${entry.username}` : "Public profile"}
-              </p>
-            </div>
-          </Link>
-
-          <div
-            style={{
-              display: "grid",
-              justifyItems: "end",
-              gap: 6,
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                padding: "6px 9px",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
-                color: "#e5e7eb",
-                fontSize: 10,
-                lineHeight: 1,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              }}
-            >
-              {activityType}
-            </span>
-            <span
-              style={{
-                color: "#8f8f8f",
-                fontSize: 11,
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              }}
-            >
-              {recency}
-            </span>
-          </div>
-        </div>
-
-        <Link href={entry.href} style={{ textDecoration: "none", color: "inherit" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              marginBottom: 8,
-            }}
-          >
-            <span
-              style={{
-                color: "#7f7f7f",
-                fontSize: 10,
-                lineHeight: 1,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              }}
-            >
-              {getMediaBadgeLabel(entry.mediaType)}
-            </span>
-
-            {typeof entry.rating === "number" ? (
-              <span
-                style={{
-                  color: "white",
-                  fontSize: 16,
-                  lineHeight: 1,
-                  letterSpacing: "-0.4px",
-                  fontWeight: 600,
-                }}
-              >
-                {entry.rating.toFixed(1)} / 10
-              </span>
-            ) : null}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 19,
-                lineHeight: 1.18,
-                letterSpacing: "-0.5px",
-                fontWeight: 500,
-              }}
-            >
-              {entry.title}
-            </h3>
-
-            {getSeriesScopeBadge(entry) ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  minHeight: 24,
-                  padding: "0 8px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(45, 212, 191, 0.18)",
-                  background: "rgba(45, 212, 191, 0.09)",
-                  color: "#d5fffb",
-                  fontSize: 9,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                }}
-              >
-                {getSeriesScopeBadge(entry)}
-              </span>
-            ) : null}
-          </div>
-
           <p
             style={{
-              margin: "7px 0 0",
-              color: "#9ca3af",
-              fontSize: 13,
-              lineHeight: 1.55,
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              margin: 0,
+              fontSize: 9,
+              color: "rgba(255,255,255,0.42)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: SANS,
             }}
           >
-            {entry.year || "—"}
-            {entry.creator ? ` · ${entry.creator}` : ""}
-            {watchedOn ? ` · ${watchedOn}` : ""}
+            {getMediaBadgeLabel(entry.mediaType)} · {recency}
           </p>
-
-          <p
+          <h3
             style={{
-              margin: "12px 0 0",
-              color: "#d1d5db",
+              margin: "3px 0 0",
               fontSize: 13,
-              lineHeight: 1.65,
+              fontWeight: 600,
+              lineHeight: 1.22,
+              letterSpacing: "-0.2px",
+              color: "white",
               display: "-webkit-box",
-              WebkitLineClamp: 3,
+              WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}
           >
-            {entry.review.trim()
-              ? `"${entry.review}"`
-              : typeof entry.rating === "number"
-                ? `Rated this ${entry.mediaType === "book" ? "book" : entry.mediaType === "tv" ? "series" : "film"} ${entry.rating.toFixed(1)} out of 10.`
-                : "Logged this title to ReelShelf."}
+            {entry.title}
+          </h3>
+          {entry.username && (
+            <p
+              style={{
+                margin: "2px 0 0",
+                fontSize: 10,
+                color: "rgba(255,255,255,0.38)",
+                fontFamily: SANS,
+              }}
+            >
+              @{entry.username}
+            </p>
+          )}
+        </div>
+      </Link>
+
+      {/* Review snippet */}
+      {entry.review.trim() ? (
+        <Link
+          href={entry.href}
+          style={{
+            display: "block",
+            padding: "9px 11px 10px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.55,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              fontStyle: "italic",
+            }}
+          >
+            &ldquo;{entry.review}&rdquo;
           </p>
+          {watchedOn && (
+            <p
+              style={{
+                margin: "5px 0 0",
+                fontSize: 9,
+                color: "rgba(255,255,255,0.28)",
+                fontFamily: SANS,
+              }}
+            >
+              Watched {watchedOn}
+            </p>
+          )}
         </Link>
-      </div>
+      ) : watchedOn ? (
+        <div
+          style={{
+            padding: "7px 11px 8px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 9,
+              color: "rgba(255,255,255,0.28)",
+              fontFamily: SANS,
+            }}
+          >
+            Watched {watchedOn}
+          </p>
+        </div>
+      ) : null}
     </article>
+  );
+}
+
+// Compact tile for "Trending in your circle"
+function TrendingTile({
+  item,
+  count,
+}: {
+  item: {
+    id: string;
+    mediaType: MediaType;
+    title: string;
+    poster: string | null;
+    year: number;
+    href: string;
+  };
+  count: number;
+}) {
+  return (
+    <Link
+      href={item.href}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+        flexShrink: 0,
+        width: "min(140px, 36vw)",
+        display: "block",
+      }}
+    >
+      <div
+        style={{
+          borderRadius: 13,
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "#0f0f0f",
+          position: "relative",
+        }}
+      >
+        <div style={{ position: "relative", paddingBottom: "150%" }}>
+          {item.poster ? (
+            <img
+              src={item.poster}
+              alt={item.title}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "#1a1a1a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  color: "rgba(255,255,255,0.18)",
+                  fontSize: 28,
+                  fontWeight: 700,
+                }}
+              >
+                R
+              </span>
+            </div>
+          )}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, transparent 48%, rgba(0,0,0,0.9) 100%)",
+            }}
+          />
+          <div style={{ position: "absolute", top: 7, right: 7 }}>
+            <span
+              style={{
+                background: "rgba(0,0,0,0.72)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 6,
+                padding: "3px 7px",
+                fontSize: 9,
+                color: "rgba(255,255,255,0.75)",
+                fontFamily: SANS,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {count}× logged
+            </span>
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: "8px",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 9,
+                color: "rgba(255,255,255,0.42)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                fontFamily: SANS,
+              }}
+            >
+              {getMediaBadgeLabel(item.mediaType)}
+            </p>
+            <h3
+              style={{
+                margin: "2px 0 0",
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: 1.22,
+                letterSpacing: "-0.2px",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {item.title}
+            </h3>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -709,15 +815,17 @@ function Section({
   body,
   children,
   action,
+  serif,
 }: {
   eyebrow?: string;
   title: string;
   body?: string;
   children: React.ReactNode;
   action?: React.ReactNode;
+  serif?: boolean;
 }) {
   return (
-    <section style={{ marginBottom: "clamp(22px, 5vw, 38px)" }}>
+    <section style={{ marginBottom: "clamp(32px, 6vw, 48px)" }}>
       <div
         style={{
           display: "flex",
@@ -725,60 +833,61 @@ function Section({
           gap: 12,
           alignItems: "flex-end",
           flexWrap: "wrap",
-          marginBottom: "clamp(10px, 2.5vw, 16px)",
+          marginBottom: "clamp(12px, 2.5vw, 18px)",
         }}
       >
         <div>
           {eyebrow ? (
             <p
               style={{
-                margin: "0 0 6px",
-                color: "#7f7f7f",
+                margin: "0 0 5px",
+                color: "#585858",
                 fontSize: 11,
-                letterSpacing: "0.04em",
+                letterSpacing: "0.05em",
                 textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                fontFamily: SANS,
               }}
             >
               {eyebrow}
             </p>
           ) : null}
-
           <h2
             style={{
               margin: 0,
-              fontSize: "clamp(20px, 4.5vw, 32px)",
+              fontSize: serif
+                ? "clamp(22px, 4.5vw, 34px)"
+                : "clamp(18px, 4vw, 28px)",
               lineHeight: 1.06,
-              letterSpacing: "clamp(-0.4px, -0.08vw, -1px)",
-              fontWeight: 500,
+              letterSpacing: serif ? "-0.5px" : "-0.4px",
+              fontWeight: serif ? 400 : 500,
+              fontFamily: serif ? SERIF : "inherit",
             }}
           >
             {title}
           </h2>
-
           {body ? (
             <p
               className="home-section-body"
               style={{
-                margin: "8px 0 0",
-                color: "#a8a8a8",
-                fontSize: "clamp(13px, 2.5vw, 15px)",
+                margin: "7px 0 0",
+                color: "#888",
+                fontSize: "clamp(12px, 2.2vw, 14px)",
                 lineHeight: 1.65,
-                maxWidth: 760,
+                maxWidth: 680,
               }}
             >
               {body}
             </p>
           ) : null}
         </div>
-
         {action}
       </div>
-
       {children}
     </section>
   );
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function HomeDashboardClient({
   trendingMovies,
@@ -801,16 +910,11 @@ export default function HomeDashboardClient({
     setDiaryEntries(getDiaryMovies());
     setRecentEntries(getRecentMedia());
     setWatchlistEntries(getWatchlist());
-    const unsubscribeDiary = subscribeToDiary(() => {
-      setDiaryEntries(getDiaryMovies());
-    });
-    const unsubscribeWatchlist = subscribeToWatchlist(() => {
-      setWatchlistEntries(getWatchlist());
-    });
-
+    const unsubDiary = subscribeToDiary(() => setDiaryEntries(getDiaryMovies()));
+    const unsubWatchlist = subscribeToWatchlist(() => setWatchlistEntries(getWatchlist()));
     return () => {
-      unsubscribeDiary();
-      unsubscribeWatchlist();
+      unsubDiary();
+      unsubWatchlist();
     };
   }, []);
 
@@ -821,9 +925,6 @@ export default function HomeDashboardClient({
       if (!user?.id) return;
       setFriendsActivityLoading(true);
       try {
-        // Pass user.id directly — avoids the async auth.getSession() lookup
-        // that can race with SSR-hydration and return null before the singleton
-        // Supabase client has read its session from cookies.
         const result = await getFriendsActivity(user.id);
         if (mounted) {
           setFriendsActivity(result.entries);
@@ -836,10 +937,10 @@ export default function HomeDashboardClient({
 
     if (user) {
       void loadFriendsActivity();
-      const unsubscribe = subscribeToFollows(() => void loadFriendsActivity());
+      const unsub = subscribeToFollows(() => void loadFriendsActivity());
       return () => {
         mounted = false;
-        unsubscribe();
+        unsub();
       };
     } else {
       setFriendsActivity([]);
@@ -847,19 +948,23 @@ export default function HomeDashboardClient({
       setFriendsActivityLoading(false);
     }
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [user]);
+
+  // ── Derived / computed ─────────────────────────────────────────────────────
 
   const continueWatching = useMemo(
     () =>
-      recentEntries.slice(0, 8).map((entry) => ({
-        id: entry.id,
-        mediaType: entry.mediaType,
-        title: entry.title,
-        year: entry.year,
-        subtitle: entry.director,
-        poster: entry.poster,
-        href: getMediaHref({ id: entry.id, mediaType: entry.mediaType }),
+      recentEntries.slice(0, 8).map((e) => ({
+        id: e.id,
+        mediaType: e.mediaType,
+        title: e.title,
+        year: e.year,
+        subtitle: e.director,
+        poster: e.poster,
+        href: getMediaHref({ id: e.id, mediaType: e.mediaType }),
       })),
     [recentEntries]
   );
@@ -869,15 +974,10 @@ export default function HomeDashboardClient({
   const topRated = useMemo(
     () =>
       [...diaryEntries]
-        .filter((entry) => typeof entry.rating === "number")
+        .filter((e) => typeof e.rating === "number")
         .sort((a, b) => {
-          const left = a.rating || 0;
-          const right = b.rating || 0;
-
-          if (right !== left) {
-            return right - left;
-          }
-
+          const diff = (b.rating ?? 0) - (a.rating ?? 0);
+          if (diff !== 0) return diff;
           return new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime();
         })
         .slice(0, 8),
@@ -887,117 +987,143 @@ export default function HomeDashboardClient({
   const tonightPickItems = useMemo(
     () =>
       watchlistEntries
-        .filter((entry) => entry.mediaType === "movie" || entry.mediaType === "tv")
-        .map((entry) => ({
-          id: entry.id,
-          title: entry.title,
-          poster: entry.poster ?? null,
-          year: entry.year,
-          media_type: entry.mediaType,
-          creator: entry.director ?? null,
-          media_id: entry.id,
-          added_at: entry.addedAt,
+        .filter((e) => e.mediaType === "movie" || e.mediaType === "tv")
+        .map((e) => ({
+          id: e.id,
+          title: e.title,
+          poster: e.poster ?? null,
+          year: e.year,
+          media_type: e.mediaType,
+          creator: e.director ?? null,
+          media_id: e.id,
+          added_at: e.addedAt,
         })),
     [watchlistEntries]
   );
 
   const quickStats = useMemo(() => {
     const watchlistCount = watchlistEntries.filter(
-      (entry) => entry.mediaType === "movie" || entry.mediaType === "tv"
+      (e) => e.mediaType === "movie" || e.mediaType === "tv"
     ).length;
-    const readingShelfCount = watchlistEntries.filter(
-      (entry) => entry.mediaType === "book"
-    ).length;
-
-    return {
-      diaryCount: diaryEntries.length,
-      watchlistCount,
-      readingShelfCount,
-    };
+    const readingShelfCount = watchlistEntries.filter((e) => e.mediaType === "book").length;
+    return { diaryCount: diaryEntries.length, watchlistCount, readingShelfCount };
   }, [diaryEntries.length, watchlistEntries]);
 
+  // Most-logged titles across the friends activity feed
+  const trendingAmongFriends = useMemo(() => {
+    if (friendsActivity.length < 2) return [];
+    const counts = new Map<string, { count: number; entry: FriendsActivityEntry }>();
+    for (const entry of friendsActivity) {
+      const key = `${entry.mediaType}:${entry.id}`;
+      const hit = counts.get(key);
+      if (hit) {
+        hit.count += 1;
+      } else {
+        counts.set(key, { count: 1, entry });
+      }
+    }
+    return Array.from(counts.values())
+      .filter(({ count }) => count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map(({ count, entry }) => ({
+        id: entry.id,
+        mediaType: entry.mediaType,
+        title: entry.title,
+        poster: entry.poster,
+        year: entry.year,
+        href: entry.href,
+        count,
+      }));
+  }, [friendsActivity]);
+
+  const heroFeaturedEntry = friendsActivity[0] ?? null;
+  const heroBackdrop =
+    heroFeaturedEntry?.poster ?? trendingMovies[0]?.poster ?? null;
+  const timeOfDay = getTimeOfDay();
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
-    <main style={{ padding: "8px 0 64px" }}>
+    <main style={{ padding: "8px 0 80px" }}>
       <style>{`
+        /* ── Scrolling rows ── */
         .home-row {
           display: flex;
-          gap: 14px;
+          gap: 12px;
           overflow-x: auto;
           overflow-y: visible;
           -webkit-overflow-scrolling: touch;
           scroll-snap-type: x proximity;
           scrollbar-width: none;
-          padding-bottom: 6px;
-          scroll-padding-left: 4px;
+          padding-bottom: 4px;
         }
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; }
-        @keyframes rs-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
-        .friends-skeleton { animation: rs-pulse 1.6s ease-in-out infinite; }
 
-        .home-hero-grid {
+        /* ── Skeleton pulse ── */
+        @keyframes rs-pulse { 0%,100%{opacity:1} 50%{opacity:.38} }
+        .friends-skeleton { animation: rs-pulse 1.8s ease-in-out infinite; }
+
+        /* ── Hero ── */
+        .home-hero {
           display: grid;
-          grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
-          gap: 18px;
-          margin-bottom: 22px;
+          grid-template-columns: 1fr 300px;
+          position: relative;
+          border-radius: 24px;
+          overflow: hidden;
+          margin-bottom: clamp(22px, 4.5vw, 34px);
+          border: 1px solid rgba(255,255,255,0.07);
+          background: #0c0c0c;
+          box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+          min-height: 260px;
+        }
+        .home-hero-featured { display: flex; }
+
+        /* ── Two-column layout ── */
+        .home-two-col {
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+          gap: 16px;
+          margin-bottom: clamp(32px, 6vw, 48px);
         }
 
+        /* ── Quick actions ── */
         .home-actions-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
+          gap: 10px;
         }
 
-        .home-priority-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-          gap: 18px;
-          margin-bottom: 28px;
-        }
-
-        /* mobile-only elements hidden by default */
+        /* ── Mobile search (hidden on desktop) ── */
         .home-mobile-search { display: none; margin-bottom: 12px; }
-        .home-stats-mobile { display: none; }
 
+        /* ── Section body (hidden on small screens) ── */
+        /* .home-section-body intentionally always visible — override below if needed */
+
+        /* ── Breakpoints ── */
         @media (max-width: 960px) {
-          .home-hero-grid,
-          .home-priority-grid,
-          .home-actions-grid {
-            grid-template-columns: 1fr;
-          }
+          .home-hero { grid-template-columns: 1fr; }
+          .home-hero-featured { display: none !important; }
+          .home-two-col { grid-template-columns: 1fr; }
         }
 
-        @media (max-width: 760px) {
-          .home-row { gap: 10px; }
-          .home-hero-grid { gap: 0; margin-bottom: 0; }
-          .home-actions-grid { gap: 10px; }
-          .home-priority-grid { gap: 14px; margin-bottom: 22px; }
-
+        @media (max-width: 680px) {
+          .home-row { gap: 8px; }
           .home-mobile-search { display: flex; }
-
-          .home-hero-card { border-radius: 22px !important; padding: 14px 16px 14px !important; }
-          .home-hero-body { display: none !important; }
-          .home-stats-card { display: none !important; }
           .home-section-body { display: none !important; }
-
-          .home-stats-mobile {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin: 10px 0 18px;
-          }
+          .home-actions-grid { gap: 8px; }
         }
       `}</style>
 
-      {/* Mobile search bar — only visible on small screens */}
+      {/* Mobile search */}
       <button
         type="button"
         className="home-mobile-search"
-        onClick={() => {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("rs:open-search"));
-          }
-        }}
+        onClick={() =>
+          typeof window !== "undefined" &&
+          window.dispatchEvent(new CustomEvent("rs:open-search"))
+        }
         style={{
           width: "100%",
           alignItems: "center",
@@ -1009,7 +1135,7 @@ export default function HomeDashboardClient({
           color: "#7f7f7f",
           fontSize: 14,
           cursor: "pointer",
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+          fontFamily: SANS,
           textAlign: "left",
           padding: "0 14px",
         }}
@@ -1031,58 +1157,82 @@ export default function HomeDashboardClient({
         <span>Search films, series, books…</span>
       </button>
 
-      <section className="home-hero-grid">
+      {/* ══════════════════════════════════════════════════════════════
+          HERO
+          ══════════════════════════════════════════════════════════════ */}
+      <div className="home-hero">
+        {/* Cinematic backdrop blur */}
+        {heroBackdrop && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url(${heroBackdrop})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.065,
+              filter: "blur(52px) saturate(1.8)",
+              pointerEvents: "none",
+              zIndex: 0,
+            }}
+          />
+        )}
+
+        {/* ── Left: greeting ── */}
         <div
-          className="home-hero-card"
           style={{
             position: "relative",
-            overflow: "hidden",
-            borderRadius: 30,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background:
-              "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.06), transparent 20%), linear-gradient(180deg, rgba(18,18,18,0.98) 0%, rgba(7,7,7,0.98) 100%)",
-            padding: "clamp(18px, 4.5vw, 30px) clamp(18px, 5vw, 30px) clamp(16px, 4.5vw, 26px)",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
+            zIndex: 1,
+            padding: "clamp(22px, 4.5vw, 36px)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
           <p
             style={{
-              margin: "0 0 10px",
-              color: "#7f7f7f",
+              margin: "0 0 8px",
+              color: "#585858",
               fontSize: 11,
-              letterSpacing: "0.06em",
+              letterSpacing: "0.07em",
               textTransform: "uppercase",
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              fontFamily: SANS,
             }}
           >
             Discovery Dashboard
           </p>
-
           <h1
             style={{
               margin: 0,
-              fontSize: "clamp(1.6rem, 6vw, 52px)",
-              lineHeight: 1.0,
-              letterSpacing: "clamp(-1px, -0.3vw, -2.4px)",
-              fontWeight: 600,
-              maxWidth: 720,
+              fontSize: "clamp(1.75rem, 5.5vw, 3.4rem)",
+              lineHeight: 1.02,
+              letterSpacing: "clamp(-1.2px, -0.28vw, -2.8px)",
+              fontWeight: 400,
+              fontFamily: SERIF,
             }}
           >
-            Welcome back{displayName ? `, ${displayName}` : ""}
+            Good {timeOfDay}
+            {displayName ? `, ${displayName}` : ""}
           </h1>
 
           <p
-            className="home-hero-body"
             style={{
-              margin: "10px 0 0",
-              color: "#c7c7c7",
-              fontSize: "clamp(13px, 3vw, 16px)",
-              lineHeight: 1.55,
-              maxWidth: 760,
+              margin: "11px 0 0",
+              color: "#909090",
+              fontSize: "clamp(13px, 2.4vw, 15px)",
+              lineHeight: 1.65,
+              maxWidth: 480,
             }}
           >
-            Pick up where you left off, revisit your latest thoughts, and discover
-            what to watch or read next.
+            {heroFeaturedEntry
+              ? `${
+                  heroFeaturedEntry.displayName ||
+                  heroFeaturedEntry.username ||
+                  "Someone you follow"
+                } just ${getActivityType(heroFeaturedEntry)} ${
+                  heroFeaturedEntry.title
+                }. Your circle is active.`
+              : "Pick up where you left off — your diary, shelves, and recommendations are waiting."}
           </p>
 
           <div
@@ -1098,7 +1248,7 @@ export default function HomeDashboardClient({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                height: 40,
+                height: 38,
                 padding: "0 16px",
                 borderRadius: 999,
                 background: "white",
@@ -1106,19 +1256,18 @@ export default function HomeDashboardClient({
                 textDecoration: "none",
                 fontSize: 13,
                 fontWeight: 600,
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                fontFamily: SANS,
                 letterSpacing: "0.01em",
               }}
             >
               Discover films
             </Link>
-
             <Link
               href="/series"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                height: 40,
+                height: 38,
                 padding: "0 16px",
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.12)",
@@ -1126,174 +1275,265 @@ export default function HomeDashboardClient({
                 color: "white",
                 textDecoration: "none",
                 fontSize: 13,
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                fontFamily: SANS,
                 letterSpacing: "0.01em",
               }}
             >
               Explore series
             </Link>
           </div>
-        </div>
 
-        <div
-          className="home-stats-card"
-          style={{
-            borderRadius: 30,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background:
-              "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.96) 100%)",
-            padding: "clamp(16px, 4vw, 22px)",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.24)",
-          }}
-        >
-          <p
+          {/* Inline stats */}
+          <div
             style={{
-              margin: "0 0 10px",
-              color: "#7f7f7f",
-              fontSize: 11,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              display: "flex",
+              gap: 22,
+              flexWrap: "wrap",
+              marginTop: "clamp(18px, 3.5vw, 26px)",
             }}
           >
-            At a glance
-          </p>
-
-          <div style={{ display: "grid", gap: 12 }}>
             {[
-              {
-                label: "Diary entries",
-                value: quickStats.diaryCount,
-                detail: "Your logged timeline across all media.",
-              },
+              { label: "Diary", value: quickStats.diaryCount, href: "/diary" },
               {
                 label: "Watchlist",
                 value: quickStats.watchlistCount,
-                detail: "Films and series waiting for a night in.",
+                href: "/watchlist",
               },
               {
-                label: "Reading Shelf",
+                label: "Books",
                 value: quickStats.readingShelfCount,
-                detail: "Books saved for your next reading stretch.",
+                href: "/reading-shelf",
               },
-            ].map((item) => (
-              <div
-                key={item.label}
+            ].map((stat) => (
+              <Link
+                key={stat.label}
+                href={stat.href}
                 style={{
-                  borderRadius: 20,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
-                  padding: "14px 16px",
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "clamp(22px, 4vw, 28px)",
+                    fontWeight: 700,
+                    letterSpacing: "-1px",
+                    lineHeight: 1,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {stat.value}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#585858",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    fontFamily: SANS,
+                  }}
+                >
+                  {stat.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Right: featured friend activity ── */}
+        <div
+          className="home-hero-featured"
+          style={{
+            position: "relative",
+            borderLeft: "1px solid rgba(255,255,255,0.06)",
+            overflow: "hidden",
+          }}
+        >
+          {heroFeaturedEntry ? (
+            <Link
+              href={heroFeaturedEntry.href}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                textDecoration: "none",
+                color: "inherit",
+                height: "100%",
+                position: "relative",
+              }}
+            >
+              {heroFeaturedEntry.poster && (
+                <img
+                  src={heroFeaturedEntry.poster}
+                  alt={heroFeaturedEntry.title}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    opacity: 0.42,
+                  }}
+                />
+              )}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.97) 100%)",
+                }}
+              />
+              <div
+                style={{
+                  position: "relative",
+                  marginTop: "auto",
+                  padding: "16px 18px",
                 }}
               >
                 <p
                   style={{
-                    margin: 0,
-                    color: "#8f8f8f",
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
+                    margin: "0 0 3px",
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.38)",
                     textTransform: "uppercase",
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    letterSpacing: "0.06em",
+                    fontFamily: SANS,
                   }}
                 >
-                  {item.label}
+                  Just {getActivityType(heroFeaturedEntry)} by{" "}
+                  {heroFeaturedEntry.displayName ||
+                    heroFeaturedEntry.username ||
+                    "a friend"}
                 </p>
-                <h2
+                <h3
                   style={{
-                    margin: "6px 0 0",
-                    fontSize: "clamp(26px, 6vw, 34px)",
-                    lineHeight: 1,
-                    letterSpacing: "-1px",
+                    margin: 0,
+                    fontSize: 17,
                     fontWeight: 600,
+                    letterSpacing: "-0.4px",
+                    lineHeight: 1.2,
                   }}
                 >
-                  {item.value}
-                </h2>
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    color: "#a7a7a7",
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  }}
-                >
-                  {item.detail}
-                </p>
+                  {heroFeaturedEntry.title}
+                </h3>
+                {typeof heroFeaturedEntry.rating === "number" && (
+                  <p
+                    style={{
+                      margin: "4px 0 0",
+                      fontSize: 13,
+                      color: "#f0c060",
+                      fontWeight: 600,
+                      fontFamily: SANS,
+                      letterSpacing: "-0.2px",
+                    }}
+                  >
+                    {heroFeaturedEntry.rating.toFixed(1)} / 10
+                  </p>
+                )}
+                {heroFeaturedEntry.review.trim() && (
+                  <p
+                    style={{
+                      margin: "7px 0 0",
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.58)",
+                      lineHeight: 1.55,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    &ldquo;{heroFeaturedEntry.review}&rdquo;
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
+            </Link>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                padding: "24px 20px",
+                justifyContent: "flex-end",
+                background: "linear-gradient(180deg, #111 0%, #0a0a0a 100%)",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 6px",
+                  fontSize: 10,
+                  color: "#444",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontFamily: SANS,
+                }}
+              >
+                Tonight on ReelShelf
+              </p>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  fontWeight: 400,
+                  color: "#555",
+                  lineHeight: 1.4,
+                  fontFamily: SERIF,
+                }}
+              >
+                Follow a few shelves to see what your circle is watching
+              </h3>
+              <Link
+                href="/discover"
+                style={{
+                  marginTop: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  height: 34,
+                  padding: "0 14px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.6)",
+                  textDecoration: "none",
+                  fontSize: 12,
+                  fontFamily: SANS,
+                }}
+              >
+                Discover people
+              </Link>
+            </div>
+          )}
         </div>
-      </section>
-
-      {/* Mobile stats strip — replaces the hidden sidebar on small screens */}
-      <div className="home-stats-mobile">
-        {[
-          { label: "Diary", value: quickStats.diaryCount },
-          { label: "Watchlist", value: quickStats.watchlistCount },
-          { label: "Books", value: quickStats.readingShelfCount },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              padding: "10px 12px",
-              textAlign: "center",
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 22,
-                lineHeight: 1,
-                letterSpacing: "-0.8px",
-                fontWeight: 600,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {stat.value}
-            </h3>
-            <p
-              style={{
-                margin: "5px 0 0",
-                color: "#8f8f8f",
-                fontSize: 11,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              }}
-            >
-              {stat.label}
-            </p>
-          </div>
-        ))}
       </div>
 
-      <section style={{ marginBottom: 28 }}>
+      {/* ══════════════════════════════════════════════════════════════
+          TONIGHT'S PICK
+          ══════════════════════════════════════════════════════════════ */}
+      <section style={{ marginBottom: "clamp(28px, 5vw, 40px)" }}>
         <div
           style={{
-            borderRadius: 26,
-            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.07)",
             background:
-              "radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent 30%), linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.96) 100%)",
-            padding: "clamp(18px, 4vw, 24px)",
-            boxShadow: "0 18px 48px rgba(0,0,0,0.22)",
+              "radial-gradient(circle at top right, rgba(255,255,255,0.035), transparent 38%), linear-gradient(180deg, rgba(15,15,15,0.96) 0%, rgba(9,9,9,0.96) 100%)",
+            padding: "clamp(16px, 3.5vw, 22px)",
           }}
         >
-          <TonightsPick
-            watchlistItems={tonightPickItems}
-          />
+          <TonightsPick watchlistItems={tonightPickItems} />
         </div>
       </section>
 
       <BecauseYouLiked
-        diaryEntries={diaryEntries.map((entry) => ({
-          media_id: entry.id,
-          title: entry.title,
-          rating: entry.rating,
-          watched_date: entry.watchedDate,
+        diaryEntries={diaryEntries.map((e) => ({
+          media_id: e.id,
+          title: e.title,
+          rating: e.rating,
+          watched_date: e.watchedDate,
         }))}
       />
 
@@ -1301,132 +1541,28 @@ export default function HomeDashboardClient({
       <DailyReelCard />
       <WeeklyChallengesSection />
 
-      <section className="home-priority-grid">
-        <div>
-          <Section
-            eyebrow="Continue"
-            title="Continue where you left off"
-            body="Jump back into the titles you opened most recently."
-          >
-            {continueWatching.length > 0 ? (
-              <div className="home-row">
-                {continueWatching.map((item) => (
-                  <MediaCard key={`${item.mediaType}-${item.id}`} item={item} />
-                ))}
-              </div>
-            ) : (
-              <EmptyRow
-                title="Start exploring your library"
-                body="Open a film, series, or book detail page and ReelShelf will keep it here for quick return visits."
-                href="/movies"
-                cta="Browse titles"
-              />
-            )}
-          </Section>
-        </div>
-
-        <div>
-          <Section
-            eyebrow="Quick Actions"
-            title="Jump straight into your next move"
-            body="Fast routes back into your diary, watchlist, and reading shelf."
-          >
-            <div className="home-actions-grid">
-              {[
-                {
-                  href: "/movies",
-                  title: "Add to Diary",
-                  body: "Log something new from the catalogue.",
-                },
-                {
-                  href: "/watchlist",
-                  title: "Open Watchlist",
-                  body: "Return to saved films and series.",
-                },
-                {
-                  href: "/reading-shelf",
-                  title: "Reading Shelf",
-                  body: "Pick up your next saved book.",
-                },
-              ].map((action) => (
-                <Link
-                  key={action.title}
-                  href={action.href}
-                  style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <article
-                    style={{
-                      height: "100%",
-                      borderRadius: 22,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background:
-                        "linear-gradient(180deg, rgba(18,18,18,0.95) 0%, rgba(10,10,10,0.95) 100%)",
-                      padding: 18,
-                      boxShadow: "0 18px 48px rgba(0,0,0,0.22)",
-                    }}
-                  >
-                    <p
-                      style={{
-                        margin: "0 0 8px",
-                        color: "#7f7f7f",
-                        fontSize: 10,
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                        fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                      }}
-                    >
-                      Quick action
-                    </p>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 20,
-                        lineHeight: 1.08,
-                        letterSpacing: "-0.7px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {action.title}
-                    </h3>
-                    <p
-                      style={{
-                        margin: "10px 0 0",
-                        color: "#b2b2b2",
-                        fontSize: 13,
-                        lineHeight: 1.65,
-                      }}
-                    >
-                      {action.body}
-                    </p>
-                  </article>
-                </Link>
-              ))}
-            </div>
-          </Section>
-        </div>
-      </section>
-
+      {/* ══════════════════════════════════════════════════════════════
+          WHAT FRIENDS ARE WATCHING
+          ══════════════════════════════════════════════════════════════ */}
       <Section
         eyebrow="Social"
         title="What friends are watching"
         body="Recent watches, reads, and reviews from people you follow."
+        serif
       >
         {friendsActivityLoading && friendsActivity.length === 0 ? (
           <div className="home-row">
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className="friends-skeleton"
                 style={{
-                  width: "min(320px, calc(100vw - 48px))",
-                  height: 180,
+                  width: "min(200px, 44vw)",
                   flexShrink: 0,
-                  borderRadius: 20,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  background: "rgba(255,255,255,0.04)",
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  background: "rgba(255,255,255,0.03)",
+                  aspectRatio: "2 / 3",
                 }}
               />
             ))}
@@ -1457,20 +1593,152 @@ export default function HomeDashboardClient({
         )}
       </Section>
 
+      {/* ══════════════════════════════════════════════════════════════
+          TRENDING IN YOUR CIRCLE  (only shown when 2+ friends log same title)
+          ══════════════════════════════════════════════════════════════ */}
+      {trendingAmongFriends.length > 0 && (
+        <Section
+          eyebrow="Your Circle"
+          title="Trending in your circle"
+          body="Titles your friends are all logging right now."
+          serif
+        >
+          <div className="home-row">
+            {trendingAmongFriends.map((item) => (
+              <TrendingTile
+                key={`${item.mediaType}-${item.id}`}
+                item={item}
+                count={item.count}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          PEOPLE TO FOLLOW
+          ══════════════════════════════════════════════════════════════ */}
       <PeopleToFollowSection variant="home" />
 
+      {/* ══════════════════════════════════════════════════════════════
+          CONTINUE YOUR WORLD  +  QUICK ACTIONS
+          ══════════════════════════════════════════════════════════════ */}
+      <div className="home-two-col">
+        <div>
+          <Section
+            eyebrow="Continue"
+            title="Continue where you left off"
+            body="Jump back into the titles you opened most recently."
+          >
+            {continueWatching.length > 0 ? (
+              <div className="home-row">
+                {continueWatching.map((item) => (
+                  <MediaCard key={`${item.mediaType}-${item.id}`} item={item} />
+                ))}
+              </div>
+            ) : (
+              <EmptyRow
+                title="Start exploring your library"
+                body="Open a film, series, or book detail page and ReelShelf will keep it here for quick return visits."
+                href="/movies"
+                cta="Browse titles"
+              />
+            )}
+          </Section>
+        </div>
+
+        <div>
+          <Section eyebrow="Quick Actions" title="Jump straight in">
+            <div className="home-actions-grid">
+              {[
+                {
+                  href: "/movies",
+                  title: "Add to Diary",
+                  body: "Log something new from the catalogue.",
+                },
+                {
+                  href: "/watchlist",
+                  title: "Watchlist",
+                  body: "Return to your saved films and series.",
+                },
+                {
+                  href: "/reading-shelf",
+                  title: "Reading Shelf",
+                  body: "Pick up your next saved book.",
+                },
+              ].map((action) => (
+                <Link
+                  key={action.title}
+                  href={action.href}
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
+                  <article
+                    style={{
+                      height: "100%",
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      background:
+                        "linear-gradient(180deg, rgba(15,15,15,0.95) 0%, rgba(9,9,9,0.95) 100%)",
+                      padding: "14px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: "0 0 6px",
+                        color: "#585858",
+                        fontSize: 9,
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        fontFamily: SANS,
+                      }}
+                    >
+                      Quick action
+                    </p>
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 16,
+                        lineHeight: 1.12,
+                        letterSpacing: "-0.45px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {action.title}
+                    </h3>
+                    <p
+                      style={{
+                        margin: "7px 0 0",
+                        color: "#8a8a8a",
+                        fontSize: 12,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {action.body}
+                    </p>
+                  </article>
+                </Link>
+              ))}
+            </div>
+          </Section>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          RECENTLY LOGGED
+          ══════════════════════════════════════════════════════════════ */}
       <Section
         eyebrow="Diary"
-        title="Recently logged from your diary"
+        title="Recently logged"
         body="Your latest reactions, fresh from the journal."
+        serif
         action={
           <Link
             href="/diary"
             style={{
-              color: "#d1d5db",
+              color: "#b0b0b0",
               textDecoration: "none",
-              fontSize: 14,
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              fontSize: 13,
+              fontFamily: SANS,
             }}
           >
             Open diary
@@ -1493,10 +1761,13 @@ export default function HomeDashboardClient({
         )}
       </Section>
 
+      {/* ══════════════════════════════════════════════════════════════
+          TOP RATED BY YOU
+          ══════════════════════════════════════════════════════════════ */}
       <Section
         eyebrow="Your Taste"
         title="Top rated by you"
-        body="The entries you’ve scored highest across your diary."
+        body="The entries you've scored highest across your diary."
       >
         {topRated.length > 0 ? (
           <div className="home-row">
@@ -1507,7 +1778,7 @@ export default function HomeDashboardClient({
         ) : (
           <EmptyRow
             title="Rate a few entries to unlock this row"
-            body="Once you’ve added diary ratings, ReelShelf will surface your highest-scored favourites here."
+            body="Once you've added diary ratings, ReelShelf will surface your highest-scored favourites here."
             href="/diary"
             cta="Open diary"
           />
@@ -1519,19 +1790,20 @@ export default function HomeDashboardClient({
         title="Because you liked your favourite films"
         body="More films aligned with the directors and moods you rate highly."
       />
-
       <BecauseYouLikedRow
         mediaType="tv"
         title="Because you liked your favourite series"
         body="Series picked from the creators and tones you keep returning to."
       />
-
       <BecauseYouLikedRow
         mediaType="book"
         title="Because you liked your favourite books"
-        body="Books shaped by the authors and genres you’ve loved in your diary."
+        body="Books shaped by the authors and genres you've loved in your diary."
       />
 
+      {/* ══════════════════════════════════════════════════════════════
+          DISCOVER
+          ══════════════════════════════════════════════════════════════ */}
       <Section
         eyebrow="Discover"
         title="Trending films"
