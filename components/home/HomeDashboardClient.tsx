@@ -7,6 +7,7 @@ import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
+import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import DailyReelCard from "./DailyReelCard";
 import { useAuth } from "../AuthProvider";
@@ -19,8 +20,8 @@ import {
 import {
   getWatchlist,
   subscribeToWatchlist,
-  type WatchlistEntry,
 } from "../../lib/watchlist";
+import { createClient as createSupabaseBrowserClient } from "../../lib/supabase/client";
 import { getMediaHref } from "../../lib/mediaRoutes";
 import type { MediaType } from "../../lib/media";
 import {
@@ -343,17 +344,78 @@ export default function HomeDashboardClient({
 }) {
   const { user, displayName } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
-  const [watchlistEntries, setWatchlistEntries] = useState<WatchlistEntry[]>([]);
+  // SavedItem[] fed directly to PickCard — sourced from Supabase with localStorage fallback
+  const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
   const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
 
+  // Seed from localStorage immediately, keep in sync with local writes
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
-    setWatchlistEntries(getWatchlist());
+
+    function mapLocal(): SavedItem[] {
+      return getWatchlist().map((e) => ({
+        id: e.id,
+        title: e.title,
+        media_type: (e.mediaType ?? "movie") as "movie" | "tv" | "book",
+        year: Number(e.year) || 0,
+        poster: e.poster ?? null,
+        creator: e.director ?? null,
+        media_id: e.id,
+        added_at: e.addedAt,
+      }));
+    }
+
+    const local = mapLocal();
+    if (local.length > 0) setTonightPickItems(local);
+
     const unsubDiary = subscribeToDiary(() => setDiaryEntries(getDiaryMovies()));
-    const unsubWatchlist = subscribeToWatchlist(() => setWatchlistEntries(getWatchlist()));
+    const unsubWatchlist = subscribeToWatchlist(() => {
+      const updated = mapLocal();
+      if (updated.length > 0) setTonightPickItems(updated);
+    });
     return () => { unsubDiary(); unsubWatchlist(); };
   }, []);
+
+  // Authoritative fetch straight from Supabase — bypasses localStorage sync timing
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+
+    void (async () => {
+      const client = createSupabaseBrowserClient();
+      if (!client) return;
+
+      const { data, error } = await client
+        .from("saved_items")
+        .select("media_id,media_type,title,poster,year,creator,added_at")
+        .eq("user_id", user.id)
+        .order("added_at", { ascending: false });
+
+      console.log("[WATCHLIST] userId:", user.id);
+      console.log("[WATCHLIST] Supabase item count:", data?.length ?? 0, error ? `error: ${error.message}` : "");
+      if (data?.[0]) console.log("[WATCHLIST] sample item:", data[0]);
+
+      if (!mounted || !data || data.length === 0) return;
+
+      const items: SavedItem[] = data.map((row) => ({
+        id: row.media_id as string,
+        title: row.title as string,
+        media_type: row.media_type as "movie" | "tv" | "book",
+        year: Number(row.year) || 0,
+        poster: (row.poster as string | null) ?? null,
+        creator: (row.creator as string | null) ?? null,
+        media_id: row.media_id as string,
+        added_at: row.added_at as string,
+      }));
+
+      console.log("[WATCHLIST] mapped count:", items.length);
+      console.log("[WATCHLIST] sample mapped:", items[0]);
+      setTonightPickItems(items);
+    })();
+
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -389,23 +451,6 @@ export default function HomeDashboardClient({
       })
       .slice(0, 14),
     [diaryEntries]
-  );
-
-  // Maps WatchlistEntry → SavedItem shape that PickCard expects
-  const tonightPickItems = useMemo(
-    () => watchlistEntries
-      .filter((e) => e.mediaType === "movie" || e.mediaType === "tv")
-      .map((e) => ({
-        id: e.id,
-        title: e.title,
-        poster: e.poster ?? null,
-        year: Number(e.year) || 0,
-        media_type: (e.mediaType ?? "movie") as "movie" | "tv",
-        creator: e.director ?? null,
-        media_id: e.id,
-        added_at: e.addedAt,
-      })),
-    [watchlistEntries]
   );
 
   const trendingAmongFriends = useMemo(() => {
