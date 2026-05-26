@@ -235,6 +235,14 @@ export default function PickCard({
         flex: 1,
       }}
     >
+      <style>{`
+        .pick-poster-wrap {
+          transition: transform 0.12s ease, box-shadow 0.2s ease;
+        }
+        .pick-poster-wrap:hover {
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.10), 0 8px 24px rgba(0,0,0,0.55);
+        }
+      `}</style>
       <p
         style={{
           fontSize: "10px",
@@ -309,28 +317,30 @@ export default function PickCard({
           }}
         >
           <div
+            className="pick-poster-wrap"
             style={{
+              position: "relative",
               width: "64px",
               height: "96px",
               borderRadius: "8px",
-              overflow: "hidden",
               background: "#111122",
               flexShrink: 0,
               transform: spinning ? "scale(0.93)" : "scale(1)",
-              transition: "transform 0.12s ease",
             }}
           >
             {picked.poster ? (
               <img
                 src={picked.poster}
                 alt={picked.title}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px", display: "block" }}
               />
             ) : (
               <div
                 style={{
                   width: "100%",
                   height: "100%",
+                  borderRadius: "8px",
+                  overflow: "hidden",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -342,6 +352,29 @@ export default function PickCard({
                 {picked.title.charAt(0)}
               </div>
             )}
+            <div style={{
+              position: "absolute",
+              bottom: 4,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}>
+              <span style={{
+                background: "rgba(0,0,0,0.72)",
+                backdropFilter: "blur(6px)",
+                borderRadius: 3,
+                padding: "1px 5px",
+                fontSize: 7,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.52)",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}>
+                {picked.mediaType === "tv" ? "Series" : "Film"}
+              </span>
+            </div>
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import GamificationWidgets from "../GamificationWidgets";
@@ -361,6 +361,26 @@ export default function HomeDashboardClient({
   // SavedItem[] fed directly to PickCard — dual-source: localStorage + Supabase
   const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
 
+  const trendingRowRef = useRef<HTMLDivElement>(null);
+
+  function onTrendingMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    const el = trendingRowRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const originX = e.pageX;
+    const originScroll = el.scrollLeft;
+    const row = el;
+    row.style.cursor = "grabbing";
+    function onMove(ev: MouseEvent) { row.scrollLeft = originScroll - (ev.pageX - originX); }
+    function onUp() {
+      row.style.cursor = "grab";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   // Seed from localStorage immediately; re-sync on local add/remove
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
@@ -496,11 +516,15 @@ export default function HomeDashboardClient({
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           scroll-snap-type: x proximity;
+          scroll-behavior: smooth;
+          overscroll-behavior-x: contain;
           scrollbar-width: none;
           padding-bottom: 2px;
+          cursor: grab;
         }
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; }
+        .home-row:active { cursor: grabbing; }
 
         /* Poster hover lift */
         .poster-tile { transition: transform 0.18s ease; }
@@ -676,7 +700,7 @@ export default function HomeDashboardClient({
         >
           {friendsActivity.length > 0 ? (
             <div className="home-row">
-              {friendsActivity.map((entry) => (
+              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
                 <FriendActivityCard
                   key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
                   entry={entry}
@@ -694,7 +718,7 @@ export default function HomeDashboardClient({
       {/* ── TRENDING AMONG FRIENDS ─────────────────────────────────────────────── */}
       {trendingAmongFriends.length > 0 && (
         <Section eyebrow="Your Circle" title="Trending among friends" serif>
-          <div className="home-row">
+          <div className="home-row" ref={trendingRowRef} onMouseDown={onTrendingMouseDown}>
             {trendingAmongFriends.map((item) => (
               <PosterTile
                 key={`${item.mediaType}-${item.id}`}
