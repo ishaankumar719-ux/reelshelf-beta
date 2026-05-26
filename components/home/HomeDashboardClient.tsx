@@ -57,12 +57,6 @@ function getTimeOfDay() {
   return "night";
 }
 
-function getActivityType(entry: FriendsActivityEntry) {
-  if (entry.review.trim()) return "reviewed";
-  if (typeof entry.rating === "number") return "rated";
-  return "logged";
-}
-
 function getSeriesScopeBadge(entry: FriendsActivityEntry) {
   if (entry.mediaType !== "tv") return null;
   if (entry.reviewScope === "season" && entry.seasonNumber)
@@ -88,6 +82,12 @@ function mediaLabel(t: MediaType) {
   return t === "movie" ? "Film" : t === "tv" ? "Series" : "Book";
 }
 
+function activityVerb(entry: FriendsActivityEntry) {
+  if (entry.review.trim()) return "reviewed";
+  if (typeof entry.rating === "number") return "rated";
+  return "logged";
+}
+
 // ─── Poster tile ───────────────────────────────────────────────────────────────
 
 function PosterTile({
@@ -97,7 +97,6 @@ function PosterTile({
   href,
   rating,
   badge,
-  width,
 }: {
   title: string;
   mediaType: MediaType;
@@ -105,14 +104,14 @@ function PosterTile({
   href: string;
   rating?: number | null;
   badge?: string;
-  width?: string;
 }) {
   return (
     <Link
       href={href}
+      className="poster-tile"
       style={{
         display: "block",
-        width: width ?? "min(108px, 26vw)",
+        width: "min(104px, 25vw)",
         flexShrink: 0,
         textDecoration: "none",
         color: "inherit",
@@ -123,9 +122,9 @@ function PosterTile({
           position: "relative",
           borderRadius: 8,
           overflow: "hidden",
-          paddingBottom: "148%",
-          background: "#111",
-          border: "1px solid rgba(255,255,255,0.055)",
+          paddingBottom: "150%",
+          background: "#0f0f0f",
+          border: "1px solid rgba(255,255,255,0.06)",
         }}
       >
         {poster ? (
@@ -136,15 +135,15 @@ function PosterTile({
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#1c1c1c,#0d0d0d)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "rgba(255,255,255,0.09)", fontSize: 18, fontWeight: 700, fontFamily: SANS }}>{title[0]}</span>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 20, fontWeight: 700, fontFamily: SANS }}>{title[0]}</span>
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 48%, rgba(0,0,0,0.88) 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.85) 100%)" }} />
         {typeof rating === "number" && (
           <div style={{
             position: "absolute", top: 5, right: 5,
-            background: "rgba(0,0,0,0.76)", backdropFilter: "blur(8px)",
+            background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)",
             borderRadius: 4, padding: "2px 5px",
             color: "#f0c060", fontSize: 9, fontWeight: 700, fontFamily: SANS,
           }}>
@@ -154,15 +153,15 @@ function PosterTile({
         {badge && typeof rating !== "number" && (
           <div style={{
             position: "absolute", top: 5, left: 5,
-            background: "rgba(0,0,0,0.76)", backdropFilter: "blur(8px)",
+            background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)",
             borderRadius: 4, padding: "2px 5px",
-            color: "rgba(255,255,255,0.6)", fontSize: 8, fontFamily: SANS,
+            color: "rgba(255,255,255,0.58)", fontSize: 8, fontFamily: SANS,
           }}>
             {badge}
           </div>
         )}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "5px 6px" }}>
-          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
+          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
             {mediaLabel(mediaType)}
           </p>
           <h3 style={{ margin: "1px 0 0", fontSize: 9.5, fontWeight: 600, lineHeight: 1.2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -174,7 +173,7 @@ function PosterTile({
   );
 }
 
-// ─── Friend activity card ──────────────────────────────────────────────────────
+// ─── Friend activity card — wide, Letterboxd-energy ───────────────────────────
 
 function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
   const ownerLabel = entry.displayName || (entry.username ? `@${entry.username}` : "Friend");
@@ -183,97 +182,109 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
     ? new Date(entry.watchedDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })
     : null;
   const scopeBadge = getSeriesScopeBadge(entry);
+  const verb = activityVerb(entry);
 
   return (
     <article
+      className="friend-card"
       style={{
         position: "relative",
-        width: "min(164px, 40vw)",
+        width: "min(210px, 52vw)",
         flexShrink: 0,
-        borderRadius: 11,
+        borderRadius: 12,
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.07)",
-        background: "#0d0d0d",
-        boxShadow: "0 3px 16px rgba(0,0,0,0.4)",
+        background: "#0b0b0b",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.44)",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      {/* Avatar — absolute sibling above poster link */}
-      <Link
-        href={entry.username ? `/u/${entry.username}` : "#"}
-        aria-label={ownerLabel}
-        style={{ position: "absolute", top: 7, left: 7, zIndex: 10, display: "block", textDecoration: "none" }}
-      >
-        <div style={{
-          width: 22, height: 22, borderRadius: 999, overflow: "hidden",
-          border: "1.5px solid rgba(255,255,255,0.26)", background: "#222",
-          display: "grid", placeItems: "center",
-        }}>
-          {entry.avatarUrl ? (
-            <img src={entry.avatarUrl} alt={ownerLabel} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          ) : (
-            <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 7, fontWeight: 700, fontFamily: SANS }}>
-              {getProfileInitials({ displayName: entry.displayName, username: entry.username })}
-            </span>
-          )}
+      {/* Avatar + username header */}
+      <div style={{ padding: "8px 10px 0", display: "flex", alignItems: "center", gap: 7 }}>
+        <Link
+          href={entry.username ? `/u/${entry.username}` : "#"}
+          aria-label={ownerLabel}
+          style={{ flexShrink: 0, textDecoration: "none", borderRadius: 999 }}
+        >
+          <div style={{
+            width: 24, height: 24, borderRadius: 999, overflow: "hidden",
+            border: "1.5px solid rgba(255,255,255,0.22)", background: "#1e1e1e",
+            display: "grid", placeItems: "center",
+          }}>
+            {entry.avatarUrl ? (
+              <img src={entry.avatarUrl} alt={ownerLabel} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 7, fontWeight: 700, fontFamily: SANS }}>
+                {getProfileInitials({ displayName: entry.displayName, username: entry.username })}
+              </span>
+            )}
+          </div>
+        </Link>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: SANS }}>
+            {entry.displayName || (entry.username ? `@${entry.username}` : "Friend")}
+          </p>
+          <p style={{ margin: 0, fontSize: 8.5, color: "#424242", fontFamily: SANS }}>
+            {verb} · {recency}
+          </p>
         </div>
-      </Link>
+        {typeof entry.rating === "number" && (
+          <div style={{
+            flexShrink: 0,
+            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+            borderRadius: 5, padding: "2px 6px",
+            color: "#f0c060", fontSize: 11, fontWeight: 700, fontFamily: SANS,
+          }}>
+            {entry.rating.toFixed(1)}
+          </div>
+        )}
+      </div>
 
-      {typeof entry.rating === "number" && (
-        <div style={{
-          position: "absolute", top: 7, right: 7, zIndex: 10,
-          background: "rgba(0,0,0,0.76)", backdropFilter: "blur(8px)",
-          borderRadius: 4, padding: "2px 5px",
-          color: "#f0c060", fontSize: 9, fontWeight: 700, fontFamily: SANS,
-        }}>
-          {entry.rating.toFixed(1)}
-        </div>
-      )}
-
-      <Link href={entry.href} style={{ display: "block", position: "relative", paddingBottom: "142%", textDecoration: "none", color: "inherit" }}>
+      {/* Poster */}
+      <Link href={entry.href} style={{ display: "block", position: "relative", paddingBottom: "136%", textDecoration: "none", color: "inherit", marginTop: 8 }}>
         {entry.poster ? (
           <img src={entry.poster} alt={entry.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         ) : (
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#1c1c1c,#0e0e0e)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "rgba(255,255,255,0.09)", fontSize: 26, fontWeight: 700, fontFamily: SANS }}>R</span>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#1a1a1a,#0d0d0d)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 32, fontWeight: 700, fontFamily: SANS }}>R</span>
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 38%, rgba(0,0,0,0.9) 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 42%, rgba(0,0,0,0.88) 100%)" }} />
         {scopeBadge && (
-          <div style={{ position: "absolute", bottom: 36, right: 6, zIndex: 2 }}>
-            <span style={{ background: "rgba(45,212,191,0.12)", backdropFilter: "blur(6px)", border: "1px solid rgba(45,212,191,0.18)", borderRadius: 4, padding: "1px 5px", fontSize: 7, letterSpacing: "0.04em", textTransform: "uppercase", color: "rgba(45,212,191,0.8)", fontFamily: SANS }}>
+          <div style={{ position: "absolute", bottom: 30, right: 7 }}>
+            <span style={{ background: "rgba(45,212,191,0.12)", backdropFilter: "blur(6px)", border: "1px solid rgba(45,212,191,0.16)", borderRadius: 4, padding: "1px 5px", fontSize: 7, letterSpacing: "0.04em", textTransform: "uppercase", color: "rgba(45,212,191,0.78)", fontFamily: SANS }}>
               {scopeBadge}
             </span>
           </div>
         )}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 7px" }}>
-          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.34)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
-            {mediaLabel(entry.mediaType)} · {recency}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 8px" }}>
+          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
+            {mediaLabel(entry.mediaType)}{watchedOn ? ` · ${watchedOn}` : ""}
           </p>
-          <h3 style={{ margin: "2px 0 0", fontSize: 11, fontWeight: 600, lineHeight: 1.2, color: "white", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <h3 style={{ margin: "2px 0 0", fontSize: 12, fontWeight: 600, lineHeight: 1.2, color: "white", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {entry.title}
           </h3>
-          {entry.username && (
-            <p style={{ margin: "1px 0 0", fontSize: 8, color: "rgba(255,255,255,0.26)", fontFamily: SANS }}>@{entry.username}</p>
-          )}
         </div>
       </Link>
 
-      {entry.review.trim() ? (
-        <Link href={entry.href} style={{ display: "block", padding: "5px 7px 6px", borderTop: "1px solid rgba(255,255,255,0.05)", textDecoration: "none", color: "inherit" }}>
-          <p style={{ margin: 0, fontSize: 9, color: "rgba(255,255,255,0.42)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontStyle: "italic" }}>
+      {/* Review snippet */}
+      {entry.review.trim() && (
+        <Link href={entry.href} style={{ display: "block", padding: "7px 10px 8px", borderTop: "1px solid rgba(255,255,255,0.05)", textDecoration: "none", color: "inherit", flex: 1 }}>
+          <p style={{
+            margin: 0, fontSize: 10, color: "rgba(255,255,255,0.46)", lineHeight: 1.55,
+            display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+            fontStyle: "italic", fontFamily: SERIF,
+          }}>
             &ldquo;{entry.review}&rdquo;
           </p>
         </Link>
-      ) : watchedOn ? (
-        <div style={{ padding: "4px 7px 5px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.2)", fontFamily: SANS }}>Watched {watchedOn}</p>
-        </div>
-      ) : null}
+      )}
     </article>
   );
 }
 
-// ─── Section ───────────────────────────────────────────────────────────────────
+// ─── Section header ────────────────────────────────────────────────────────────
 
 function Section({
   eyebrow,
@@ -289,19 +300,19 @@ function Section({
   serif?: boolean;
 }) {
   return (
-    <section style={{ marginBottom: "clamp(14px, 3vw, 22px)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(7px, 1.6vw, 11px)" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+    <section style={{ marginBottom: "clamp(18px, 3.5vw, 26px)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(8px, 1.8vw, 12px)" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           {eyebrow && (
-            <span style={{ color: "#424242", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: SANS }}>
+            <span style={{ color: "#3e3e3e", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>
               {eyebrow}
             </span>
           )}
           <h2 style={{
             margin: 0,
-            fontSize: serif ? "clamp(16px, 2.8vw, 20px)" : "clamp(13px, 2.4vw, 16px)",
+            fontSize: serif ? "clamp(17px, 3vw, 22px)" : "clamp(14px, 2.5vw, 17px)",
             lineHeight: 1.1,
-            letterSpacing: serif ? "-0.35px" : "-0.2px",
+            letterSpacing: serif ? "-0.4px" : "-0.25px",
             fontWeight: serif ? 400 : 500,
             fontFamily: serif ? SERIF : "inherit",
           }}>
@@ -315,15 +326,15 @@ function Section({
   );
 }
 
-// ─── Inline empty state ────────────────────────────────────────────────────────
+// ─── Compact inline empty state ────────────────────────────────────────────────
 
 function EmptyRail({ message, href, cta }: { message: string; href: string; cta: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
-      <p style={{ margin: 0, color: "#424242", fontSize: 12, fontFamily: SANS }}>{message}</p>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+      <p style={{ margin: 0, color: "#3c3c3c", fontSize: 12, fontFamily: SANS }}>{message}</p>
       <Link href={href} style={{
-        flexShrink: 0, color: "rgba(255,255,255,0.4)", textDecoration: "none", fontSize: 11,
-        fontFamily: SANS, border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999, padding: "3px 10px",
+        flexShrink: 0, color: "rgba(255,255,255,0.38)", textDecoration: "none", fontSize: 11,
+        fontFamily: SANS, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 999, padding: "3px 10px",
       }}>
         {cta}
       </Link>
@@ -344,12 +355,13 @@ export default function HomeDashboardClient({
 }) {
   const { user, displayName } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
-  // SavedItem[] fed directly to PickCard — sourced from Supabase with localStorage fallback
-  const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
   const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
 
-  // Seed from localStorage immediately, keep in sync with local writes
+  // SavedItem[] fed directly to PickCard — dual-source: localStorage + Supabase
+  const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
+
+  // Seed from localStorage immediately; re-sync on local add/remove
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
 
@@ -377,7 +389,7 @@ export default function HomeDashboardClient({
     return () => { unsubDiary(); unsubWatchlist(); };
   }, []);
 
-  // Authoritative fetch straight from Supabase — bypasses localStorage sync timing
+  // Authoritative watchlist fetch from Supabase — bypasses localStorage sync timing
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
@@ -393,8 +405,8 @@ export default function HomeDashboardClient({
         .order("added_at", { ascending: false });
 
       console.log("[WATCHLIST] userId:", user.id);
-      console.log("[WATCHLIST] Supabase item count:", data?.length ?? 0, error ? `error: ${error.message}` : "");
-      if (data?.[0]) console.log("[WATCHLIST] sample item:", data[0]);
+      console.log("[WATCHLIST] count:", data?.length ?? 0, error ? `error: ${error.message}` : "ok");
+      if (data?.[0]) console.log("[WATCHLIST] sample:", data[0]);
 
       if (!mounted || !data || data.length === 0) return;
 
@@ -409,14 +421,14 @@ export default function HomeDashboardClient({
         added_at: row.added_at as string,
       }));
 
-      console.log("[WATCHLIST] mapped count:", items.length);
-      console.log("[WATCHLIST] sample mapped:", items[0]);
+      console.log("[WATCHLIST] mapped:", items.length, "items. First:", items[0]?.title ?? "(none)");
       setTonightPickItems(items);
     })();
 
     return () => { mounted = false; };
   }, [user?.id]);
 
+  // Friends activity
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -440,7 +452,7 @@ export default function HomeDashboardClient({
 
   // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const recentlyLogged = useMemo(() => diaryEntries.slice(0, 14), [diaryEntries]);
+  const recentlyLogged = useMemo(() => diaryEntries.slice(0, 16), [diaryEntries]);
 
   const topRated = useMemo(
     () => [...diaryEntries]
@@ -465,7 +477,7 @@ export default function HomeDashboardClient({
     return Array.from(counts.values())
       .filter(({ count }) => count >= 2)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
+      .slice(0, 8)
       .map(({ count, entry }) => ({
         id: entry.id, mediaType: entry.mediaType, title: entry.title,
         poster: entry.poster, href: entry.href, count,
@@ -473,12 +485,14 @@ export default function HomeDashboardClient({
   }, [friendsActivity]);
 
   const timeOfDay = getTimeOfDay();
+  const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <main style={{ padding: "4px 0 80px" }}>
+    <main style={{ padding: "0 0 80px" }}>
       <style>{`
+        /* Scroll rails */
         .home-row {
           display: flex;
           gap: 8px;
@@ -491,19 +505,65 @@ export default function HomeDashboardClient({
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; }
 
-        .home-picks-wrap {
-          border-radius: 14px;
-          border: 1px solid rgba(255,255,255,0.07);
-          background: linear-gradient(180deg, rgba(11,11,11,0.98) 0%, rgba(6,6,6,0.99) 100%);
-          padding: clamp(12px, 2.2vw, 16px);
-          margin-bottom: clamp(14px, 3vw, 22px);
+        /* Poster hover lift */
+        .poster-tile { transition: transform 0.18s ease; }
+        .poster-tile:hover { transform: translateY(-3px) scale(1.02); }
+
+        /* Friend card hover */
+        .friend-card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+        .friend-card:hover { border-color: rgba(255,255,255,0.13); box-shadow: 0 8px 32px rgba(0,0,0,0.56); }
+
+        /* Tonight's picks */
+        .picks-wrap {
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: linear-gradient(160deg, rgba(14,14,14,0.96) 0%, rgba(8,8,8,0.98) 100%);
+          padding: clamp(14px, 2.5vw, 20px);
+          margin-bottom: clamp(20px, 3.5vw, 30px);
+          position: relative;
+          overflow: hidden;
+        }
+        .picks-wrap::before {
+          content: "";
+          position: absolute;
+          top: -60px; right: -60px;
+          width: 240px; height: 200px;
+          background: radial-gradient(ellipse at center, rgba(99,102,241,0.07) 0%, transparent 68%);
+          pointer-events: none;
         }
 
+        /* Hero */
+        .home-hero {
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.06);
+          background: linear-gradient(135deg, rgba(12,12,14,0.97) 0%, rgba(8,8,10,0.98) 100%);
+          padding: clamp(14px, 2.5vw, 20px) clamp(14px, 2.5vw, 22px);
+          margin-bottom: clamp(16px, 3vw, 22px);
+          position: relative;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .home-hero::after {
+          content: "";
+          position: absolute;
+          bottom: -40px; left: -30px;
+          width: 200px; height: 150px;
+          background: radial-gradient(ellipse at center, rgba(45,212,191,0.05) 0%, transparent 70%);
+          pointer-events: none;
+        }
+
+        /* Mobile search */
         .home-mobile-search { display: none; margin-bottom: 10px; }
 
+        @media (max-width: 700px) {
+          .home-mobile-search { display: flex; }
+        }
         @media (max-width: 640px) {
           .home-row { gap: 6px; }
-          .home-mobile-search { display: flex; }
         }
       `}</style>
 
@@ -525,46 +585,94 @@ export default function HomeDashboardClient({
         <span>Search films, series, books…</span>
       </button>
 
-      {/* ── WELCOME HEADER ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: "clamp(16px, 3vw, 22px)" }}>
-        <h1 style={{
-          margin: 0,
-          fontSize: "clamp(20px, 3.8vw, 28px)",
-          fontWeight: 600,
-          letterSpacing: "-0.6px",
-          lineHeight: 1.1,
-        }}>
-          {displayName ? `Welcome back, ${displayName}` : "Welcome back"}
-        </h1>
-        <p style={{ margin: "5px 0 0", color: "#5a5a5a", fontSize: 13, fontFamily: SANS }}>
-          Good {timeOfDay}. Here&rsquo;s what&rsquo;s on your shelf.
-        </p>
+      {/* ── HERO ─────────────────────────────────────────────────────────────────── */}
+      <div className="home-hero">
+        {/* Left: greeting + stats */}
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: "clamp(17px, 3.2vw, 23px)",
+            fontWeight: 600,
+            letterSpacing: "-0.5px",
+            lineHeight: 1.1,
+          }}>
+            {displayName ? `Good ${timeOfDay}, ${displayName}` : `Good ${timeOfDay}`}
+          </h1>
+          {/* Inline stats */}
+          <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
+            {([
+              { label: "Diary", value: diaryEntries.length, href: "/diary" },
+              { label: "Watchlist", value: watchlistCount, href: "/watchlist" },
+            ] as const).map((stat) => (
+              <Link
+                key={stat.label}
+                href={stat.href}
+                style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "baseline", gap: 5 }}
+              >
+                <span style={{ fontSize: "clamp(18px, 3vw, 22px)", fontWeight: 700, letterSpacing: "-0.8px", lineHeight: 1 }}>
+                  {stat.value}
+                </span>
+                <span style={{ fontSize: 10, color: "#484848", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: SANS }}>
+                  {stat.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: quick actions */}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 7, flexWrap: "wrap" }}>
+          <Link
+            href="/diary/log"
+            style={{
+              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              borderRadius: 999, background: "white", color: "black",
+              textDecoration: "none", fontSize: 12, fontWeight: 600, fontFamily: SANS,
+              letterSpacing: "0.01em", whiteSpace: "nowrap",
+            }}
+          >
+            + Log
+          </Link>
+          <Link
+            href="/movies"
+            style={{
+              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
+              textDecoration: "none", fontSize: 12, fontFamily: SANS, whiteSpace: "nowrap",
+            }}
+          >
+            Discover
+          </Link>
+        </div>
       </div>
 
       {/* ── TONIGHT'S PICKS ────────────────────────────────────────────────────── */}
-      <div className="home-picks-wrap">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(9px, 1.8vw, 13px)" }}>
-          <div>
-            <p style={{ margin: "0 0 2px", color: "#3e3e3e", fontSize: 8.5, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
-            <h2 style={{ margin: 0, fontSize: "clamp(15px, 2.8vw, 19px)", fontWeight: 400, letterSpacing: "-0.3px", lineHeight: 1, fontFamily: SERIF }}>
-              Pick something for me
-            </h2>
+      <div className="picks-wrap">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(10px, 2vw, 14px)" }}>
+            <div>
+              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(17px, 3vw, 22px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
+                Pick something for me
+              </h2>
+            </div>
+            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap" }}>
+              Open watchlist
+            </Link>
           </div>
-          <Link href="/watchlist" style={{ color: "#484848", textDecoration: "none", fontSize: 11, fontFamily: SANS }}>
-            Open watchlist
-          </Link>
+          <TonightsPick watchlistItems={tonightPickItems} />
         </div>
-        <TonightsPick watchlistItems={tonightPickItems} />
       </div>
 
-      {/* ── FRIENDS ACTIVITY — only rendered once query resolves ───────────────── */}
+      {/* ── FRIENDS ACTIVITY — only renders after query resolves (no placeholders) */}
       {friendsHasFollows !== null && (
         <Section
           eyebrow="Social"
           title="What friends are watching"
           serif
           action={
-            <Link href="/discover" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+            <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Find people
             </Link>
           }
@@ -579,17 +687,9 @@ export default function HomeDashboardClient({
               ))}
             </div>
           ) : friendsHasFollows ? (
-            <EmptyRail
-              message="No recent activity from your circle yet."
-              href="/discover"
-              cta="Explore"
-            />
+            <EmptyRail message="No recent activity from your circle yet." href="/discover" cta="Explore" />
           ) : (
-            <EmptyRail
-              message="Follow a few shelves to see what your circle is watching."
-              href="/discover"
-              cta="Discover people"
-            />
+            <EmptyRail message="Follow a few shelves to see what your circle is watching." href="/discover" cta="Discover people" />
           )}
         </Section>
       )}
@@ -618,7 +718,7 @@ export default function HomeDashboardClient({
         title="Recently logged"
         serif
         action={
-          <Link href="/diary" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+          <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
             Open diary
           </Link>
         }
@@ -654,17 +754,13 @@ export default function HomeDashboardClient({
       {/* ── PEOPLE TO FOLLOW ───────────────────────────────────────────────────── */}
       <PeopleToFollowSection variant="home" />
 
-      {/* ── GAMIFICATION ───────────────────────────────────────────────────────── */}
-      <GamificationWidgets variant="home" />
-      <WeeklyChallengesSection />
-
       {/* ── TOP RATED ──────────────────────────────────────────────────────────── */}
       {topRated.length > 0 && (
         <Section
           eyebrow="Your Taste"
           title="Top rated by you"
           action={
-            <Link href="/diary" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Full diary
             </Link>
           }
@@ -688,6 +784,10 @@ export default function HomeDashboardClient({
       <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
       <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
       <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
+
+      {/* ── GAMIFICATION (lower priority) ──────────────────────────────────────── */}
+      <GamificationWidgets variant="home" />
+      <WeeklyChallengesSection />
 
       {/* ── DISCOVERY RAILS ────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
