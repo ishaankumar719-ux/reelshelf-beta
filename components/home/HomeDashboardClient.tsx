@@ -150,7 +150,7 @@ function PosterTile({
             {rating.toFixed(1)}
           </div>
         )}
-        {badge && !rating && (
+        {badge && typeof rating !== "number" && (
           <div style={{
             position: "absolute", top: 5, left: 5,
             background: "rgba(0,0,0,0.76)", backdropFilter: "blur(8px)",
@@ -217,7 +217,6 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
         </div>
       </Link>
 
-      {/* Rating */}
       {typeof entry.rating === "number" && (
         <div style={{
           position: "absolute", top: 7, right: 7, zIndex: 10,
@@ -229,7 +228,6 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
         </div>
       )}
 
-      {/* Poster */}
       <Link href={entry.href} style={{ display: "block", position: "relative", paddingBottom: "142%", textDecoration: "none", color: "inherit" }}>
         {entry.poster ? (
           <img src={entry.poster} alt={entry.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -393,13 +391,19 @@ export default function HomeDashboardClient({
     [diaryEntries]
   );
 
+  // Maps WatchlistEntry → SavedItem shape that PickCard expects
   const tonightPickItems = useMemo(
     () => watchlistEntries
       .filter((e) => e.mediaType === "movie" || e.mediaType === "tv")
       .map((e) => ({
-        id: e.id, title: e.title, poster: e.poster ?? null, year: e.year,
-        media_type: e.mediaType, creator: e.director ?? null,
-        media_id: e.id, added_at: e.addedAt,
+        id: e.id,
+        title: e.title,
+        poster: e.poster ?? null,
+        year: Number(e.year) || 0,
+        media_type: (e.mediaType ?? "movie") as "movie" | "tv",
+        creator: e.director ?? null,
+        media_id: e.id,
+        added_at: e.addedAt,
       })),
     [watchlistEntries]
   );
@@ -442,7 +446,7 @@ export default function HomeDashboardClient({
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; }
 
-        .home-generator-wrap {
+        .home-picks-wrap {
           border-radius: 14px;
           border: 1px solid rgba(255,255,255,0.07);
           background: linear-gradient(180deg, rgba(11,11,11,0.98) 0%, rgba(6,6,6,0.99) 100%);
@@ -493,7 +497,7 @@ export default function HomeDashboardClient({
       </div>
 
       {/* ── TONIGHT'S PICKS ────────────────────────────────────────────────────── */}
-      <div className="home-generator-wrap">
+      <div className="home-picks-wrap">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(9px, 1.8vw, 13px)" }}>
           <div>
             <p style={{ margin: "0 0 2px", color: "#3e3e3e", fontSize: 8.5, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
