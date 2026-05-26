@@ -389,7 +389,13 @@ export default function HomeDashboardClient({
     return () => { unsubDiary(); unsubWatchlist(); };
   }, []);
 
-  // Authoritative watchlist fetch from Supabase — bypasses localStorage sync timing
+  // Authoritative watchlist fetch from Supabase.
+  // auth.getUser() is called first to force the browser Supabase client to load
+  // and verify the JWT from cookies. HomeDashboardClient effects run BEFORE the
+  // AuthProvider useEffect (children-before-parents in React), so the browser
+  // client's session may not be initialized yet. auth.getUser() makes a network
+  // round-trip that ensures the auth state is fully ready before the data query,
+  // which is what makes RLS's auth.uid() = user_id pass correctly.
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
@@ -398,14 +404,18 @@ export default function HomeDashboardClient({
       const client = createSupabaseBrowserClient();
       if (!client) return;
 
+      const { data: { user: verifiedUser }, error: authError } = await client.auth.getUser();
+      console.log("[WATCHLIST] auth.getUser:", verifiedUser?.id ?? "null", authError ? `err: ${authError.message}` : "ok");
+      if (!mounted || !verifiedUser?.id) return;
+
       const { data, error } = await client
         .from("saved_items")
         .select("media_id,media_type,title,poster,year,creator,added_at")
-        .eq("user_id", user.id)
+        .eq("user_id", verifiedUser.id)
+        .eq("list_type", "watchlist")
         .order("added_at", { ascending: false });
 
-      console.log("[WATCHLIST] userId:", user.id);
-      console.log("[WATCHLIST] count:", data?.length ?? 0, error ? `error: ${error.message}` : "ok");
+      console.log("[WATCHLIST] count:", data?.length ?? 0, error ? `error: ${error.message} (${error.code})` : "ok");
       if (data?.[0]) console.log("[WATCHLIST] sample:", data[0]);
 
       if (!mounted || !data || data.length === 0) return;
@@ -422,7 +432,7 @@ export default function HomeDashboardClient({
       }));
 
       console.log("[WATCHLIST] mapped:", items.length, "items. First:", items[0]?.title ?? "(none)");
-      setTonightPickItems(items);
+      if (mounted) setTonightPickItems(items);
     })();
 
     return () => { mounted = false; };
