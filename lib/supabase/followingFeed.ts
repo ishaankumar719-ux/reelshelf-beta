@@ -11,6 +11,7 @@ type FeedDiaryRow = {
   poster: string | null
   rating: number | null
   review: string | null
+  favourite: boolean | null
   watched_in_cinema: boolean | null
   created_at: string
   user_id: string
@@ -72,7 +73,7 @@ export async function fetchFollowingFeed(
   const [{ data: diaryData }, { data: profileData }] = await Promise.all([
     client
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, watched_in_cinema, created_at, user_id, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
+      .select("id, media_id, title, media_type, poster, rating, review, favourite, watched_in_cinema, created_at, user_id, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
       .in("user_id", followedIds)
       .in("review_scope", ["show", "title"])
       .order("created_at", { ascending: false })
@@ -99,11 +100,13 @@ export async function fetchFollowingFeed(
 
     const hasReview = feedRowHasReviewContent(row)
     const isTV = row.media_type === "tv"
-    const type: ActivityType = isTV
-      ? "finished_series"
-      : hasReview
-        ? "reviewed"
-        : "logged"
+    const type: ActivityType = row.favourite
+      ? "added_favourite"
+      : isTV
+        ? "watched_episode"
+        : hasReview
+          ? "reviewed"
+          : "logged"
 
     return {
       id: `following-diary-${row.id}`,

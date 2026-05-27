@@ -440,10 +440,7 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
   // Fall back to session lookup only if caller didn't supply the id
   const currentUserId = userId || (await getCurrentUserId());
 
-  console.log("[FRIENDS_ACTIVITY] currentUserId:", currentUserId);
-
   if (!client || !currentUserId) {
-    console.log("[FRIENDS_ACTIVITY] no client or userId — returning empty");
     return { entries: [], hasFollows: false };
   }
 
@@ -459,7 +456,6 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
 
   const followedIds = (followRows || []).map((row) => row.following_id).filter(Boolean);
 
-  console.log("[FRIENDS_ACTIVITY] followingIds:", followedIds);
 
   if (followedIds.length === 0) {
     return { entries: [], hasFollows: false };
@@ -478,8 +474,6 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
         .select("id, username, display_name, avatar_url")
         .in("id", followedIds),
     ]);
-
-  console.log("[FRIENDS_ACTIVITY] rawEntries:", diaryRows?.length ?? 0, diaryError ? `error: ${diaryError.message}` : "ok");
 
   if (diaryError) {
     console.error("[FRIENDS_ACTIVITY] diary query error:", diaryError.message, diaryError);
@@ -547,8 +541,6 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
       }),
     } satisfies FriendsActivityEntry;
   });
-
-  console.log("[FRIENDS_ACTIVITY] mappedCards:", entries.length, entries[0] ?? "none");
 
   return { entries, hasFollows: true };
 }

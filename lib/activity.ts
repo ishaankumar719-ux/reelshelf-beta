@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series" | "challenge_completed"
+export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series" | "watched_episode" | "added_favourite" | "challenge_completed"
 
 export interface ActivityEvent {
   id: string
@@ -36,6 +36,7 @@ type DiaryActivityRow = {
   poster: string | null
   rating: unknown
   review: string | null
+  favourite?: boolean | null
   attachment_url?: string | null
   attachment_type?: "image" | "gif" | null
   review_cover_url?: string | null
@@ -166,7 +167,13 @@ export function buildActivityEventsFromSources({
   const diaryEvents: ActivityEvent[] = diaryRows.map((row) => {
     const isTV = row.media_type === "tv"
     const hasReview = rowHasReviewContent(row)
-    const type: ActivityType = isTV ? "finished_series" : hasReview ? "reviewed" : "logged"
+    const type: ActivityType = row.favourite
+      ? "added_favourite"
+      : isTV
+        ? "watched_episode"
+        : hasReview
+          ? "reviewed"
+          : "logged"
     return {
       id: `diary-${row.id}`,
       type,
@@ -245,7 +252,7 @@ export async function fetchActivityEvents(
   const [diaryRes, savedRes, rushmoreRes] = await Promise.all([
     supabase
       .from("diary_entries")
-      .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
+      .select("id, media_id, title, media_type, poster, rating, review, favourite, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
       .eq("user_id", userId)
       .in("review_scope", ["show", "title", "season", "episode"])
       .order("created_at", { ascending: false })

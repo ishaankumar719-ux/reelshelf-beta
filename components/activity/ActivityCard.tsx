@@ -98,6 +98,22 @@ const TYPE_CONFIG: Record<ActivityType, TypeConfig> = {
     badgeBorder: "rgba(160,100,255,0.24)",
     verb: "finished",
   },
+  watched_episode: {
+    label: "Watched",
+    dotColor: "rgba(190,140,255,0.85)",
+    badgeColor: "rgba(200,160,255,0.9)",
+    badgeBg: "rgba(160,100,255,0.1)",
+    badgeBorder: "rgba(160,100,255,0.24)",
+    verb: "watched",
+  },
+  added_favourite: {
+    label: "Favourite",
+    dotColor: "rgba(255,90,90,0.85)",
+    badgeColor: "rgba(255,120,120,0.9)",
+    badgeBg: "rgba(255,80,80,0.08)",
+    badgeBorder: "rgba(255,80,80,0.22)",
+    verb: "favourited",
+  },
   rushmore: {
     label: "Rushmore",
     dotColor: "rgba(255,150,80,0.85)",

@@ -351,6 +351,16 @@ export function isNotificationUnread(
   return new Date(notification.createdAt).getTime() > new Date(lastReadAt).getTime();
 }
 
+type NotificationRow = {
+  id: string;
+  type: ReelShelfNotificationType;
+  actor_id: string;
+  reference_id: string | null;
+  reference_type: string | null;
+  read: boolean;
+  created_at: string;
+};
+
 export async function getNotifications() {
   const client = createSupabaseBrowserClient();
   const currentUserId = await getCurrentUserId();
@@ -359,228 +369,116 @@ export async function getNotifications() {
     return [] as ReelShelfNotification[];
   }
 
-  const [{ data: incomingFollowers, error: incomingFollowersError }, { data: followingRows, error: followingError }, { data: ownDiaryRows, error: ownDiaryError }] =
-    await Promise.all([
-      client
-        .from("followers")
-        .select("follower_id, created_at")
-        .eq("following_id", currentUserId)
-        .order("created_at", { ascending: false })
-        .limit(16),
-      client
-        .from("followers")
-        .select("following_id")
-        .eq("follower_id", currentUserId),
-      client
-        .from("diary_entries")
-        .select(DIARY_SELECT)
-        .eq("user_id", currentUserId)
-        .order("saved_at", { ascending: false })
-        .limit(32),
-    ]);
+  const { data: rawNotifications, error: notifError } = await client
+    .from("notifications")
+    .select("id, type, actor_id, reference_id, reference_type, read, created_at")
+    .eq("recipient_id", currentUserId)
+    .order("created_at", { ascending: false })
+    .limit(30);
 
-  if (incomingFollowersError) {
-    console.error(
-      "[ReelShelf notifications] load incoming followers failed",
-      incomingFollowersError
-    );
+  if (notifError) {
+    console.error("[ReelShelf notifications] load notifications failed", notifError);
+    return [] as ReelShelfNotification[];
   }
 
-  if (followingError) {
-    console.error("[ReelShelf notifications] load following failed", followingError);
+  if (!rawNotifications || rawNotifications.length === 0) {
+    return [] as ReelShelfNotification[];
   }
 
-  if (ownDiaryError) {
-    console.error("[ReelShelf notifications] load own diary entries failed", ownDiaryError);
-  }
+  const notifRows = rawNotifications as NotificationRow[];
 
-  const followedIds = (followingRows || []).map((row) => row.following_id).filter(Boolean);
-  const followerIds = (incomingFollowers || []).map((row) => row.follower_id).filter(Boolean);
-  const ownDiaryEntries = ((ownDiaryRows || []) as unknown) as DiaryRow[];
-  const ownDiaryEntryIds = ownDiaryEntries.map((row) => row.id);
-
-  console.log("[DIARY QUERY] returned rows:", ownDiaryRows?.length ?? 0)
-
-  let likeRows: LikeRow[] = [];
-  let likeError: { message?: string } | null = null;
-  let commentRows: CommentRow[] = [];
-  let replyRows: CommentRow[] = [];
-
-  if (ownDiaryEntryIds.length > 0) {
-    const likesResponse = await client
-      .from("diary_entry_likes")
-      .select("diary_entry_id, user_id, created_at")
-      .in("diary_entry_id", ownDiaryEntryIds)
-      .order("created_at", { ascending: false })
-      .limit(18)
-
-    likeRows = ((likesResponse.data || []) as LikeRow[]).filter(
-      (row) => row.user_id !== currentUserId
-    );
-    likeError = likesResponse.error;
-  }
-
-  if (likeError) {
-    console.error("[ReelShelf notifications] load likes failed", likeError);
-  }
-
-  const ownDiaryMap = new Map<string, DiaryRow>(
-    ownDiaryEntries.map((row) => [row.id, row] as const)
+  const actorIds = Array.from(new Set(notifRows.map((r) => r.actor_id)));
+  const diaryEntryIds = Array.from(
+    new Set(
+      notifRows
+        .filter((r) => r.reference_type === "diary_entry" && r.reference_id)
+        .map((r) => r.reference_id!)
+    )
   );
 
-  const likerIds = likeRows.map((row) => row.user_id).filter(Boolean);
-  const commenterIds = [...commentRows, ...replyRows].map((row) => row.user_id).filter(Boolean);
-  const uniqueProfileIds = Array.from(
-    new Set([...followedIds, ...followerIds, ...likerIds, ...commenterIds])
-  );
-
-  let profileRows: ProfileRow[] = [];
-  let profileError: { message?: string } | null = null;
-  let diaryRows: DiaryRow[] = [];
-  let diaryError: { message?: string } | null = null;
-
-  if (uniqueProfileIds.length > 0) {
-    const response = await client
+  const [profilesRes, diaryRes] = await Promise.all([
+    client
       .from("profiles")
       .select("id, username, display_name, avatar_url")
-      .in("id", uniqueProfileIds);
+      .in("id", actorIds),
+    diaryEntryIds.length > 0
+      ? client
+          .from("diary_entries")
+          .select("id, user_id, media_id, media_type, title, poster, year, creator, rating, review, favourite, saved_at")
+          .in("id", diaryEntryIds)
+      : (Promise.resolve({ data: [] }) as Promise<{ data: unknown[] }>),
+  ]);
 
-    profileRows = ((response.data || []) as ProfileRow[]).filter(Boolean);
-    profileError = response.error;
-  }
-
-  if (followedIds.length > 0) {
-    const response = await client
-      .from("diary_entries")
-      .select(DIARY_SELECT)
-      .in("user_id", followedIds)
-      .order("saved_at", { ascending: false })
-      .limit(36);
-
-    diaryRows = (((response.data || []) as unknown) as DiaryRow[]).filter(Boolean);
-    diaryError = response.error;
-  }
-
-  if (profileError) {
-    console.error("[ReelShelf notifications] load profiles failed", profileError);
-  }
-
-  if (diaryError) {
-    console.error("[ReelShelf notifications] load diary events failed", diaryError);
+  if (profilesRes.error) {
+    console.error("[ReelShelf notifications] load profiles failed", profilesRes.error);
   }
 
   const profileMap = new Map<string, ProfileRow>(
-    profileRows.map((row) => [row.id, row] as const)
+    ((profilesRes.data || []) as ProfileRow[]).map((p) => [p.id, p])
   );
-  const notificationEntryMap = new Map<string, DiaryRow>(ownDiaryMap);
+  const diaryMap = new Map<string, DiaryRow>(
+    ((diaryRes.data || []) as unknown as DiaryRow[]).map((e) => [e.id, e])
+  );
 
   const notifications: ReelShelfNotification[] = [];
 
-  for (const row of incomingFollowers || []) {
-    notifications.push(
-      createFollowerNotification(row, profileMap.get(row.follower_id))
-    );
-  }
+  for (const notif of notifRows) {
+    const actor = profileMap.get(notif.actor_id);
 
-  for (const row of likeRows) {
-    const likeNotification = createLikeNotification(
-      row,
-      profileMap.get(row.user_id),
-      ownDiaryMap.get(row.diary_entry_id)
-    );
-
-    if (likeNotification) {
-      notifications.push(likeNotification);
-    }
-  }
-
-  for (const row of commentRows) {
-    const commentNotification = createEntryCommentNotification(
-      row,
-      profileMap.get(row.user_id),
-      notificationEntryMap.get(row.diary_entry_id)
-    );
-
-    if (commentNotification) {
-      notifications.push(commentNotification);
-    }
-  }
-
-  for (const row of replyRows) {
-    const replyNotification = createReplyNotification(
-      row,
-      profileMap.get(row.user_id),
-      notificationEntryMap.get(row.diary_entry_id)
-    );
-
-    if (replyNotification) {
-      notifications.push(replyNotification);
-    }
-  }
-
-  for (const row of diaryRows.slice(0, 18)) {
-    notifications.push(createDiaryNotification(row, profileMap.get(row.user_id)));
-  }
-
-  const diaryByUser = new Map<string, DiaryRow[]>();
-  for (const row of diaryRows) {
-    const current = diaryByUser.get(row.user_id) || [];
-    current.push(row);
-    diaryByUser.set(row.user_id, current);
-  }
-
-  diaryByUser.forEach((entries, userId) => {
-    const movieEntries = entries.filter((entry) => entry.media_type === "movie");
-
-    if (movieEntries.length === 0) {
-      return;
+    if (notif.type === "new_follower") {
+      notifications.push(
+        createFollowerNotification(
+          { follower_id: notif.actor_id, created_at: notif.created_at },
+          actor
+        )
+      );
+      continue;
     }
 
-    const latestMovieEntry = movieEntries[0];
-
-    if (!isRecentEnough(latestMovieEntry.saved_at, 45)) {
-      return;
-    }
-
-    const mountRushmore = [...movieEntries]
-      .filter((entry) => entry.media_type === "movie")
-      .sort((left, right) => {
-        if (left.favourite !== right.favourite) {
-          return Number(right.favourite) - Number(left.favourite);
+    if (
+      notif.type === "followed_user_logged" ||
+      notif.type === "followed_user_reviewed"
+    ) {
+      if (notif.reference_id) {
+        const entry = diaryMap.get(notif.reference_id);
+        if (entry) {
+          notifications.push(createDiaryNotification(entry, actor));
         }
-
-        const leftRating = left.rating ?? -1;
-        const rightRating = right.rating ?? -1;
-
-        if (rightRating !== leftRating) {
-          return rightRating - leftRating;
-        }
-
-        return new Date(right.saved_at).getTime() - new Date(left.saved_at).getTime();
-      })
-      .slice(0, 4);
-
-    const changedRushmore = mountRushmore.find(
-      (entry) =>
-        entry.media_id === latestMovieEntry.media_id &&
-        entry.saved_at === latestMovieEntry.saved_at
-    );
-
-    if (!changedRushmore) {
-      return;
+      }
+      continue;
     }
 
-    notifications.push(
-      createRushmoreNotification(
-        userId,
-        latestMovieEntry.saved_at,
-        profileMap.get(userId),
-        mountRushmore[0]
-      )
-    );
-  });
+    if (notif.type === "review_liked" && notif.reference_id) {
+      const entry = diaryMap.get(notif.reference_id);
+      if (entry) {
+        notifications.push(
+          createLikeNotification(
+            { diary_entry_id: notif.reference_id, user_id: notif.actor_id, created_at: notif.created_at },
+            actor,
+            entry
+          ) ?? {} as ReelShelfNotification
+        );
+      }
+      continue;
+    }
+
+    if (notif.type === "entry_commented" && notif.reference_id) {
+      const entry = diaryMap.get(notif.reference_id);
+      if (entry) {
+        notifications.push(
+          createEntryCommentNotification(
+            { id: notif.id, diary_entry_id: notif.reference_id, parent_comment_id: null, user_id: notif.actor_id, body: "", created_at: notif.created_at },
+            actor,
+            entry
+          ) ?? {} as ReelShelfNotification
+        );
+      }
+      continue;
+    }
+  }
 
   return notifications
+    .filter((n) => n.id)
     .sort(
       (left, right) =>
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
