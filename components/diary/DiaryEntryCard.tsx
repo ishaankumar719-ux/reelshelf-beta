@@ -142,6 +142,13 @@ export default function DiaryEntryCard({
 }: DiaryEntryCardProps) {
   const entryKey = getDiaryEntryKey(movie);
   const ratingNum = getRatingNumber(movie.rating);
+  const posterSrc =
+    movie.reviewCoverUrl &&
+    movie.reviewCoverSource &&
+    movie.reviewCoverSource !== "default" &&
+    movie.reviewCoverSource !== "tmdb_backdrop"
+      ? movie.reviewCoverUrl
+      : movie.poster;
   const reviewSnippet =
     movie.review.length > 120 ? `${movie.review.slice(0, 120)}…` : movie.review;
 
@@ -173,9 +180,9 @@ export default function DiaryEntryCard({
               justifyContent: "center",
             }}
           >
-            {movie.poster ? (
+            {posterSrc ? (
               <img
-                src={movie.poster}
+                src={posterSrc}
                 alt={movie.title}
                 style={{
                   width: "100%",

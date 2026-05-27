@@ -19,6 +19,8 @@ export type DiaryMovie = SavedMediaItem & {
   savedAt: string;
   reviewLayers?: ReviewLayers | null;
   reelshelfScore?: number | null;
+  reviewCoverUrl?: string | null;
+  reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
 };
 
 export type DiaryDraftMovie = SavedMediaItem;
@@ -163,6 +165,14 @@ function normalizeDiaryMovie(
     reelshelfScore:
       "reelshelfScore" in movie && typeof movie.reelshelfScore === "number"
         ? movie.reelshelfScore
+        : null,
+    reviewCoverUrl:
+      "reviewCoverUrl" in movie && typeof movie.reviewCoverUrl === "string"
+        ? movie.reviewCoverUrl
+        : null,
+    reviewCoverSource:
+      "reviewCoverSource" in movie && movie.reviewCoverSource != null
+        ? (movie.reviewCoverSource as DiaryMovie["reviewCoverSource"])
         : null,
   };
 }

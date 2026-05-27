@@ -247,7 +247,7 @@ export async function fetchActivityEvents(
       .from("diary_entries")
       .select("id, media_id, title, media_type, poster, rating, review, attachment_url, attachment_type, review_cover_url, review_cover_source, watched_in_cinema, watched_date, created_at, score_rating, cinematography_rating, writing_rating, performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating, entertainment_rating")
       .eq("user_id", userId)
-      .in("review_scope", ["show", "title"])
+      .in("review_scope", ["show", "title", "season", "episode"])
       .order("created_at", { ascending: false })
       .limit(limit),
     supabase

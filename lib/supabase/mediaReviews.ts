@@ -150,7 +150,7 @@ export async function fetchFollowingReviewsForMedia(
     .select(ENTRY_SELECT)
     .in("media_id", mediaIds)
     .in("user_id", queryIds)
-    .in("review_scope", ["show", "title"])
+    .in("review_scope", ["show", "title", "season", "episode"])
     .order("saved_at", { ascending: false })
     .limit(60)
 
@@ -184,7 +184,7 @@ export async function fetchPublicReviewsForMedia(
     .from("diary_entries")
     .select(ENTRY_SELECT)
     .in("media_id", mediaIds)
-    .in("review_scope", ["show", "title"])
+    .in("review_scope", ["show", "title", "season", "episode"])
     .order("saved_at", { ascending: false })
     .limit(limit * 4)
 

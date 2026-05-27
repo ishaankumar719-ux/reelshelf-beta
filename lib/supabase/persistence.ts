@@ -19,6 +19,8 @@ export type PersistedDiaryEntry = SavedMediaItem & {
   reelshelfScore?: number | null;
   attachmentUrl?: string | null;
   attachmentType?: "image" | "gif" | null;
+  reviewCoverUrl?: string | null;
+  reviewCoverSource?: "default" | "tmdb_poster" | "tmdb_backdrop" | "upload" | null;
 };
 
 export type PersistedSavedItem = SavedMediaItem & {
@@ -65,6 +67,9 @@ type DiaryRow = {
   watched_in_cinema?: boolean;
   // Letterboxd import — migration add_letterboxd_rating_column
   letterboxd_rating?: number | null;
+  // Review cover — migration 20260514_review_cover.sql
+  review_cover_url?: string | null;
+  review_cover_source?: string | null;
 };
 
 type SavedItemRow = {
@@ -197,6 +202,8 @@ function mapDiaryEntryToRow(userId: string, entry: PersistedDiaryEntry): DiaryRo
     attachment_type: entry.attachmentType ?? null,
     watched_in_cinema: entry.watchedInCinema ?? false,
     letterboxd_rating: typeof entry.letterboxdRating === "number" ? entry.letterboxdRating : null,
+    review_cover_url: entry.reviewCoverUrl ?? null,
+    review_cover_source: entry.reviewCoverSource ?? null,
   };
 }
 
@@ -238,6 +245,8 @@ function mapRowToDiaryEntry(row: DiaryRow): PersistedDiaryEntry {
     attachmentType: row.attachment_type ?? null,
     watchedInCinema: row.watched_in_cinema ?? false,
     letterboxdRating: typeof row.letterboxd_rating === "number" ? row.letterboxd_rating : null,
+    reviewCoverUrl: row.review_cover_url ?? null,
+    reviewCoverSource: (row.review_cover_source as PersistedDiaryEntry["reviewCoverSource"]) ?? null,
   };
 }
 

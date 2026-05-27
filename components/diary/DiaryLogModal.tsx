@@ -386,7 +386,7 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
   return {
     id: entry.media_id,
     mediaType: entry.media_type,
-    reviewScope: entry.review_scope === "show" ? "show" : "title",
+    reviewScope: entry.review_scope as import("@/lib/media").DiaryReviewScope,
     showId: entry.show_id || undefined,
     seasonNumber: entry.season_number ?? undefined,
     episodeNumber: entry.episode_number ?? undefined,
@@ -418,6 +418,8 @@ function toDiaryMovie(entry: DiaryEntry): DiaryMovie {
       entertainment_rating: entry.entertainment_rating ?? null,
     },
     reelshelfScore: typeof entry.reelshelf_score === "number" ? entry.reelshelf_score : null,
+    reviewCoverUrl: entry.review_cover_url ?? null,
+    reviewCoverSource: entry.review_cover_source as import("@/lib/diary").DiaryMovie["reviewCoverSource"] ?? null,
   };
 }
 
