@@ -208,6 +208,82 @@ export async function createDiaryEntryComment(input: {
   };
 }
 
+export async function deleteDiaryEntryComment(
+  commentId: string
+): Promise<{ error: string | null }> {
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId) return { error: "Sign in to delete comments." };
+
+  const client = createSupabaseBrowserClient();
+  if (!client) return { error: "Could not connect." };
+
+  const { error } = await client
+    .from("diary_entry_comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("user_id", currentUserId);
+
+  if (error) {
+    console.error("[ReelShelf comments] delete failed", error);
+    return { error: error.message || "Could not delete comment." };
+  }
+
+  notifyCommentListeners();
+  return { error: null };
+}
+
+export async function updateDiaryEntryComment(
+  commentId: string,
+  newBody: string
+): Promise<{ error: string | null; comment: PublicComment | null }> {
+  const normalizedBody = newBody.trim();
+  if (!normalizedBody) return { error: "Comment cannot be empty.", comment: null };
+
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId) return { error: "Sign in to edit comments.", comment: null };
+
+  const client = createSupabaseBrowserClient();
+  if (!client) return { error: "Could not connect.", comment: null };
+
+  const { data, error } = await client
+    .from("diary_entry_comments")
+    .update({ body: normalizedBody, updated_at: new Date().toISOString() })
+    .eq("id", commentId)
+    .eq("user_id", currentUserId)
+    .select(COMMENT_SELECT)
+    .single();
+
+  if (error) {
+    console.error("[ReelShelf comments] update failed", error);
+    return { error: error.message || "Could not update comment.", comment: null };
+  }
+
+  notifyCommentListeners();
+  const row = data as CommentRow;
+  const { data: profile } = await client
+    .from("profiles")
+    .select("username, display_name, avatar_url")
+    .eq("id", currentUserId)
+    .single();
+
+  return {
+    error: null,
+    comment: {
+      id: row.id,
+      diaryEntryId: row.diary_entry_id,
+      parentCommentId: row.parent_comment_id,
+      userId: row.user_id,
+      body: row.body,
+      createdAt: row.created_at,
+      username: profile?.username ?? null,
+      displayName: profile?.display_name ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
+      attachmentUrl: row.attachment_url ?? null,
+      attachmentType: row.attachment_type ?? null,
+    },
+  };
+}
+
 export function subscribeToComments(listener: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(COMMENT_EVENT, listener);

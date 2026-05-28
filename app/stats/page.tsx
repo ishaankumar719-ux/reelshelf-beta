@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import StatsClient from "@/components/stats/StatsClient"
+import EngagementMetrics from "@/components/stats/EngagementMetrics"
 import { createClient } from "@/lib/supabase/server"
 
 type StatsEntry = {
@@ -42,5 +43,10 @@ export default async function StatsPage() {
     .in("review_scope", ["show", "title"])
     .order("watched_date", { ascending: false })
 
-  return <StatsClient entries={(entries ?? []) as StatsEntry[]} />
+  return (
+    <>
+      <StatsClient entries={(entries ?? []) as StatsEntry[]} />
+      <EngagementMetrics />
+    </>
+  )
 }

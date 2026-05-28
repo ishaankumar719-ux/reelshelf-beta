@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "../AuthProvider";
 import { getLayerDefs, hasReviewLayers, EMPTY_REVIEW_LAYERS } from "../../types/diary";
 import type { ReviewLayers } from "../../types/diary";
 import { toggleDiaryEntryLike } from "../../lib/supabase/likes";
-import { createDiaryEntryComment } from "../../lib/supabase/comments";
+import {
+  createDiaryEntryComment,
+  deleteDiaryEntryComment,
+  updateDiaryEntryComment,
+} from "../../lib/supabase/comments";
 import type { PublicComment } from "../../lib/supabase/comments";
+import {
+  toggleReaction,
+  getReactionsForEntry,
+  REACTION_EMOJIS,
+  type ReactionEmoji,
+  type ReactionCounts,
+} from "../../lib/supabase/reactions";
 import { getProfileInitials } from "../../lib/profile";
 import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
 import { deleteEntryByDbId } from "../../lib/supabase/persistence";
@@ -40,6 +51,8 @@ export interface ReviewCardEntry {
   initialCommentCount: number;
   isLiked?: boolean;
   initialComments?: PublicComment[];
+  initialReactionCounts?: ReactionCounts;
+  initialUserReactions?: ReactionEmoji[];
   attachmentUrl?: string | null;
   attachmentType?: "image" | "gif" | null;
   reviewCoverUrl?: string | null;
@@ -281,6 +294,151 @@ function AttachmentPreview({ url, type }: { url: string; type: "image" | "gif" |
   );
 }
 
+// ─── Reaction bar ─────────────────────────────────────────────────────────────
+
+const REACTION_LABEL: Record<ReactionEmoji, string> = {
+  "🔥": "Fire",
+  "🎬": "Cinematic",
+  "😭": "Emotional",
+  "🤯": "Mind-blowing",
+  "❤️": "Loved it",
+};
+
+const CARD_REACTION_CSS = `
+  .rs-reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.13s ease;
+    font-family: inherit;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .rs-reaction-btn:hover {
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+  }
+  .rs-reaction-btn.active {
+    border-color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.09);
+    color: rgba(255,255,255,0.88);
+  }
+  .rs-reaction-btn .count {
+    font-size: 10px;
+    color: rgba(255,255,255,0.38);
+    font-variant-numeric: tabular-nums;
+  }
+  .rs-reaction-btn.active .count {
+    color: rgba(255,255,255,0.62);
+  }
+`;
+
+function ReactionBar({
+  entryId,
+  canReact,
+  initialCounts,
+  initialUserReactions,
+}: {
+  entryId: string;
+  canReact: boolean;
+  initialCounts: ReactionCounts;
+  initialUserReactions: Set<ReactionEmoji>;
+}) {
+  const [counts, setCounts] = useState<ReactionCounts>({ ...initialCounts });
+  const [userReactions, setUserReactions] = useState<Set<ReactionEmoji>>(
+    new Set(initialUserReactions)
+  );
+  const [loading, setLoading] = useState<ReactionEmoji | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Lazy-load actual counts on mount (the initial values are often zero)
+  useEffect(() => {
+    if (loaded) return;
+    void getReactionsForEntry(entryId).then(({ counts: fresh }) => {
+      setCounts(fresh);
+      setLoaded(true);
+    });
+  }, [entryId, loaded]);
+
+  async function handleToggle(emoji: ReactionEmoji) {
+    if (!canReact || loading) return;
+    const isActive = userReactions.has(emoji);
+    // Optimistic update
+    setLoading(emoji);
+    setCounts((prev) => ({
+      ...prev,
+      [emoji]: Math.max(0, prev[emoji] + (isActive ? -1 : 1)),
+    }));
+    setUserReactions((prev) => {
+      const next = new Set(prev);
+      if (isActive) next.delete(emoji);
+      else next.add(emoji);
+      return next;
+    });
+
+    const result = await toggleReaction(entryId, emoji, isActive);
+    setLoading(null);
+
+    // Revert on error
+    if (result.error) {
+      setCounts((prev) => ({
+        ...prev,
+        [emoji]: Math.max(0, prev[emoji] + (isActive ? 1 : -1)),
+      }));
+      setUserReactions((prev) => {
+        const next = new Set(prev);
+        if (isActive) next.add(emoji);
+        else next.delete(emoji);
+        return next;
+      });
+    }
+  }
+
+  const hasAnyReaction = REACTION_EMOJIS.some((e) => counts[e] > 0 || userReactions.has(e));
+
+  if (!canReact && !hasAnyReaction) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 6,
+        flexWrap: "wrap",
+        padding: "10px 16px 0",
+      }}
+    >
+      {REACTION_EMOJIS.map((emoji) => {
+        const active = userReactions.has(emoji);
+        const count = counts[emoji];
+        if (!canReact && count === 0) return null;
+        return (
+          <button
+            key={emoji}
+            type="button"
+            className={`rs-reaction-btn${active ? " active" : ""}`}
+            onClick={() => void handleToggle(emoji)}
+            disabled={!canReact || loading === emoji}
+            title={REACTION_LABEL[emoji]}
+            aria-label={`${REACTION_LABEL[emoji]}${count > 0 ? ` · ${count}` : ""}`}
+            style={{ opacity: loading === emoji ? 0.6 : 1 }}
+          >
+            <span>{emoji}</span>
+            {count > 0 && <span className="count">{count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CommentComposer({
   placeholder,
   loading,
@@ -385,15 +543,43 @@ function CommentThread({
   replies,
   currentUserId,
   onReplySubmit,
+  onCommentDeleted,
+  onCommentUpdated,
   replyLoading,
 }: {
   comment: PublicComment;
   replies: PublicComment[];
   currentUserId: string | null;
   onReplySubmit: (parentId: string, body: string, attachUrl: string | null, attachType: "image" | "gif" | null) => Promise<void>;
+  onCommentDeleted: (commentId: string) => void;
+  onCommentUpdated: (updated: PublicComment) => void;
   replyLoading: string | null;
 }) {
   const [showReply, setShowReply] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(comment.body);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const isOwn = currentUserId === comment.userId;
+
+  async function handleDelete() {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    const { error } = await deleteDiaryEntryComment(comment.id);
+    setDeleteLoading(false);
+    if (!error) onCommentDeleted(comment.id);
+  }
+
+  async function handleEditSave() {
+    if (editLoading || !editBody.trim()) return;
+    setEditLoading(true);
+    const result = await updateDiaryEntryComment(comment.id, editBody);
+    setEditLoading(false);
+    if (!result.error && result.comment) {
+      onCommentUpdated(result.comment);
+      setEditing(false);
+    }
+  }
 
   return (
     <div
@@ -426,32 +612,78 @@ function CommentThread({
             <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
               {timeAgo(comment.createdAt)}
             </span>
+            {/* Owner actions */}
+            {isOwn && !editing && (
+              <span style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => { setEditing(true); setEditBody(comment.body); }}
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(255,255,255,0.28)", fontSize: 10, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={deleteLoading}
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(239,68,68,0.5)", fontSize: 10, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif', opacity: deleteLoading ? 0.5 : 1 }}
+                >
+                  {deleteLoading ? "…" : "Delete"}
+                </button>
+              </span>
+            )}
           </div>
-          <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.68)", fontSize: 13, lineHeight: 1.6, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
-            {comment.body}
-          </p>
-          {comment.attachmentUrl ? (
-            <AttachmentPreview url={comment.attachmentUrl} type={comment.attachmentType} />
-          ) : null}
-          {currentUserId ? (
-            <button
-              type="button"
-              onClick={() => setShowReply((v) => !v)}
-              style={{
-                marginTop: 8,
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                color: showReply ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)",
-                fontSize: 11,
-                letterSpacing: "0.04em",
-                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-              }}
-            >
-              {showReply ? "Cancel" : "Reply"}
-            </button>
-          ) : null}
+
+          {/* Inline edit */}
+          {editing ? (
+            <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+              <textarea
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value.slice(0, 500))}
+                rows={3}
+                style={{
+                  width: "100%", resize: "none", borderRadius: 10,
+                  border: "0.5px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.82)", padding: "8px 10px",
+                  fontSize: 13, lineHeight: 1.55, outline: "none",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setEditing(false)} style={{ height: 28, padding: "0 10px", borderRadius: 999, border: "0.5px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.38)", fontSize: 11, cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={() => void handleEditSave()} disabled={editLoading || !editBody.trim()} style={{ height: 28, padding: "0 12px", borderRadius: 999, border: "none", background: editBody.trim() && !editLoading ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.1)", color: editBody.trim() ? "black" : "rgba(255,255,255,0.28)", fontSize: 11, fontWeight: 600, cursor: editBody.trim() ? "pointer" : "default", opacity: editLoading ? 0.6 : 1 }}>
+                  {editLoading ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.68)", fontSize: 13, lineHeight: 1.6, fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif' }}>
+                {comment.body}
+              </p>
+              {comment.attachmentUrl ? (
+                <AttachmentPreview url={comment.attachmentUrl} type={comment.attachmentType} />
+              ) : null}
+              {currentUserId ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReply((v) => !v)}
+                  style={{
+                    marginTop: 8, background: "none", border: "none", padding: 0, cursor: "pointer",
+                    color: showReply ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)",
+                    fontSize: 11, letterSpacing: "0.04em",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                  }}
+                >
+                  {showReply ? "Cancel" : "Reply"}
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -514,6 +746,7 @@ const CARD_CSS = `
   .rs-review-card { transition: border-color 0.2s ease; }
   .rs-review-card:hover { border-color: rgba(255,255,255,0.13) !important; }
   .rs-like-btn:hover { background: rgba(255,255,255,0.1) !important; }
+  ${CARD_REACTION_CSS}
 `;
 
 export default function ReviewCard({
@@ -543,6 +776,8 @@ export default function ReviewCard({
   initialCommentCount,
   isLiked = false,
   initialComments = [],
+  initialReactionCounts,
+  initialUserReactions = [],
   attachmentUrl,
   attachmentType,
   reviewCoverUrl,
@@ -664,6 +899,19 @@ export default function ReviewCard({
       setComments((prev) => [...prev, result.comment!]);
     }
   }
+
+  function handleCommentDeleted(commentId: string) {
+    setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentCommentId !== commentId));
+    setCommentCount((n) => Math.max(0, n - 1));
+  }
+
+  function handleCommentUpdated(updated: PublicComment) {
+    setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  }
+
+  // Reaction counts + user state — seed from props (usually zero on first render)
+  const defaultReactionCounts: ReactionCounts = initialReactionCounts ?? { "🔥": 0, "🎬": 0, "😭": 0, "🤯": 0, "❤️": 0 };
+  const defaultUserReactions = new Set<ReactionEmoji>(initialUserReactions as ReactionEmoji[]);
 
   return (
     <>
@@ -1003,6 +1251,14 @@ export default function ReviewCard({
           </div>
         </div>
 
+        {/* ── Reactions ── */}
+        <ReactionBar
+          entryId={entryId}
+          canReact={!!user && user.id !== ownerUserId}
+          initialCounts={defaultReactionCounts}
+          initialUserReactions={defaultUserReactions}
+        />
+
         {/* ── Footer: social ── */}
         <div
           style={{
@@ -1012,6 +1268,7 @@ export default function ReviewCard({
             alignItems: "center",
             gap: 12,
             flexWrap: "wrap",
+            marginTop: 10,
           }}
         >
           {/* Like */}
@@ -1100,6 +1357,8 @@ export default function ReviewCard({
                     replies={getReplies(comment.id)}
                     currentUserId={user?.id ?? null}
                     onReplySubmit={handleReply}
+                    onCommentDeleted={handleCommentDeleted}
+                    onCommentUpdated={handleCommentUpdated}
                     replyLoading={replyLoading}
                   />
                 ))}
