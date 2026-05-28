@@ -31,6 +31,13 @@ import {
   subscribeToFollows,
   type FriendsActivityEntry,
 } from "../../lib/supabase/social";
+import {
+  toggleReaction,
+  getReactionsForEntry,
+  REACTION_EMOJIS,
+  type ReactionEmoji,
+  type ReactionCounts,
+} from "../../lib/supabase/reactions";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -177,7 +184,15 @@ function PosterTile({
 
 // ─── Friend activity card — wide, Letterboxd-energy ───────────────────────────
 
-function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
+const EMPTY_COUNTS: ReactionCounts = { "🔥": 0, "🎬": 0, "😭": 0, "🤯": 0, "❤️": 0 };
+
+function FriendActivityCard({
+  entry,
+  userId,
+}: {
+  entry: FriendsActivityEntry;
+  userId: string | null;
+}) {
   const ownerLabel = entry.displayName || (entry.username ? `@${entry.username}` : "Friend");
   const recency = formatRecency(entry.savedAt);
   const watchedOn = entry.watchedDate
@@ -185,6 +200,53 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
     : null;
   const scopeBadge = getSeriesScopeBadge(entry);
   const verb = activityVerb(entry);
+
+  const canReact = !!userId && userId !== entry.profileId;
+  const [counts, setCounts] = useState<ReactionCounts>({ ...EMPTY_COUNTS });
+  const [userReactions, setUserReactions] = useState<Set<ReactionEmoji>>(new Set());
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [reactLoading, setReactLoading] = useState<ReactionEmoji | null>(null);
+
+  // Load reaction counts once on mount
+  useEffect(() => {
+    if (!entry.entryId) return;
+    void getReactionsForEntry(entry.entryId, userId ?? undefined).then(
+      ({ counts: c, userReactions: ur }) => {
+        setCounts(c);
+        setUserReactions(ur);
+      }
+    );
+  }, [entry.entryId, userId]);
+
+  async function handleReact(emoji: ReactionEmoji) {
+    if (!canReact || reactLoading) return;
+    const isActive = userReactions.has(emoji);
+    setReactLoading(emoji);
+    // Optimistic update
+    setCounts((prev) => ({ ...prev, [emoji]: Math.max(0, prev[emoji] + (isActive ? -1 : 1)) }));
+    setUserReactions((prev) => {
+      const next = new Set(prev);
+      if (isActive) next.delete(emoji);
+      else next.add(emoji);
+      return next;
+    });
+
+    const result = await toggleReaction(entry.entryId, emoji, isActive);
+    setReactLoading(null);
+
+    // Rollback on error
+    if (result.error) {
+      setCounts((prev) => ({ ...prev, [emoji]: Math.max(0, prev[emoji] + (isActive ? 1 : -1)) }));
+      setUserReactions((prev) => {
+        const next = new Set(prev);
+        if (isActive) next.add(emoji);
+        else next.delete(emoji);
+        return next;
+      });
+    }
+  }
+
+  const hasReactions = REACTION_EMOJIS.some((e) => counts[e] > 0);
 
   return (
     <article
@@ -268,6 +330,38 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
             {entry.title}
           </h3>
         </div>
+
+        {/* ── Reaction tray — overlay at poster bottom edge ── */}
+        {canReact && (
+          <div className={`rc-tray${trayOpen ? " rc-tray--open" : ""}`}>
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={`rc-btn${userReactions.has(emoji) ? " rc-btn--active" : ""}`}
+                onClick={(e) => { e.preventDefault(); void handleReact(emoji); }}
+                disabled={reactLoading === emoji}
+                aria-label={emoji}
+                aria-pressed={userReactions.has(emoji)}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Mobile-only tap trigger — stays visible at top-right of poster */}
+        {canReact && (
+          <button
+            type="button"
+            className="rc-trigger"
+            onClick={(e) => { e.preventDefault(); setTrayOpen((v) => !v); }}
+            aria-label="React"
+            aria-expanded={trayOpen}
+          >
+            {trayOpen ? "✕" : "＋"}
+          </button>
+        )}
       </Link>
 
       {/* Review snippet */}
@@ -281,6 +375,32 @@ function FriendActivityCard({ entry }: { entry: FriendsActivityEntry }) {
             &ldquo;{entry.review}&rdquo;
           </p>
         </Link>
+      )}
+
+      {/* ── Reaction display bubbles — only when reactions exist ── */}
+      {hasReactions && (
+        <div style={{ padding: "5px 8px 6px", display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {REACTION_EMOJIS.filter((e) => counts[e] > 0).map((emoji) => (
+            <span
+              key={emoji}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                padding: "1px 6px",
+                borderRadius: 999,
+                background: userReactions.has(emoji) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)",
+                border: userReactions.has(emoji) ? "0.5px solid rgba(255,255,255,0.2)" : "0.5px solid rgba(255,255,255,0.08)",
+                fontSize: 11,
+              }}
+            >
+              {emoji}
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: SANS }}>
+                {counts[emoji]}
+              </span>
+            </span>
+          ))}
+        </div>
       )}
     </article>
   );
@@ -501,6 +621,68 @@ export default function HomeDashboardClient({
         .friend-card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
         .friend-card:hover { border-color: rgba(255,255,255,0.13); box-shadow: 0 8px 32px rgba(0,0,0,0.56); }
 
+        /* ── Reaction tray ── */
+        .rc-tray {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          display: flex;
+          gap: 3px;
+          padding: 8px 8px 6px;
+          background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.16s ease;
+          z-index: 4;
+          justify-content: center;
+        }
+        /* Desktop: reveal on card hover */
+        .friend-card:hover .rc-tray { opacity: 1; pointer-events: auto; }
+        /* State-driven open (mobile button tap) */
+        .rc-tray--open { opacity: 1 !important; pointer-events: auto !important; }
+
+        .rc-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(0,0,0,0.62);
+          backdrop-filter: blur(6px);
+          font-size: 14px;
+          cursor: pointer;
+          transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .rc-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.28); }
+        .rc-btn:active { transform: scale(0.92); }
+        .rc-btn--active { background: rgba(255,255,255,0.18) !important; border-color: rgba(255,255,255,0.35) !important; }
+        .rc-btn:disabled { opacity: 0.55; cursor: default; }
+
+        /* Mobile trigger — shown only on touch-primary devices */
+        .rc-trigger {
+          display: none;
+          position: absolute;
+          top: 6px; right: 6px;
+          width: 26px; height: 26px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(0,0,0,0.58);
+          backdrop-filter: blur(6px);
+          color: rgba(255,255,255,0.8);
+          font-size: 12px;
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+          z-index: 5;
+          -webkit-tap-highlight-color: transparent;
+        }
+        /* On touch-primary (no hover capability), show trigger and disable CSS hover tray */
+        @media (hover: none) {
+          .rc-trigger { display: flex; }
+          .friend-card:hover .rc-tray { opacity: 0; pointer-events: none; }
+        }
+
         /* Tonight's picks */
         .picks-wrap {
           border-radius: 16px;
@@ -671,6 +853,7 @@ export default function HomeDashboardClient({
                 <FriendActivityCard
                   key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
                   entry={entry}
+                  userId={user?.id ?? null}
                 />
               ))}
             </div>

@@ -22,6 +22,7 @@ export type FriendsActivityEntry = {
   displayName: string | null;
   avatarUrl: string | null;
   id: string;
+  entryId: string;
   mediaType: MediaType;
   title: string;
   poster: string | null;
@@ -497,6 +498,7 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
   );
 
   const entries = (((diaryRows || []) as unknown) as Array<{
+    id: string;
     user_id: string;
     media_id: string;
     media_type: MediaType;
@@ -521,6 +523,7 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
       displayName: owner?.displayName ?? null,
       avatarUrl: owner?.avatarUrl ?? null,
       id: row.media_id,
+      entryId: row.id,
       mediaType: row.media_type as MediaType,
       title: row.title,
       poster: resolveTmdbPoster(row.poster ?? null),
