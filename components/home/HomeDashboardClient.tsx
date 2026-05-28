@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
+import SocialRecommendations from "./SocialRecommendations";
+import CircleDiscovery from "./CircleDiscovery";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
@@ -361,25 +363,6 @@ export default function HomeDashboardClient({
   // SavedItem[] fed directly to PickCard — dual-source: localStorage + Supabase
   const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
 
-  const trendingRowRef = useRef<HTMLDivElement>(null);
-
-  function onTrendingMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    const el = trendingRowRef.current;
-    if (!el) return;
-    e.preventDefault();
-    const originX = e.pageX;
-    const originScroll = el.scrollLeft;
-    const row = el;
-    row.style.cursor = "grabbing";
-    function onMove(ev: MouseEvent) { row.scrollLeft = originScroll - (ev.pageX - originX); }
-    function onUp() {
-      row.style.cursor = "grab";
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
 
   // Seed from localStorage immediately; re-sync on local add/remove
   useEffect(() => {
@@ -482,24 +465,7 @@ export default function HomeDashboardClient({
     [diaryEntries]
   );
 
-  const trendingAmongFriends = useMemo(() => {
-    if (friendsActivity.length < 2) return [];
-    const counts = new Map<string, { count: number; entry: FriendsActivityEntry }>();
-    for (const entry of friendsActivity) {
-      const key = `${entry.mediaType}:${entry.id}`;
-      const hit = counts.get(key);
-      if (hit) hit.count += 1;
-      else counts.set(key, { count: 1, entry });
-    }
-    return Array.from(counts.values())
-      .filter(({ count }) => count >= 2)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8)
-      .map(({ count, entry }) => ({
-        id: entry.id, mediaType: entry.mediaType, title: entry.title,
-        poster: entry.poster, href: entry.href, count,
-      }));
-  }, [friendsActivity]);
+  // trendingAmongFriends is now handled inside CircleDiscovery (System 3)
 
   const timeOfDay = getTimeOfDay();
   const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
@@ -509,21 +475,22 @@ export default function HomeDashboardClient({
   return (
     <main style={{ padding: "0 0 80px" }}>
       <style>{`
-        /* Scroll rails */
+        /* Scroll rails — System 8: mandatory snap, touch-friendly, no clipping */
         .home-row {
           display: flex;
           gap: 8px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          scroll-snap-type: x proximity;
+          scroll-snap-type: x mandatory;
           scroll-behavior: smooth;
           overscroll-behavior-x: contain;
           scrollbar-width: none;
           padding-bottom: 2px;
+          padding-inline: 2px;
           cursor: grab;
         }
         .home-row::-webkit-scrollbar { display: none; }
-        .home-row > * { scroll-snap-align: start; }
+        .home-row > * { scroll-snap-align: start; min-height: 44px; }
         .home-row:active { cursor: grabbing; }
 
         /* Poster hover lift */
@@ -715,22 +682,12 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── TRENDING AMONG FRIENDS ─────────────────────────────────────────────── */}
-      {trendingAmongFriends.length > 0 && (
-        <Section eyebrow="Your Circle" title="Trending among friends" serif>
-          <div className="home-row" ref={trendingRowRef} onMouseDown={onTrendingMouseDown}>
-            {trendingAmongFriends.map((item) => (
-              <PosterTile
-                key={`${item.mediaType}-${item.id}`}
-                title={item.title}
-                mediaType={item.mediaType}
-                poster={item.poster}
-                href={item.href}
-                badge={`${item.count}×`}
-              />
-            ))}
-          </div>
-        </Section>
+      {/* ── CIRCLE DISCOVERY — Systems 3 + 4 + 7 ─────────────────────────────── */}
+      {friendsHasFollows !== null && (
+        <CircleDiscovery
+          friendsActivity={friendsActivity}
+          friendsHasFollows={friendsHasFollows}
+        />
       )}
 
       {/* ── RECENTLY LOGGED ────────────────────────────────────────────────────── */}
@@ -765,12 +722,15 @@ export default function HomeDashboardClient({
       {/* ── DAILY REEL ─────────────────────────────────────────────────────────── */}
       <DailyReelCard />
 
-      {/* ── BECAUSE YOU LIKED ──────────────────────────────────────────────────── */}
+      {/* ── BECAUSE YOU LIKED (TMDB) ───────────────────────────────────────────── */}
       <BecauseYouLiked
         diaryEntries={diaryEntries.map((e) => ({
           media_id: e.id, title: e.title, rating: e.rating, watched_date: e.watchedDate,
         }))}
       />
+
+      {/* ── BECAUSE YOU LIKED (social collaborative) — System 2 ─────────────── */}
+      <SocialRecommendations diaryEntries={diaryEntries} />
 
       {/* ── PEOPLE TO FOLLOW ───────────────────────────────────────────────────── */}
       <PeopleToFollowSection variant="home" />

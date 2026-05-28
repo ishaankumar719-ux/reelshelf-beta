@@ -125,3 +125,20 @@ export interface PublicProfileShowcaseData {
   highest_rated: PublicProfileTopRatedItem[]
   cinema_stats: CinemaStats
 }
+
+export interface ProfileYouMayLikeItem {
+  media_id: string
+  media_type: "movie" | "tv" | "book"
+  title: string
+  poster: string | null
+  year: number
+  rating: number
+}
+
+export interface ProfileSimilarUser {
+  profileId: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  commonTitle: string | null
+}

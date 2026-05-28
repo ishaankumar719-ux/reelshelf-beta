@@ -17,7 +17,10 @@ import type {
   PublicProfileActivityItem,
   PublicProfileShowcaseData,
   PublicProfileTopRatedItem,
+  ProfileYouMayLikeItem,
+  ProfileSimilarUser,
 } from "@/src/types/profile"
+import { getMediaHref } from "@/lib/mediaRoutes"
 
 interface ProfileShowcaseProps {
   profile: PublicProfileShowcaseData | null
@@ -27,6 +30,9 @@ interface ProfileShowcaseProps {
   recentReviews?: PublicDiaryEntry[]
   badges?: DisplayBadge[]
   totalXP?: number
+  tasteMatchScore?: number | null
+  youMayLike?: ProfileYouMayLikeItem[]
+  similarUsers?: ProfileSimilarUser[]
 }
 
 type RushmoreTab = "movie" | "tv" | "book"
@@ -795,6 +801,148 @@ function CinemaStatsModule({ stats }: { stats: CinemaStats }) {
   )
 }
 
+// ─── System 6 sub-components ─────────────────────────────────────────────────
+
+function YouMayLikeCard({ item }: { item: ProfileYouMayLikeItem }) {
+  const router = useRouter()
+  const [imgError, setImgError] = useState(false)
+  const posterSrc = item.poster
+    ? item.poster.startsWith("http")
+      ? item.poster
+      : `https://image.tmdb.org/t/p/w185${item.poster}`
+    : null
+  const href = getMediaHref({ id: item.media_id, mediaType: item.media_type })
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push(href)}
+      style={{
+        width: 100,
+        flexShrink: 0,
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        textAlign: "left",
+        scrollSnapAlign: "start",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: "2 / 3",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "#10111c",
+        }}
+      >
+        {posterSrc && !imgError ? (
+          <img
+            src={posterSrc}
+            alt={item.title}
+            onError={() => setImgError(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <PosterFallback title={item.title} />
+        )}
+        <div
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 5,
+            background: "rgba(0,0,0,0.75)",
+            borderRadius: 4,
+            padding: "2px 5px",
+            fontSize: 9,
+            fontWeight: 700,
+            color: "rgba(212,175,55,0.9)",
+          }}
+        >
+          {item.rating.toFixed(1)}
+        </div>
+      </div>
+      <p
+        style={{
+          fontSize: 10,
+          fontWeight: 500,
+          color: "rgba(255,255,255,0.72)",
+          margin: "5px 0 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {item.title}
+      </p>
+    </button>
+  )
+}
+
+function SimilarUserRow({ user }: { user: ProfileSimilarUser }) {
+  const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
+  const href = user.username ? `/u/${user.username}` : "#"
+  const [imgError, setImgError] = useState(false)
+  const name = user.displayName || (user.username ? `@${user.username}` : "User")
+
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 14px",
+        borderRadius: 12,
+        border: "0.5px solid rgba(255,255,255,0.07)",
+        background: "rgba(255,255,255,0.025)",
+        textDecoration: "none",
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          overflow: "hidden",
+          flexShrink: 0,
+          background: "rgba(99,102,241,0.2)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 13,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.7)",
+        }}
+      >
+        {user.avatarUrl && !imgError ? (
+          <img
+            src={user.avatarUrl}
+            alt={name}
+            onError={() => setImgError(true)}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          (user.displayName || user.username || "U").slice(0, 1).toUpperCase()
+        )}
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.82)", fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {name}
+        </p>
+        {user.commonTitle && (
+          <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.32)", fontFamily: FONT }}>
+            Both love {user.commonTitle}
+          </p>
+        )}
+      </div>
+      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", flexShrink: 0 }}>→</span>
+    </Link>
+  )
+}
+
 const TASTE_ITEMS: Array<{
   key: keyof Pick<PublicProfileShowcaseData, "favourite_film" | "favourite_series" | "favourite_book">
   icon: string
@@ -892,6 +1040,9 @@ export default function ProfileShowcase({
   activityEvents = [],
   recentReviews = [],
   badges = [],
+  tasteMatchScore = null,
+  youMayLike = [],
+  similarUsers = [],
 }: ProfileShowcaseProps) {
   const [activeTab, setActiveTab] = useState<RushmoreTab>("movie")
   const [visible, setVisible] = useState(true)
@@ -1062,30 +1213,55 @@ export default function ProfileShowcase({
               </div>
             </div>
 
-            {isOwner ? (
-              <Link
-                href="/profile"
-                style={{
-                  display: "inline-flex",
-                  height: 36,
-                  alignItems: "center",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(0,0,0,0.25)",
-                  padding: "0 16px",
-                  fontSize: 11,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.82)",
-                  textDecoration: "none",
-                  flexShrink: 0,
-                }}
-              >
-                Edit profile
-              </Link>
-            ) : (
-              <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
-            )}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              {isOwner ? (
+                <Link
+                  href="/profile"
+                  style={{
+                    display: "inline-flex",
+                    height: 36,
+                    alignItems: "center",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(0,0,0,0.25)",
+                    padding: "0 16px",
+                    fontSize: 11,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.82)",
+                    textDecoration: "none",
+                    flexShrink: 0,
+                  }}
+                >
+                  Edit profile
+                </Link>
+              ) : (
+                <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+              )}
+              {!isOwner && tasteMatchScore !== null && (
+                <div
+                  title="Taste match score based on shared logged titles"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 10px",
+                    borderRadius: 999,
+                    border: "0.5px solid rgba(99,102,241,0.35)",
+                    background: "rgba(99,102,241,0.1)",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "rgba(199,210,254,0.8)",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    letterSpacing: "0.02em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span style={{ fontSize: 9 }}>◈</span>
+                  {tasteMatchScore}% taste match
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Bio — full-width row, works cleanly on both desktop and mobile */}
@@ -1287,6 +1463,41 @@ export default function ProfileShowcase({
         ) : null}
 
         <TasteIdentityBlock profile={profile} />
+
+        {/* System 6: You may also like */}
+        {youMayLike.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>You may also like</span>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                paddingBottom: 4,
+                scrollSnapType: "x mandatory",
+                WebkitOverflowScrolling: "touch",
+              }}
+              className="[&::-webkit-scrollbar]:hidden"
+            >
+              {youMayLike.map((item) => (
+                <YouMayLikeCard key={`${item.media_type}-${item.media_id}`} item={item} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* System 6: Similar users */}
+        {similarUsers.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <span style={sectionLabelStyle()}>Similar shelves</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {similarUsers.map((u) => (
+                <SimilarUserRow key={u.profileId} user={u} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

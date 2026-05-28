@@ -10,8 +10,9 @@ import {
   syncEarnedBadges,
 } from "@/lib/supabase/badges"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
-import type { CinemaStats, MountRushmoreSlot, PublicProfileShowcaseData } from "@/src/types/profile"
+import type { CinemaStats, MountRushmoreSlot, PublicProfileShowcaseData, ProfileYouMayLikeItem, ProfileSimilarUser } from "@/src/types/profile"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
+import { computeTasteMatchScore, getProfileSimilarUsers } from "@/lib/recommendations"
 
 export const dynamic = "force-dynamic"
 
@@ -399,6 +400,93 @@ export default async function PublicProfilePage({
   const displayBadges = buildDisplayBadges(allDefs, earnedMap)
   const totalXP = computeTotalXP(displayBadges)
 
+  // ── Systems 1 + 6: Taste match score + profile recommendations ───────────────
+  // Only compute when a logged-in non-owner is viewing the profile.
+  let tasteMatchScore: number | null = null
+  let youMayLike: ProfileYouMayLikeItem[] = []
+  let similarUsers: ProfileSimilarUser[] = []
+
+  if (user && !isOwner) {
+    const topMovieIds = allRows
+      .filter(
+        (r) =>
+          r.media_type === "movie" &&
+          parseRating(r.rating) !== null &&
+          parseRating(r.rating)! >= 8
+      )
+      .sort((a, b) => (parseRating(b.rating) ?? 0) - (parseRating(a.rating) ?? 0))
+      .slice(0, 6)
+      .map((r) => r.media_id)
+      .filter(Boolean) as string[]
+
+    const [viewerDiaryRes, similarUsersResult] = await Promise.all([
+      supabase
+        .from("diary_entries")
+        .select("media_id, media_type, rating, favourite")
+        .eq("user_id", user.id)
+        .limit(500),
+      topMovieIds.length >= 2
+        ? getProfileSimilarUsers(supabase, profileRow.id, topMovieIds, [user.id])
+        : Promise.resolve([] as ProfileSimilarUser[]),
+    ])
+
+    similarUsers = similarUsersResult
+
+    const viewerDiary = (viewerDiaryRes.data ?? []) as Array<{
+      media_id: string
+      media_type: string
+      rating: number | null
+      favourite: boolean
+    }>
+
+    // Taste match score (System 1)
+    tasteMatchScore = computeTasteMatchScore(
+      viewerDiary.map((r) => ({
+        media_id: r.media_id,
+        media_type: r.media_type,
+        rating: r.rating,
+        favourite: Boolean(r.favourite),
+        genres: null,
+      })),
+      allRows.map((r) => ({
+        media_id: r.media_id,
+        media_type: r.media_type,
+        rating: parseRating(r.rating),
+        favourite: Boolean(r.favourite),
+        genres: null,
+      }))
+    )
+
+    // You may also like: profile's top entries the viewer hasn't logged (System 6)
+    const viewerSet = new Set(
+      viewerDiary.map((r) => `${r.media_type}:${r.media_id}`)
+    )
+    const seen = new Set<string>()
+    youMayLike = allRows
+      .filter(
+        (r) =>
+          !viewerSet.has(`${r.media_type}:${r.media_id}`) &&
+          parseRating(r.rating) !== null &&
+          parseRating(r.rating)! >= 7.5 &&
+          r.poster !== null
+      )
+      .sort((a, b) => (parseRating(b.rating) ?? 0) - (parseRating(a.rating) ?? 0))
+      .filter((r) => {
+        if (seen.has(r.media_id)) return false
+        seen.add(r.media_id)
+        return true
+      })
+      .slice(0, 8)
+      .map((r) => ({
+        media_id: r.media_id,
+        media_type: r.media_type as "movie" | "tv" | "book",
+        title: r.title,
+        poster: r.poster!,
+        year: Number(r.year) || 0,
+        rating: parseRating(r.rating)!,
+      }))
+  }
+
   const recentReviews = ((reviewsData ?? []) as FullDiaryRow[])
     .filter((row) => row.review && row.review.trim().length > 0)
     .map(mapToPublicEntry)
@@ -489,5 +577,5 @@ export default async function PublicProfilePage({
     cinema_stats: computeCinemaStats(allRows),
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} />
+  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
 }
