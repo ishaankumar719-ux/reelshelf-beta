@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
+import ProfileTabStrip from "../_components/ProfileTabStrip"
 
 export const dynamic = "force-dynamic"
 
@@ -124,6 +125,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ usernam
       subtitle={`@${profile.username ?? username}`}
       backHref={`/u/${profile.username ?? username}`}
       count={shows.length}
+      username={profile.username ?? username}
     >
       {shows.length === 0 ? (
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontStyle: "italic", padding: "24px 0" }}>
@@ -142,7 +144,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ usernam
 
 function PrivatePage({ username }: { username: string }) {
   return (
-    <PageShell title="Series" subtitle={`@${username}`} backHref={`/u/${username}`} count={null}>
+    <PageShell title="Series" subtitle={`@${username}`} backHref={`/u/${username}`} count={null} username={username}>
       <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontStyle: "italic", padding: "24px 0" }}>
         This profile is private.
       </p>
@@ -155,12 +157,14 @@ function PageShell({
   subtitle,
   backHref,
   count,
+  username,
   children,
 }: {
   title: string
   subtitle: string
   backHref: string
   count: number | null
+  username: string
   children: React.ReactNode
 }) {
   return (
@@ -168,15 +172,16 @@ function PageShell({
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 20px 80px" }}>
         <Link
           href={backHref}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(255,255,255,0.45)", textDecoration: "none", marginBottom: 24 }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "rgba(255,255,255,0.45)", textDecoration: "none", marginBottom: 20 }}
         >
           ← {subtitle}
         </Link>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 6 }}>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.02em" }}>
             {title}{count !== null ? <span style={{ marginLeft: 10, fontSize: 16, fontWeight: 400, color: "rgba(255,255,255,0.35)" }}>{count}</span> : null}
           </h1>
         </div>
+        <ProfileTabStrip username={username} activeTab="series" />
         {children}
       </div>
     </div>

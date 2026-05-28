@@ -97,6 +97,7 @@ export interface PublicProfileActivityItem {
   poster: string | null
   rating: number | string | null
   watched_date: string | null
+  review: string | null
   review_scope: "show" | "season" | "episode" | null
 }
 

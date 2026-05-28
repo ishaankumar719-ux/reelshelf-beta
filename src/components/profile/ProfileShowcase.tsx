@@ -89,49 +89,72 @@ function Avatar({
 }) {
   const [imgError, setImgError] = useState(false)
   const initials = getInitials(displayName, username)
+  const color = getAvatarColor(username)
 
   return (
     <div
       style={{
-        width: 72,
-        height: 72,
-        borderRadius: "50%",
-        overflow: "hidden",
+        position: "relative",
+        width: 88,
+        height: 88,
         flexShrink: 0,
-        border: "1px solid rgba(255,255,255,0.1)",
-        background: `linear-gradient(135deg, ${getAvatarColor(username)}, rgba(10,10,20,0.92))`,
-        boxShadow: "0 18px 45px rgba(0,0,0,0.36)",
       }}
     >
-      {avatarUrl && !imgError ? (
-        <img
-          src={avatarUrl}
-          alt={displayName || username}
-          onError={() => setImgError(true)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 18,
-            fontWeight: 600,
-            letterSpacing: "0.02em",
-            color: "rgba(255,255,255,0.92)",
-          }}
-        >
-          {initials}
-        </div>
-      )}
+      {/* Cinematic ambient ring */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: -3,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${color}44 0%, transparent 70%)`,
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          overflow: "hidden",
+          border: `1.5px solid ${color}55`,
+          background: `linear-gradient(135deg, ${color}, rgba(10,10,20,0.92))`,
+          boxShadow: `0 0 0 2px rgba(10,10,20,0.9), 0 20px 48px rgba(0,0,0,0.5), 0 0 24px ${color}22`,
+          zIndex: 1,
+        }}
+      >
+        {avatarUrl && !imgError ? (
+          <img
+            src={avatarUrl}
+            alt={displayName || username}
+            onError={() => setImgError(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              color: "rgba(255,255,255,0.92)",
+            }}
+          >
+            {initials}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -245,18 +268,57 @@ function EmptyRushmoreTile() {
   )
 }
 
+function RecentItemStars({ rating }: { rating: number | string | null }) {
+  const val = typeof rating === "string" ? parseFloat(rating) : rating
+  if (!val || !Number.isFinite(val)) return null
+  const full = Math.floor(val / 2)
+  const half = val % 2 >= 1
+  return (
+    <div style={{ display: "flex", gap: 1, alignItems: "center", marginTop: 4 }}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            fontSize: 8,
+            color:
+              i < full
+                ? "rgba(212,175,55,0.9)"
+                : half && i === full
+                  ? "rgba(212,175,55,0.55)"
+                  : "rgba(255,255,255,0.12)",
+          }}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function RecentItem({ item }: { item: PublicProfileActivityItem }) {
   const router = useRouter()
   const [imgError, setImgError] = useState(false)
   const title = item.title
   const route = getRouteForMedia(item.media_type, item.media_id)
 
+  if (!item.poster) return null
+
+  const posterSrc = item.poster.startsWith("http")
+    ? item.poster
+    : `https://image.tmdb.org/t/p/w185${item.poster}`
+
+  const dateStr = item.watched_date
+    ? new Date(item.watched_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null
+
+  const reviewSnippet = item.review?.trim() || null
+
   return (
     <button
       type="button"
       onClick={() => router.push(route)}
       style={{
-        width: 80,
+        width: 120,
         flexShrink: 0,
         background: "transparent",
         border: "none",
@@ -274,27 +336,24 @@ function RecentItem({ item }: { item: PublicProfileActivityItem }) {
           background: "#10111c",
         }}
       >
-        {item.poster && !imgError ? (
+        {!imgError ? (
           <img
-            src={item.poster}
+            src={posterSrc}
             alt={title}
             onError={() => setImgError(true)}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
           <PosterFallback title={title} />
         )}
       </div>
+
       <p
         style={{
           fontSize: 11,
-          color: "rgba(255,255,255,0.78)",
-          margin: "5px 0 0",
+          fontWeight: 500,
+          color: "rgba(255,255,255,0.82)",
+          margin: "6px 0 0",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -302,6 +361,31 @@ function RecentItem({ item }: { item: PublicProfileActivityItem }) {
       >
         {title}
       </p>
+
+      <RecentItemStars rating={item.rating} />
+
+      {reviewSnippet ? (
+        <p
+          style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.45)",
+            margin: "4px 0 0",
+            lineHeight: 1.5,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {reviewSnippet}
+        </p>
+      ) : null}
+
+      {dateStr ? (
+        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.24)", margin: "3px 0 0", letterSpacing: "0.02em" }}>
+          {dateStr}
+        </p>
+      ) : null}
     </button>
   )
 }
@@ -711,6 +795,96 @@ function CinemaStatsModule({ stats }: { stats: CinemaStats }) {
   )
 }
 
+const TASTE_ITEMS: Array<{
+  key: keyof Pick<PublicProfileShowcaseData, "favourite_film" | "favourite_series" | "favourite_book">
+  icon: string
+  label: string
+}> = [
+  { key: "favourite_film",   icon: "🎬", label: "Film"   },
+  { key: "favourite_series", icon: "📺", label: "Series" },
+  { key: "favourite_book",   icon: "📚", label: "Book"   },
+]
+
+function TasteIdentityBlock({ profile }: { profile: PublicProfileShowcaseData }) {
+  const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
+
+  const items: Array<{ icon: string; label: string; value: string }> = []
+
+  for (const { key, icon, label } of TASTE_ITEMS) {
+    const value = profile[key]
+    if (value) items.push({ icon, label, value })
+  }
+
+  if (profile.stats.cinemaVisits > 0) {
+    items.push({
+      icon: "🎟",
+      label: "Cinema visits",
+      value: String(profile.stats.cinemaVisits),
+    })
+  }
+
+  if (items.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <span style={sectionLabelStyle()}>Taste</span>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gap: 10,
+        }}
+      >
+        {items.map(({ icon, label, value }) => (
+          <div
+            key={label}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              padding: "11px 14px",
+              borderRadius: 12,
+              border: "0.5px solid rgba(255,255,255,0.07)",
+              background: "rgba(255,255,255,0.025)",
+            }}
+          >
+            <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.4 }}>{icon}</span>
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.28)",
+                  fontFamily: FONT,
+                }}
+              >
+                {label}
+              </p>
+              <p
+                style={{
+                  margin: "3px 0 0",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.82)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  fontFamily: FONT,
+                }}
+              >
+                {value}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function ProfileShowcase({
   profile,
   isOwner,
@@ -740,11 +914,6 @@ export default function ProfileShowcase({
   if (!profile) return null
 
   const identityName = profile.display_name || profile.username
-  const favourites = [
-    profile.favourite_film ? `🎬 ${profile.favourite_film}` : null,
-    profile.favourite_series ? `📺 ${profile.favourite_series}` : null,
-    profile.favourite_book ? `📚 ${profile.favourite_book}` : null,
-  ].filter((value): value is string => Boolean(value))
 
   if (!profile.is_public && !isOwner) {
     return (
@@ -819,7 +988,7 @@ export default function ProfileShowcase({
       <style>{`
         @media (max-width: 760px) {
           .pf-section { padding: 12px 12px 80px !important; }
-          .pf-card { padding: 16px !important; border-radius: 20px !important; }
+          .pf-card { padding: 18px !important; border-radius: 22px !important; }
 
           /* Header: avatar + name top row, bio full-width below */
           .pf-header-top { align-items: center !important; }
@@ -864,11 +1033,11 @@ export default function ProfileShowcase({
       <div
         className="pf-card"
         style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "0.5px solid rgba(255,255,255,0.08)",
+          background: `linear-gradient(150deg, rgba(99,102,241,0.07) 0%, rgba(255,255,255,0.025) 32%, rgba(255,255,255,0.02) 100%)`,
+          border: "0.5px solid rgba(255,255,255,0.09)",
           borderRadius: 28,
-          padding: 24,
-          boxShadow: "0 28px 90px rgba(0,0,0,0.42)",
+          padding: 28,
+          boxShadow: "0 28px 90px rgba(0,0,0,0.48)",
         }}
       >
         {/* Header: identity row + bio extracted below for full-width on mobile */}
@@ -877,17 +1046,17 @@ export default function ProfileShowcase({
             className="pf-header-top"
             style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 16, minWidth: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 18, minWidth: 0, flex: 1 }}>
               <Avatar
                 avatarUrl={profile.avatar_url}
                 displayName={profile.display_name}
                 username={profile.username}
               />
-              <div style={{ minWidth: 0 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 600, color: "rgba(255,255,255,0.92)", margin: 0 }}>
+              <div style={{ minWidth: 0, paddingTop: 4 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.025em", color: "rgba(255,255,255,0.94)", margin: 0, lineHeight: 1.2 }}>
                   {identityName}
                 </h1>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", margin: "4px 0 0" }}>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.36)", margin: "5px 0 0", letterSpacing: "0.01em" }}>
                   @{profile.username}
                 </p>
               </div>
@@ -924,10 +1093,10 @@ export default function ProfileShowcase({
             <p
               className="pf-bio"
               style={{
-                fontSize: 13,
-                lineHeight: 1.65,
-                color: "rgba(255,255,255,0.6)",
-                margin: "12px 0 0",
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: "rgba(255,255,255,0.58)",
+                margin: "14px 0 0",
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
@@ -945,10 +1114,12 @@ export default function ProfileShowcase({
               rel="noreferrer"
               style={{
                 display: "inline-flex",
+                alignItems: "center",
                 marginTop: 10,
                 fontSize: 12,
                 color: "#67d7b2",
                 textDecoration: "none",
+                letterSpacing: "0.01em",
               }}
             >
               {profile.website_url}
@@ -1115,26 +1286,7 @@ export default function ProfileShowcase({
           </div>
         ) : null}
 
-        {favourites.length > 0 ? (
-          <div style={{ marginTop: 40 }}>
-            <span style={sectionLabelStyle()}>Favourites</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {favourites.map((item) => (
-                <p
-                  key={item}
-                  style={{
-                    fontSize: 14,
-                    color: "rgba(255,255,255,0.75)",
-                    fontStyle: "italic",
-                    margin: 0,
-                  }}
-                >
-                  {item}
-                </p>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <TasteIdentityBlock profile={profile} />
       </div>
     </section>
   )

@@ -577,7 +577,7 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
   }
 
   return (
-    <div style={{ marginTop: 32 }}>
+    <div style={{ marginTop: 36 }}>
 
       {/* Modal — rendered via portal to document.body */}
       {selectedBadge ? (
@@ -594,11 +594,11 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
       {legacyBadges.length > 0 ? (
         <div
           style={{
-            marginBottom: 28,
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: `0.5px solid rgba(212,175,55,0.22)`,
-            background: "rgba(212,175,55,0.04)",
+            marginBottom: 32,
+            padding: "16px 20px 18px",
+            borderRadius: 16,
+            border: `0.5px solid rgba(212,175,55,0.28)`,
+            background: "linear-gradient(145deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.03) 60%, rgba(10,10,18,0) 100%)",
             position: "relative",
           }}
         >
@@ -632,7 +632,7 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
             </span>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {legacyBadges.map((badge) => (
               <LegacyBadgeToken key={badge.id} badge={badge} onSelect={handleSelect} />
             ))}
@@ -693,18 +693,18 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
           <div
             style={{
               display: "flex",
-              gap: 4,
+              gap: 8,
               overflowX: "auto",
               overflowY: "visible",
               WebkitOverflowScrolling: "touch",
               scrollbarWidth: "none",
-              paddingBottom: 8,
-              paddingTop: 4,
+              paddingBottom: 10,
+              paddingTop: 6,
               // Negative margins let badges breathe without clipping hit areas
-              marginLeft: -4,
-              marginRight: -4,
-              paddingLeft: 4,
-              paddingRight: 4,
+              marginLeft: -6,
+              marginRight: -6,
+              paddingLeft: 6,
+              paddingRight: 6,
             } as React.CSSProperties}
             className="[&::-webkit-scrollbar]:hidden"
           >

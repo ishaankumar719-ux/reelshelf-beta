@@ -470,6 +470,7 @@ export default async function PublicProfilePage({
       poster: entry.poster,
       rating: entry.rating,
       watched_date: entry.watched_date,
+      review: entry.review ?? null,
       review_scope:
         entry.review_scope === "show" || entry.review_scope === "season" || entry.review_scope === "episode"
           ? entry.review_scope
