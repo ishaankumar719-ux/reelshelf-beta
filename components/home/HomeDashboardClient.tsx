@@ -6,6 +6,7 @@ import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import SocialRecommendations from "./SocialRecommendations";
 import CircleDiscovery from "./CircleDiscovery";
+import TrendingThisWeek from "./TrendingThisWeek";
 import GamificationWidgets from "../GamificationWidgets";
 import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
@@ -952,6 +953,9 @@ export default function HomeDashboardClient({
       {/* ── GAMIFICATION (lower priority) ──────────────────────────────────────── */}
       <GamificationWidgets variant="home" />
       <WeeklyChallengesSection />
+
+      {/* ── TRENDING THIS WEEK ─────────────────────────────────────────────────── */}
+      <TrendingThisWeek />
 
       {/* ── DISCOVERY RAILS ────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
