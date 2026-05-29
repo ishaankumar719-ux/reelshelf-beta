@@ -2,446 +2,619 @@
 
 import { useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
-import { matchTheme, type MediaForMatching } from "@/lib/easter-eggs/matcher"
-import { getThemeMode, recordSecretView, THEME_MODE_KEY, type ThemeMode } from "@/lib/easterEggs"
+import { matchRegistryEntry, GLOBAL_KILL_SWITCH, type RegistryEntry } from "@/lib/easter-eggs/registry"
+import { getThemeMode, THEME_MODE_KEY } from "@/lib/easterEggs"
 import { useDiaryLog } from "@/hooks/useDiaryLog"
-import type { EggTheme } from "@/lib/easter-eggs/themes"
 
-// ── Pre-computed starfield (Interstellar) ─────────────────────────────────────
+// ─── Global keyframes ─────────────────────────────────────────────────────────
+// Injected once. All animations use transform/opacity only — no layout props.
 
-const STAR_SHADOW = [
-  "12px 88px","156px 234px","303px 52px","78px 412px","445px 167px",
-  "192px 340px","520px 88px","67px 520px","380px 295px","244px 44px",
-  "108px 180px","490px 360px","35px 280px","600px 210px","320px 480px",
-  "168px 140px","430px 70px","22px 360px","560px 130px","88px 470px",
-  "270px 190px","710px 310px","145px 60px","480px 420px","350px 120px",
-  "630px 380px","195px 260px","520px 240px","80px 140px","420px 510px",
-  "290px 330px","650px 80px","110px 310px","740px 200px","360px 450px",
-].map((s, i) =>
-  `${s} ${i % 3 === 0 ? "2px" : "1px"} rgba(255,255,255,${i % 2 === 0 ? "0.75" : "0.45"})`
-).join(", ")
+const KEYFRAMES = `
+@keyframes rs2-fadein   { from { opacity:0 } to { opacity:1 } }
+@keyframes rs2-shimmer  { from { background-position:-200% center } to { background-position:200% center } }
+@keyframes rs2-pulse    { 0%,100%{opacity:1} 50%{opacity:0.28} }
+@keyframes rs2-twinkle  { 0%,100%{opacity:0.85} 50%{opacity:0.35} }
+@keyframes rs2-drift-x  { 0%,100%{transform:translateX(0)} 50%{transform:translateX(8px)} }
+@keyframes rs2-rise     { 0%{transform:translateY(0) scale(1);opacity:0} 10%{opacity:1} 90%{opacity:.7} 100%{transform:translateY(-48px) scale(.7);opacity:0} }
+@keyframes rs2-spot     { 0%,100%{background-position:30% 70%} 50%{background-position:70% 30%} }
+@keyframes rs2-frost    { 0%,100%{opacity:1} 50%{opacity:.45} }
+@keyframes rs2-wave     { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-12px)} }
+@keyframes rs2-glitch   { 0%,3%,6%,100%{opacity:0} 1%,4%{opacity:1} }
+@keyframes rs2-sparkle  { 0%,100%{opacity:0;transform:scale(.5)} 10%,90%{opacity:1;transform:scale(1)} 50%{transform:scale(1.2)} }
+@keyframes rs2-space-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+@keyframes rs2-lightning { 0%,97%,100%{opacity:0} 98%{opacity:.22} 99%{opacity:.08} }
+@keyframes rs2-rain-fall { from{background-position:0 0} to{background-position:0 40px} }
 
-// ── Effect components ─────────────────────────────────────────────────────────
+/* Disable all animations when user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .rs2-anim { animation: none !important; }
+}
+/* Mobile: hide excess particles (nth-child n+4 hidden on narrow screens) */
+@media (max-width: 767px) {
+  .rs2-particle-extra { display: none !important; }
+}
+`
 
-function SpiderWebCorners({ opacity }: { opacity: number }) {
-  return (
-    <>
-      {(["tl", "br"] as const).map((corner) => {
-        const top    = corner === "tl" ? 60 : undefined
-        const bottom = corner === "br" ? 0  : undefined
-        const left   = corner === "tl" ? 0  : undefined
-        const right  = corner === "br" ? 0  : undefined
-        const scaleX = corner === "br" ? -1 : 1
-        const scaleY = corner === "br" ? -1 : 1
-        return (
-          <div
-            key={corner}
-            style={{
-              position: "fixed", top, bottom, left, right,
-              width: 90, height: 90,
-              pointerEvents: "none", zIndex: 44,
-              opacity, animation: "rs-egg-fadein 2s ease forwards",
-            }}
-          >
-            <svg viewBox="0 0 90 90" width="90" height="90"
-              style={{ transform: `scale(${scaleX},${scaleY})`, transformOrigin: "45px 45px", display: "block" }}
-            >
-              <line x1="0" y1="0" x2="95" y2="0"   stroke="#c41e3a" strokeWidth="0.5" opacity="0.18"/>
-              <line x1="0" y1="0" x2="0"  y2="95"  stroke="#c41e3a" strokeWidth="0.5" opacity="0.18"/>
-              <line x1="0" y1="0" x2="90" y2="30"  stroke="#c41e3a" strokeWidth="0.4" opacity="0.13"/>
-              <line x1="0" y1="0" x2="30" y2="90"  stroke="#c41e3a" strokeWidth="0.4" opacity="0.13"/>
-              <line x1="0" y1="0" x2="90" y2="90"  stroke="#c41e3a" strokeWidth="0.35" opacity="0.10"/>
-              <path d="M 22 0 Q 11 11 0 22"  fill="none" stroke="#c41e3a" strokeWidth="0.45" opacity="0.16"/>
-              <path d="M 44 0 Q 22 22 0 44"  fill="none" stroke="#c41e3a" strokeWidth="0.4"  opacity="0.12"/>
-              <path d="M 66 0 Q 33 33 0 66"  fill="none" stroke="#c41e3a" strokeWidth="0.35" opacity="0.09"/>
-            </svg>
-          </div>
-        )
-      })}
-    </>
-  )
+// ─── URL parser ───────────────────────────────────────────────────────────────
+
+type ActiveMedia = {
+  id: string
+  mediaType: "movie" | "tv" | "book"
+  title: string | null
 }
 
-const MOTE_CONFIGS = [
-  { left: "15%", delay: "0s",   dur: "9s",  size: 3 },
-  { left: "35%", delay: "2.2s", dur: "11s", size: 2 },
-  { left: "55%", delay: "0.8s", dur: "8s",  size: 4 },
-  { left: "72%", delay: "3.5s", dur: "12s", size: 2 },
-  { left: "88%", delay: "1.6s", dur: "10s", size: 3 },
-  { left: "6%",  delay: "4.1s", dur: "13s", size: 2 },
-]
+function parseMediaFromPath(pathname: string): ActiveMedia | null {
+  const filmMatch = pathname.match(/^\/films\/(\d+)/)
+  if (filmMatch) return { id: filmMatch[1], mediaType: "movie", title: null }
 
-function SandEffect({ opacity }: { opacity: number }) {
+  const seriesMatch = pathname.match(/^\/series\/(\d+)/)
+  if (seriesMatch) return { id: seriesMatch[1], mediaType: "tv", title: null }
+
+  const bookMatch = pathname.match(/^\/books\/([^/]+)/)
+  if (bookMatch) {
+    const slug = decodeURIComponent(bookMatch[1])
+    // Infer title from slug for title-based matching
+    const inferredTitle = slug.replace(/[-_]/g, " ")
+    return { id: slug, mediaType: "book", title: inferredTitle }
+  }
+
+  return null
+}
+
+// ─── Effects ──────────────────────────────────────────────────────────────────
+// Each effect: position:fixed, pointer-events:none, z-index 1–5
+// Intensity param scales final opacity. No layout-triggering properties.
+
+function SubtleWeb({ intensity }: { intensity: number }) {
+  const o = intensity * 0.32
   return (
     <>
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "linear-gradient(0deg, rgba(120,60,0,0.22) 0%, rgba(90,40,0,0.1) 30%, transparent 70%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
-      }} />
-      {MOTE_CONFIGS.map((m, i) => (
-        <div key={i} style={{
-          position: "fixed", bottom: 0, left: m.left,
-          width: m.size, height: m.size, borderRadius: "50%",
-          background: "rgba(220,170,60,0.6)",
-          pointerEvents: "none", zIndex: 2,
-          animationName: "rs-sand-drift",
-          animationDuration: m.dur,
-          animationDelay: m.delay,
-          animationTimingFunction: "ease-out",
-          animationIterationCount: "infinite",
-          animationFillMode: "both",
-        }} />
+      {(["tl", "br"] as const).map((c) => (
+        <div key={c} style={{
+          position: "fixed",
+          top: c === "tl" ? 58 : undefined, bottom: c === "br" ? 0 : undefined,
+          left: c === "tl" ? 0  : undefined, right: c === "br" ? 0 : undefined,
+          width: 100, height: 100, pointerEvents: "none", zIndex: 3, opacity: o,
+        }}>
+          <svg viewBox="0 0 100 100" width="100" height="100" style={{
+            display: "block",
+            transform: c === "br" ? "scale(-1,-1)" : undefined,
+            transformOrigin: c === "br" ? "50px 50px" : undefined,
+          }}>
+            <line x1="0" y1="0" x2="100" y2="0"  stroke="#b01818" strokeWidth="0.5" opacity="0.2"/>
+            <line x1="0" y1="0" x2="0"   y2="100" stroke="#b01818" strokeWidth="0.5" opacity="0.2"/>
+            <line x1="0" y1="0" x2="100" y2="33"  stroke="#b01818" strokeWidth="0.4" opacity="0.14"/>
+            <line x1="0" y1="0" x2="33"  y2="100" stroke="#b01818" strokeWidth="0.4" opacity="0.14"/>
+            <line x1="0" y1="0" x2="100" y2="100" stroke="#b01818" strokeWidth="0.35" opacity="0.10"/>
+            <path d="M 25 0 Q 12 12 0 25" fill="none" stroke="#b01818" strokeWidth="0.45" opacity="0.18"/>
+            <path d="M 50 0 Q 25 25 0 50" fill="none" stroke="#b01818" strokeWidth="0.38" opacity="0.13"/>
+            <path d="M 75 0 Q 37 37 0 75" fill="none" stroke="#b01818" strokeWidth="0.32" opacity="0.09"/>
+          </svg>
+        </div>
       ))}
     </>
   )
 }
 
-function StarfieldEffect({ opacity }: { opacity: number }) {
+function GoldShimmer({ intensity }: { intensity: number }) {
+  return (
+    <div className="rs2-anim" style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2,
+      background: "linear-gradient(120deg, transparent 30%, rgba(220,175,40,0.07) 50%, transparent 70%)",
+      backgroundSize: "200% 100%",
+      animation: "rs2-shimmer 6s ease-in-out infinite",
+      opacity: intensity * 0.9,
+    }} />
+  )
+}
+
+function TempoPulse({ intensity }: { intensity: number }) {
+  return (
+    <div className="rs2-anim" style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, height: 2,
+      background: "linear-gradient(90deg, transparent 5%, rgba(255,230,0,0.35) 30%, rgba(255,240,80,0.55) 50%, rgba(255,230,0,0.35) 70%, transparent 95%)",
+      pointerEvents: "none", zIndex: 3,
+      animation: "rs2-pulse 2.4s ease-in-out infinite",
+      opacity: intensity,
+    }} />
+  )
+}
+
+const STARS = [
+  "18px 95px","160px 240px","310px 55px","82px 420px","450px 170px",
+  "198px 345px","530px 90px","70px 530px","385px 300px","248px 46px",
+  "112px 185px","495px 365px","38px 285px","610px 215px","325px 485px",
+  "172px 145px","435px 72px","26px 365px","565px 135px","92px 475px",
+  "275px 195px","715px 315px","148px 62px","485px 425px","355px 125px",
+].map((s, i) =>
+  `${s} ${i % 3 === 0 ? "2px" : "1px"} rgba(255,255,255,${i % 2 === 0 ? "0.72" : "0.42"})`
+).join(",")
+
+function Starfield({ intensity }: { intensity: number }) {
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 50% 0%, rgba(20,30,80,0.3) 0%, transparent 65%)",
-        opacity, animation: "rs-egg-fadein 2.5s ease forwards",
+        background: "radial-gradient(ellipse at 50% 0%, rgba(10,20,60,0.28) 0%, transparent 60%)",
+        opacity: intensity,
       }} />
-      <div style={{
+      <div className="rs2-anim" style={{
         position: "fixed", top: 0, left: 0, width: 1, height: 1,
         pointerEvents: "none", zIndex: 2,
-        boxShadow: STAR_SHADOW,
-        opacity, animation: "rs-stars-twinkle 6s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+        boxShadow: STARS,
+        animation: "rs2-twinkle 7s ease-in-out infinite",
+        opacity: intensity * 0.9,
       }} />
     </>
   )
 }
 
-function ComicEffect({ opacity }: { opacity: number }) {
-  return (
-    <>
-      <div style={{
-        position: "fixed", top: 60, left: 0, right: 0, height: 1,
-        background: "linear-gradient(90deg, transparent 5%, rgba(255,210,0,0.18) 30%, rgba(30,100,255,0.10) 65%, transparent 95%)",
-        pointerEvents: "none", zIndex: 44,
-        opacity: opacity * 0.9, animation: "rs-egg-fadein 1.4s ease forwards",
-      }} />
-      <div style={{
-        position: "fixed", bottom: 80, left: 0, right: 0, height: 1,
-        background: "linear-gradient(90deg, transparent 5%, rgba(30,100,255,0.10) 35%, rgba(255,210,0,0.14) 70%, transparent 95%)",
-        pointerEvents: "none", zIndex: 44,
-        opacity: opacity * 0.75, animation: "rs-egg-fadein 1.8s ease forwards",
-      }} />
-    </>
-  )
-}
-
-const SPARKLE_CONFIGS = [
-  { left: "22%", bottom: "25%", delay: "0s",   dur: "7s",  size: 4 },
-  { left: "68%", bottom: "40%", delay: "1.8s", dur: "9s",  size: 3 },
-  { left: "45%", bottom: "60%", delay: "0.5s", dur: "8s",  size: 5 },
-  { left: "80%", bottom: "30%", delay: "3.2s", dur: "6s",  size: 3 },
-  { left: "10%", bottom: "50%", delay: "2.1s", dur: "10s", size: 4 },
-  { left: "55%", bottom: "20%", delay: "4s",   dur: "7s",  size: 3 },
+const SAND_MOTES = [
+  { left: "12%", delay: "0s",   dur: "10s", size: 3, cls: "" },
+  { left: "30%", delay: "2.1s", dur: "12s", size: 2, cls: "" },
+  { left: "52%", delay: "0.7s", dur: "9s",  size: 3, cls: "" },
+  { left: "70%", delay: "3.4s", dur: "11s", size: 2, cls: "rs2-particle-extra" },
+  { left: "85%", delay: "1.5s", dur: "13s", size: 2, cls: "rs2-particle-extra" },
+  { left: "4%",  delay: "4.0s", dur: "14s", size: 2, cls: "rs2-particle-extra" },
 ]
 
-function DreamyEffect({ opacity }: { opacity: number }) {
+function SandDrift({ intensity }: { intensity: number }) {
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 30% 70%, rgba(80,20,160,0.18) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(40,60,200,0.12) 0%, transparent 50%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
+        background: "linear-gradient(0deg, rgba(110,55,0,0.18) 0%, rgba(85,38,0,0.09) 30%, transparent 65%)",
+        opacity: intensity,
       }} />
-      {SPARKLE_CONFIGS.map((s, i) => (
-        <div key={i} style={{
-          position: "fixed", left: s.left, bottom: s.bottom,
-          width: s.size, height: s.size, borderRadius: "50%",
-          background: "rgba(200,160,255,0.9)",
+      {SAND_MOTES.map((m, i) => (
+        <div key={i} className={`rs2-anim${m.cls ? " " + m.cls : ""}`} style={{
+          position: "fixed", bottom: "5%", left: m.left,
+          width: m.size, height: m.size, borderRadius: "50%",
+          background: "rgba(215,165,55,0.65)",
           pointerEvents: "none", zIndex: 2,
-          animationName: "rs-sparkle-float",
-          animationDuration: s.dur,
-          animationDelay: s.delay,
-          animationTimingFunction: "ease-out",
-          animationIterationCount: "infinite",
-          animationFillMode: "both",
+          animation: `rs2-drift-x ${m.dur} ease-in-out infinite`,
+          animationDelay: m.delay,
+          opacity: intensity * 0.8,
         }} />
       ))}
     </>
   )
 }
 
-function RainEffect({ theme, opacity }: { theme: EggTheme; opacity: number }) {
-  const isBatman = theme.key === "the-batman"
+function NoirRain({ intensity }: { intensity: number }) {
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: isBatman ? "rgba(0,5,20,0.18)" : "rgba(20,8,0,0.15)",
-        opacity, animation: "rs-egg-fadein 1.5s ease forwards",
+        background: "rgba(0,5,18,0.14)",
+        opacity: intensity,
       }} />
-      <div style={{
+      <div className="rs2-anim" style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2,
-        backgroundImage: `repeating-linear-gradient(
-          ${isBatman ? "173deg" : "168deg"},
-          transparent 0%, transparent 97%,
-          ${isBatman ? "rgba(80,120,200,0.05)" : "rgba(200,100,30,0.05)"} 97%,
-          ${isBatman ? "rgba(80,120,200,0.05)" : "rgba(200,100,30,0.05)"} 100%
-        )`,
-        backgroundSize: "3px 36px",
-        opacity, animation: "rs-rain-fall 1.8s linear infinite",
+        backgroundImage: "repeating-linear-gradient(173deg, transparent 0%, transparent 97%, rgba(70,110,190,0.045) 97%, rgba(70,110,190,0.045) 100%)",
+        backgroundSize: "3px 38px",
+        animation: "rs2-rain-fall 2s linear infinite",
+        opacity: intensity * 0.85,
       }} />
     </>
   )
 }
 
-function SpaceGlowEffect({ theme, opacity }: { theme: EggTheme; opacity: number }) {
-  const accent = theme.accentColor
-  const dimmed = accent.replace(/[\d.]+\)$/, "0.15)")
-  const dimmer = accent.replace(/[\d.]+\)$/, "0.08)")
+function NeonRain({ intensity }: { intensity: number }) {
   return (
-    <div style={{
+    <>
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+        background: "rgba(18,6,0,0.12)",
+        opacity: intensity,
+      }} />
+      <div className="rs2-anim" style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2,
+        backgroundImage: "repeating-linear-gradient(169deg, transparent 0%, transparent 96%, rgba(190,90,22,0.048) 96%, rgba(190,90,22,0.048) 100%)",
+        backgroundSize: "3px 34px",
+        animation: "rs2-rain-fall 1.6s linear infinite",
+        opacity: intensity * 0.9,
+      }} />
+      {/* Fog layer */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "30%",
+        background: "linear-gradient(0deg, rgba(100,50,0,0.12) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 3,
+        opacity: intensity * 0.7,
+      }} />
+    </>
+  )
+}
+
+function MusicalSpotlight({ intensity }: { intensity: number }) {
+  return (
+    <div className="rs2-anim" style={{
       position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-      background: `radial-gradient(ellipse at 60% 40%, ${dimmed} 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, ${dimmer} 0%, transparent 50%)`,
-      opacity, animation: "rs-space-pulse 8s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+      background: "radial-gradient(ellipse 55% 55% at 30% 70%, rgba(175,120,255,0.12) 0%, transparent 60%), radial-gradient(ellipse 45% 45% at 75% 25%, rgba(100,60,200,0.08) 0%, transparent 55%)",
+      backgroundSize: "200% 200%",
+      animation: "rs2-spot 10s ease-in-out infinite",
+      opacity: intensity,
     }} />
   )
 }
 
-// ── New effects ───────────────────────────────────────────────────────────────
-
-function DrumLightEffect({ opacity }: { opacity: number }) {
+function ArchitectureShadow({ intensity }: { intensity: number }) {
+  // Static diagonal lines suggesting levels — no animation
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 50% 100%, rgba(30,20,0,0.08) 0%, transparent 60%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
-      }} />
-      {/* Left beam — 1px, very faint */}
-      <div style={{
-        position: "fixed", top: 60, left: "18%", pointerEvents: "none", zIndex: 2,
-        width: 1, height: "30vh",
-        background: "linear-gradient(180deg, rgba(255,230,80,0.10) 0%, transparent 100%)",
-        transformOrigin: "top center",
-        transform: "rotate(-10deg)",
-        opacity, animation: "rs-drum-pulse 2.8s ease-in-out infinite",
-      }} />
-      {/* Center beam */}
-      <div style={{
-        position: "fixed", top: 60, left: "50%", pointerEvents: "none", zIndex: 2,
-        width: 1, height: "35vh",
-        background: "linear-gradient(180deg, rgba(255,240,100,0.09) 0%, transparent 100%)",
-        transformOrigin: "top center",
-        transform: "rotate(1deg)",
-        opacity, animation: "rs-drum-pulse 2.2s ease-in-out infinite 0.5s",
-      }} />
-      {/* Right beam */}
-      <div style={{
-        position: "fixed", top: 60, right: "20%", pointerEvents: "none", zIndex: 2,
-        width: 1, height: "28vh",
-        background: "linear-gradient(180deg, rgba(255,220,60,0.08) 0%, transparent 100%)",
-        transformOrigin: "top center",
-        transform: "rotate(9deg)",
-        opacity, animation: "rs-drum-pulse 2.5s ease-in-out infinite 1.1s",
-      }} />
-    </>
-  )
-}
-
-function GoldGrainEffect({ opacity }: { opacity: number }) {
-  return (
-    <>
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "linear-gradient(180deg, rgba(100,68,4,0.18) 0%, rgba(80,50,2,0.12) 40%, transparent 75%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
-      }} />
-      {/* Gold shimmer hairline below nav */}
-      <div style={{
-        position: "fixed", top: 60, left: 0, right: 0, height: 1,
-        background: "linear-gradient(90deg, transparent 0%, rgba(220,175,40,0.4) 30%, rgba(220,175,40,0.6) 50%, rgba(220,175,40,0.4) 70%, transparent 100%)",
-        pointerEvents: "none", zIndex: 44,
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
-      }} />
-      {/* Film grain noise layer */}
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2,
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E\")",
-        backgroundSize: "180px 180px",
-        opacity: opacity * 0.65,
-        animation: "rs-grain-shift 0.14s steps(1) infinite",
-        mixBlendMode: "overlay" as const,
-      }} />
-    </>
-  )
-}
-
-function RingGlowEffect({ opacity }: { opacity: number }) {
-  return (
-    <>
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 50% 50%, rgba(180,130,20,0.1) 0%, transparent 65%)",
-        opacity, animation: "rs-ring-breathe 6s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+        background: "linear-gradient(165deg, rgba(0,0,0,0.10) 0%, transparent 40%, rgba(0,0,0,0.06) 55%, transparent 70%)",
+        opacity: intensity,
       }} />
       <div style={{
-        position: "fixed", top: "50%", left: "50%",
-        width: 240, height: 240,
-        transform: "translate(-50%, -50%)",
-        borderRadius: "50%",
-        border: "0.5px solid rgba(220,170,40,0.12)",
-        boxShadow: "0 0 70px 24px rgba(180,130,20,0.05), inset 0 0 40px 10px rgba(180,130,20,0.04)",
+        position: "fixed", top: "30%", left: 0, right: 0, height: "0.5px",
+        background: "linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.045) 20%, rgba(255,255,255,0.045) 80%, transparent 95%)",
         pointerEvents: "none", zIndex: 2,
-        opacity, animation: "rs-ring-breathe 6s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+        opacity: intensity * 0.8,
+      }} />
+      <div style={{
+        position: "fixed", top: "58%", left: 0, right: 0, height: "0.5px",
+        background: "linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.03) 75%, transparent 90%)",
+        pointerEvents: "none", zIndex: 2,
+        opacity: intensity * 0.6,
       }} />
     </>
   )
 }
 
-function GlitchEffect({ opacity }: { opacity: number }) {
+function GlitchAccent({ intensity }: { intensity: number }) {
+  // Decorative line only — never on text or UI. Very infrequent flicker.
   return (
-    <div style={{
-      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-      background: "radial-gradient(ellipse at 70% 30%, rgba(200,40,80,0.07) 0%, transparent 55%)",
-      opacity, animation: "rs-egg-fadein 1.5s ease forwards",
+    <div className="rs2-anim" style={{
+      position: "fixed", top: 59, left: "5%", right: "5%", height: "0.5px",
+      background: "linear-gradient(90deg, transparent 0%, rgba(80,140,255,0.5) 40%, rgba(150,40,255,0.4) 60%, transparent 100%)",
+      pointerEvents: "none", zIndex: 3,
+      // 97-second loop: flicker at second 2–3 and again around second 50
+      animation: "rs2-glitch 97s linear infinite",
+      opacity: intensity * 0.9,
     }} />
   )
 }
 
-function ChemGlowEffect({ opacity }: { opacity: number }) {
+function ComicEdge({ intensity }: { intensity: number }) {
+  // Panel-like border lines at page edges — static
+  return (
+    <>
+      <div style={{
+        position: "fixed", top: 58, left: 0, right: 0, height: "0.5px",
+        background: "linear-gradient(90deg, transparent 3%, rgba(255,210,0,0.22) 20%, rgba(30,100,255,0.12) 50%, rgba(255,210,0,0.18) 80%, transparent 97%)",
+        pointerEvents: "none", zIndex: 3,
+        opacity: intensity * 0.9,
+      }} />
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "0.5px",
+        background: "linear-gradient(90deg, transparent 3%, rgba(30,100,255,0.12) 25%, rgba(255,210,0,0.16) 65%, transparent 97%)",
+        pointerEvents: "none", zIndex: 3,
+        opacity: intensity * 0.7,
+      }} />
+    </>
+  )
+}
+
+function OrderSlipTexture({ intensity }: { intensity: number }) {
+  // Faint ruled paper lines — static
   return (
     <div style={{
       position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-      background: "radial-gradient(ellipse at 40% 60%, rgba(0,200,220,0.1) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(0,160,180,0.07) 0%, transparent 45%)",
-      opacity, animation: "rs-space-pulse 7s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
+      backgroundImage: "repeating-linear-gradient(0deg, rgba(200,155,60,0.028) 0px, rgba(200,155,60,0.028) 1px, transparent 1px, transparent 28px)",
+      opacity: intensity,
     }} />
   )
 }
 
-function SterileEffect({ opacity }: { opacity: number }) {
+function PeriodicGrid({ intensity }: { intensity: number }) {
+  // Periodic-table grid — static CSS grid pattern
+  return (
+    <div style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+      backgroundImage: "repeating-linear-gradient(0deg, rgba(0,200,215,0.022) 0px, rgba(0,200,215,0.022) 1px, transparent 1px, transparent 52px), repeating-linear-gradient(90deg, rgba(0,200,215,0.022) 0px, rgba(0,200,215,0.022) 1px, transparent 1px, transparent 52px)",
+      opacity: intensity,
+    }} />
+  )
+}
+
+function LegalTexture({ intensity }: { intensity: number }) {
+  // Ruled paper lines — static
+  return (
+    <div style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+      backgroundImage: "repeating-linear-gradient(0deg, rgba(210,200,170,0.032) 0px, rgba(210,200,170,0.032) 1px, transparent 1px, transparent 24px)",
+      opacity: intensity,
+    }} />
+  )
+}
+
+const ELEMENT_GLYPHS = ["水", "火", "土", "氣", "↑", "→", "∿", "△"]
+const ELEMENT_POSITIONS = [
+  { left: "8%",  top: "20%", delay: "0s",   dur: "12s",  cls: "" },
+  { left: "78%", top: "55%", delay: "3.1s", dur: "14s",  cls: "" },
+  { left: "45%", top: "70%", delay: "1.5s", dur: "11s",  cls: "" },
+  { left: "20%", top: "65%", delay: "5.2s", dur: "13s",  cls: "rs2-particle-extra" },
+  { left: "62%", top: "30%", delay: "2.8s", dur: "10s",  cls: "rs2-particle-extra" },
+  { left: "88%", top: "42%", delay: "4.4s", dur: "15s",  cls: "rs2-particle-extra" },
+]
+
+function ElementParticles({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {ELEMENT_POSITIONS.map((p, i) => (
+        <div key={i} className={`rs2-anim${p.cls ? " " + p.cls : ""}`} style={{
+          position: "fixed", left: p.left, top: p.top,
+          color: "rgba(100,200,255,0.28)",
+          fontSize: 10, fontWeight: 300,
+          fontFamily: "serif",
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-drift-x ${p.dur} ease-in-out infinite`,
+          animationDelay: p.delay,
+          opacity: intensity * 0.75,
+          userSelect: "none",
+        }}>
+          {ELEMENT_GLYPHS[i % ELEMENT_GLYPHS.length]}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function SterileGrid({ intensity }: { intensity: number }) {
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "linear-gradient(180deg, rgba(180,215,230,0.05) 0%, transparent 50%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
+        background: "linear-gradient(180deg, rgba(175,210,225,0.04) 0%, transparent 45%)",
+        opacity: intensity,
       }} />
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2,
-        backgroundImage: "repeating-linear-gradient(0deg, rgba(160,215,230,0.025) 0px, rgba(160,215,230,0.025) 1px, transparent 1px, transparent 48px)",
-        opacity, animation: "rs-egg-fadein 2.5s ease forwards",
+        backgroundImage: "repeating-linear-gradient(0deg, rgba(155,210,225,0.022) 0px, rgba(155,210,225,0.022) 1px, transparent 1px, transparent 46px)",
+        opacity: intensity,
       }} />
     </>
   )
 }
 
-function TicketEffect({ opacity }: { opacity: number }) {
+function FrostFireEdge({ intensity }: { intensity: number }) {
   return (
-    <div style={{
-      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-      background: "radial-gradient(ellipse at 50% 0%, rgba(200,155,60,0.12) 0%, transparent 55%)",
-      opacity, animation: "rs-space-pulse 9s ease-in-out infinite, rs-egg-fadein 2s ease forwards",
-    }} />
+    <>
+      {/* Cool left edge */}
+      <div className="rs2-anim" style={{
+        position: "fixed", top: 0, bottom: 0, left: 0, width: "12%",
+        background: "linear-gradient(90deg, rgba(60,120,220,0.1) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 2,
+        animation: "rs2-frost 8s ease-in-out infinite",
+        opacity: intensity,
+      }} />
+      {/* Warm right edge */}
+      <div className="rs2-anim" style={{
+        position: "fixed", top: 0, bottom: 0, right: 0, width: "12%",
+        background: "linear-gradient(270deg, rgba(200,40,20,0.1) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 2,
+        animation: "rs2-frost 8s ease-in-out infinite 4s",
+        opacity: intensity,
+      }} />
+    </>
   )
 }
 
-function CorpGoldEffect({ opacity }: { opacity: number }) {
+const SPORE_CONFIGS = [
+  { left: "15%", delay: "0s",   dur: "9s",  size: 4, cls: "" },
+  { left: "40%", delay: "2.5s", dur: "11s", size: 3, cls: "" },
+  { left: "65%", delay: "0.9s", dur: "8s",  size: 4, cls: "" },
+  { left: "82%", delay: "4.1s", dur: "12s", size: 3, cls: "rs2-particle-extra" },
+  { left: "6%",  delay: "3.3s", dur: "10s", size: 3, cls: "rs2-particle-extra" },
+  { left: "55%", delay: "5.8s", dur: "14s", size: 3, cls: "rs2-particle-extra" },
+]
+
+function SporeParticles({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {SPORE_CONFIGS.map((s, i) => (
+        <div key={i} className={`rs2-anim${s.cls ? " " + s.cls : ""}`} style={{
+          position: "fixed", bottom: "8%", left: s.left,
+          width: s.size, height: s.size, borderRadius: "50%",
+          background: "rgba(60,160,80,0.55)",
+          boxShadow: "0 0 4px rgba(60,180,80,0.25)",
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-rise ${s.dur} ease-out infinite`,
+          animationDelay: s.delay,
+          opacity: intensity * 0.85,
+        }} />
+      ))}
+    </>
+  )
+}
+
+function ScienceGrid({ intensity }: { intensity: number }) {
+  // Dot-grid + faint formula fragments
   return (
     <>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
-        background: "radial-gradient(ellipse at 50% 0%, rgba(5,15,60,0.15) 0%, transparent 55%)",
-        opacity, animation: "rs-egg-fadein 2s ease forwards",
+        backgroundImage: "radial-gradient(rgba(30,200,182,0.08) 1px, transparent 1px)",
+        backgroundSize: "36px 36px",
+        opacity: intensity * 0.7,
       }} />
-      <div style={{
-        position: "fixed", top: 60, left: 0, right: 0, height: 1,
-        background: "linear-gradient(90deg, transparent 5%, rgba(200,165,40,0.5) 30%, rgba(200,165,40,0.7) 50%, rgba(200,165,40,0.5) 70%, transparent 95%)",
-        pointerEvents: "none", zIndex: 44,
-        opacity, animation: "rs-egg-fadein 1.5s ease forwards",
-      }} />
+      {/* Formula fragments */}
+      {(["E=mc²", "v=Δd/t", "F=ma"] as const).map((f, i) => (
+        <div key={f} style={{
+          position: "fixed",
+          left: `${20 + i * 28}%`,
+          top: `${55 + i * 8}%`,
+          color: "rgba(30,200,182,0.12)",
+          fontSize: 9,
+          fontFamily: "monospace",
+          pointerEvents: "none", zIndex: 2,
+          userSelect: "none",
+          opacity: intensity,
+        }}>
+          {f}
+        </div>
+      ))}
     </>
   )
 }
 
-// ── Secret toast ──────────────────────────────────────────────────────────────
+const EMBER_CONFIGS = [
+  { left: "25%", delay: "0s",    dur: "6s",  cls: "" },
+  { left: "60%", delay: "7.5s",  dur: "7s",  cls: "" },
+  { left: "42%", delay: "14s",   dur: "5s",  cls: "" },
+  { left: "78%", delay: "21s",   dur: "8s",  cls: "rs2-particle-extra" },
+  { left: "12%", delay: "28s",   dur: "6s",  cls: "rs2-particle-extra" },
+]
 
-function SecretToast({ message }: { message: string }) {
-  const [visible, setVisible] = useState(true)
-  useEffect(() => {
-    const t = window.setTimeout(() => setVisible(false), 4200)
-    return () => window.clearTimeout(t)
-  }, [])
-  if (!visible) return null
+function EmberSpark({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {EMBER_CONFIGS.map((e, i) => (
+        <div key={i} className={`rs2-anim${e.cls ? " " + e.cls : ""}`} style={{
+          position: "fixed", bottom: "15%", left: e.left,
+          width: 2, height: 2, borderRadius: "50%",
+          background: "rgba(255,120,20,0.85)",
+          boxShadow: "0 0 3px rgba(255,140,40,0.6)",
+          pointerEvents: "none", zIndex: 3,
+          animation: `rs2-rise ${e.dur} ease-out infinite`,
+          animationDelay: e.delay,
+          opacity: intensity * 0.9,
+        }} />
+      ))}
+    </>
+  )
+}
+
+const MAGIC_CONFIGS = [
+  { left: "22%", top: "30%", delay: "0s",    dur: "9s",  cls: "" },
+  { left: "68%", top: "45%", delay: "11s",   dur: "8s",  cls: "" },
+  { left: "45%", top: "62%", delay: "5s",    dur: "10s", cls: "" },
+  { left: "80%", top: "25%", delay: "18s",   dur: "7s",  cls: "rs2-particle-extra" },
+  { left: "10%", top: "55%", delay: "24s",   dur: "9s",  cls: "rs2-particle-extra" },
+]
+
+function MagicSpark({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {MAGIC_CONFIGS.map((m, i) => (
+        <div key={i} className={`rs2-anim${m.cls ? " " + m.cls : ""}`} style={{
+          position: "fixed", left: m.left, top: m.top,
+          width: 3, height: 3, borderRadius: "50%",
+          background: "rgba(255,220,80,0.9)",
+          boxShadow: "0 0 4px rgba(255,230,100,0.6)",
+          pointerEvents: "none", zIndex: 3,
+          animation: `rs2-sparkle ${m.dur} ease-in-out infinite`,
+          animationDelay: m.delay,
+          opacity: intensity * 0.85,
+        }} />
+      ))}
+    </>
+  )
+}
+
+function CrowShadow({ intensity }: { intensity: number }) {
+  // Static feather silhouette SVG at top-right corner
   return (
     <div style={{
-      position: "fixed",
-      bottom: "calc(env(safe-area-inset-bottom, 0px) + 130px)",
-      left: "50%",
-      transform: "translateX(-50%)",
-      zIndex: 90,
-      padding: "10px 18px",
-      borderRadius: 999,
-      border: "0.5px solid rgba(195,28,28,0.4)",
-      background: "rgba(10,4,4,0.92)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-      color: "rgba(255,255,255,0.88)",
-      fontSize: 12,
-      letterSpacing: "0.03em",
-      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-      pointerEvents: "none",
-      animation: "rs-egg-fadein 0.4s ease forwards",
-      whiteSpace: "nowrap",
+      position: "fixed", top: 60, right: 0,
+      width: 90, height: 80,
+      pointerEvents: "none", zIndex: 3,
+      opacity: intensity * 0.22,
     }}>
-      {message}
+      <svg viewBox="0 0 90 80" width="90" height="80">
+        {/* Simplified feather/crow shapes */}
+        <path d="M80 5 C60 15, 40 8, 20 25 C35 18, 55 20, 70 35 C58 25, 42 28, 30 45" fill="none" stroke="rgba(180,160,200,0.9)" strokeWidth="0.8"/>
+        <path d="M85 15 C70 22, 55 18, 40 32 C52 24, 65 26, 75 40" fill="none" stroke="rgba(180,160,200,0.7)" strokeWidth="0.6"/>
+        <path d="M88 28 C76 33, 64 30, 55 42" fill="none" stroke="rgba(180,160,200,0.5)" strokeWidth="0.5"/>
+        {/* Small crow silhouette */}
+        <path d="M55 2 C52 5 48 4 46 7 C50 6 54 7 56 10 C57 7 59 5 55 2 Z" fill="rgba(160,140,180,0.85)"/>
+        <path d="M46 7 L44 12 M56 10 L58 14" stroke="rgba(160,140,180,0.6)" strokeWidth="0.7"/>
+      </svg>
     </div>
   )
 }
 
-// ── Effect dispatcher ─────────────────────────────────────────────────────────
+function TypewriterTexture({ intensity }: { intensity: number }) {
+  // Aged paper feel: horizontal lines + dot grid
+  return (
+    <div style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+      backgroundImage: [
+        "repeating-linear-gradient(0deg, rgba(195,175,140,0.028) 0px, rgba(195,175,140,0.028) 1px, transparent 1px, transparent 22px)",
+        "radial-gradient(rgba(195,175,140,0.04) 1px, transparent 1px)",
+      ].join(","),
+      backgroundSize: "100% 100%, 18px 18px",
+      opacity: intensity,
+    }} />
+  )
+}
 
-function EffectRenderer({ theme, mode }: { theme: EggTheme; mode: ThemeMode }) {
-  const o = mode === "full" ? 1 : 0.55
-  const { effectType } = theme
+function WaveLightning({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {/* Wave at page base */}
+      <div className="rs2-anim" style={{
+        position: "fixed", bottom: 0, left: "-5%", right: "-5%", height: 3,
+        background: "linear-gradient(90deg, transparent 5%, rgba(60,130,255,0.22) 30%, rgba(80,180,255,0.32) 50%, rgba(60,130,255,0.22) 70%, transparent 95%)",
+        pointerEvents: "none", zIndex: 3, borderRadius: 2,
+        animation: "rs2-wave 6s ease-in-out infinite",
+        opacity: intensity,
+      }} />
+      {/* Rare lightning accent — vertical line, very infrequent */}
+      <div className="rs2-anim" style={{
+        position: "fixed", top: 0, bottom: 0, left: "50%", width: 1,
+        background: "linear-gradient(180deg, transparent 10%, rgba(120,200,255,0.18) 40%, rgba(120,200,255,0.25) 50%, rgba(120,200,255,0.18) 60%, transparent 90%)",
+        pointerEvents: "none", zIndex: 2,
+        animation: "rs2-lightning 40s linear infinite",
+        opacity: intensity * 0.9,
+      }} />
+    </>
+  )
+}
 
-  if (effectType === "spiderweb") return <SpiderWebCorners opacity={o * 0.25} />
-  if (effectType === "sand")      return <SandEffect opacity={o} />
-  if (effectType === "starfield") return <StarfieldEffect opacity={o} />
-  if (effectType === "comic")     return <ComicEffect opacity={o} />
-  if (effectType === "dreamy")    return <DreamyEffect opacity={o} />
-  if (effectType === "rain")      return <RainEffect theme={theme} opacity={o} />
-  if (effectType === "spaceglow") return <SpaceGlowEffect theme={theme} opacity={o} />
-  if (effectType === "drumlight") return <DrumLightEffect opacity={o} />
-  if (effectType === "goldgrain") return <GoldGrainEffect opacity={o} />
-  if (effectType === "ringglow")  return <RingGlowEffect opacity={o} />
-  if (effectType === "glitch")    return <GlitchEffect opacity={o} />
-  if (effectType === "chemglow")  return <ChemGlowEffect opacity={o} />
-  if (effectType === "sterile")   return <SterileEffect opacity={o} />
-  if (effectType === "ticket")    return <TicketEffect opacity={o} />
-  if (effectType === "corpgold")  return <CorpGoldEffect opacity={o} />
+// ─── Effect dispatcher ────────────────────────────────────────────────────────
+
+function EffectRenderer({ entry }: { entry: RegistryEntry }) {
+  const { effectKey, intensity } = entry
+
+  if (effectKey === "subtle_web")          return <SubtleWeb intensity={intensity} />
+  if (effectKey === "gold_shimmer")        return <GoldShimmer intensity={intensity} />
+  if (effectKey === "tempo_pulse")         return <TempoPulse intensity={intensity} />
+  if (effectKey === "starfield")           return <Starfield intensity={intensity} />
+  if (effectKey === "sand_drift")          return <SandDrift intensity={intensity} />
+  if (effectKey === "noir_rain")           return <NoirRain intensity={intensity} />
+  if (effectKey === "neon_rain")           return <NeonRain intensity={intensity} />
+  if (effectKey === "musical_spotlight")   return <MusicalSpotlight intensity={intensity} />
+  if (effectKey === "architecture_shadow") return <ArchitectureShadow intensity={intensity} />
+  if (effectKey === "glitch_accent")       return <GlitchAccent intensity={intensity} />
+  if (effectKey === "comic_edge")          return <ComicEdge intensity={intensity} />
+  if (effectKey === "order_slip_texture")  return <OrderSlipTexture intensity={intensity} />
+  if (effectKey === "periodic_grid")       return <PeriodicGrid intensity={intensity} />
+  if (effectKey === "legal_texture")       return <LegalTexture intensity={intensity} />
+  if (effectKey === "element_particles")   return <ElementParticles intensity={intensity} />
+  if (effectKey === "sterile_grid")        return <SterileGrid intensity={intensity} />
+  if (effectKey === "frost_fire_edge")     return <FrostFireEdge intensity={intensity} />
+  if (effectKey === "spore_particles")     return <SporeParticles intensity={intensity} />
+  if (effectKey === "science_grid")        return <ScienceGrid intensity={intensity} />
+  if (effectKey === "ember_spark")         return <EmberSpark intensity={intensity} />
+  if (effectKey === "magic_spark")         return <MagicSpark intensity={intensity} />
+  if (effectKey === "crow_shadow")         return <CrowShadow intensity={intensity} />
+  if (effectKey === "typewriter_texture")  return <TypewriterTexture intensity={intensity} />
+  if (effectKey === "wave_lightning")      return <WaveLightning intensity={intensity} />
   return null
 }
 
-// ── URL parser ────────────────────────────────────────────────────────────────
-
-function parseMediaFromPath(pathname: string): MediaForMatching | null {
-  const filmMatch = pathname.match(/^\/films\/(\d+)/)
-  if (filmMatch) return { id: filmMatch[1], media_type: "movie" }
-  const seriesMatch = pathname.match(/^\/series\/(\d+)/)
-  if (seriesMatch) return { id: seriesMatch[1], media_type: "tv" }
-  const bookMatch = pathname.match(/^\/books\/([^/]+)/)
-  if (bookMatch) return { id: bookMatch[1], media_type: "book" }
-  return null
-}
-
-// ── Root component ────────────────────────────────────────────────────────────
+// ─── Root component ───────────────────────────────────────────────────────────
 
 export default function DynamicThemeLayer() {
   const pathname = usePathname()
   const { isOpen: diaryOpen, media: diaryMedia } = useDiaryLog()
-  const [mode, setMode]           = useState<ThemeMode>("subtle")
-  const [secretMsg, setSecretMsg] = useState<string | null>(null)
-  const shownSecretRef            = useRef<Set<string>>(new Set())
+  const [mode, setMode] = useState<"full" | "subtle" | "off">("subtle")
+  const styleInjected = useRef(false)
 
+  // Sync ThemeMode from localStorage
   useEffect(() => {
     setMode(getThemeMode())
     function onStorage(e: StorageEvent) {
@@ -450,66 +623,58 @@ export default function DynamicThemeLayer() {
         if (v === "full" || v === "subtle" || v === "off") setMode(v)
       }
     }
-    window.addEventListener("storage", onStorage)
-    return () => window.removeEventListener("storage", onStorage)
-  }, [])
-
-  useEffect(() => {
     function onThemeChange() { setMode(getThemeMode()) }
+    window.addEventListener("storage", onStorage)
     window.addEventListener("rs-theme-change", onThemeChange)
-    return () => window.removeEventListener("rs-theme-change", onThemeChange)
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      window.removeEventListener("rs-theme-change", onThemeChange)
+    }
   }, [])
 
-  // Diary modal media takes priority over URL-derived media
-  const activeMedia: MediaForMatching | null =
+  // Inject keyframes once
+  useEffect(() => {
+    if (styleInjected.current) return
+    styleInjected.current = true
+    const style = document.createElement("style")
+    style.setAttribute("data-rs-egg", "1")
+    style.textContent = KEYFRAMES
+    document.head.appendChild(style)
+    return () => { style.remove(); styleInjected.current = false }
+  }, [])
+
+  // Resolve active media from diary modal (title available) or URL
+  const activeMedia: { id: string; mediaType: "movie" | "tv" | "book" | null; title: string | null } | null =
     diaryOpen && diaryMedia
       ? {
-          id:         diaryMedia.media_id,
-          tmdb_id:    diaryMedia.tmdb_id,
-          media_id:   diaryMedia.media_id,
-          title:      diaryMedia.title,
-          media_type: diaryMedia.media_type,
+          id: String(diaryMedia.media_id ?? diaryMedia.tmdb_id ?? ""),
+          mediaType: diaryMedia.media_type as "movie" | "tv" | "book" | null,
+          title: diaryMedia.title ?? null,
         }
       : parseMediaFromPath(pathname)
 
-  const theme = activeMedia ? matchTheme(activeMedia) : null
+  // Match against the registry
+  const entry = activeMedia
+    ? matchRegistryEntry(activeMedia.id, activeMedia.mediaType, activeMedia.title)
+    : null
 
-  // Secret unlock tracking (Spider-Man: 5 distinct films → toast)
-  useEffect(() => {
-    if (!theme?.secretKey) return
-    const trackId = String(
-      activeMedia?.tmdb_id ?? activeMedia?.id ?? ""
-    )
-    if (!trackId) return
-
-    const { unlocked } = recordSecretView(theme.secretKey, trackId)
-    const key = `${theme.secretKey}-unlocked`
-
-    if (unlocked && !shownSecretRef.current.has(key)) {
-      shownSecretRef.current.add(key)
-      try {
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, "1")
-          setSecretMsg("🕸️ Web-Slinger — you've earned a hidden distinction.")
-          window.setTimeout(() => setSecretMsg(null), 5000)
-        }
-      } catch { /* ignore */ }
+  // Dev logging
+  if (process.env.NODE_ENV === "development" && activeMedia) {
+    if (entry) {
+      console.log(
+        `[EASTER EGG] ✓ match: "${entry.displayName}" → effect "${entry.effectKey}" at intensity ${entry.intensity}`,
+        { id: activeMedia.id, type: activeMedia.mediaType }
+      )
+    } else {
+      console.log(
+        "[EASTER EGG] no match for",
+        { id: activeMedia.id, type: activeMedia.mediaType, title: activeMedia.title }
+      )
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, diaryOpen])
-
-  if (mode === "off" || !theme) return null
-
-  // Effects are hidden behind the modal backdrop (z-index 75) when the diary
-  // is open — render only the toast (z-index 90) so it still appears above it.
-  if (diaryOpen) {
-    return secretMsg ? <SecretToast message={secretMsg} /> : null
   }
 
-  return (
-    <>
-      <EffectRenderer theme={theme} mode={mode} />
-      {secretMsg ? <SecretToast message={secretMsg} /> : null}
-    </>
-  )
+  // Kill switches: GLOBAL_KILL_SWITCH (code), ThemeMode "off" (user), no match
+  if (GLOBAL_KILL_SWITCH || mode === "off" || !entry || diaryOpen) return null
+
+  return <EffectRenderer entry={entry} />
 }
