@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import { matchRegistryEntry, GLOBAL_KILL_SWITCH, type RegistryEntry } from "@/lib/easter-eggs/registry"
 import { getThemeMode, THEME_MODE_KEY } from "@/lib/easterEggs"
-import { useDiaryLog } from "@/hooks/useDiaryLog"
 
 // ─── Global keyframes ─────────────────────────────────────────────────────────
 // Injected once. All animations use transform/opacity only — no layout props.
@@ -36,6 +35,12 @@ const KEYFRAMES = `
 `
 
 // ─── URL parser ───────────────────────────────────────────────────────────────
+// URL shapes produced by the routing helpers:
+//   Films:  /films/669893          (numeric TMDB ID — always this form)
+//   Series: /series/tmdb-95557     (TMDB-prefixed, from getSeriesHrefFromTmdbId)
+//           /series/invincible     (local-series slug, from getSeriesHrefFromRouteId)
+//           /series/95557          (bare numeric, rare edge case)
+//   Books:  /books/project-hail-mary (slug)
 
 type ActiveMedia = {
   id: string
@@ -43,19 +48,40 @@ type ActiveMedia = {
   title: string | null
 }
 
+function slugToTitle(slug: string): string {
+  return decodeURIComponent(slug).replace(/[-_]/g, " ").trim()
+}
+
+function stripTmdbPrefix(segment: string): { numericId: string | null; raw: string } {
+  if (/^\d+$/.test(segment)) return { numericId: segment, raw: segment }
+  if (/^tmdb-(\d+)$/.test(segment)) return { numericId: segment.slice(5), raw: segment }
+  return { numericId: null, raw: segment }
+}
+
 function parseMediaFromPath(pathname: string): ActiveMedia | null {
-  const filmMatch = pathname.match(/^\/films\/(\d+)/)
-  if (filmMatch) return { id: filmMatch[1], mediaType: "movie", title: null }
+  // Films — always /films/<numericId>
+  const filmMatch = pathname.match(/^\/films\/([^/?#]+)/)
+  if (filmMatch) {
+    const { numericId, raw } = stripTmdbPrefix(filmMatch[1])
+    return numericId
+      ? { id: numericId, mediaType: "movie", title: null }
+      : { id: raw, mediaType: "movie", title: slugToTitle(raw) }
+  }
 
-  const seriesMatch = pathname.match(/^\/series\/(\d+)/)
-  if (seriesMatch) return { id: seriesMatch[1], mediaType: "tv", title: null }
+  // Series — /series/tmdb-NNNN or /series/<slug> or /series/<numericId>
+  const seriesMatch = pathname.match(/^\/series\/([^/?#]+)/)
+  if (seriesMatch) {
+    const { numericId, raw } = stripTmdbPrefix(seriesMatch[1])
+    return numericId
+      ? { id: numericId, mediaType: "tv", title: null }
+      : { id: raw, mediaType: "tv", title: slugToTitle(raw) }
+  }
 
-  const bookMatch = pathname.match(/^\/books\/([^/]+)/)
+  // Books — always /books/<slug>
+  const bookMatch = pathname.match(/^\/books\/([^/?#]+)/)
   if (bookMatch) {
     const slug = decodeURIComponent(bookMatch[1])
-    // Infer title from slug for title-based matching
-    const inferredTitle = slug.replace(/[-_]/g, " ")
-    return { id: slug, mediaType: "book", title: inferredTitle }
+    return { id: slug, mediaType: "book", title: slugToTitle(slug) }
   }
 
   return null
@@ -610,7 +636,6 @@ function EffectRenderer({ entry }: { entry: RegistryEntry }) {
 
 export default function DynamicThemeLayer() {
   const pathname = usePathname()
-  const { isOpen: diaryOpen, media: diaryMedia } = useDiaryLog()
   const [mode, setMode] = useState<"full" | "subtle" | "off">("subtle")
   const styleInjected = useRef(false)
 
@@ -643,38 +668,46 @@ export default function DynamicThemeLayer() {
     return () => { style.remove(); styleInjected.current = false }
   }, [])
 
-  // Resolve active media from diary modal (title available) or URL
-  const activeMedia: { id: string; mediaType: "movie" | "tv" | "book" | null; title: string | null } | null =
-    diaryOpen && diaryMedia
-      ? {
-          id: String(diaryMedia.media_id ?? diaryMedia.tmdb_id ?? ""),
-          mediaType: diaryMedia.media_type as "movie" | "tv" | "book" | null,
-          title: diaryMedia.title ?? null,
-        }
-      : parseMediaFromPath(pathname)
+  // Active media is derived from the URL only — never from the diary modal.
+  // Effects must fire on page load, not on log/review actions.
+  const activeMedia = parseMediaFromPath(pathname)
 
-  // Match against the registry
   const entry = activeMedia
     ? matchRegistryEntry(activeMedia.id, activeMedia.mediaType, activeMedia.title)
     : null
 
-  // Dev logging
-  if (process.env.NODE_ENV === "development" && activeMedia) {
-    if (entry) {
-      console.log(
-        `[EASTER EGG] ✓ match: "${entry.displayName}" → effect "${entry.effectKey}" at intensity ${entry.intensity}`,
-        { id: activeMedia.id, type: activeMedia.mediaType }
-      )
+  // Dev logging — fires once per pathname change, exact format per spec
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return
+    const media = parseMediaFromPath(pathname)
+    if (!media) return
+    const match = matchRegistryEntry(media.id, media.mediaType, media.title)
+    const label = media.title ?? media.id
+    if (match) {
+      console.log(`[EASTER_EGG] matched ${match.displayName} -> ${match.effectKey}`)
     } else {
-      console.log(
-        "[EASTER EGG] no match for",
-        { id: activeMedia.id, type: activeMedia.mediaType, title: activeMedia.title }
-      )
+      console.log(`[EASTER_EGG] no match for ${label}`)
     }
-  }
+  }, [pathname])
 
-  // Kill switches: GLOBAL_KILL_SWITCH (code), ThemeMode "off" (user), no match
-  if (GLOBAL_KILL_SWITCH || mode === "off" || !entry || diaryOpen) return null
+  // Kill switches: GLOBAL_KILL_SWITCH (code-level), ThemeMode "off" (user-level), no match
+  if (GLOBAL_KILL_SWITCH || mode === "off" || !entry) return null
 
-  return <EffectRenderer entry={entry} />
+  return (
+    <>
+      <EffectRenderer entry={entry} />
+      {process.env.NODE_ENV === "development" && (
+        <div style={{
+          position: "fixed", bottom: 12, left: 12, zIndex: 9999,
+          background: "rgba(0,0,0,0.82)", color: "#6ee7b7",
+          fontSize: 10, fontFamily: "monospace",
+          padding: "4px 8px", borderRadius: 5,
+          border: "1px solid rgba(110,231,183,0.3)",
+          pointerEvents: "none", userSelect: "none",
+        }}>
+          Easter egg active: {entry.effectKey}
+        </div>
+      )}
+    </>
+  )
 }
