@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
 import { matchRegistryEntry, GLOBAL_KILL_SWITCH, type RegistryEntry } from "@/lib/easter-eggs/registry"
-import { getThemeMode, THEME_MODE_KEY } from "@/lib/easterEggs"
+import { useEasterEgg } from "./EasterEggProvider"
 
 // ─── Global keyframes ─────────────────────────────────────────────────────────
 // All animations use transform/opacity only — never properties that trigger layout.
@@ -23,6 +23,7 @@ const KEYFRAMES = `
 @keyframes rs2-sparkle   { 0%,100%{opacity:0;transform:scale(.4)} 12%,88%{opacity:1;transform:scale(1)} 50%{transform:scale(1.3)} }
 @keyframes rs2-rain-fall { from{background-position:0 0} to{background-position:0 44px} }
 @keyframes rs2-lightning { 0%,96%,100%{opacity:0} 97%{opacity:.28} 98%{opacity:.12} }
+@keyframes rs2-spin      { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
 
 /* Kill all motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
@@ -716,6 +717,252 @@ function WaveLightning({ intensity }: { intensity: number }) {
   )
 }
 
+// ── bat_glow ──────────────────────────────────────────────────────────────────
+
+function BatGlow({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {/* Faint searchlight cone — upper right */}
+      <div style={{
+        position: "fixed", top: 0, right: 0,
+        width: 260, height: 260,
+        background: "radial-gradient(ellipse at 85% 15%, rgba(108,118,148,0.18) 0%, rgba(68,78,100,0.10) 35%, transparent 65%)",
+        pointerEvents: "none", zIndex: 2,
+        opacity: intensity,
+      }} />
+      {/* Bat silhouette */}
+      <div style={{
+        position: "fixed", top: 30, right: 24,
+        pointerEvents: "none", zIndex: 3,
+        opacity: intensity * 0.28,
+      }}>
+        <svg viewBox="0 0 56 26" width="56" height="26">
+          <path d="M28 7 C21 2,7 5,2 13 C7 11,13 15,17 13 C19 17,23 19,28 20 C33 19,37 17,39 13 C43 15,49 11,54 13 C49 5,35 2,28 7 Z" fill="rgba(88,98,128,0.9)"/>
+          <ellipse cx="25" cy="10" rx="1.5" ry="1" fill="rgba(88,98,128,0.55)"/>
+          <ellipse cx="31" cy="10" rx="1.5" ry="1" fill="rgba(88,98,128,0.55)"/>
+        </svg>
+      </div>
+      {/* Dark smoke drift at base */}
+      <div className="rs2-anim" style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "14%",
+        background: "linear-gradient(0deg, rgba(8,8,20,0.24) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 1,
+        animation: "rs2-wave 18s ease-in-out infinite",
+        opacity: intensity,
+      }} />
+    </>
+  )
+}
+
+// ── inception_top ─────────────────────────────────────────────────────────────
+
+function InceptionTop({ intensity }: { intensity: number }) {
+  return (
+    <>
+      {/* Concentric dream rings — extremely faint */}
+      <div style={{
+        position: "fixed", bottom: "6%", right: "5%",
+        width: 100, height: 100,
+        background: [
+          "radial-gradient(circle, transparent 20%, rgba(180,160,255,0.07) 21%, rgba(180,160,255,0.07) 23%, transparent 24%)",
+          "radial-gradient(circle, transparent 38%, rgba(180,160,255,0.05) 39%, rgba(180,160,255,0.05) 41%, transparent 42%)",
+          "radial-gradient(circle, transparent 56%, rgba(180,160,255,0.04) 57%, rgba(180,160,255,0.04) 59%, transparent 60%)",
+        ].join(","),
+        pointerEvents: "none", zIndex: 2,
+        opacity: intensity,
+      }} />
+      {/* Spinning top silhouette */}
+      <div className="rs2-anim" style={{
+        position: "fixed", bottom: "9%", right: "7%",
+        width: 16, height: 16,
+        pointerEvents: "none", zIndex: 3,
+        opacity: intensity * 0.5,
+        animation: "rs2-spin 5s linear infinite",
+      }}>
+        <svg viewBox="0 0 16 16" width="16" height="16">
+          <polygon points="8,1 13,12 8,14 3,12" fill="rgba(192,172,255,0.82)"/>
+          <line x1="8" y1="14" x2="8" y2="16" stroke="rgba(192,172,255,0.68)" strokeWidth="1.5"/>
+        </svg>
+      </div>
+    </>
+  )
+}
+
+// ── soft_rain ─────────────────────────────────────────────────────────────────
+
+function SoftRain({ intensity }: { intensity: number }) {
+  return (
+    <div className="rs2-anim" style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+      backgroundImage: "repeating-linear-gradient(175deg, transparent 0%, transparent 97%, rgba(155,170,210,0.11) 97%, rgba(155,170,210,0.11) 100%)",
+      backgroundSize: "2px 26px",
+      animation: "rs2-rain-fall 2.5s linear infinite",
+      opacity: intensity,
+    }} />
+  )
+}
+
+// ── dust_storm ────────────────────────────────────────────────────────────────
+
+const DUST_MOTES = [
+  { left: "6%",  bottom: "10%", delay: "0s",   dur: "3.5s", size: 3 },
+  { left: "24%", bottom: "17%", delay: "0.6s", dur: "2.8s", size: 2 },
+  { left: "44%", bottom: "7%",  delay: "1.2s", dur: "4.0s", size: 3 },
+  { left: "65%", bottom: "14%", delay: "0.3s", dur: "3.2s", size: 2 },
+  { left: "84%", bottom: "20%", delay: "1.8s", dur: "3.8s", size: 3 },
+  { left: "35%", bottom: "28%", delay: "2.4s", dur: "5.0s", size: 2 },
+  { left: "58%", bottom: "32%", delay: "1.0s", dur: "4.5s", size: 2 },
+]
+
+function DustStorm({ intensity }: { intensity: number }) {
+  return (
+    <>
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "30%",
+        background: "linear-gradient(0deg, rgba(110,70,10,0.18) 0%, rgba(90,55,8,0.09) 50%, transparent 100%)",
+        pointerEvents: "none", zIndex: 1,
+        opacity: intensity,
+      }} />
+      {DUST_MOTES.map((m, i) => (
+        <div key={i} className="rs2-anim" style={{
+          position: "fixed", bottom: m.bottom, left: m.left,
+          width: m.size, height: m.size, borderRadius: "50%",
+          background: `rgba(${190 + i * 4},${126 + i * 3},${46 + i * 2},0.88)`,
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-drift-sand ${m.dur} ease-in-out infinite`,
+          animationDelay: m.delay,
+          opacity: intensity * 0.85,
+        }} />
+      ))}
+    </>
+  )
+}
+
+// ── compound_v ────────────────────────────────────────────────────────────────
+
+const COMPOUND_V_DROPS = [
+  { left: "14%", top: "22%", delay: "0s",   dur: "9.0s" },
+  { left: "74%", top: "48%", delay: "3.5s", dur: "8.0s" },
+  { left: "42%", top: "66%", delay: "1.8s", dur: "10.0s" },
+  { left: "88%", top: "32%", delay: "6.0s", dur: "8.5s" },
+  { left: "28%", top: "58%", delay: "2.2s", dur: "11.0s" },
+]
+
+function CompoundV({ intensity }: { intensity: number }) {
+  return (
+    <>
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+        background: "radial-gradient(ellipse at 50% 100%, rgba(0,70,190,0.10) 0%, transparent 55%)",
+        opacity: intensity,
+      }} />
+      {COMPOUND_V_DROPS.map((c, i) => (
+        <div key={i} className="rs2-anim" style={{
+          position: "fixed", left: c.left, top: c.top,
+          width: 4, height: 6, borderRadius: "50% 50% 55% 55%",
+          background: "rgba(30,112,255,0.90)",
+          boxShadow: "0 0 7px rgba(50,132,255,0.65), 0 0 14px rgba(30,100,255,0.28)",
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-sparkle ${c.dur} ease-in-out infinite`,
+          animationDelay: c.delay,
+          opacity: intensity * 0.88,
+        }} />
+      ))}
+    </>
+  )
+}
+
+// ── steam_burst ───────────────────────────────────────────────────────────────
+
+const STEAM_WISPS = [
+  { left: "18%", delay: "0s",   dur: "6.5s" },
+  { left: "52%", delay: "2.2s", dur: "7.5s" },
+  { left: "78%", delay: "1.1s", dur: "6.0s" },
+  { left: "35%", delay: "3.8s", dur: "8.0s" },
+]
+
+function SteamBurst({ intensity }: { intensity: number }) {
+  return (
+    <>
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "22%",
+        background: "linear-gradient(0deg, rgba(175,175,190,0.10) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 1,
+        opacity: intensity,
+      }} />
+      {STEAM_WISPS.map((s, i) => (
+        <div key={i} className="rs2-anim" style={{
+          position: "fixed", bottom: "12%", left: s.left,
+          width: 16, height: 22, borderRadius: "50%",
+          background: "radial-gradient(ellipse, rgba(210,210,228,0.22) 0%, transparent 70%)",
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-rise ${s.dur} ease-out infinite`,
+          animationDelay: s.delay,
+          opacity: intensity * 0.7,
+        }} />
+      ))}
+    </>
+  )
+}
+
+// ── fog_drift ─────────────────────────────────────────────────────────────────
+
+function FogDrift({ intensity }: { intensity: number }) {
+  return (
+    <>
+      <div className="rs2-anim" style={{
+        position: "fixed", bottom: 0, left: "-8%", right: "-8%", height: "26%",
+        background: "linear-gradient(0deg, rgba(115,110,105,0.24) 0%, rgba(95,90,85,0.14) 45%, transparent 100%)",
+        pointerEvents: "none", zIndex: 2,
+        animation: "rs2-wave 15s ease-in-out infinite",
+        opacity: intensity,
+      }} />
+      <div className="rs2-anim" style={{
+        position: "fixed", bottom: 0, left: "-6%", right: "-6%", height: "16%",
+        background: "linear-gradient(0deg, rgba(85,82,78,0.16) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 1,
+        animation: "rs2-wave 20s ease-in-out infinite reverse",
+        opacity: intensity,
+      }} />
+    </>
+  )
+}
+
+// ── gold_dust ─────────────────────────────────────────────────────────────────
+
+const GOLD_MOTES = [
+  { left: "11%", top: "19%", delay: "0s",   dur: "9.5s" },
+  { left: "67%", top: "43%", delay: "4.2s", dur: "8.5s" },
+  { left: "37%", top: "61%", delay: "1.8s", dur: "10.0s" },
+  { left: "84%", top: "27%", delay: "7.0s", dur: "9.0s"  },
+  { left: "24%", top: "52%", delay: "3.1s", dur: "11.0s" },
+  { left: "56%", top: "74%", delay: "5.6s", dur: "8.0s"  },
+]
+
+function GoldDust({ intensity }: { intensity: number }) {
+  return (
+    <>
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1,
+        background: "linear-gradient(180deg, rgba(185,148,22,0.08) 0%, transparent 55%)",
+        opacity: intensity,
+      }} />
+      {GOLD_MOTES.map((g, i) => (
+        <div key={i} className="rs2-anim" style={{
+          position: "fixed", left: g.left, top: g.top,
+          width: 3, height: 3, borderRadius: "50%",
+          background: "rgba(255,210,50,0.94)",
+          boxShadow: "0 0 5px rgba(255,200,28,0.60), 0 0 10px rgba(220,168,10,0.24)",
+          pointerEvents: "none", zIndex: 2,
+          animation: `rs2-sparkle ${g.dur} ease-in-out infinite`,
+          animationDelay: g.delay,
+          opacity: intensity * 0.88,
+        }} />
+      ))}
+    </>
+  )
+}
+
 // ─── Effect dispatcher ────────────────────────────────────────────────────────
 
 function EffectRenderer({ entry }: { entry: RegistryEntry }) {
@@ -745,6 +992,14 @@ function EffectRenderer({ entry }: { entry: RegistryEntry }) {
   if (effectKey === "crow_shadow")         return <CrowShadow intensity={intensity} />
   if (effectKey === "typewriter_texture")  return <TypewriterTexture intensity={intensity} />
   if (effectKey === "wave_lightning")      return <WaveLightning intensity={intensity} />
+  if (effectKey === "bat_glow")            return <BatGlow intensity={intensity} />
+  if (effectKey === "inception_top")       return <InceptionTop intensity={intensity} />
+  if (effectKey === "soft_rain")           return <SoftRain intensity={intensity} />
+  if (effectKey === "dust_storm")          return <DustStorm intensity={intensity} />
+  if (effectKey === "compound_v")          return <CompoundV intensity={intensity} />
+  if (effectKey === "steam_burst")         return <SteamBurst intensity={intensity} />
+  if (effectKey === "fog_drift")           return <FogDrift intensity={intensity} />
+  if (effectKey === "gold_dust")           return <GoldDust intensity={intensity} />
   return null
 }
 
@@ -752,25 +1007,8 @@ function EffectRenderer({ entry }: { entry: RegistryEntry }) {
 
 export default function DynamicThemeLayer() {
   const pathname = usePathname()
-  const [mode, setMode] = useState<"full" | "subtle" | "off">("subtle")
+  const { mode } = useEasterEgg()
   const styleInjected = useRef(false)
-
-  useEffect(() => {
-    setMode(getThemeMode())
-    function onStorage(e: StorageEvent) {
-      if (e.key === THEME_MODE_KEY && e.newValue) {
-        const v = e.newValue
-        if (v === "full" || v === "subtle" || v === "off") setMode(v)
-      }
-    }
-    function onThemeChange() { setMode(getThemeMode()) }
-    window.addEventListener("storage", onStorage)
-    window.addEventListener("rs-theme-change", onThemeChange)
-    return () => {
-      window.removeEventListener("storage", onStorage)
-      window.removeEventListener("rs-theme-change", onThemeChange)
-    }
-  }, [])
 
   // Inject keyframes once into document head; clean up on unmount
   useEffect(() => {

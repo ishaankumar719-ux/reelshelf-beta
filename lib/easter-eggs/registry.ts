@@ -1,7 +1,8 @@
 // ─── Easter Egg Registry ──────────────────────────────────────────────────────
-// Single source of truth for all Easter Egg mappings.
-// To add a new entry: append to REGISTRY below — no other code changes needed.
-// Kill switch: set GLOBAL_KILL_SWITCH = true to instantly disable every effect.
+// Single source of truth for all easter egg mappings.
+// Structure: { key, displayName, mediaType, tmdbIds?, titleMatch?, effectKey, intensity, enabled }
+// titleMatch entries are normalised substring matches — case-insensitive, punctuation-stripped.
+// Kill switch: flip GLOBAL_KILL_SWITCH to true to disable every effect instantly.
 
 export const GLOBAL_KILL_SWITCH = false
 
@@ -18,6 +19,10 @@ export type EffectKey =
   | "musical_spotlight"
   | "architecture_shadow"
   | "glitch_accent"
+  | "bat_glow"
+  | "inception_top"
+  | "soft_rain"
+  | "dust_storm"
   | "comic_edge"
   | "order_slip_texture"
   | "periodic_grid"
@@ -32,19 +37,26 @@ export type EffectKey =
   | "crow_shadow"
   | "typewriter_texture"
   | "wave_lightning"
+  | "compound_v"
+  | "steam_burst"
+  | "fog_drift"
+  | "gold_dust"
 
 export interface RegistryEntry {
   key: string
   displayName: string
   mediaType: "movie" | "tv" | "book"
+  /** TMDB numeric IDs — matched first, highest confidence */
   tmdbIds?: number[]
-  titleMatchers?: Array<{ value: string; exact: boolean }>
+  /** Normalised substring matches against the page title */
+  titleMatch?: string[]
   effectKey: EffectKey
-  intensity: number   // 0.0–1.0
+  /** 0.0–1.0 — base intensity; "subtle" mode uses this value directly */
+  intensity: number
   enabled: boolean
 }
 
-// ─── Utility ─────────────────────────────────────────────────────────────────
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function normalizeTitle(raw: string): string {
   return raw
@@ -62,7 +74,7 @@ function extractTmdbId(value: string | number | null | undefined): number | null
   return match ? parseInt(match[1], 10) : null
 }
 
-// ─── Match function ───────────────────────────────────────────────────────────
+// ─── Matcher ──────────────────────────────────────────────────────────────────
 
 export function matchRegistryEntry(
   id: string | number | null | undefined,
@@ -78,19 +90,13 @@ export function matchRegistryEntry(
     if (!entry.enabled) continue
     if (mediaType && entry.mediaType !== mediaType) continue
 
-    // TMDB ID exact match (highest confidence)
+    // TMDB ID exact match — highest confidence
     if (numericId && entry.tmdbIds?.includes(numericId)) return entry
 
-    // Title matcher
-    if (normalizedTitle && entry.titleMatchers) {
-      for (const matcher of entry.titleMatchers) {
-        const kw = normalizeTitle(matcher.value)
-        const hit = matcher.exact
-          ? normalizedTitle === kw ||
-            normalizedTitle.startsWith(kw + " ") ||
-            normalizedTitle.endsWith(" " + kw)
-          : normalizedTitle.includes(kw)
-        if (hit) return entry
+    // Normalised substring title match — fallback
+    if (normalizedTitle && entry.titleMatch) {
+      for (const kw of entry.titleMatch) {
+        if (normalizedTitle.includes(normalizeTitle(kw))) return entry
       }
     }
   }
@@ -98,7 +104,6 @@ export function matchRegistryEntry(
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
-// Extending: add one object here. No other file changes required.
 
 export const REGISTRY: RegistryEntry[] = [
 
@@ -109,12 +114,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Spider-Man / Spider-Verse",
     mediaType: "movie",
     tmdbIds: [557, 775, 49013, 102651, 102382, 315635, 429617, 634649, 324857, 569094],
-    titleMatchers: [
-      { value: "spider-man",   exact: false },
-      { value: "spiderman",    exact: false },
-      { value: "spider verse", exact: false },
-      { value: "spider-verse", exact: false },
-    ],
+    titleMatch: ["spider-man", "spiderman", "spider verse", "spider-verse"],
     effectKey: "subtle_web",
     intensity: 0.3,
     enabled: true,
@@ -125,7 +125,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Babylon",
     mediaType: "movie",
     tmdbIds: [615777, 669893],
-    titleMatchers: [{ value: "babylon", exact: true }],
+    titleMatch: ["babylon"],
     effectKey: "gold_shimmer",
     intensity: 0.35,
     enabled: true,
@@ -136,7 +136,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Whiplash",
     mediaType: "movie",
     tmdbIds: [244786],
-    titleMatchers: [{ value: "whiplash", exact: true }],
+    titleMatch: ["whiplash"],
     effectKey: "tempo_pulse",
     intensity: 0.3,
     enabled: true,
@@ -147,7 +147,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Interstellar",
     mediaType: "movie",
     tmdbIds: [157336],
-    titleMatchers: [{ value: "interstellar", exact: true }],
+    titleMatch: ["interstellar"],
     effectKey: "starfield",
     intensity: 0.35,
     enabled: true,
@@ -155,10 +155,10 @@ export const REGISTRY: RegistryEntry[] = [
 
   {
     key: "dune-film",
-    displayName: "Dune (Film)",
+    displayName: "Dune",
     mediaType: "movie",
     tmdbIds: [438631, 693134],
-    titleMatchers: [{ value: "dune", exact: false }],
+    titleMatch: ["dune"],
     effectKey: "sand_drift",
     intensity: 0.3,
     enabled: true,
@@ -169,7 +169,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "The Batman",
     mediaType: "movie",
     tmdbIds: [414906, 268, 364],
-    titleMatchers: [{ value: "the batman", exact: true }, { value: "batman", exact: false }],
+    titleMatch: ["the batman"],
     effectKey: "noir_rain",
     intensity: 0.3,
     enabled: true,
@@ -180,7 +180,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Blade Runner",
     mediaType: "movie",
     tmdbIds: [78, 335984],
-    titleMatchers: [{ value: "blade runner", exact: false }],
+    titleMatch: ["blade runner"],
     effectKey: "neon_rain",
     intensity: 0.3,
     enabled: true,
@@ -191,7 +191,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "La La Land",
     mediaType: "movie",
     tmdbIds: [313369],
-    titleMatchers: [{ value: "la la land", exact: true }],
+    titleMatch: ["la la land"],
     effectKey: "musical_spotlight",
     intensity: 0.3,
     enabled: true,
@@ -202,7 +202,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Parasite",
     mediaType: "movie",
     tmdbIds: [496243],
-    titleMatchers: [{ value: "parasite", exact: true }],
+    titleMatch: ["parasite"],
     effectKey: "architecture_shadow",
     intensity: 0.3,
     enabled: true,
@@ -212,11 +212,74 @@ export const REGISTRY: RegistryEntry[] = [
     key: "dark-knight",
     displayName: "The Dark Knight",
     mediaType: "movie",
-    tmdbIds: [155, 272, 49026],
-    titleMatchers: [
-      { value: "the dark knight", exact: false },
-      { value: "dark knight rises", exact: false },
-    ],
+    tmdbIds: [155, 49026],
+    titleMatch: ["dark knight"],
+    effectKey: "bat_glow",
+    intensity: 0.28,
+    enabled: true,
+  },
+
+  {
+    key: "inception",
+    displayName: "Inception",
+    mediaType: "movie",
+    tmdbIds: [27205],
+    titleMatch: ["inception"],
+    effectKey: "inception_top",
+    intensity: 0.25,
+    enabled: true,
+  },
+
+  {
+    key: "john-wick",
+    displayName: "John Wick",
+    mediaType: "movie",
+    tmdbIds: [245891, 267278, 343611, 614911],
+    titleMatch: ["john wick"],
+    effectKey: "soft_rain",
+    intensity: 0.22,
+    enabled: true,
+  },
+
+  {
+    key: "lotr-film",
+    displayName: "Lord of the Rings",
+    mediaType: "movie",
+    tmdbIds: [120, 121, 122],
+    titleMatch: ["lord of the rings", "fellowship of the ring", "two towers", "return of the king"],
+    effectKey: "ember_spark",
+    intensity: 0.28,
+    enabled: true,
+  },
+
+  {
+    key: "mad-max",
+    displayName: "Mad Max: Fury Road",
+    mediaType: "movie",
+    tmdbIds: [76341],
+    titleMatch: ["mad max", "fury road"],
+    effectKey: "dust_storm",
+    intensity: 0.28,
+    enabled: true,
+  },
+
+  {
+    key: "arrival",
+    displayName: "Arrival",
+    mediaType: "movie",
+    tmdbIds: [329865],
+    titleMatch: ["arrival"],
+    effectKey: "starfield",
+    intensity: 0.28,
+    enabled: true,
+  },
+
+  {
+    key: "fight-club",
+    displayName: "Fight Club",
+    mediaType: "movie",
+    tmdbIds: [550],
+    titleMatch: ["fight club"],
     effectKey: "glitch_accent",
     intensity: 0.25,
     enabled: true,
@@ -229,7 +292,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Invincible",
     mediaType: "tv",
     tmdbIds: [95557],
-    titleMatchers: [{ value: "invincible", exact: true }],
+    titleMatch: ["invincible"],
     effectKey: "comic_edge",
     intensity: 0.3,
     enabled: true,
@@ -240,7 +303,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "The Bear",
     mediaType: "tv",
     tmdbIds: [136315],
-    titleMatchers: [{ value: "the bear", exact: true }],
+    titleMatch: ["the bear"],
     effectKey: "order_slip_texture",
     intensity: 0.25,
     enabled: true,
@@ -251,7 +314,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Breaking Bad",
     mediaType: "tv",
     tmdbIds: [1396],
-    titleMatchers: [{ value: "breaking bad", exact: true }],
+    titleMatch: ["breaking bad"],
     effectKey: "periodic_grid",
     intensity: 0.25,
     enabled: true,
@@ -262,7 +325,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Better Call Saul",
     mediaType: "tv",
     tmdbIds: [60059],
-    titleMatchers: [{ value: "better call saul", exact: true }],
+    titleMatch: ["better call saul"],
     effectKey: "legal_texture",
     intensity: 0.25,
     enabled: true,
@@ -273,10 +336,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Avatar: The Last Airbender",
     mediaType: "tv",
     tmdbIds: [246, 209750],
-    titleMatchers: [
-      { value: "avatar the last airbender", exact: false },
-      { value: "last airbender",            exact: false },
-    ],
+    titleMatch: ["avatar the last airbender", "last airbender"],
     effectKey: "element_particles",
     intensity: 0.3,
     enabled: true,
@@ -287,7 +347,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Severance",
     mediaType: "tv",
     tmdbIds: [95396],
-    titleMatchers: [{ value: "severance", exact: true }],
+    titleMatch: ["severance"],
     effectKey: "sterile_grid",
     intensity: 0.2,
     enabled: true,
@@ -298,10 +358,7 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "Game of Thrones",
     mediaType: "tv",
     tmdbIds: [1399],
-    titleMatchers: [
-      { value: "game of thrones", exact: true },
-      { value: "house of the dragon", exact: true },
-    ],
+    titleMatch: ["game of thrones", "house of the dragon"],
     effectKey: "frost_fire_edge",
     intensity: 0.3,
     enabled: true,
@@ -312,9 +369,41 @@ export const REGISTRY: RegistryEntry[] = [
     displayName: "The Last of Us",
     mediaType: "tv",
     tmdbIds: [100088],
-    titleMatchers: [{ value: "the last of us", exact: true }],
+    titleMatch: ["last of us"],
     effectKey: "spore_particles",
     intensity: 0.3,
+    enabled: true,
+  },
+
+  {
+    key: "the-boys",
+    displayName: "The Boys",
+    mediaType: "tv",
+    tmdbIds: [76479],
+    titleMatch: ["the boys"],
+    effectKey: "compound_v",
+    intensity: 0.25,
+    enabled: true,
+  },
+
+  {
+    key: "attack-on-titan",
+    displayName: "Attack on Titan",
+    mediaType: "tv",
+    tmdbIds: [71914],
+    titleMatch: ["attack on titan", "shingeki no kyojin"],
+    effectKey: "steam_burst",
+    intensity: 0.25,
+    enabled: true,
+  },
+
+  {
+    key: "true-detective",
+    displayName: "True Detective",
+    mediaType: "tv",
+    titleMatch: ["true detective"],
+    effectKey: "fog_drift",
+    intensity: 0.28,
     enabled: true,
   },
 
@@ -324,10 +413,7 @@ export const REGISTRY: RegistryEntry[] = [
     key: "project-hail-mary",
     displayName: "Project Hail Mary",
     mediaType: "book",
-    titleMatchers: [
-      { value: "project hail mary", exact: true },
-      { value: "hail mary",         exact: false },
-    ],
+    titleMatch: ["project hail mary", "hail mary"],
     effectKey: "science_grid",
     intensity: 0.25,
     enabled: true,
@@ -337,7 +423,7 @@ export const REGISTRY: RegistryEntry[] = [
     key: "dune-book",
     displayName: "Dune (Book)",
     mediaType: "book",
-    titleMatchers: [{ value: "dune", exact: false }],
+    titleMatch: ["dune"],
     effectKey: "sand_drift",
     intensity: 0.3,
     enabled: true,
@@ -347,12 +433,7 @@ export const REGISTRY: RegistryEntry[] = [
     key: "hunger-games",
     displayName: "The Hunger Games",
     mediaType: "book",
-    titleMatchers: [
-      { value: "hunger games",          exact: false },
-      { value: "catching fire",         exact: true  },
-      { value: "mockingjay",            exact: true  },
-      { value: "ballad of songbirds",   exact: false },
-    ],
+    titleMatch: ["hunger games", "catching fire", "mockingjay", "ballad of songbirds"],
     effectKey: "ember_spark",
     intensity: 0.3,
     enabled: true,
@@ -362,16 +443,16 @@ export const REGISTRY: RegistryEntry[] = [
     key: "harry-potter",
     displayName: "Harry Potter",
     mediaType: "book",
-    titleMatchers: [
-      { value: "harry potter",          exact: false },
-      { value: "philosophers stone",    exact: false },
-      { value: "sorcerers stone",       exact: false },
-      { value: "chamber of secrets",    exact: false },
-      { value: "prisoner of azkaban",   exact: false },
-      { value: "goblet of fire",        exact: false },
-      { value: "order of the phoenix",  exact: false },
-      { value: "half blood prince",     exact: false },
-      { value: "deathly hallows",       exact: false },
+    titleMatch: [
+      "harry potter",
+      "philosophers stone",
+      "sorcerers stone",
+      "chamber of secrets",
+      "prisoner of azkaban",
+      "goblet of fire",
+      "order of the phoenix",
+      "half blood prince",
+      "deathly hallows",
     ],
     effectKey: "magic_spark",
     intensity: 0.3,
@@ -382,10 +463,7 @@ export const REGISTRY: RegistryEntry[] = [
     key: "six-of-crows",
     displayName: "Six of Crows",
     mediaType: "book",
-    titleMatchers: [
-      { value: "six of crows",     exact: true },
-      { value: "crooked kingdom",  exact: true },
-    ],
+    titleMatch: ["six of crows", "crooked kingdom"],
     effectKey: "crow_shadow",
     intensity: 0.25,
     enabled: true,
@@ -395,16 +473,16 @@ export const REGISTRY: RegistryEntry[] = [
     key: "agatha-christie",
     displayName: "Agatha Christie",
     mediaType: "book",
-    titleMatchers: [
-      { value: "and then there were none",      exact: true },
-      { value: "murder on the orient express",  exact: true },
-      { value: "death on the nile",             exact: true },
-      { value: "the abc murders",               exact: false },
-      { value: "evil under the sun",            exact: true },
-      { value: "roger ackroyd",                 exact: false },
-      { value: "a murder is announced",         exact: true },
-      { value: "crooked house",                 exact: true },
-      { value: "agatha christie",               exact: false },
+    titleMatch: [
+      "agatha christie",
+      "and then there were none",
+      "murder on the orient express",
+      "death on the nile",
+      "abc murders",
+      "evil under the sun",
+      "roger ackroyd",
+      "murder is announced",
+      "crooked house",
     ],
     effectKey: "typewriter_texture",
     intensity: 0.2,
@@ -415,19 +493,50 @@ export const REGISTRY: RegistryEntry[] = [
     key: "percy-jackson",
     displayName: "Percy Jackson",
     mediaType: "book",
-    titleMatchers: [
-      { value: "percy jackson",         exact: false },
-      { value: "the lightning thief",   exact: true  },
-      { value: "sea of monsters",       exact: true  },
-      { value: "titans curse",          exact: false },
-      { value: "battle of the labyrinth",exact: false},
-      { value: "the last olympian",     exact: true  },
-      { value: "the lost hero",         exact: true  },
-      { value: "son of neptune",        exact: true  },
-      { value: "heroes of olympus",     exact: false },
+    titleMatch: [
+      "percy jackson",
+      "the lightning thief",
+      "sea of monsters",
+      "titans curse",
+      "battle of the labyrinth",
+      "the last olympian",
+      "the lost hero",
+      "son of neptune",
+      "heroes of olympus",
     ],
     effectKey: "wave_lightning",
     intensity: 0.3,
+    enabled: true,
+  },
+
+  {
+    key: "lotr-book",
+    displayName: "Lord of the Rings (Book)",
+    mediaType: "book",
+    titleMatch: [
+      "lord of the rings",
+      "fellowship of the ring",
+      "two towers",
+      "return of the king",
+      "silmarillion",
+    ],
+    effectKey: "ember_spark",
+    intensity: 0.28,
+    enabled: true,
+  },
+
+  {
+    key: "hobbit",
+    displayName: "The Hobbit",
+    mediaType: "book",
+    titleMatch: [
+      "the hobbit",
+      "unexpected journey",
+      "desolation of smaug",
+      "battle of the five armies",
+    ],
+    effectKey: "gold_dust",
+    intensity: 0.28,
     enabled: true,
   },
 ]
