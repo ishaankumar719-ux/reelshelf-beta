@@ -124,7 +124,7 @@ export const REGISTRY: RegistryEntry[] = [
     key: "babylon",
     displayName: "Babylon",
     mediaType: "movie",
-    tmdbIds: [669893],
+    tmdbIds: [615777, 669893],
     titleMatchers: [{ value: "babylon", exact: true }],
     effectKey: "gold_shimmer",
     intensity: 0.35,
