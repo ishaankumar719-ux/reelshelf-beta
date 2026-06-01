@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/AuthProvider"
+import { getTVSeasonDetails } from "@/lib/tmdb"
+import Image from "next/image"
 
 type EpisodeEntry = {
   season_number: number | null
@@ -19,6 +21,11 @@ type ProgressState = {
   lastWatched: EpisodeEntry | null
 }
 
+type EpisodeDetail = {
+  title: string
+  stillPath: string | null
+}
+
 function fmtDate(iso: string | null): string {
   if (!iso) return ""
   try {
@@ -30,19 +37,20 @@ export default function TVProgressModule({
   tmdbId,
   seriesId,
   totalEpisodes,
-  seasonBrowserId,
+  seasonBrowserId = "season-browser",
 }: {
   tmdbId: number
   seriesId: string
   totalEpisodes: number
-  /** DOM id of the SeasonBrowser section to scroll to on "Continue" */
   seasonBrowserId?: string
 }) {
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [progress, setProgress] = useState<ProgressState | null>(null)
+  const [episodeDetail, setEpisodeDetail] = useState<EpisodeDetail | null>(null)
 
+  // Load diary-based episode progress
   useEffect(() => {
     if (!user?.id || totalEpisodes < 1) return
     const client = createClient()
@@ -68,6 +76,23 @@ export default function TVProgressModule({
       })
   }, [user?.id, tmdbId, seriesId, totalEpisodes])
 
+  // Fetch episode title + still_path from TMDB once we know the last watched S+E
+  // still_path is not stored in diary_entries — TMDB is the only source
+  useEffect(() => {
+    const lw = progress?.lastWatched
+    if (!lw?.season_number || !lw?.episode_number) return
+    getTVSeasonDetails(tmdbId, lw.season_number).then((data) => {
+      if (!data) return
+      const ep = data.episodes.find((e) => e.episode_number === lw.episode_number)
+      if (ep) {
+        setEpisodeDetail({
+          title: ep.name || `Episode ${lw.episode_number}`,
+          stillPath: ep.still_path ?? null,
+        })
+      }
+    })
+  }, [tmdbId, progress?.lastWatched?.season_number, progress?.lastWatched?.episode_number])
+
   if (!user || !progress || progress.watchedCount === 0) return null
 
   const pct = Math.min(100, Math.round((progress.watchedCount / progress.totalEpisodes) * 100))
@@ -77,10 +102,15 @@ export default function TVProgressModule({
 
   function handleContinue() {
     if (!hasLast || !lastWatched) return
-    const target = seasonBrowserId ? document.getElementById(seasonBrowserId) : null
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" })
+    const sn = lastWatched.season_number
+    const en = lastWatched.episode_number
+    // Push URL params so SeasonBrowser auto-opens the episode
+    if (sn && en) {
+      router.push(`${pathname}?resume-s=${sn}&resume-e=${en}`, { scroll: false })
     }
+    setTimeout(() => {
+      document.getElementById(seasonBrowserId)?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 60)
   }
 
   return (
@@ -93,7 +123,7 @@ export default function TVProgressModule({
       flexDirection: "column",
       gap: 16,
     }}>
-      {/* Header */}
+      {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <p style={{
@@ -115,7 +145,8 @@ export default function TVProgressModule({
           color: isComplete ? "#1D9E75" : "rgba(255,255,255,0.55)",
           fontVariantNumeric: "tabular-nums",
         }}>
-          {pct}%{isComplete && <span style={{ fontSize: 12, marginLeft: 6, letterSpacing: "0.08em" }}>Complete</span>}
+          {pct}%
+          {isComplete && <span style={{ fontSize: 12, marginLeft: 6, letterSpacing: "0.08em" }}>Complete</span>}
         </p>
       </div>
 
@@ -135,14 +166,33 @@ export default function TVProgressModule({
       {/* Continue Watching */}
       {hasLast && !isComplete && (
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 14, flexWrap: "wrap",
+          display: "flex", alignItems: "center", gap: 14,
           padding: "14px 16px",
           borderRadius: 14,
           border: "1px solid rgba(255,255,255,0.06)",
           background: "rgba(255,255,255,0.025)",
+          flexWrap: "wrap",
         }}>
-          <div>
+          {/* Episode still thumbnail — fetched from TMDB (not in diary schema) */}
+          {episodeDetail?.stillPath && (
+            <div style={{
+              position: "relative", flexShrink: 0,
+              width: 96, aspectRatio: "16/9",
+              borderRadius: 8, overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.04)",
+            }}>
+              <Image
+                src={`https://image.tmdb.org/t/p/w300${episodeDetail.stillPath}`}
+                alt={episodeDetail.title}
+                fill
+                sizes="96px"
+                style={{ objectFit: "cover" }}
+              />
+            </div>
+          )}
+
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
               margin: 0, fontSize: 10, fontWeight: 600,
               letterSpacing: "0.20em", textTransform: "uppercase",
@@ -150,19 +200,16 @@ export default function TVProgressModule({
             }}>
               Continue watching
             </p>
-            <p style={{ margin: "5px 0 0", fontSize: 14, color: "rgba(255,255,255,0.80)" }}>
-              S{lastWatched!.season_number} E{lastWatched!.episode_number}
-              {lastWatched!.rating != null && (
-                <span style={{ marginLeft: 10, fontSize: 12, color: "rgba(255,255,255,0.36)" }}>
-                  {lastWatched!.rating.toFixed(1)} / 10
-                </span>
-              )}
+            <p style={{ margin: "4px 0 0", fontSize: 14, color: "rgba(255,255,255,0.82)", lineHeight: 1.3 }}>
+              {episodeDetail?.title
+                ? `S${lastWatched!.season_number} E${lastWatched!.episode_number} — ${episodeDetail.title}`
+                : `S${lastWatched!.season_number} E${lastWatched!.episode_number}`
+              }
             </p>
-            {fmtDate(lastWatched!.watched_date ?? lastWatched!.saved_at) && (
-              <p style={{ margin: "3px 0 0", fontSize: 11, color: "rgba(255,255,255,0.26)" }}>
-                Last watched {fmtDate(lastWatched!.watched_date ?? lastWatched!.saved_at)}
-              </p>
-            )}
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.26)" }}>
+              {lastWatched!.rating != null && `Rated ${lastWatched!.rating.toFixed(1)} · `}
+              {fmtDate(lastWatched!.watched_date ?? lastWatched!.saved_at)}
+            </p>
           </div>
 
           <button
@@ -177,6 +224,7 @@ export default function TVProgressModule({
               cursor: "pointer",
               transition: "background 0.14s ease",
               whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.12)" }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.07)" }}
@@ -188,7 +236,7 @@ export default function TVProgressModule({
 
       {isComplete && (
         <p style={{ margin: 0, fontSize: 13, color: "rgba(29,158,117,0.80)", letterSpacing: "0.04em" }}>
-          You've watched every episode. ✓
+          You&apos;ve watched every episode. ✓
         </p>
       )}
     </div>

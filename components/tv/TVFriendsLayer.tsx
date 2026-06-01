@@ -130,6 +130,15 @@ export default function TVFriendsLayer({
   const watching = data.friends.filter((f) => f.status === "watching")
   const finished = data.friends.filter((f) => f.status === "finished")
 
+  // Aggregated friends rating — from friends who have rated the show
+  const friendsWithRating = data.friends.filter((f) => f.rating != null)
+  const avgFriendsRating =
+    friendsWithRating.length >= 2
+      ? Number(
+          (friendsWithRating.reduce((s, f) => s + f.rating!, 0) / friendsWithRating.length).toFixed(1)
+        )
+      : null
+
   return (
     <section style={{
       padding: "22px 24px",
@@ -179,6 +188,29 @@ export default function TVFriendsLayer({
               </span>
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Aggregated friends rating — shown when 2+ friends have rated */}
+      {avgFriendsRating != null && (
+        <div style={{
+          padding: "12px 16px", borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "rgba(255,255,255,0.025)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.32)" }}>
+              Friends average
+            </p>
+            <p style={{ margin: "3px 0 0", fontSize: 22, fontWeight: 300, color: "rgba(255,255,255,0.88)", fontVariantNumeric: "tabular-nums" }}>
+              {avgFriendsRating}
+              <span style={{ fontSize: 14, color: "rgba(255,255,255,0.36)", fontWeight: 400 }}> / 10</span>
+            </p>
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.30)", textAlign: "right" }}>
+            {friendsWithRating.length} {friendsWithRating.length === 1 ? "rating" : "ratings"}
+          </p>
         </div>
       )}
 

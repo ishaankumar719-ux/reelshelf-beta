@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { getTVSeasonDetails } from "@/lib/tmdb"
 import { getAllShowReviews } from "@/src/lib/reviews"
 import ReviewForm from "@/src/components/reviews/ReviewForm"
 import type { Review } from "@/src/types/reviews"
-import { getPosterUrl } from "@/src/lib/tmdb-image"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,10 +259,22 @@ function EpisodeCard({
             {fmtDate(episode.airDate)}
             {episode.runtime ? ` · ${episode.runtime}m` : ""}
           </p>
+          {episode.overview && (
+            <p style={{
+              margin: "4px 0 0", fontSize: 11, lineHeight: 1.5,
+              color: "rgba(255,255,255,0.26)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}>
+              {episode.overview}
+            </p>
+          )}
         </div>
 
         <span style={{
-          flexShrink: 0, alignSelf: "center",
+          flexShrink: 0, alignSelf: "flex-start", marginTop: 4,
           fontSize: 11, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "rgba(255,255,255,0.32)",
         }}>
@@ -321,9 +333,18 @@ export default function SeasonBrowser({
   initialSeason: InitialSeason | null
 }) {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const realSeasons = basicSeasons.filter((s) => s.seasonNumber >= 1)
 
-  const firstNum = initialSeason?.seasonNumber ?? realSeasons[0]?.seasonNumber ?? 1
+  // Resume-navigation params set by TVProgressModule's Resume button
+  const resumeS = Number(searchParams.get("resume-s")) || 0
+  const resumeE = Number(searchParams.get("resume-e")) || 0
+
+  const firstNum = (resumeS > 0 ? resumeS : null)
+    ?? initialSeason?.seasonNumber
+    ?? realSeasons[0]?.seasonNumber
+    ?? 1
+
   const [selectedSeason, setSelectedSeason] = useState(firstNum)
   const [seasonCache, setSeasonCache] = useState<Map<number, EpisodeData[]>>(
     initialSeason ? new Map([[initialSeason.seasonNumber, initialSeason.episodes]]) : new Map()
@@ -331,6 +352,10 @@ export default function SeasonBrowser({
   const [loadingNum, setLoadingNum] = useState<number | null>(null)
   const [openEpKey, setOpenEpKey] = useState<string | null>(null)
   const [episodeReviews, setEpisodeReviews] = useState<Map<string, Review>>(new Map())
+  // Pending episode to open once its season is loaded
+  const [pendingEpKey, setPendingEpKey] = useState<string | null>(
+    resumeS > 0 && resumeE > 0 ? `${resumeS}:${resumeE}` : null
+  )
   const episodeListRef = useRef<HTMLDivElement>(null)
 
   // Load user episode reviews once
@@ -349,6 +374,44 @@ export default function SeasonBrowser({
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, tmdbId, seriesId])
+
+  // On mount: if a resume target exists and its season isn't cached yet, load it
+  useEffect(() => {
+    if (!pendingEpKey) return
+    const [s] = pendingEpKey.split(":").map(Number)
+    if (seasonCache.has(s)) return
+    setLoadingNum(s)
+    getTVSeasonDetails(tmdbId, s).then((data) => {
+      setSeasonCache((prev) => {
+        const next = new Map(prev)
+        next.set(s, data?.episodes.map((ep) => ({
+          id: ep.id,
+          name: ep.name || `Episode ${ep.episode_number}`,
+          overview: ep.overview || "",
+          airDate: ep.air_date || undefined,
+          episodeNumber: ep.episode_number,
+          runtime: ep.runtime ?? null,
+          stillPath: ep.still_path ?? null,
+        })) ?? [])
+        return next
+      })
+      setLoadingNum(null)
+      setSelectedSeason(s)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Once the pending season is in cache, open the episode and scroll
+  useEffect(() => {
+    if (!pendingEpKey) return
+    const [s] = pendingEpKey.split(":").map(Number)
+    if (!seasonCache.has(s)) return
+    setOpenEpKey(pendingEpKey)
+    setPendingEpKey(null)
+    setTimeout(() => {
+      episodeListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 80)
+  }, [pendingEpKey, seasonCache])
 
   async function switchSeason(num: number) {
     setSelectedSeason(num)

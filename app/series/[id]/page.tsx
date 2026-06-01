@@ -825,14 +825,19 @@ function SeriesDetailContent({
             max-width: 320px;
           }
         }
-        /* Horizontal-scroll season selector — hide native scrollbar */
+        /* Horizontal-scroll containers — hide native scrollbar, enable momentum + snap */
         .series-ep-season-scroll {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
+          scroll-snap-type: x proximity;
         }
         .series-ep-season-scroll::-webkit-scrollbar {
           display: none;
+        }
+        /* Snap each direct child (season cards, tab buttons) */
+        .series-ep-season-scroll > * {
+          scroll-snap-align: start;
         }
         /* Hide episode stills at very small widths */
         @media (max-width: 480px) {
@@ -841,6 +846,10 @@ function SeriesDetailContent({
         /* Ensure backdrop stays behind poster on single-column layout */
         @media (max-width: 900px) {
           .series-hero-backdrop { display: none; }
+        }
+        /* Compact hero poster on narrow viewports */
+        @media (max-width: 480px) {
+          .series-detail-poster { max-width: 160px !important; }
         }
       `}</style>
 
