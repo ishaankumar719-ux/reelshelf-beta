@@ -201,3 +201,140 @@ export async function fetchPublicReviewsForMedia(
     .slice(0, limit)
     .map((entry) => toMediaReview(entry, profileMap.get(entry.user_id)!))
 }
+
+// ─── Friends show progress ────────────────────────────────────────────────────
+
+export type FriendShowEntry = {
+  userId: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  /** "finished" = has show-scope entry; "watching" = has episode entries only */
+  status: "finished" | "watching"
+  lastSeasonNumber: number | null
+  rating: number | null
+  reviewSnippet: string | null
+}
+
+export type TopRatedEpisode = {
+  seasonNumber: number
+  episodeNumber: number
+  avgRating: number
+  ratingCount: number
+}
+
+export type FriendsShowProgress = {
+  friends: FriendShowEntry[]
+  topEpisode: TopRatedEpisode | null
+}
+
+export async function fetchFriendsForShow(
+  mediaIds: string[]
+): Promise<FriendsShowProgress> {
+  const empty: FriendsShowProgress = { friends: [], topEpisode: null }
+  if (mediaIds.length === 0) return empty
+
+  const client = createClient()
+  if (!client) return empty
+
+  const { data: { session } } = await client.auth.getSession()
+  if (!session) return empty
+
+  const { data: followData } = await client
+    .from("followers")
+    .select("following_id")
+    .eq("follower_id", session.user.id)
+
+  const followedIds = (followData ?? []).map((f) => f.following_id as string)
+  if (followedIds.length === 0) return empty
+
+  // Fetch all entries (un-deduped) for this show from followed users
+  const { data: rawEntries } = await client
+    .from("diary_entries")
+    .select("user_id, review_scope, season_number, episode_number, rating, review, saved_at")
+    .in("media_id", mediaIds)
+    .in("user_id", followedIds)
+    .in("review_scope", ["show", "title", "season", "episode"])
+    .order("saved_at", { ascending: false })
+    .limit(300)
+
+  if (!rawEntries?.length) return empty
+
+  type RawRow = {
+    user_id: string
+    review_scope: string
+    season_number: number | null
+    episode_number: number | null
+    rating: number | string | null
+    review: string | null
+    saved_at: string
+  }
+
+  const entries = rawEntries as RawRow[]
+  const allUserIds = Array.from(new Set(entries.map((e) => e.user_id)))
+
+  const { data: profiles } = await client
+    .from("profiles")
+    .select("id, username, display_name, avatar_url, is_public")
+    .in("id", allUserIds)
+
+  const profileMap = new Map(
+    (profiles ?? []).map((p) => [p.id, p as { id: string; username: string | null; display_name: string | null; avatar_url: string | null; is_public: boolean }])
+  )
+
+  // Group by user
+  const byUser = new Map<string, RawRow[]>()
+  for (const entry of entries) {
+    if (!byUser.has(entry.user_id)) byUser.set(entry.user_id, [])
+    byUser.get(entry.user_id)!.push(entry)
+  }
+
+  // Episode ratings across all users for top-episode calc
+  const episodeRatings = new Map<string, number[]>()
+  for (const entry of entries) {
+    if (entry.review_scope === "episode" && entry.rating != null && entry.season_number != null && entry.episode_number != null) {
+      const key = `${entry.season_number}:${entry.episode_number}`
+      if (!episodeRatings.has(key)) episodeRatings.set(key, [])
+      episodeRatings.get(key)!.push(Number(entry.rating))
+    }
+  }
+
+  // Build friend list
+  const friends: FriendShowEntry[] = []
+  for (const userId of Array.from(byUser.keys())) {
+    const userRows = byUser.get(userId)!
+    const profile = profileMap.get(userId)
+    if (!profile?.is_public) continue
+
+    const showRow = userRows.find((r) => r.review_scope === "show" || r.review_scope === "title")
+    const epRows = userRows.filter((r) => r.review_scope === "episode")
+    const lastEp = epRows[0]
+
+    friends.push({
+      userId,
+      username: profile.username,
+      displayName: profile.display_name,
+      avatarUrl: profile.avatar_url,
+      status: showRow ? "finished" : "watching",
+      lastSeasonNumber: lastEp?.season_number ?? null,
+      rating: showRow?.rating != null ? Number(showRow.rating) : null,
+      reviewSnippet: showRow?.review?.trim() || null,
+    })
+  }
+
+  // Find top episode (most highly rated with >= 2 ratings, else top-1)
+  let topEpisode: TopRatedEpisode | null = null
+  let bestScore = -1
+  for (const key of Array.from(episodeRatings.keys())) {
+    const ratings = episodeRatings.get(key)!
+    const avg = ratings.reduce((s, r) => s + r, 0) / ratings.length
+    const score = avg + (ratings.length > 1 ? 1 : 0)
+    if (score > bestScore) {
+      bestScore = score
+      const [sn, en] = key.split(":").map(Number)
+      topEpisode = { seasonNumber: sn, episodeNumber: en, avgRating: Number(avg.toFixed(1)), ratingCount: ratings.length }
+    }
+  }
+
+  return { friends, topEpisode }
+}

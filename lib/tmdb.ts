@@ -62,6 +62,15 @@ export type TMDBTVDetails = {
   episode_run_time?: number[] | null;
   genres?: Array<{ id: number; name: string }> | null;
   networks?: Array<{ id: number; name: string; logo_path: string | null }> | null;
+  seasons?: Array<{
+    id: number;
+    name: string;
+    overview: string;
+    poster_path: string | null;
+    season_number: number;
+    episode_count: number;
+    air_date: string | null;
+  }> | null;
   created_by?: Array<{
     name: string;
   }>;

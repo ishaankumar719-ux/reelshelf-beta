@@ -9,8 +9,9 @@ import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 import SeriesReviewPanel from "../../../components/SeriesReviewPanel";
-import SeriesProgress from "../../../components/tv/SeriesProgress";
-import TVSocialLayer from "../../../components/tv/TVSocialLayer";
+import SeasonBrowser, { type BasicSeason, type InitialSeason } from "../../../components/tv/SeasonBrowser";
+import TVProgressModule from "../../../components/tv/TVProgressModule";
+import TVFriendsLayer from "../../../components/tv/TVFriendsLayer";
 import TrackRecentView from "../../../components/TrackRecentView";
 import { getLocalSeriesByRouteId } from "../../../lib/localSeries";
 import {
@@ -762,7 +763,8 @@ function SeriesDetailContent({
   runtimeLabel,
   actionSeries,
   tmdbId,
-  seasons,
+  basicSeasons,
+  initialSeason,
   flatrate,
   rent,
   buy,
@@ -792,33 +794,24 @@ function SeriesDetailContent({
     voteAverage?: number;
   };
   tmdbId: number;
-  seasons: Array<{
-    seasonNumber: number;
-    name: string;
-    overview: string;
-    posterUrl?: string;
-    airDate?: string;
-    episodes: Array<{
-      id: number;
-      name: string;
-      overview: string;
-      airDate?: string;
-      episodeNumber: number;
-      runtime?: number | null;
-      stillPath?: string | null;
-    }>;
-  }>;
+  basicSeasons: BasicSeason[];
+  initialSeason: InitialSeason | null;
   flatrate: Provider[];
   rent: Provider[];
   buy: Provider[];
   recommendations: TMDBTVRecommendation[];
 }) {
-  const totalEpisodes = seasons.reduce((sum, s) => sum + s.episodes.length, 0);
-  const socialMediaIds = Array.from(new Set([
-    String(tmdbId),
-    actionSeries.id,
-    `tmdb-${tmdbId}`,
-  ]));
+  const totalEpisodes = basicSeasons.reduce((sum, s) => sum + s.episodeCount, 0);
+  const socialMediaIds = Array.from(new Set([String(tmdbId), actionSeries.id, `tmdb-${tmdbId}`]));
+  // Minimal season data for SeriesReviewPanel (show + season reviews only, no episodes)
+  const reviewPanelSeasons = basicSeasons.map((s) => ({
+    seasonNumber: s.seasonNumber,
+    name: s.name,
+    overview: s.overview,
+    posterUrl: s.posterUrl ?? undefined,
+    airDate: s.airDate ?? undefined,
+    episodeCount: s.episodeCount,
+  }));
 
   return (
     <main style={{ padding: "0 0 80px" }}>
@@ -869,33 +862,55 @@ function SeriesDetailContent({
         actionSeries={actionSeries}
       />
 
-      {/* Progress block — diary-based, suppresses if no data */}
+      {/* Progress + Continue Watching — diary-based, suppresses if no data */}
       {totalEpisodes > 0 && (
         <div style={{ marginTop: 20 }}>
-          <SeriesProgress
+          <TVProgressModule
             tmdbId={tmdbId}
             seriesId={actionSeries.id}
             totalEpisodes={totalEpisodes}
+            seasonBrowserId="season-browser"
           />
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gap: 26,
-          marginTop: 34,
-        }}
-      >
-        {seasons.length > 0 ? (
+      <div style={{ display: "grid", gap: 26, marginTop: 34 }}>
+        {/* Season browser — lazy-loads episodes per season */}
+        {basicSeasons.length > 0 && (
+          <section
+            id="season-browser"
+            style={{
+              padding: 24,
+              borderRadius: 26,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "linear-gradient(180deg, rgba(18,18,18,0.94) 0%, rgba(10,10,10,0.94) 100%)",
+            }}
+          >
+            <SeasonBrowser
+              tmdbId={tmdbId}
+              seriesId={actionSeries.id}
+              title={title}
+              year={actionSeries.year}
+              creator={creator}
+              basicSeasons={basicSeasons}
+              initialSeason={initialSeason}
+            />
+          </section>
+        )}
+
+        {/* Review panel — show-level + season-level reviews */}
+        {reviewPanelSeasons.length > 0 && (
           <SeriesReviewPanel
             tmdbId={tmdbId}
             series={actionSeries}
             creator={creator}
-            seasons={seasons}
+            seasons={reviewPanelSeasons}
           />
-        ) : null}
-        <TVSocialLayer mediaIds={socialMediaIds} title={title} />
+        )}
+
+        {/* Friends social layer */}
+        <TVFriendsLayer mediaIds={socialMediaIds} title={title} />
+
         <WatchSection flatrate={flatrate} rent={rent} buy={buy} />
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
@@ -925,37 +940,57 @@ function parseSeasonFallbackCount(label?: string) {
   return match ? Number(match[0]) : 0;
 }
 
-async function loadSeasonDetails(
-  tmdbId: number,
-  seasonCount: number
-) {
-  if (!seasonCount || seasonCount < 1) {
-    return [];
+/** Build basic season list from TMDBTVDetails.seasons (no episode data — no extra fetch). */
+function buildBasicSeasons(
+  details: TMDBTVDetails | null,
+  fallbackLabel?: string
+): BasicSeason[] {
+  if (details?.seasons?.length) {
+    return details.seasons
+      .filter((s) => s.season_number >= 1)
+      .map((s) => ({
+        seasonNumber: s.season_number,
+        name: s.name || `Season ${s.season_number}`,
+        overview: s.overview || "",
+        posterUrl: getPosterUrl(s.poster_path, "w342"),
+        airDate: s.air_date ?? null,
+        episodeCount: s.episode_count,
+      }));
   }
+  // Fallback: generate stubs from season count string (no extra fetch needed)
+  const count =
+    parseSeasonFallbackCount(fallbackLabel) ?? (details?.number_of_seasons ?? 0);
+  return Array.from({ length: count }, (_, i) => ({
+    seasonNumber: i + 1,
+    name: `Season ${i + 1}`,
+    overview: "",
+    posterUrl: null,
+    airDate: null,
+    episodeCount: 0,
+  }));
+}
 
-  const seasonNumbers = Array.from({ length: seasonCount }, (_, index) => index + 1);
-  const seasonResponses = await Promise.all(
-    seasonNumbers.map((seasonNumber) => getTVSeasonDetails(tmdbId, seasonNumber))
-  );
-
-  return seasonResponses
-    .filter((season): season is TMDBTVSeasonDetails => Boolean(season))
-    .map((season) => ({
-      seasonNumber: season.season_number,
-      name: season.name || `Season ${season.season_number}`,
-      overview: season.overview || "",
-      posterUrl: getPosterUrl(season.poster_path, "w500") || undefined,
-      airDate: season.air_date || undefined,
-      episodes: (season.episodes || []).map((episode) => ({
-        id: episode.id,
-        name: episode.name || `Episode ${episode.episode_number}`,
-        overview: episode.overview || "",
-        airDate: episode.air_date || undefined,
-        episodeNumber: episode.episode_number,
-        runtime: episode.runtime ?? null,
-        stillPath: episode.still_path ?? null,
-      })),
-    }));
+/** Fetch only the first real season's episode data (single TMDB call instead of N). */
+async function loadInitialSeason(
+  tmdbId: number,
+  basicSeasons: BasicSeason[]
+): Promise<InitialSeason | null> {
+  const firstNum = basicSeasons[0]?.seasonNumber;
+  if (!firstNum) return null;
+  const data = await getTVSeasonDetails(tmdbId, firstNum);
+  if (!data) return null;
+  return {
+    seasonNumber: firstNum,
+    episodes: data.episodes.map((ep) => ({
+      id: ep.id,
+      name: ep.name || `Episode ${ep.episode_number}`,
+      overview: ep.overview || "",
+      airDate: ep.air_date || undefined,
+      episodeNumber: ep.episode_number,
+      runtime: ep.runtime ?? null,
+      stillPath: ep.still_path ?? null,
+    })),
+  };
 }
 
 async function fetchSeriesTopCast(tmdbId: number): Promise<CastMember[]> {
@@ -1071,10 +1106,8 @@ export default async function SeriesDetailPage({
     const backdropUrl = getBackdropUrl(details?.backdrop_path ?? null, "w1280");
     const network = details?.networks?.[0]?.name ?? null;
     const status = details?.status ?? null;
-    const seasons = await loadSeasonDetails(
-      localShow.tmdbId,
-      seasonCount || parseSeasonFallbackCount(localShow.seasons)
-    );
+    const basicSeasons = buildBasicSeasons(details, localShow.seasons);
+    const initialSeason = await loadInitialSeason(localShow.tmdbId, basicSeasons);
 
     return (
       <SeriesDetailContent
@@ -1102,7 +1135,8 @@ export default async function SeriesDetailPage({
           voteAverage: undefined,
         }}
         tmdbId={localShow.tmdbId}
-        seasons={seasons}
+        basicSeasons={basicSeasons}
+        initialSeason={initialSeason}
         flatrate={flatrate}
         rent={rent}
         buy={buy}
@@ -1137,7 +1171,8 @@ export default async function SeriesDetailPage({
   const backdropUrl = getBackdropUrl(show.backdrop_path ?? null, "w1280");
   const network = show.networks?.[0]?.name ?? null;
   const status = show.status ?? null;
-  const seasons = await loadSeasonDetails(tmdbId, seasonCount || 0);
+  const basicSeasons = buildBasicSeasons(show);
+  const initialSeason = await loadInitialSeason(tmdbId, basicSeasons);
   const ukProviders = providers?.results?.GB;
   const flatrate = ukProviders?.flatrate || [];
   const rent = ukProviders?.rent || [];
@@ -1169,7 +1204,8 @@ export default async function SeriesDetailPage({
         voteAverage: undefined,
       }}
       tmdbId={tmdbId}
-      seasons={seasons}
+      basicSeasons={basicSeasons}
+      initialSeason={initialSeason}
       flatrate={flatrate}
       rent={rent}
       buy={buy}

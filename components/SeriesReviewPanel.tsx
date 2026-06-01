@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+// Note: Image import kept for season poster thumbnails in Seasons tab
 import { useAuth } from "./AuthProvider";
 import ReviewForm from "../src/components/reviews/ReviewForm";
 import { getAllShowReviews } from "../src/lib/reviews";
@@ -14,15 +15,8 @@ type SeriesReviewSeason = {
   overview: string;
   posterUrl?: string;
   airDate?: string;
-  episodes: Array<{
-    id: number;
-    name: string;
-    overview: string;
-    airDate?: string;
-    episodeNumber: number;
-    runtime?: number | null;
-    stillPath?: string | null;
-  }>;
+  /** Total episode count for this season (used for progress display) */
+  episodeCount?: number;
 };
 
 type SeriesActionItem = {
@@ -50,7 +44,7 @@ type ReviewBundle = {
   episodeReviews: Review[];
 };
 
-type ActiveTab = "show" | "seasons" | "episodes";
+type ActiveTab = "show" | "seasons";
 
 function formatDateLabel(value?: string) {
   if (!value) return "Date unknown";
@@ -89,14 +83,6 @@ function getSeasonReviewLookup(reviews: Review[]) {
   return new Map(reviews.map((review) => [review.season_number || 0, review]));
 }
 
-function getEpisodeReviewLookup(reviews: Review[]) {
-  return new Map(
-    reviews.map((review) => [
-      `${review.season_number || 0}:${review.episode_number || 0}`,
-      review,
-    ])
-  );
-}
 
 export default function SeriesReviewPanel({
   tmdbId,
@@ -115,26 +101,11 @@ export default function SeriesReviewPanel({
     episodeReviews: [],
   });
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const [selectedSeason, setSelectedSeason] = useState<number>(
-    Number(searchParams.get("s")) || seasons[0]?.seasonNumber || 1
-  );
   const [openSeason, setOpenSeason] = useState<number | null>(
     Number(searchParams.get("season")) || null
   );
-  const [openEpisode, setOpenEpisode] = useState<{
-    seasonNumber: number;
-    episodeNumber: number;
-  } | null>(
-    searchParams.get("s") && searchParams.get("e")
-      ? {
-          seasonNumber: Number(searchParams.get("s")),
-          episodeNumber: Number(searchParams.get("e")),
-        }
-      : null
-  );
 
   const seasonRefs = useRef(new Map<number, HTMLDivElement | null>());
-  const episodeRefs = useRef(new Map<string, HTMLDivElement | null>());
 
   useEffect(() => {
     let cancelled = false;
@@ -142,11 +113,7 @@ export default function SeriesReviewPanel({
     async function loadReviews() {
       if (!user?.id) {
         if (!cancelled) {
-          setReviewBundle({
-            showReview: null,
-            seasonReviews: [],
-            episodeReviews: [],
-          });
+          setReviewBundle({ showReview: null, seasonReviews: [], episodeReviews: [] });
           setLoadingReviews(false);
         }
         return;
@@ -164,135 +131,47 @@ export default function SeriesReviewPanel({
     }
 
     void loadReviews();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [series.id, tmdbId, user?.id]);
 
   useEffect(() => {
     const seasonParam = Number(searchParams.get("season")) || null;
-    const selectedSeasonParam = Number(searchParams.get("s")) || seasons[0]?.seasonNumber || 1;
-    const episodeParam = Number(searchParams.get("e")) || null;
-
-    setSelectedSeason(selectedSeasonParam);
     setOpenSeason(seasonParam);
-    setOpenEpisode(
-      selectedSeasonParam && episodeParam
-        ? {
-            seasonNumber: selectedSeasonParam,
-            episodeNumber: episodeParam,
-          }
-        : null
-    );
-
-    if (seasonParam) {
-      setActiveTab("seasons");
-    } else if (selectedSeasonParam && episodeParam) {
-      setActiveTab("episodes");
-    }
-  }, [searchParams, seasons]);
+    if (seasonParam) setActiveTab("seasons");
+  }, [searchParams]);
 
   useEffect(() => {
     if (openSeason) {
-      seasonRefs.current.get(openSeason)?.scrollIntoView({
-        block: "center",
-        behavior: "smooth",
-      });
+      seasonRefs.current.get(openSeason)?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }, [openSeason]);
-
-  useEffect(() => {
-    if (openEpisode) {
-      episodeRefs.current
-        .get(`${openEpisode.seasonNumber}:${openEpisode.episodeNumber}`)
-        ?.scrollIntoView({
-          block: "center",
-          behavior: "smooth",
-        });
-    }
-  }, [openEpisode]);
 
   const seasonReviewLookup = useMemo(
     () => getSeasonReviewLookup(reviewBundle.seasonReviews),
     [reviewBundle.seasonReviews]
   );
-  const episodeReviewLookup = useMemo(
-    () => getEpisodeReviewLookup(reviewBundle.episodeReviews),
-    [reviewBundle.episodeReviews]
-  );
-  const activeSeason = seasons.find((season) => season.seasonNumber === selectedSeason) || seasons[0];
 
-  function updateSearchParams(next: {
-    season?: number | null;
-    selectedSeason?: number | null;
-    episode?: number | null;
-  }) {
+  function updateSearchParams(next: { season?: number | null }) {
     const params = new URLSearchParams(searchParams.toString());
-
     if (typeof next.season === "number" && next.season > 0) {
       params.set("season", String(next.season));
     } else if (next.season === null) {
       params.delete("season");
     }
-
-    if (typeof next.selectedSeason === "number" && next.selectedSeason > 0) {
-      params.set("s", String(next.selectedSeason));
-    } else if (next.selectedSeason === null) {
-      params.delete("s");
-    }
-
-    if (typeof next.episode === "number" && next.episode > 0) {
-      params.set("e", String(next.episode));
-    } else if (next.episode === null) {
-      params.delete("e");
-    }
-
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   function handleShowReviewSaved(review: Review | null) {
-    setReviewBundle((current) => ({
-      ...current,
-      showReview: review,
-    }));
+    setReviewBundle((current) => ({ ...current, showReview: review }));
   }
 
   function handleSeasonReviewSaved(seasonNumber: number, review: Review | null) {
     setReviewBundle((current) => ({
       ...current,
       seasonReviews: review
-        ? [...current.seasonReviews.filter((entry) => entry.season_number !== seasonNumber), review]
-        : current.seasonReviews.filter((entry) => entry.season_number !== seasonNumber),
-    }));
-  }
-
-  function handleEpisodeReviewSaved(
-    seasonNumber: number,
-    episodeNumber: number,
-    review: Review | null
-  ) {
-    setReviewBundle((current) => ({
-      ...current,
-      episodeReviews: review
-        ? [
-            ...current.episodeReviews.filter(
-              (entry) =>
-                !(
-                  entry.season_number === seasonNumber &&
-                  entry.episode_number === episodeNumber
-                )
-            ),
-            review,
-          ]
-        : current.episodeReviews.filter(
-            (entry) =>
-              !(
-                entry.season_number === seasonNumber &&
-                entry.episode_number === episodeNumber
-              )
-          ),
+        ? [...current.seasonReviews.filter((e) => e.season_number !== seasonNumber), review]
+        : current.seasonReviews.filter((e) => e.season_number !== seasonNumber),
     }));
   }
 
@@ -334,7 +213,6 @@ export default function SeriesReviewPanel({
           {([
             { id: "show", label: "Show" },
             { id: "seasons", label: "Seasons" },
-            { id: "episodes", label: "Episodes" },
           ] as Array<{ id: ActiveTab; label: string }>).map((tab) => (
             <button
               key={tab.id}
@@ -406,11 +284,7 @@ export default function SeriesReviewPanel({
                     onClick={() => {
                       const nextOpen = isOpen ? null : season.seasonNumber;
                       setOpenSeason(nextOpen);
-                      updateSearchParams({
-                        season: nextOpen,
-                        selectedSeason: null,
-                        episode: null,
-                      });
+                      updateSearchParams({ season: nextOpen });
                     }}
                     className="flex w-full items-start gap-4 text-left"
                   >
@@ -444,16 +318,18 @@ export default function SeriesReviewPanel({
                         )}
                       </div>
                       <p className="mt-2 text-sm text-white/46">
-                        {season.episodes.length} episodes
+                        {season.episodeCount ?? 0} episodes
                         {season.airDate ? ` · ${season.airDate.slice(0, 4)}` : ""}
                         {averageRating ? ` · Avg episode score ${averageRating.toFixed(1)} / 10` : ""}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-white/54">
                         {season.overview || "No season overview available yet."}
                       </p>
-                      <p className="mt-3 text-xs uppercase tracking-[0.16em] text-white/34">
-                        Watched progress {watchedCount}/{season.episodes.length}
-                      </p>
+                      {(season.episodeCount ?? 0) > 0 && (
+                        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-white/34">
+                          Watched progress {watchedCount}/{season.episodeCount ?? 0}
+                        </p>
+                      )}
                     </div>
 
                     <span className="text-xl text-white/40">{isOpen ? "−" : "+"}</span>
@@ -483,183 +359,7 @@ export default function SeriesReviewPanel({
           </div>
         ) : null}
 
-        {activeTab === "episodes" && activeSeason ? (
-          <div className="grid gap-5">
-            {/* Horizontally scrolling season selector */}
-            <div className="series-ep-season-scroll" style={{ display: "flex", gap: 8, paddingBottom: 4 }}>
-              {seasons.map((season) => {
-                const isActive = selectedSeason === season.seasonNumber;
-                return (
-                  <button
-                    key={season.seasonNumber}
-                    type="button"
-                    onClick={() => {
-                      setSelectedSeason(season.seasonNumber);
-                      setOpenEpisode(null);
-                      updateSearchParams({
-                        season: null,
-                        selectedSeason: season.seasonNumber,
-                        episode: null,
-                      });
-                    }}
-                    style={{ flexShrink: 0, minHeight: 44 }}
-                    className={`inline-flex flex-col items-center justify-center rounded-[14px] px-4 py-2 text-left transition ${
-                      isActive
-                        ? "border border-white/12 bg-white text-black"
-                        : "border border-white/10 bg-white/[0.04] text-white/72"
-                    }`}
-                  >
-                    <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isActive ? "text-black" : "text-white/80"}`}>
-                      S{season.seasonNumber}
-                    </span>
-                    <span className={`mt-0.5 text-[10px] ${isActive ? "text-black/60" : "text-white/40"}`}>
-                      {season.episodes.length} eps{season.airDate ? ` · ${season.airDate.slice(0, 4)}` : ""}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid gap-3">
-              {activeSeason.episodes.map((episode) => {
-                const key = `${activeSeason.seasonNumber}:${episode.episodeNumber}`;
-                const review = episodeReviewLookup.get(key) || null;
-                const isOpen =
-                  openEpisode?.seasonNumber === activeSeason.seasonNumber &&
-                  openEpisode?.episodeNumber === episode.episodeNumber;
-
-                return (
-                  <div
-                    key={key}
-                    ref={(node) => {
-                      episodeRefs.current.set(key, node);
-                    }}
-                    className={`rounded-[20px] border ${
-                      isOpen
-                        ? "border-emerald-400/30 bg-emerald-400/[0.05]"
-                        : "border-white/8 bg-white/[0.03]"
-                    } p-4`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextOpen = isOpen
-                          ? null
-                          : {
-                              seasonNumber: activeSeason.seasonNumber,
-                              episodeNumber: episode.episodeNumber,
-                            };
-                        setOpenEpisode(nextOpen);
-                        updateSearchParams({
-                          season: null,
-                          selectedSeason: activeSeason.seasonNumber,
-                          episode: nextOpen?.episodeNumber ?? null,
-                        });
-                      }}
-                      className="flex w-full items-start gap-3 text-left"
-                      style={{ minHeight: 44 }}
-                    >
-                      {/* Still image thumbnail */}
-                      {episode.stillPath ? (
-                        <div className="series-episode-still" style={{
-                          position: "relative",
-                          width: 112,
-                          aspectRatio: "16 / 9",
-                          flexShrink: 0,
-                          borderRadius: 10,
-                          overflow: "hidden",
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.07)",
-                        }}>
-                          <Image
-                            src={`https://image.tmdb.org/t/p/w300${episode.stillPath}`}
-                            alt={episode.name}
-                            fill
-                            sizes="112px"
-                            style={{ objectFit: "cover" }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="series-episode-still" style={{
-                          width: 112,
-                          aspectRatio: "16 / 9",
-                          flexShrink: 0,
-                          borderRadius: 10,
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.06)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}>
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em" }}>
-                            E{episode.episodeNumber}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Episode metadata */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] uppercase tracking-[0.18em] text-white/34">
-                            E{episode.episodeNumber}
-                          </span>
-                          {review ? (
-                            <span className="inline-flex h-6 items-center rounded-full border border-white/12 bg-white/[0.06] px-2.5 text-[10px] uppercase tracking-[0.14em] text-white/64">
-                              {review.rating ? `${review.rating.toFixed(1)} / 10` : "Saved"}
-                            </span>
-                          ) : null}
-                        </div>
-                        <h3 className="mt-1 text-sm font-medium leading-snug text-white/90">{episode.name}</h3>
-                        <p className="mt-1 text-xs text-white/42">
-                          {formatDateLabel(episode.airDate)}
-                          {episode.runtime ? ` · ${episode.runtime}m` : ""}
-                        </p>
-                      </div>
-                      <span className="shrink-0 self-center text-xs uppercase tracking-[0.16em] text-white/35">
-                        {review ? "Edit" : "+ rate"}
-                      </span>
-                    </button>
-
-                    {isOpen ? (
-                      <div className="mt-4 border-t border-white/8 pt-4">
-                        <div className="mb-3">
-                          <p className="text-xs uppercase tracking-[0.16em] text-white/34">
-                            {episode.airDate ? formatDateLabel(episode.airDate) : "Air date unknown"}
-                          </p>
-                          {episode.overview ? (
-                            <p className="mt-2 text-sm leading-6 text-white/52">
-                              {episode.overview}
-                            </p>
-                          ) : null}
-                        </div>
-                        <ReviewForm
-                          mediaId={tmdbId}
-                          mediaType="series"
-                          scope="episode"
-                          seasonNumber={activeSeason.seasonNumber}
-                          episodeNumber={episode.episodeNumber}
-                          initialReview={review}
-                          onSaved={(savedReview) =>
-                            handleEpisodeReviewSaved(
-                              activeSeason.seasonNumber,
-                              episode.episodeNumber,
-                              savedReview
-                            )
-                          }
-                          compact
-                          title={`${series.title} • S${activeSeason.seasonNumber}E${episode.episodeNumber} · ${episode.name}`}
-                          year={episode.airDate ? Number(episode.airDate.slice(0, 4)) : series.year}
-                          creator={creator}
-                          aliases={[series.id, `tmdb-${tmdbId}`]}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+        {/* Episodes tab removed — handled by SeasonBrowser above */}
       </div>
     </section>
   );
