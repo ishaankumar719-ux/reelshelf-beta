@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
 import { MediaCard } from "../../../src/components/ui/MediaCard";
-import { getPosterUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
+import { getPosterUrl, getBackdropUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 import SeriesReviewPanel from "../../../components/SeriesReviewPanel";
+import SeriesProgress from "../../../components/tv/SeriesProgress";
+import TVSocialLayer from "../../../components/tv/TVSocialLayer";
 import TrackRecentView from "../../../components/TrackRecentView";
 import { getLocalSeriesByRouteId } from "../../../lib/localSeries";
 import {
@@ -84,9 +86,7 @@ function getEpisodeRuntimeLabel(runtime: number | null | undefined) {
 }
 
 function getGenreNames(details?: TMDBTVDetails | null) {
-  const genres = (
-    details as TMDBTVDetails & { genres?: Array<{ id?: number; name?: string }> }
-  )?.genres;
+  const genres = details?.genres;
 
   if (!Array.isArray(genres)) {
     return [];
@@ -460,6 +460,9 @@ function SeriesHero({
   overview,
   topCast,
   posterUrl,
+  backdropUrl,
+  network,
+  status,
   genres,
   seasonsLabel,
   runtimeLabel,
@@ -471,6 +474,9 @@ function SeriesHero({
   overview: string;
   topCast: CastMember[];
   posterUrl?: string;
+  backdropUrl?: string | null;
+  network?: string | null;
+  status?: string | null;
   genres: string[];
   seasonsLabel: string;
   runtimeLabel: string;
@@ -488,7 +494,37 @@ function SeriesHero({
 }) {
   const genreSummary = genres.length > 0 ? genres.slice(0, 3).join(" · ") : null;
 
+  function getStatusColor(s: string | null | undefined) {
+    if (!s) return "rgba(255,255,255,0.22)";
+    const lower = s.toLowerCase();
+    if (lower.includes("return") || lower.includes("production")) return "#1D9E75";
+    if (lower.includes("ended")) return "rgba(255,255,255,0.30)";
+    if (lower.includes("cancel")) return "rgba(200,60,60,0.75)";
+    return "rgba(255,255,255,0.28)";
+  }
+
   return (
+    <div style={{ position: "relative", marginBottom: 4 }}>
+      {/* Backdrop image — decorative, very subtle */}
+      {backdropUrl && (
+        <>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 28, overflow: "hidden", zIndex: 0,
+          }}>
+            <img
+              src={backdropUrl}
+              alt=""
+              aria-hidden="true"
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
+            />
+          </div>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 28, zIndex: 0,
+            background: "linear-gradient(to right, rgba(6,6,12,0.92) 0%, rgba(6,6,12,0.82) 40%, rgba(6,6,12,0.75) 100%)",
+          }} />
+        </>
+      )}
+
     <section
       className="series-detail-grid"
       style={{
@@ -496,6 +532,9 @@ function SeriesHero({
         gridTemplateColumns: "minmax(0, 320px) minmax(0, 1fr)",
         gap: 34,
         alignItems: "start",
+        position: "relative",
+        zIndex: 1,
+        padding: backdropUrl ? "28px 0" : 0,
       }}
     >
       <div
@@ -628,28 +667,38 @@ function SeriesHero({
 
           <p
             style={{
-              margin: "16px 0 0",
-              color: "#d1d5db",
-              fontSize: 17,
+              margin: "14px 0 0",
+              color: "rgba(209,213,219,0.82)",
+              fontSize: 15,
               lineHeight: 1.7,
               fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
             }}
           >
-            {year} · Created by {creator}
-            {genreSummary ? ` · ${genreSummary}` : ""}
+            {year}{creator ? ` · ${creator}` : ""}
+            {network ? ` · ${network}` : ""}
           </p>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 22,
-            }}
-          >
+          {/* Status + genre pills row */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 18 }}>
+            {status && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", height: 28, padding: "0 12px",
+                borderRadius: 999, fontSize: 11, letterSpacing: "0.08em",
+                border: "1px solid",
+                borderColor: getStatusColor(status) === "#1D9E75"
+                  ? "rgba(29,158,117,0.35)"
+                  : "rgba(255,255,255,0.10)",
+                color: getStatusColor(status),
+                background: getStatusColor(status) === "#1D9E75"
+                  ? "rgba(29,158,117,0.10)"
+                  : "rgba(255,255,255,0.04)",
+              }}>
+                {status}
+              </span>
+            )}
             <DetailPill label={seasonsLabel} />
             <DetailPill label={runtimeLabel} />
-            {genres.slice(0, 4).map((genre) => (
+            {genres.slice(0, 3).map((genre) => (
               <DetailPill key={genre} label={genre} />
             ))}
           </div>
@@ -694,6 +743,7 @@ function SeriesHero({
         </div>
       </div>
     </section>
+    </div>
   );
 }
 
@@ -704,6 +754,9 @@ function SeriesDetailContent({
   overview,
   topCast,
   posterUrl,
+  backdropUrl,
+  network,
+  status,
   genres,
   seasonsLabel,
   runtimeLabel,
@@ -721,6 +774,9 @@ function SeriesDetailContent({
   overview: string;
   topCast: CastMember[];
   posterUrl?: string;
+  backdropUrl?: string | null;
+  network?: string | null;
+  status?: string | null;
   genres: string[];
   seasonsLabel: string;
   runtimeLabel: string;
@@ -749,6 +805,7 @@ function SeriesDetailContent({
       airDate?: string;
       episodeNumber: number;
       runtime?: number | null;
+      stillPath?: string | null;
     }>;
   }>;
   flatrate: Provider[];
@@ -756,6 +813,13 @@ function SeriesDetailContent({
   buy: Provider[];
   recommendations: TMDBTVRecommendation[];
 }) {
+  const totalEpisodes = seasons.reduce((sum, s) => sum + s.episodes.length, 0);
+  const socialMediaIds = Array.from(new Set([
+    String(tmdbId),
+    actionSeries.id,
+    `tmdb-${tmdbId}`,
+  ]));
+
   return (
     <main style={{ padding: "0 0 80px" }}>
       <TrackRecentView item={actionSeries} />
@@ -764,27 +828,57 @@ function SeriesDetailContent({
           .series-detail-grid {
             grid-template-columns: 1fr !important;
           }
-
           .series-detail-poster {
             max-width: 320px;
           }
+        }
+        /* Horizontal-scroll season selector — hide native scrollbar */
+        .series-ep-season-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .series-ep-season-scroll::-webkit-scrollbar {
+          display: none;
+        }
+        /* Hide episode stills at very small widths */
+        @media (max-width: 480px) {
+          .series-episode-still { display: none !important; }
+        }
+        /* Ensure backdrop stays behind poster on single-column layout */
+        @media (max-width: 900px) {
+          .series-hero-backdrop { display: none; }
         }
       `}</style>
 
       <BackButton />
 
-        <SeriesHero
-          title={title}
-          year={year}
-          creator={creator}
-          overview={overview}
-          topCast={topCast}
-          posterUrl={posterUrl}
-          genres={genres}
+      <SeriesHero
+        title={title}
+        year={year}
+        creator={creator}
+        overview={overview}
+        topCast={topCast}
+        posterUrl={posterUrl}
+        backdropUrl={backdropUrl}
+        network={network}
+        status={status}
+        genres={genres}
         seasonsLabel={seasonsLabel}
         runtimeLabel={runtimeLabel}
         actionSeries={actionSeries}
       />
+
+      {/* Progress block — diary-based, suppresses if no data */}
+      {totalEpisodes > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <SeriesProgress
+            tmdbId={tmdbId}
+            seriesId={actionSeries.id}
+            totalEpisodes={totalEpisodes}
+          />
+        </div>
+      )}
 
       <div
         style={{
@@ -801,6 +895,7 @@ function SeriesDetailContent({
             seasons={seasons}
           />
         ) : null}
+        <TVSocialLayer mediaIds={socialMediaIds} title={title} />
         <WatchSection flatrate={flatrate} rent={rent} buy={buy} />
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
@@ -858,6 +953,7 @@ async function loadSeasonDetails(
         airDate: episode.air_date || undefined,
         episodeNumber: episode.episode_number,
         runtime: episode.runtime ?? null,
+        stillPath: episode.still_path ?? null,
       })),
     }));
 }
@@ -972,6 +1068,9 @@ export default async function SeriesDetailPage({
     const seasonCount = details?.number_of_seasons ?? null;
     const episodeRuntime = details?.episode_run_time?.[0] ?? null;
     const posterUrl = getPosterUrl(localShow.posterPath ?? localShow.poster, "w500");
+    const backdropUrl = getBackdropUrl(details?.backdrop_path ?? null, "w1280");
+    const network = details?.networks?.[0]?.name ?? null;
+    const status = details?.status ?? null;
     const seasons = await loadSeasonDetails(
       localShow.tmdbId,
       seasonCount || parseSeasonFallbackCount(localShow.seasons)
@@ -985,6 +1084,9 @@ export default async function SeriesDetailPage({
         overview={details?.overview || localShow.overview}
         topCast={topCast}
         posterUrl={posterUrl || undefined}
+        backdropUrl={backdropUrl}
+        network={network}
+        status={status}
         genres={genreNames}
         seasonsLabel={getSeasonLabel(seasonCount, localShow.seasons)}
         runtimeLabel={getEpisodeRuntimeLabel(episodeRuntime)}
@@ -1032,6 +1134,9 @@ export default async function SeriesDetailPage({
   const seasonCount = show.number_of_seasons ?? null;
   const episodeRuntime = show.episode_run_time?.[0] ?? null;
   const posterUrl = getPosterUrl(show.poster_path, "w500");
+  const backdropUrl = getBackdropUrl(show.backdrop_path ?? null, "w1280");
+  const network = show.networks?.[0]?.name ?? null;
+  const status = show.status ?? null;
   const seasons = await loadSeasonDetails(tmdbId, seasonCount || 0);
   const ukProviders = providers?.results?.GB;
   const flatrate = ukProviders?.flatrate || [];
@@ -1046,6 +1151,9 @@ export default async function SeriesDetailPage({
       overview={show.overview || "No overview available."}
       topCast={topCast}
       posterUrl={posterUrl || undefined}
+      backdropUrl={backdropUrl}
+      network={network}
+      status={status}
       genres={genreNames}
       seasonsLabel={getSeasonLabel(seasonCount)}
       runtimeLabel={getEpisodeRuntimeLabel(episodeRuntime)}

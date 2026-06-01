@@ -21,6 +21,7 @@ type SeriesReviewSeason = {
     airDate?: string;
     episodeNumber: number;
     runtime?: number | null;
+    stillPath?: string | null;
   }>;
 };
 
@@ -484,29 +485,39 @@ export default function SeriesReviewPanel({
 
         {activeTab === "episodes" && activeSeason ? (
           <div className="grid gap-5">
-            <div className="flex flex-wrap gap-2">
-              {seasons.map((season) => (
-                <button
-                  key={season.seasonNumber}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSeason(season.seasonNumber);
-                    setOpenEpisode(null);
-                    updateSearchParams({
-                      season: null,
-                      selectedSeason: season.seasonNumber,
-                      episode: null,
-                    });
-                  }}
-                  className={`inline-flex h-10 items-center rounded-full px-4 text-[11px] uppercase tracking-[0.18em] ${
-                    selectedSeason === season.seasonNumber
-                      ? "border border-white/12 bg-white text-black"
-                      : "border border-white/10 bg-white/[0.04] text-white/72"
-                  }`}
-                >
-                  S{season.seasonNumber}
-                </button>
-              ))}
+            {/* Horizontally scrolling season selector */}
+            <div className="series-ep-season-scroll" style={{ display: "flex", gap: 8, paddingBottom: 4 }}>
+              {seasons.map((season) => {
+                const isActive = selectedSeason === season.seasonNumber;
+                return (
+                  <button
+                    key={season.seasonNumber}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSeason(season.seasonNumber);
+                      setOpenEpisode(null);
+                      updateSearchParams({
+                        season: null,
+                        selectedSeason: season.seasonNumber,
+                        episode: null,
+                      });
+                    }}
+                    style={{ flexShrink: 0, minHeight: 44 }}
+                    className={`inline-flex flex-col items-center justify-center rounded-[14px] px-4 py-2 text-left transition ${
+                      isActive
+                        ? "border border-white/12 bg-white text-black"
+                        : "border border-white/10 bg-white/[0.04] text-white/72"
+                    }`}
+                  >
+                    <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isActive ? "text-black" : "text-white/80"}`}>
+                      S{season.seasonNumber}
+                    </span>
+                    <span className={`mt-0.5 text-[10px] ${isActive ? "text-black/60" : "text-white/40"}`}>
+                      {season.episodes.length} eps{season.airDate ? ` · ${season.airDate.slice(0, 4)}` : ""}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid gap-3">
@@ -545,12 +556,52 @@ export default function SeriesReviewPanel({
                           episode: nextOpen?.episodeNumber ?? null,
                         });
                       }}
-                      className="flex w-full items-start justify-between gap-4 text-left"
+                      className="flex w-full items-start gap-3 text-left"
+                      style={{ minHeight: 44 }}
                     >
-                      <div className="min-w-0">
+                      {/* Still image thumbnail */}
+                      {episode.stillPath ? (
+                        <div className="series-episode-still" style={{
+                          position: "relative",
+                          width: 112,
+                          aspectRatio: "16 / 9",
+                          flexShrink: 0,
+                          borderRadius: 10,
+                          overflow: "hidden",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                        }}>
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w300${episode.stillPath}`}
+                            alt={episode.name}
+                            fill
+                            sizes="112px"
+                            style={{ objectFit: "cover" }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="series-episode-still" style={{
+                          width: 112,
+                          aspectRatio: "16 / 9",
+                          flexShrink: 0,
+                          borderRadius: 10,
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}>
+                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em" }}>
+                            E{episode.episodeNumber}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Episode metadata */}
+                      <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[10px] uppercase tracking-[0.18em] text-white/34">
-                            S{activeSeason.seasonNumber} E{episode.episodeNumber}
+                            E{episode.episodeNumber}
                           </span>
                           {review ? (
                             <span className="inline-flex h-6 items-center rounded-full border border-white/12 bg-white/[0.06] px-2.5 text-[10px] uppercase tracking-[0.14em] text-white/64">
@@ -558,13 +609,13 @@ export default function SeriesReviewPanel({
                             </span>
                           ) : null}
                         </div>
-                        <h3 className="mt-2 text-base font-medium text-white/90">{episode.name}</h3>
-                        <p className="mt-2 text-sm text-white/48">
+                        <h3 className="mt-1 text-sm font-medium leading-snug text-white/90">{episode.name}</h3>
+                        <p className="mt-1 text-xs text-white/42">
                           {formatDateLabel(episode.airDate)}
-                          {episode.runtime ? ` · ${episode.runtime} min` : ""}
+                          {episode.runtime ? ` · ${episode.runtime}m` : ""}
                         </p>
                       </div>
-                      <span className="text-sm uppercase tracking-[0.16em] text-white/38">
+                      <span className="shrink-0 self-center text-xs uppercase tracking-[0.16em] text-white/35">
                         {review ? "Edit" : "+ rate"}
                       </span>
                     </button>
