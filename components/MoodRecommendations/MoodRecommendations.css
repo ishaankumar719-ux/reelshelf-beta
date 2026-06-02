@@ -1,0 +1,61 @@
+/*
+ * MoodRecommendations styles
+ *
+ * These rules are injected at runtime via a <style> tag inside the component,
+ * matching the inline-style pattern used throughout HomeDashboardClient.
+ * This file documents those rules for reference and can be applied globally
+ * by adding @import to app/globals.css if preferred.
+ */
+
+.mood-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  padding-inline: 2px;
+  cursor: grab;
+}
+
+.mood-row::-webkit-scrollbar {
+  display: none;
+}
+
+.mood-row > * {
+  scroll-snap-align: start;
+}
+
+.mood-row:active {
+  cursor: grabbing;
+}
+
+/* Container that holds the scroll rail + right-edge fade */
+.mood-rail {
+  position: relative;
+}
+
+/* Right-edge fade gradient — colour matches body background (#06060a) */
+.mood-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 4px;
+  width: 40px;
+  background: linear-gradient(to right, transparent, #06060a);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Card hover lift — mirrors .poster-tile behaviour */
+.mood-card {
+  transition: transform 0.18s ease;
+}
+
+.mood-card:hover {
+  transform: translateY(-3px) scale(1.02);
+}

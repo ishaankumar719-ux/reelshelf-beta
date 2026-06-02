@@ -13,6 +13,7 @@ import TonightsPick from "./TonightsPick";
 import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import DailyReelCard from "./DailyReelCard";
+import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
 import {
@@ -865,6 +866,9 @@ export default function HomeDashboardClient({
           )}
         </Section>
       )}
+
+      {/* ── MOOD RECOMMENDATIONS ───────────────────────────────────────────────── */}
+      <MoodRecommendations />
 
       {/* ── CIRCLE DISCOVERY — Systems 3 + 4 + 7 ─────────────────────────────── */}
       {friendsHasFollows !== null && (
