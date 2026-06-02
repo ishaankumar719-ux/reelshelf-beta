@@ -3,10 +3,10 @@
  *
  * These rules are injected at runtime via a <style> tag inside the component,
  * matching the inline-style pattern used throughout HomeDashboardClient.
- * This file documents those rules for reference and can be applied globally
- * by adding @import to app/globals.css if preferred.
+ * Apply globally by adding @import to app/globals.css if preferred.
  */
 
+/* Horizontal scroll rail — mirrors .home-row */
 .mood-row {
   display: flex;
   gap: 10px;
@@ -33,7 +33,7 @@
   cursor: grabbing;
 }
 
-/* Container that holds the scroll rail + right-edge fade */
+/* Container that holds the rail + right-edge fade */
 .mood-rail {
   position: relative;
 }
@@ -51,11 +51,23 @@
   z-index: 1;
 }
 
-/* Card hover lift — mirrors .poster-tile behaviour */
+/* Card hover lift — mirrors .poster-tile */
 .mood-card {
   transition: transform 0.18s ease;
 }
 
 .mood-card:hover {
   transform: translateY(-3px) scale(1.02);
+}
+
+/* Shimmer animation for loading placeholder */
+@keyframes mood-shimmer {
+  0%   { opacity: 0.3; }
+  50%  { opacity: 0.7; }
+  100% { opacity: 0.3; }
+}
+
+.mood-shimmer {
+  background: rgba(255, 255, 255, 0.1);
+  animation: mood-shimmer 1.4s ease-in-out infinite;
 }

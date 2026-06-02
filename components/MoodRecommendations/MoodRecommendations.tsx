@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MOOD_SEED_DATA, type MoodKey } from "./moodData";
+import { MOOD_DATA, type MoodConfig, type MoodItem, type MoodItemType } from "./moodData";
 import { localMovies } from "../../lib/localMovies";
 import { localSeries } from "../../lib/localSeries";
 import {
@@ -14,6 +14,8 @@ import {
 } from "../../lib/watchlist";
 import { getMediaHref } from "../../lib/mediaRoutes";
 import type { MediaType } from "../../lib/media";
+import { getDailySeed, seededShuffle } from "../../utils/dailyMoodSeed";
+import { getMediaImage, type MediaImageResult } from "../../utils/getMediaImage";
 
 // ─── Constants (matching HomeDashboardClient) ──────────────────────────────────
 
@@ -22,115 +24,219 @@ const SERIF = 'Georgia, "Times New Roman", serif';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type ResolvedCard = {
+type FilterType = "all" | MoodItemType;
+
+type DisplayCard = {
   key: string;
+  /** ReelShelf ID — non-null only for items found in local data or watchlist */
   id: string | null;
   mediaType: MediaType;
+  itemType: MoodItemType;
   title: string;
-  year: number | null;
-  poster: string | null;
-  href: string | null;
+  year: number;
+  author: string | null;
+  /** Poster URL from local data; may be null for items not in local DB */
+  localPoster: string | null;
+  /** Key into the posterCache for async-fetched poster + href */
+  posterCacheKey: string;
+  /** Navigation href if resolvable from local data */
+  localHref: string | null;
   voteAverage: number | null;
+  /** True when item came from the user's watchlist */
+  fromWatchlist: boolean;
 };
 
+type CacheEntry = MediaImageResult & { loaded: boolean };
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function seedTypeToMediaType(type: MoodItemType): MediaType {
+  return type === "film" ? "movie" : type;
+}
 
 function mediaLabel(t: MediaType): string {
   return t === "movie" ? "Film" : t === "tv" ? "TV" : "Book";
 }
 
-function resolveCards(
-  titles: readonly string[],
+function posterCacheKey(item: MoodItem): string {
+  return `${item.title}|${item.year}|${item.type}`;
+}
+
+function getLocalPosterUrl(item: MoodItem): string | null {
+  if (item.type === "film") {
+    const lm = localMovies.find((m) => m.title.toLowerCase() === item.title.toLowerCase());
+    return lm?.poster ?? null;
+  }
+  if (item.type === "tv") {
+    const ls = localSeries.find((s) => s.title.toLowerCase() === item.title.toLowerCase());
+    if (!ls) return null;
+    return ls.poster ?? (ls.posterPath ? `https://image.tmdb.org/t/p/w500/${ls.posterPath}` : null);
+  }
+  return null; // books always fetched from Open Library
+}
+
+function getLocalHref(item: MoodItem): string | null {
+  if (item.type === "film") {
+    const lm = localMovies.find((m) => m.title.toLowerCase() === item.title.toLowerCase());
+    return lm ? getMediaHref({ id: lm.id, mediaType: "movie" }) : null;
+  }
+  if (item.type === "tv") {
+    const ls = localSeries.find((s) => s.title.toLowerCase() === item.title.toLowerCase());
+    return ls ? getMediaHref({ id: ls.id, mediaType: "tv" }) : null;
+  }
+  return null;
+}
+
+function getLocalId(item: MoodItem): string | null {
+  if (item.type === "film") {
+    const lm = localMovies.find((m) => m.title.toLowerCase() === item.title.toLowerCase());
+    return lm?.id ?? null;
+  }
+  if (item.type === "tv") {
+    const ls = localSeries.find((s) => s.title.toLowerCase() === item.title.toLowerCase());
+    return ls?.id ?? null;
+  }
+  return null;
+}
+
+function resolveDisplayCards(
+  items: MoodItem[],
   watchlist: WatchlistEntry[]
-): ResolvedCard[] {
-  const watchlistMatches: ResolvedCard[] = [];
-  const localMatches: ResolvedCard[] = [];
-  const fallbacks: ResolvedCard[] = [];
+): DisplayCard[] {
+  const wlFirst: DisplayCard[] = [];
+  const rest: DisplayCard[] = [];
 
-  for (const seedTitle of titles) {
-    const lower = seedTitle.toLowerCase();
+  for (const item of items) {
+    const lower = item.title.toLowerCase();
+    const mediaType = seedTypeToMediaType(item.type);
+    const cacheKey = posterCacheKey(item);
 
-    // Priority 1: watchlist items whose title matches
+    // Watchlist match takes priority
     const wlEntry = watchlist.find((e) => e.title.toLowerCase() === lower);
     if (wlEntry) {
-      let poster = wlEntry.poster ?? null;
-      if (!poster) {
-        const lm = localMovies.find((m) => m.title.toLowerCase() === lower);
-        const ls = localSeries.find((s) => s.title.toLowerCase() === lower);
-        if (lm) {
-          poster = lm.poster;
-        } else if (ls) {
-          poster =
-            ls.poster ??
-            (ls.posterPath
-              ? `https://image.tmdb.org/t/p/w500/${ls.posterPath}`
-              : null);
-        }
-      }
-      watchlistMatches.push({
+      let localPoster = wlEntry.poster ?? null;
+      if (!localPoster) localPoster = getLocalPosterUrl(item);
+      wlFirst.push({
         key: `wl-${wlEntry.id}-${wlEntry.mediaType}`,
         id: wlEntry.id,
         mediaType: wlEntry.mediaType,
+        itemType: item.type,
         title: wlEntry.title,
-        year: wlEntry.year || null,
-        poster,
-        href: getMediaHref({ id: wlEntry.id, mediaType: wlEntry.mediaType }),
+        year: item.year,
+        author: item.author ?? null,
+        localPoster,
+        posterCacheKey: cacheKey,
+        localHref: getMediaHref({ id: wlEntry.id, mediaType: wlEntry.mediaType }),
         voteAverage: wlEntry.voteAverage ?? null,
+        fromWatchlist: true,
       });
       continue;
     }
 
-    // Priority 2: local movie data
-    const lm = localMovies.find((m) => m.title.toLowerCase() === lower);
-    if (lm) {
-      localMatches.push({
-        key: `mv-${lm.id}`,
-        id: lm.id,
-        mediaType: "movie",
-        title: lm.title,
-        year: Number(lm.year),
-        poster: lm.poster,
-        href: getMediaHref({ id: lm.id, mediaType: "movie" }),
-        voteAverage: null,
-      });
-      continue;
-    }
-
-    // Priority 3: local series data
-    const ls = localSeries.find((s) => s.title.toLowerCase() === lower);
-    if (ls) {
-      const poster =
-        ls.poster ??
-        (ls.posterPath
-          ? `https://image.tmdb.org/t/p/w500/${ls.posterPath}`
-          : null);
-      localMatches.push({
-        key: `tv-${ls.id}`,
-        id: ls.id,
-        mediaType: "tv",
-        title: ls.title,
-        year: Number(ls.year),
-        poster,
-        href: getMediaHref({ id: ls.id, mediaType: "tv" }),
-        voteAverage: null,
-      });
-      continue;
-    }
-
-    // Fallback: render seed title directly
-    fallbacks.push({
-      key: `seed-${seedTitle}`,
-      id: null,
-      mediaType: "movie",
-      title: seedTitle,
-      year: null,
-      poster: null,
-      href: null,
+    // Local data match
+    const localId = getLocalId(item);
+    rest.push({
+      key: `item-${item.title}-${item.year}`,
+      id: localId,
+      mediaType,
+      itemType: item.type,
+      title: item.title,
+      year: item.year,
+      author: item.author ?? null,
+      localPoster: getLocalPosterUrl(item),
+      posterCacheKey: cacheKey,
+      localHref: getLocalHref(item),
       voteAverage: null,
+      fromWatchlist: false,
     });
   }
 
-  return [...watchlistMatches, ...localMatches, ...fallbacks];
+  return [...wlFirst, ...rest];
+}
+
+function getShuffledCards(
+  moodConfig: MoodConfig,
+  moodIndex: number,
+  watchlist: WatchlistEntry[]
+): DisplayCard[] {
+  const shuffled = seededShuffle(moodConfig.items, getDailySeed() + moodIndex);
+  const cards = resolveDisplayCards(shuffled, watchlist);
+  return cards;
+}
+
+function getVisibleCards(cards: DisplayCard[], filter: FilterType): DisplayCard[] {
+  const filtered = filter === "all" ? cards : cards.filter((c) => c.itemType === filter);
+  return filtered.slice(0, 8);
+}
+
+// ─── Branded placeholder ────────────────────────────────────────────────────────
+
+function PosterPlaceholder({
+  title,
+  isLoading,
+}: {
+  title: string;
+  isLoading: boolean;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "linear-gradient(135deg, #111118, #0a0a10)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 7,
+        padding: "0 10px",
+      }}
+    >
+      {isLoading ? (
+        <div className="mood-shimmer" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+      ) : (
+        <>
+          {/* ReelShelf film-reel icon */}
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="3" />
+            <line x1="12" y1="2" x2="12" y2="9" />
+            <line x1="12" y1="15" x2="12" y2="22" />
+            <line x1="2" y1="12" x2="9" y2="12" />
+            <line x1="15" y1="12" x2="22" y2="12" />
+          </svg>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 8,
+              fontWeight: 500,
+              color: "rgba(255,255,255,0.2)",
+              textAlign: "center",
+              lineHeight: 1.35,
+              fontFamily: SANS,
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}
+          >
+            {title}
+          </p>
+        </>
+      )}
+    </div>
+  );
 }
 
 // ─── Card component ────────────────────────────────────────────────────────────
@@ -138,15 +244,27 @@ function resolveCards(
 function MoodCard({
   card,
   watchlist,
+  posterCache,
   onToggleWatchlist,
 }: {
-  card: ResolvedCard;
+  card: DisplayCard;
   watchlist: WatchlistEntry[];
-  onToggleWatchlist: (card: ResolvedCard) => void;
+  posterCache: Record<string, CacheEntry>;
+  onToggleWatchlist: (card: DisplayCard) => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+
+  const cached = posterCache[card.posterCacheKey];
+  const posterUrl = imgError ? null : (card.localPoster ?? cached?.posterUrl ?? null);
+  const href = card.localHref ?? cached?.href ?? null;
+  const isLoadingPoster = !card.localPoster && !cached?.loaded;
+
   const inWl =
     card.id !== null &&
     watchlist.some((e) => e.id === card.id && e.mediaType === card.mediaType);
+
+  const isBook = card.itemType === "book";
+  const cardWidth = isBook ? 110 : 120;
 
   const handleSearch = () => {
     if (typeof window !== "undefined") {
@@ -157,30 +275,26 @@ function MoodCard({
   return (
     <div
       className="mood-card"
-      style={{
-        width: 120,
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-      }}
+      style={{ width: cardWidth, flexShrink: 0, display: "flex", flexDirection: "column" }}
     >
-      {/* Poster */}
+      {/* Poster / cover */}
       <div
         style={{
           position: "relative",
           borderRadius: 8,
           overflow: "hidden",
-          paddingBottom: "150%",
+          height: isBook ? 160 : 178,
           background: "#0f0f0f",
           border: "1px solid rgba(255,255,255,0.06)",
           marginBottom: 6,
         }}
       >
-        {card.poster ? (
+        {posterUrl ? (
           <img
-            src={card.poster}
+            src={posterUrl}
             alt={card.title}
             loading="lazy"
+            onError={() => setImgError(true)}
             style={{
               position: "absolute",
               inset: 0,
@@ -191,37 +305,20 @@ function MoodCard({
             }}
           />
         ) : (
+          <PosterPlaceholder title={card.title} isLoading={isLoadingPoster} />
+        )}
+
+        {/* Gradient overlay on top of poster */}
+        {posterUrl && (
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(135deg,#181818,#0c0c0c)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              background: "linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.65) 100%)",
             }}
-          >
-            <span
-              style={{
-                color: "rgba(255,255,255,0.08)",
-                fontSize: 24,
-                fontWeight: 700,
-                fontFamily: SANS,
-              }}
-            >
-              {card.title[0]}
-            </span>
-          </div>
+          />
         )}
-        {/* Gradient overlay */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.7) 100%)",
-          }}
-        />
+
         {/* Rating badge */}
         {typeof card.voteAverage === "number" && (
           <div
@@ -242,17 +339,18 @@ function MoodCard({
             {card.voteAverage.toFixed(1)}
           </div>
         )}
+
         {/* Media type badge */}
         <div
           style={{
             position: "absolute",
             bottom: 5,
             left: 5,
-            background: "rgba(0,0,0,0.7)",
+            background: "rgba(0,0,0,0.72)",
             backdropFilter: "blur(6px)",
             borderRadius: 4,
             padding: "2px 5px",
-            color: "rgba(255,255,255,0.4)",
+            color: "rgba(255,255,255,0.45)",
             fontSize: 7.5,
             fontFamily: SANS,
             textTransform: "uppercase",
@@ -263,11 +361,11 @@ function MoodCard({
         </div>
       </div>
 
-      {/* Title — 1 line truncated */}
+      {/* Title */}
       <p
         title={card.title}
         style={{
-          margin: "0 0 2px",
+          margin: "0 0 1px",
           fontSize: 11,
           fontWeight: 600,
           lineHeight: 1.2,
@@ -280,7 +378,7 @@ function MoodCard({
         {card.title}
       </p>
 
-      {/* Year */}
+      {/* Year or author */}
       <p
         style={{
           margin: "0 0 6px",
@@ -288,16 +386,19 @@ function MoodCard({
           color: "rgba(255,255,255,0.3)",
           fontFamily: SANS,
           minHeight: 13,
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          textOverflow: "ellipsis",
         }}
       >
-        {card.year ?? ""}
+        {card.author ?? (card.year > 0 ? String(card.year) : "")}
       </p>
 
       {/* Actions */}
-      <div style={{ display: "flex", gap: 4 }}>
-        {card.href ? (
+      <div style={{ display: "flex", gap: 4, marginTop: "auto" }}>
+        {href ? (
           <Link
-            href={card.href}
+            href={href}
             style={{
               flex: 1,
               display: "flex",
@@ -326,7 +427,7 @@ function MoodCard({
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.08)",
               background: "transparent",
-              color: "rgba(255,255,255,0.38)",
+              color: "rgba(255,255,255,0.35)",
               cursor: "pointer",
               fontSize: 10,
               fontFamily: SANS,
@@ -335,6 +436,7 @@ function MoodCard({
             Search
           </button>
         )}
+
         {card.id !== null && (
           <button
             type="button"
@@ -349,19 +451,14 @@ function MoodCard({
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 999,
-              border: `1px solid ${
-                inWl ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"
-              }`,
+              border: `1px solid ${inWl ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
               background: inWl ? "rgba(255,255,255,0.12)" : "transparent",
-              color: inWl
-                ? "rgba(255,255,255,0.9)"
-                : "rgba(255,255,255,0.4)",
+              color: inWl ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)",
               cursor: "pointer",
               fontSize: 13,
               padding: 0,
               lineHeight: 1,
-              transition:
-                "background 0.12s ease, border-color 0.12s ease, color 0.12s ease",
+              transition: "background 0.12s ease, border-color 0.12s ease",
             }}
           >
             {inWl ? "✓" : "+"}
@@ -372,24 +469,141 @@ function MoodCard({
   );
 }
 
+// ─── Filter chips ──────────────────────────────────────────────────────────────
+
+const FILTER_OPTIONS: { value: FilterType; label: string; icon: string }[] = [
+  { value: "all", label: "All", icon: "" },
+  { value: "film", label: "Films", icon: "🎬" },
+  { value: "tv", label: "TV", icon: "📺" },
+  { value: "book", label: "Books", icon: "📖" },
+];
+
+function FilterChips({
+  active,
+  cards,
+  onChange,
+}: {
+  active: FilterType;
+  cards: DisplayCard[];
+  onChange: (f: FilterType) => void;
+}) {
+  const counts: Record<FilterType, number> = {
+    all: cards.length,
+    film: cards.filter((c) => c.itemType === "film").length,
+    tv: cards.filter((c) => c.itemType === "tv").length,
+    book: cards.filter((c) => c.itemType === "book").length,
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 6,
+        marginBottom: 10,
+        flexWrap: "wrap",
+      }}
+    >
+      {FILTER_OPTIONS.map(({ value, label, icon }) => {
+        if (value !== "all" && counts[value] === 0) return null;
+        const isActive = active === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onChange(value)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              height: 26,
+              padding: "0 10px",
+              borderRadius: 999,
+              border: `1px solid ${isActive ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.08)"}`,
+              background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+              color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.4)",
+              cursor: "pointer",
+              fontSize: 10.5,
+              fontFamily: SANS,
+              fontWeight: isActive ? 600 : 400,
+              transition: "background 0.12s ease, border-color 0.12s ease, color 0.12s ease",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {icon && <span style={{ fontSize: 11 }}>{icon}</span>}
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function MoodRecommendations() {
-  const [activeMood, setActiveMood] = useState<MoodKey | null>(null);
+  const [activeMood, setActiveMood] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>(() =>
     typeof window !== "undefined" ? getWatchlist() : []
   );
+  const [posterCache, setPosterCache] = useState<Record<string, CacheEntry>>({});
+
+  // Tracks which cache keys have been submitted for fetching (avoids duplicate calls)
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setWatchlist(getWatchlist());
     return subscribeToWatchlist(() => setWatchlist(getWatchlist()));
   }, []);
 
-  const handleChipClick = (key: MoodKey) => {
-    setActiveMood((prev) => (prev === key ? null : key));
+  // Trigger async poster fetches when mood changes
+  useEffect(() => {
+    if (!activeMood) return;
+    const moodConfig = MOOD_DATA.find((m) => m.id === activeMood);
+    if (!moodConfig) return;
+
+    for (const item of moodConfig.items) {
+      const key = posterCacheKey(item);
+      if (fetchingRef.current.has(key)) continue;
+      fetchingRef.current.add(key);
+
+      // Local data has a poster — mark as loaded immediately
+      const local = getLocalPosterUrl(item);
+      if (local !== null) {
+        setPosterCache((prev) => ({
+          ...prev,
+          [key]: { posterUrl: local, href: getLocalHref(item), loaded: true },
+        }));
+        continue;
+      }
+
+      // Async fetch from TMDB / Open Library
+      getMediaImage({ title: item.title, year: item.year, type: item.type, author: item.author })
+        .then((result) => {
+          setPosterCache((prev) => ({
+            ...prev,
+            [key]: { ...result, loaded: true },
+          }));
+        })
+        .catch(() => {
+          setPosterCache((prev) => ({
+            ...prev,
+            [key]: { posterUrl: null, href: null, loaded: true },
+          }));
+        });
+    }
+  }, [activeMood]);
+
+  const handleChipClick = (id: string) => {
+    if (activeMood === id) {
+      setActiveMood(null);
+    } else {
+      setActiveMood(id);
+      setActiveFilter("all");
+    }
   };
 
-  const handleToggleWatchlist = (card: ResolvedCard) => {
+  const handleToggleWatchlist = (card: DisplayCard) => {
     if (card.id === null) return;
     const alreadyIn = watchlist.some(
       (e) => e.id === card.id && e.mediaType === card.mediaType
@@ -401,16 +615,27 @@ export default function MoodRecommendations() {
         id: card.id,
         mediaType: card.mediaType,
         title: card.title,
-        year: card.year ?? 0,
-        poster: card.poster ?? undefined,
+        year: card.year,
+        poster: card.localPoster ?? undefined,
         voteAverage: card.voteAverage ?? undefined,
       });
     }
   };
 
-  const cards = activeMood
-    ? resolveCards(MOOD_SEED_DATA[activeMood].titles, watchlist)
-    : [];
+  const activeMoodConfig = MOOD_DATA.find((m) => m.id === activeMood) ?? null;
+  const activeMoodIndex = MOOD_DATA.findIndex((m) => m.id === activeMood);
+
+  const allCards =
+    activeMoodConfig !== null
+      ? getShuffledCards(activeMoodConfig, activeMoodIndex, watchlist)
+      : [];
+
+  const visibleCards = getVisibleCards(allCards, activeFilter);
+
+  const noTypeItems =
+    activeMood !== null &&
+    activeFilter !== "all" &&
+    allCards.filter((c) => c.itemType === activeFilter).length === 0;
 
   return (
     <section style={{ marginBottom: "clamp(18px, 3.5vw, 26px)" }}>
@@ -445,6 +670,15 @@ export default function MoodRecommendations() {
         }
         .mood-card { transition: transform 0.18s ease; }
         .mood-card:hover { transform: translateY(-3px) scale(1.02); }
+        @keyframes mood-shimmer {
+          0%   { opacity: 0.3; }
+          50%  { opacity: 0.7; }
+          100% { opacity: 0.3; }
+        }
+        .mood-shimmer {
+          background: rgba(255,255,255,0.1);
+          animation: mood-shimmer 1.4s ease-in-out infinite;
+        }
       `}</style>
 
       {/* Section header */}
@@ -490,17 +724,16 @@ export default function MoodRecommendations() {
           display: "flex",
           flexWrap: "wrap",
           gap: 7,
-          marginBottom: activeMood ? 12 : 0,
+          marginBottom: activeMood ? 10 : 0,
         }}
       >
-        {(Object.keys(MOOD_SEED_DATA) as MoodKey[]).map((key) => {
-          const { emoji, label } = MOOD_SEED_DATA[key];
-          const isActive = activeMood === key;
+        {MOOD_DATA.map((mood) => {
+          const isActive = activeMood === mood.id;
           return (
             <button
-              key={key}
+              key={mood.id}
               type="button"
-              onClick={() => handleChipClick(key)}
+              onClick={() => handleChipClick(mood.id)}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -508,43 +741,66 @@ export default function MoodRecommendations() {
                 height: 30,
                 padding: "0 11px",
                 borderRadius: 999,
-                border: `1px solid ${
-                  isActive
-                    ? "rgba(255,255,255,0.9)"
-                    : "rgba(255,255,255,0.12)"
-                }`,
+                border: `1px solid ${isActive ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.12)"}`,
                 background: isActive ? "white" : "rgba(255,255,255,0.04)",
                 color: isActive ? "#0a0a0a" : "rgba(255,255,255,0.65)",
                 cursor: "pointer",
                 fontSize: 11.5,
                 fontFamily: SANS,
                 fontWeight: isActive ? 600 : 400,
-                transition:
-                  "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
+                transition: "background 0.15s ease, border-color 0.15s ease, color 0.15s ease",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <span style={{ fontSize: 13, lineHeight: 1 }}>{emoji}</span>
-              <span>{label}</span>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>{mood.emoji}</span>
+              <span>{mood.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Card rail */}
-      {activeMood !== null && cards.length > 0 && (
-        <div className="mood-rail">
-          <div className="mood-row">
-            {cards.map((card) => (
-              <MoodCard
-                key={card.key}
-                card={card}
-                watchlist={watchlist}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Filter chips + card rail */}
+      {activeMood !== null && (
+        <>
+          <FilterChips
+            active={activeFilter}
+            cards={allCards}
+            onChange={(f) => setActiveFilter(f)}
+          />
+
+          {noTypeItems ? (
+            <p
+              style={{
+                margin: "4px 0",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.28)",
+                fontFamily: SANS,
+              }}
+            >
+              No{" "}
+              {activeFilter === "film"
+                ? "film"
+                : activeFilter === "tv"
+                ? "TV"
+                : "book"}{" "}
+              picks for this mood yet
+            </p>
+          ) : (
+            <div className="mood-rail">
+              <div className="mood-row">
+                {visibleCards.map((card) => (
+                  <MoodCard
+                    key={card.key}
+                    card={card}
+                    watchlist={watchlist}
+                    posterCache={posterCache}
+                    onToggleWatchlist={handleToggleWatchlist}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
