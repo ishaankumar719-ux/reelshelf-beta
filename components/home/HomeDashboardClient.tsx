@@ -14,6 +14,7 @@ import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import DailyReelCard from "./DailyReelCard";
 import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
+import ReactionTray from "../ReactionTray/ReactionTray";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
 import {
@@ -33,13 +34,6 @@ import {
   subscribeToFollows,
   type FriendsActivityEntry,
 } from "../../lib/supabase/social";
-import {
-  toggleReaction,
-  getReactionsForEntry,
-  REACTION_EMOJIS,
-  type ReactionEmoji,
-  type ReactionCounts,
-} from "../../lib/supabase/reactions";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -186,7 +180,6 @@ function PosterTile({
 
 // ─── Friend activity card — wide, Letterboxd-energy ───────────────────────────
 
-const EMPTY_COUNTS: ReactionCounts = { "🔥": 0, "🎬": 0, "😭": 0, "🤯": 0, "❤️": 0 };
 
 function FriendActivityCard({
   entry,
@@ -202,53 +195,6 @@ function FriendActivityCard({
     : null;
   const scopeBadge = getSeriesScopeBadge(entry);
   const verb = activityVerb(entry);
-
-  const canReact = !!userId && userId !== entry.profileId;
-  const [counts, setCounts] = useState<ReactionCounts>({ ...EMPTY_COUNTS });
-  const [userReactions, setUserReactions] = useState<Set<ReactionEmoji>>(new Set());
-  const [trayOpen, setTrayOpen] = useState(false);
-  const [reactLoading, setReactLoading] = useState<ReactionEmoji | null>(null);
-
-  // Load reaction counts once on mount
-  useEffect(() => {
-    if (!entry.entryId) return;
-    void getReactionsForEntry(entry.entryId, userId ?? undefined).then(
-      ({ counts: c, userReactions: ur }) => {
-        setCounts(c);
-        setUserReactions(ur);
-      }
-    );
-  }, [entry.entryId, userId]);
-
-  async function handleReact(emoji: ReactionEmoji) {
-    if (!canReact || reactLoading) return;
-    const isActive = userReactions.has(emoji);
-    setReactLoading(emoji);
-    // Optimistic update
-    setCounts((prev) => ({ ...prev, [emoji]: Math.max(0, prev[emoji] + (isActive ? -1 : 1)) }));
-    setUserReactions((prev) => {
-      const next = new Set(prev);
-      if (isActive) next.delete(emoji);
-      else next.add(emoji);
-      return next;
-    });
-
-    const result = await toggleReaction(entry.entryId, emoji, isActive);
-    setReactLoading(null);
-
-    // Rollback on error
-    if (result.error) {
-      setCounts((prev) => ({ ...prev, [emoji]: Math.max(0, prev[emoji] + (isActive ? 1 : -1)) }));
-      setUserReactions((prev) => {
-        const next = new Set(prev);
-        if (isActive) next.add(emoji);
-        else next.delete(emoji);
-        return next;
-      });
-    }
-  }
-
-  const hasReactions = REACTION_EMOJIS.some((e) => counts[e] > 0);
 
   return (
     <article
@@ -333,37 +279,6 @@ function FriendActivityCard({
           </h3>
         </div>
 
-        {/* ── Reaction tray — overlay at poster bottom edge ── */}
-        {canReact && (
-          <div className={`rc-tray${trayOpen ? " rc-tray--open" : ""}`}>
-            {REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className={`rc-btn${userReactions.has(emoji) ? " rc-btn--active" : ""}`}
-                onClick={(e) => { e.preventDefault(); void handleReact(emoji); }}
-                disabled={reactLoading === emoji}
-                aria-label={emoji}
-                aria-pressed={userReactions.has(emoji)}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Mobile-only tap trigger — stays visible at top-right of poster */}
-        {canReact && (
-          <button
-            type="button"
-            className="rc-trigger"
-            onClick={(e) => { e.preventDefault(); setTrayOpen((v) => !v); }}
-            aria-label="React"
-            aria-expanded={trayOpen}
-          >
-            {trayOpen ? "✕" : "＋"}
-          </button>
-        )}
       </Link>
 
       {/* Review snippet */}
@@ -379,30 +294,14 @@ function FriendActivityCard({
         </Link>
       )}
 
-      {/* ── Reaction display bubbles — only when reactions exist ── */}
-      {hasReactions && (
-        <div style={{ padding: "5px 8px 6px", display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {REACTION_EMOJIS.filter((e) => counts[e] > 0).map((emoji) => (
-            <span
-              key={emoji}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                padding: "1px 6px",
-                borderRadius: 999,
-                background: userReactions.has(emoji) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)",
-                border: userReactions.has(emoji) ? "0.5px solid rgba(255,255,255,0.2)" : "0.5px solid rgba(255,255,255,0.08)",
-                fontSize: 11,
-              }}
-            >
-              {emoji}
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: SANS }}>
-                {counts[emoji]}
-              </span>
-            </span>
-          ))}
-        </div>
+      {/* ── Reaction tray ── */}
+      {entry.entryId && (
+        <ReactionTray
+          targetType="diary_entry"
+          targetId={entry.entryId}
+          compact
+          isOwn={userId === entry.profileId}
+        />
       )}
     </article>
   );

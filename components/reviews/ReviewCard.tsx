@@ -23,6 +23,8 @@ import { getProfileInitials } from "../../lib/profile";
 import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
 import { deleteEntryByDbId } from "../../lib/supabase/persistence";
 import { useDiaryLog } from "../../hooks/useDiaryLog";
+import ReactionTray from "../ReactionTray/ReactionTray";
+import type { ReviewTargetType } from "../../hooks/useReviewReactions";
 
 export interface ReviewCardEntry {
   entryId: string;
@@ -1252,11 +1254,16 @@ export default function ReviewCard({
         </div>
 
         {/* ── Reactions ── */}
-        <ReactionBar
-          entryId={entryId}
-          canReact={!!user && user.id !== ownerUserId}
-          initialCounts={defaultReactionCounts}
-          initialUserReactions={defaultUserReactions}
+        <ReactionTray
+          targetType={
+            (mediaType === "movie"
+              ? "film_review"
+              : mediaType === "tv"
+              ? "tv_review"
+              : "book_review") satisfies ReviewTargetType
+          }
+          targetId={entryId}
+          isOwn={isOwner}
         />
 
         {/* ── Footer: social ── */}
