@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient as createSupabaseBrowserClient } from "../lib/supabase/client";
 import { useAuth } from "../components/AuthProvider";
 import type { ReviewTargetType } from "./useReviewReactions";
+import { createNotification } from "../utils/createNotification";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -192,6 +193,24 @@ export function useReviewComments({
       }
 
       console.log("[COMMENT] insert success", { id: (data as { id: string }).id });
+
+      // Notify the review author — fire-and-forget, never blocks UI
+      void (async () => {
+        const ownerRes = await client
+          .from("diary_entries")
+          .select("user_id")
+          .eq("id", targetId)
+          .single();
+        if (ownerRes.data?.user_id) {
+          void createNotification(client, {
+            userId: ownerRes.data.user_id as string,
+            actorUserId: currentUserId!,
+            type: "comment",
+            targetId,
+            preview: trimmed,
+          });
+        }
+      })();
 
       // Replace optimistic with the real row (keep same user object)
       setComments((prev) =>
