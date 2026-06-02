@@ -93,10 +93,13 @@ export function useReviewReactions({
 
   const toggleReaction = useCallback(
     async (reactionType: ReviewReactionType) => {
+      // Log target + user before any guard so we can diagnose auth issues
+      console.log("[REACTION] target", { targetType, targetId });
+      console.log("[REACTION] user_id", currentUserId);
+
       if (!currentUserId) return;
 
       console.log("[REACTION] clicked", { targetType, targetId, reactionType });
-      console.log("[REACTION] target", { targetType, targetId });
 
       const isActive = userReactions.has(reactionType);
 
@@ -119,6 +122,8 @@ export function useReviewReactions({
 
       if (isActive) {
         // ── Remove ──────────────────────────────────────────────────────────
+        console.log("[REACTION] remove started", { targetType, targetId, reactionType });
+
         const { error } = await client
           .from("review_reactions")
           .delete()
@@ -146,7 +151,9 @@ export function useReviewReactions({
         }
       } else {
         // ── Insert ──────────────────────────────────────────────────────────
-        const { error } = await client.from("review_reactions").insert({
+        console.log("[REACTION] insert started", { targetType, targetId, reactionType, userId: currentUserId });
+
+        const result = await client.from("review_reactions").insert({
           target_type: targetType,
           target_id: targetId,
           user_id: currentUserId,
@@ -155,9 +162,11 @@ export function useReviewReactions({
 
         setIsLoading(false);
 
+        const { error } = result;
+
         if (error && error.code !== "23505") {
-          // 23505 = unique_violation (duplicate click during in-flight request) — safe to ignore
-          console.log("[REACTION] error", error);
+          // 23505 = unique_violation (duplicate in-flight click) — optimistic state is already correct
+          console.log("[REACTION] insert error", error);
           // Roll back optimistic update
           setReactions((prev) => ({
             ...prev,
@@ -169,7 +178,7 @@ export function useReviewReactions({
             return next;
           });
         } else {
-          console.log("[REACTION] saved", { reactionType });
+          console.log("[REACTION] insert success", result);
         }
       }
     },

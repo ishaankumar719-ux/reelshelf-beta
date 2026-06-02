@@ -79,6 +79,7 @@ export default function ReactionTray({
             aria-pressed={active}
             disabled={!canReact}
             onClick={(e) => {
+              console.log("[REACTION] clicked", { targetType, targetId, reactionType: type });
               // Prevent parent card click / Link navigation from firing
               e.stopPropagation();
               e.preventDefault();
