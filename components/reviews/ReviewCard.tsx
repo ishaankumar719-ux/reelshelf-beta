@@ -24,7 +24,9 @@ import AttachmentPicker, { type AttachmentValue } from "../AttachmentPicker";
 import { deleteEntryByDbId } from "../../lib/supabase/persistence";
 import { useDiaryLog } from "../../hooks/useDiaryLog";
 import ReactionTray from "../ReactionTray/ReactionTray";
+import CommentDrawer from "../CommentDrawer/CommentDrawer";
 import type { ReviewTargetType } from "../../hooks/useReviewReactions";
+import { useReviewComments } from "../../hooks/useReviewComments";
 
 export interface ReviewCardEntry {
   entryId: string;
@@ -804,6 +806,17 @@ export default function ReviewCard({
   const [deleted, setDeleted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const reviewTargetType: ReviewTargetType =
+    mediaType === "movie" ? "film_review"
+    : mediaType === "tv" ? "tv_review"
+    : "book_review";
+
+  const { commentCount: reviewCommentCount } = useReviewComments({
+    targetType: reviewTargetType,
+    targetId: entryId,
+  });
+  const [reviewCommentOpen, setReviewCommentOpen] = useState(false);
+
   const isOwner = !!user && user.id === ownerUserId;
   const badge = getMediaBadgeStyles(mediaType);
   const canLike = !!user && user.id !== ownerUserId;
@@ -1253,17 +1266,22 @@ export default function ReviewCard({
           </div>
         </div>
 
-        {/* ── Reactions ── */}
+        {/* ── Reactions + comment trigger ── */}
         <ReactionTray
-          targetType={
-            (mediaType === "movie"
-              ? "film_review"
-              : mediaType === "tv"
-              ? "tv_review"
-              : "book_review") satisfies ReviewTargetType
-          }
+          targetType={reviewTargetType}
           targetId={entryId}
           isOwn={isOwner}
+          commentCount={reviewCommentCount}
+          onCommentClick={() => setReviewCommentOpen(true)}
+        />
+
+        {/* ── Comment drawer ── */}
+        <CommentDrawer
+          isOpen={reviewCommentOpen}
+          onClose={() => setReviewCommentOpen(false)}
+          targetType={reviewTargetType}
+          targetId={entryId}
+          reviewAuthorId={ownerUserId}
         />
 
         {/* ── Footer: social ── */}

@@ -29,11 +29,15 @@ export default function ReactionTray({
   targetId,
   compact = false,
   isOwn = false,
+  commentCount = 0,
+  onCommentClick,
 }: {
   targetType: ReviewTargetType;
   targetId: string;
   compact?: boolean;
   isOwn?: boolean;
+  commentCount?: number;
+  onCommentClick?: () => void;
 }) {
   const { user } = useAuth();
   const currentUserId = user?.id ?? null;
@@ -48,8 +52,8 @@ export default function ReactionTray({
     (t) => reactions[t] > 0 || userReactions.has(t)
   );
 
-  // Invisible at rest when no reactions and viewer can't interact
-  if (!canReact && !hasAnyReaction) return null;
+  // Invisible at rest when no reactions, no comment button, and viewer can't interact
+  if (!canReact && !hasAnyReaction && !onCommentClick) return null;
 
   return (
     <div
@@ -131,6 +135,63 @@ export default function ReactionTray({
           </button>
         );
       })}
+
+      {/* ── Comment button ── */}
+      {onCommentClick && (
+        <button
+          type="button"
+          aria-label={`${commentCount} comment${commentCount !== 1 ? "s" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onCommentClick();
+          }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: compact ? 3 : 5,
+            height: compact ? 28 : 30,
+            minWidth: 32,
+            padding: compact ? "0 6px" : "0 10px",
+            borderRadius: 999,
+            border: "0.5px solid rgba(255,255,255,0.08)",
+            background: "rgba(255,255,255,0.025)",
+            color: "rgba(255,255,255,0.45)",
+            fontSize: 13,
+            cursor: "pointer",
+            transition: "border-color 0.13s ease, background 0.13s ease",
+            fontFamily: SANS,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          {/* Inline SVG chat-bubble icon — no external icon library */}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {commentCount > 0 && (
+            <span
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.38)",
+                fontVariantNumeric: "tabular-nums",
+                fontFamily: SANS,
+              }}
+            >
+              {commentCount}
+            </span>
+          )}
+        </button>
+      )}
     </div>
   );
 }

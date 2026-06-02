@@ -15,6 +15,8 @@ import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import DailyReelCard from "./DailyReelCard";
 import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
 import ReactionTray from "../ReactionTray/ReactionTray";
+import CommentDrawer from "../CommentDrawer/CommentDrawer";
+import { useReviewComments } from "../../hooks/useReviewComments";
 import { useAuth } from "../AuthProvider";
 import { getProfileInitials } from "../../lib/profile";
 import {
@@ -196,6 +198,12 @@ function FriendActivityCard({
   const scopeBadge = getSeriesScopeBadge(entry);
   const verb = activityVerb(entry);
 
+  const { commentCount } = useReviewComments({
+    targetType: "diary_entry",
+    targetId: entry.entryId ?? "",
+  });
+  const [commentOpen, setCommentOpen] = useState(false);
+
   return (
     <article
       className="friend-card"
@@ -301,6 +309,19 @@ function FriendActivityCard({
           targetId={entry.entryId}
           compact
           isOwn={userId === entry.profileId}
+          commentCount={commentCount}
+          onCommentClick={() => setCommentOpen(true)}
+        />
+      )}
+
+      {/* ── Comment drawer ── */}
+      {entry.entryId && (
+        <CommentDrawer
+          isOpen={commentOpen}
+          onClose={() => setCommentOpen(false)}
+          targetType="diary_entry"
+          targetId={entry.entryId}
+          reviewAuthorId={entry.profileId}
         />
       )}
     </article>
