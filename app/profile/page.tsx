@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import ProfileEditor from "@/src/components/profile/ProfileEditor"
+import ProfileHighlights from "@/components/profile/ProfileHighlights"
 
 export const dynamic = "force-dynamic"
 
@@ -14,5 +15,10 @@ export default async function ProfilePage() {
     redirect("/login")
   }
 
-  return <ProfileEditor userId={user.id} />
+  return (
+    <>
+      <ProfileHighlights userId={user.id} />
+      <ProfileEditor userId={user.id} />
+    </>
+  )
 }

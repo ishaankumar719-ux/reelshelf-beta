@@ -10,6 +10,7 @@ import {
   syncEarnedBadges,
 } from "@/lib/supabase/badges"
 import ProfileShowcase from "@/src/components/profile/ProfileShowcase"
+import ProfileHighlights from "@/components/profile/ProfileHighlights"
 import type { CinemaStats, MountRushmoreSlot, PublicProfileShowcaseData, ProfileYouMayLikeItem, ProfileSimilarUser } from "@/src/types/profile"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
 import { computeTasteMatchScore, getProfileSimilarUsers } from "@/lib/recommendations"
@@ -577,5 +578,10 @@ export default async function PublicProfilePage({
     cinema_stats: computeCinemaStats(allRows),
   }
 
-  return <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
+  return (
+    <>
+      <ProfileHighlights userId={profileRow.id} />
+      <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
+    </>
+  )
 }
