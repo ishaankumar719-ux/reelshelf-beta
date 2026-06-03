@@ -6,7 +6,7 @@ export default function MostReactedReview({
   review: MostReactedReviewType;
 }) {
   return (
-    <div className="col-span-2 md:col-span-1 w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
+    <div className="mx-4 md:mx-0 md:col-span-1 w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">
         Most Reacted
       </p>

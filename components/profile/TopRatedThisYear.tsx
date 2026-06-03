@@ -10,19 +10,19 @@ export default function TopRatedThisYear({
   const shown = entries.slice(0, 4);
 
   return (
-    <div className="col-span-2 md:col-span-1 w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
+    <div className="md:col-span-1 w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">
         Top Rated · 2026
       </p>
 
       <div
-        className="flex gap-2 overflow-x-auto snap-x snap-mandatory md:overflow-visible"
+        className="-mx-4 px-4 flex gap-2 overflow-x-auto snap-x snap-mandatory md:mx-0 md:px-0 md:grid md:grid-cols-4 md:overflow-visible"
         style={{ scrollbarWidth: "none" }}
       >
         {shown.map((entry) => (
           <div
             key={entry.id}
-            className="w-20 shrink-0 md:flex-1 aspect-[2/3] rounded-md overflow-hidden bg-zinc-900"
+            className="w-[100px] shrink-0 snap-start aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 md:w-auto"
           >
             {entry.poster ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -41,7 +41,7 @@ export default function TopRatedThisYear({
         {Array.from({ length: Math.max(0, 4 - shown.length) }).map((_, i) => (
           <div
             key={`empty-${i}`}
-            className="w-20 shrink-0 md:flex-1 aspect-[2/3] rounded-md bg-white/[0.02]"
+            className="w-[100px] shrink-0 aspect-[2/3] rounded-md bg-white/[0.02] md:w-auto md:flex-1"
           />
         ))}
       </div>
