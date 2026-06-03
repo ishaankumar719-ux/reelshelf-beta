@@ -1,3 +1,5 @@
+import { getProviderSearchUrl } from "../utils/providers";
+
 export type WatchProvider = {
   provider_id: number;
   provider_name: string;
@@ -26,10 +28,10 @@ function sortByPriority(providers: WatchProvider[]): WatchProvider[] {
 
 export function WhereToWatch({
   providers,
-  link,
+  title,
 }: {
   providers: WatchProvider[];
-  link?: string | null;
+  title: string;
 }) {
   const sorted = sortByPriority(providers);
 
@@ -48,7 +50,7 @@ export function WhereToWatch({
         Where To Watch
       </p>
 
-      {sorted.length === 0 || !link ? (
+      {sorted.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.28)" }}>
           Streaming information unavailable
         </p>
@@ -57,7 +59,7 @@ export function WhereToWatch({
           {sorted.map((provider) => (
             <a
               key={provider.provider_id}
-              href={link}
+              href={getProviderSearchUrl(provider.provider_name, title)}
               target="_blank"
               rel="noopener noreferrer"
               title={provider.provider_name}

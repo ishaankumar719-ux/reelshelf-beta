@@ -70,7 +70,6 @@ export default async function FilmDetailPage({
   const gbProviders = providersData?.results?.GB;
   const watchProviders = {
     flatrate: gbProviders?.flatrate ?? [],
-    link: gbProviders?.link ?? null,
   };
 
   if (filmRes.status === 404 || film.success === false || !film.id) {

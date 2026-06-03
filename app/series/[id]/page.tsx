@@ -288,7 +288,6 @@ function SeriesHero({
   runtimeLabel,
   actionSeries,
   flatrate,
-  link,
 }: {
   title: string;
   year: string;
@@ -314,7 +313,6 @@ function SeriesHero({
     voteAverage?: number;
   };
   flatrate: Provider[];
-  link?: string | null;
 }) {
   const genreSummary = genres.length > 0 ? genres.slice(0, 3).join(" · ") : null;
 
@@ -529,7 +527,7 @@ function SeriesHero({
 
           <ActionButtons series={actionSeries} />
 
-          <WhereToWatch providers={flatrate} link={link} />
+          <WhereToWatch providers={flatrate} title={title} />
 
           <section
             style={{
@@ -592,7 +590,6 @@ function SeriesDetailContent({
   basicSeasons,
   initialSeason,
   flatrate,
-  link,
   recommendations,
 }: {
   title: string;
@@ -622,7 +619,6 @@ function SeriesDetailContent({
   basicSeasons: BasicSeason[];
   initialSeason: InitialSeason | null;
   flatrate: Provider[];
-  link: string | null;
   recommendations: TMDBTVRecommendation[];
 }) {
   const totalEpisodes = basicSeasons.reduce((sum, s) => sum + s.episodeCount, 0);
@@ -694,7 +690,6 @@ function SeriesDetailContent({
         runtimeLabel={runtimeLabel}
         actionSeries={actionSeries}
         flatrate={flatrate}
-        link={link}
       />
 
       {/* Progress + Continue Watching — diary-based, suppresses if no data */}
@@ -929,7 +924,6 @@ export default async function SeriesDetailPage({
 
     const ukProviders = providers?.results?.GB;
     const flatrate = ukProviders?.flatrate || [];
-    const link = ukProviders?.link ?? null;
 
     const creator = getCreatorName(details || undefined, localShow.creator);
     const genreNames = getGenreNames(details);
@@ -971,7 +965,6 @@ export default async function SeriesDetailPage({
         basicSeasons={basicSeasons}
         initialSeason={initialSeason}
         flatrate={flatrate}
-        link={link}
         recommendations={recommendations}
       />
     );
@@ -1038,7 +1031,6 @@ export default async function SeriesDetailPage({
       basicSeasons={basicSeasons}
       initialSeason={initialSeason}
       flatrate={flatrate}
-      link={link}
       recommendations={recommendations}
     />
   );
