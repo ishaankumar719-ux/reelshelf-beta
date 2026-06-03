@@ -42,7 +42,7 @@ export default async function FilmDetailPage({
       ? id.slice(5)
       : id;
 
-  const [filmRes, creditsRes] = await Promise.all([
+  const [filmRes, creditsRes, providersRes] = await Promise.all([
     fetch(
       `https://api.themoviedb.org/3/movie/${normalizedMovieId}?api_key=${apiKey}&language=en-US`,
       { next: { revalidate: 86400 } }
@@ -51,10 +51,27 @@ export default async function FilmDetailPage({
       `https://api.themoviedb.org/3/movie/${normalizedMovieId}/credits?api_key=${apiKey}&language=en-US`,
       { next: { revalidate: 86400 } }
     ),
+    fetch(
+      `https://api.themoviedb.org/3/movie/${normalizedMovieId}/watch/providers?api_key=${apiKey}`,
+      { next: { revalidate: 86400 } }
+    ),
   ]);
 
   const film = (await filmRes.json()) as TMDBFilm & { success?: boolean };
   const creditsData = (await creditsRes.json()) as { cast?: TMDBCastMember[] };
+  const providersData = (await providersRes.json()) as {
+    results?: {
+      GB?: {
+        link?: string;
+        flatrate?: Array<{ provider_id: number; provider_name: string; logo_path: string }>;
+      };
+    };
+  };
+  const gbProviders = providersData?.results?.GB;
+  const watchProviders = {
+    flatrate: gbProviders?.flatrate ?? [],
+    link: gbProviders?.link ?? null,
+  };
 
   if (filmRes.status === 404 || film.success === false || !film.id) {
     notFound();
@@ -78,5 +95,5 @@ export default async function FilmDetailPage({
 
   console.log("[FILM CAST] topCast length after mapping:", topCast.length);
 
-  return <FilmDetailClient film={film} topCast={topCast} />;
+  return <FilmDetailClient film={film} topCast={topCast} watchProviders={watchProviders} />;
 }

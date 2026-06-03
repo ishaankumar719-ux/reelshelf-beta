@@ -23,6 +23,7 @@ export type TMDBMovieDetails = {
 export type TMDBWatchProviders = {
   results?: {
     GB?: {
+      link?: string;
       flatrate?: Array<{
         provider_id: number;
         provider_name: string;

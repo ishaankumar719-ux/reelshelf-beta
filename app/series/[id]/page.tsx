@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
 import { MediaCard } from "../../../src/components/ui/MediaCard";
-import { getPosterUrl, getBackdropUrl, getTmdbImageUrl } from "../../../src/lib/tmdb-image";
+import { getPosterUrl, getBackdropUrl } from "../../../src/lib/tmdb-image";
+import { WhereToWatch } from "../../../components/WhereToWatch";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
@@ -124,47 +125,6 @@ function BackButton() {
   );
 }
 
-function ProviderBadge({
-  name,
-  logoPath,
-}: {
-  name: string;
-  logoPath: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 12px",
-        borderRadius: 14,
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      <img
-        src={getTmdbImageUrl(logoPath, "w154") || undefined}
-        alt={name}
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          objectFit: "cover",
-        }}
-      />
-      <span
-        style={{
-          fontSize: 14,
-          color: "white",
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-        }}
-      >
-        {name}
-      </span>
-    </div>
-  );
-}
 
 function RecommendationCard({
   id,
@@ -312,147 +272,6 @@ function RecommendationsSection({
   );
 }
 
-function WatchSection({
-  flatrate,
-  rent,
-  buy,
-}: {
-  flatrate: Provider[];
-  rent: Provider[];
-  buy: Provider[];
-}) {
-  return (
-    <section
-      style={{
-        padding: 24,
-        borderRadius: 26,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background:
-          "linear-gradient(180deg, rgba(18,18,18,0.94) 0%, rgba(10,10,10,0.94) 100%)",
-        boxShadow: "0 18px 60px rgba(0,0,0,0.22)",
-      }}
-    >
-      <h2
-        style={{
-          margin: "0 0 6px",
-          fontSize: 24,
-          letterSpacing: "-0.8px",
-          fontWeight: 500,
-        }}
-      >
-        Where to watch
-      </h2>
-
-      <p
-        style={{
-          margin: "0 0 18px",
-          color: "#9ca3af",
-          fontSize: 14,
-          lineHeight: 1.6,
-          fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-        }}
-      >
-        Available UK streaming options for this series.
-      </p>
-
-      {flatrate.length === 0 && rent.length === 0 && buy.length === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            color: "#9ca3af",
-            fontSize: 14,
-            fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-          }}
-        >
-          No UK streaming information available.
-        </p>
-      ) : (
-        <div style={{ display: "grid", gap: 20 }}>
-          {flatrate.length > 0 ? (
-            <div>
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  color: "#9ca3af",
-                  fontSize: 13,
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                Stream
-              </p>
-
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                {flatrate.map((provider) => (
-                  <ProviderBadge
-                    key={`stream-${provider.provider_id}`}
-                    name={provider.provider_name}
-                    logoPath={provider.logo_path}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {rent.length > 0 ? (
-            <div>
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  color: "#9ca3af",
-                  fontSize: 13,
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                Rent
-              </p>
-
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                {rent.map((provider) => (
-                  <ProviderBadge
-                    key={`rent-${provider.provider_id}`}
-                    name={provider.provider_name}
-                    logoPath={provider.logo_path}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {buy.length > 0 ? (
-            <div>
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  color: "#9ca3af",
-                  fontSize: 13,
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                Buy
-              </p>
-
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                {buy.map((provider) => (
-                  <ProviderBadge
-                    key={`buy-${provider.provider_id}`}
-                    name={provider.provider_name}
-                    logoPath={provider.logo_path}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
-    </section>
-  );
-}
 
 function SeriesHero({
   title,
@@ -468,6 +287,8 @@ function SeriesHero({
   seasonsLabel,
   runtimeLabel,
   actionSeries,
+  flatrate,
+  link,
 }: {
   title: string;
   year: string;
@@ -492,6 +313,8 @@ function SeriesHero({
     runtime?: number;
     voteAverage?: number;
   };
+  flatrate: Provider[];
+  link?: string | null;
 }) {
   const genreSummary = genres.length > 0 ? genres.slice(0, 3).join(" · ") : null;
 
@@ -706,12 +529,15 @@ function SeriesHero({
 
           <ActionButtons series={actionSeries} />
 
+          <WhereToWatch providers={flatrate} link={link} />
+
           <section
             style={{
               padding: 22,
               borderRadius: 22,
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.03)",
+              marginTop: 24,
             }}
           >
             <p
@@ -766,8 +592,7 @@ function SeriesDetailContent({
   basicSeasons,
   initialSeason,
   flatrate,
-  rent,
-  buy,
+  link,
   recommendations,
 }: {
   title: string;
@@ -797,8 +622,7 @@ function SeriesDetailContent({
   basicSeasons: BasicSeason[];
   initialSeason: InitialSeason | null;
   flatrate: Provider[];
-  rent: Provider[];
-  buy: Provider[];
+  link: string | null;
   recommendations: TMDBTVRecommendation[];
 }) {
   const totalEpisodes = basicSeasons.reduce((sum, s) => sum + s.episodeCount, 0);
@@ -869,6 +693,8 @@ function SeriesDetailContent({
         seasonsLabel={seasonsLabel}
         runtimeLabel={runtimeLabel}
         actionSeries={actionSeries}
+        flatrate={flatrate}
+        link={link}
       />
 
       {/* Progress + Continue Watching — diary-based, suppresses if no data */}
@@ -920,7 +746,6 @@ function SeriesDetailContent({
         {/* Friends social layer */}
         <TVFriendsLayer mediaIds={socialMediaIds} title={title} />
 
-        <WatchSection flatrate={flatrate} rent={rent} buy={buy} />
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
           mediaType="tv"
@@ -1104,8 +929,7 @@ export default async function SeriesDetailPage({
 
     const ukProviders = providers?.results?.GB;
     const flatrate = ukProviders?.flatrate || [];
-    const rent = ukProviders?.rent || [];
-    const buy = ukProviders?.buy || [];
+    const link = ukProviders?.link ?? null;
 
     const creator = getCreatorName(details || undefined, localShow.creator);
     const genreNames = getGenreNames(details);
@@ -1147,8 +971,7 @@ export default async function SeriesDetailPage({
         basicSeasons={basicSeasons}
         initialSeason={initialSeason}
         flatrate={flatrate}
-        rent={rent}
-        buy={buy}
+        link={link}
         recommendations={recommendations}
       />
     );
@@ -1184,8 +1007,7 @@ export default async function SeriesDetailPage({
   const initialSeason = await loadInitialSeason(tmdbId, basicSeasons);
   const ukProviders = providers?.results?.GB;
   const flatrate = ukProviders?.flatrate || [];
-  const rent = ukProviders?.rent || [];
-  const buy = ukProviders?.buy || [];
+  const link = ukProviders?.link ?? null;
 
   return (
     <SeriesDetailContent
@@ -1216,8 +1038,7 @@ export default async function SeriesDetailPage({
       basicSeasons={basicSeasons}
       initialSeason={initialSeason}
       flatrate={flatrate}
-      rent={rent}
-      buy={buy}
+      link={link}
       recommendations={recommendations}
     />
   );

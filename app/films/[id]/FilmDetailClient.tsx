@@ -5,6 +5,7 @@ import CastSection, { type CastMember } from "../../../components/detail/CastSec
 import { createClient as createSupabaseClient } from "../../../lib/supabase/client";
 import { useDiaryLog } from "../../../hooks/useDiaryLog";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
+import { WhereToWatch, type WatchProvider } from "../../../components/WhereToWatch";
 
 interface TMDBFilm {
   id: number;
@@ -32,6 +33,7 @@ interface DiaryEntry {
 interface FilmDetailClientProps {
   film: TMDBFilm;
   topCast: CastMember[];
+  watchProviders: { flatrate: WatchProvider[]; link: string | null };
 }
 
 function slugify(value: string) {
@@ -82,6 +84,7 @@ function ActionButton({
 export default function FilmDetailClient({
   film,
   topCast,
+  watchProviders,
 }: FilmDetailClientProps) {
   const { openLog } = useDiaryLog();
   const [diaryEntry, setDiaryEntry] = useState<DiaryEntry | null>(null);
@@ -437,6 +440,8 @@ export default function FilmDetailClient({
             <span>Favourite</span>
           </ActionButton>
         </div>
+
+        <WhereToWatch providers={watchProviders.flatrate} link={watchProviders.link} />
 
         {personalLoaded ? (
           diaryEntry ? (
