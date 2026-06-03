@@ -579,9 +579,13 @@ export default async function PublicProfilePage({
   }
 
   return (
-    <div className="pb-24 md:pb-8">
-      <ProfileHighlights userId={profileRow.id} />
-      <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
+    <div className="pb-24 md:pb-8 flex flex-col">
+      <div className="order-2 md:order-[initial]">
+        <ProfileHighlights userId={profileRow.id} />
+      </div>
+      <div className="order-1 md:order-[initial]">
+        <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
+      </div>
     </div>
   )
 }

@@ -13,7 +13,7 @@ export default async function ProfileHighlights({ userId }: { userId: string }) 
 
   return (
     <section className="w-full py-4 md:py-5 md:px-6">
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:gap-4">
+      <div className="flex flex-col gap-6 md:grid md:grid-cols-3 md:gap-4">
         <TasteSnapshot stats={stats} />
         {stats.topRatedThisYear.length > 0 && (
           <TopRatedThisYear entries={stats.topRatedThisYear} />

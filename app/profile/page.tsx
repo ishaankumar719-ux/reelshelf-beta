@@ -16,9 +16,13 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="pb-24 md:pb-8">
-      <ProfileHighlights userId={user.id} />
-      <ProfileEditor userId={user.id} />
+    <div className="pb-24 md:pb-8 flex flex-col">
+      <div className="order-2 md:order-[initial]">
+        <ProfileHighlights userId={user.id} />
+      </div>
+      <div className="order-1 md:order-[initial]">
+        <ProfileEditor userId={user.id} />
+      </div>
     </div>
   )
 }

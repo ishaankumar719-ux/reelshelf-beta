@@ -3,10 +3,10 @@ import type { ProfileStats } from "@/utils/profileStats";
 function StatCell({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex flex-col gap-0.5 text-center md:text-left">
-      <p className="text-[10px] font-medium tracking-widest uppercase text-zinc-500">
+      <p className="text-xs font-medium tracking-widest uppercase text-zinc-500">
         {label}
       </p>
-      <p className="text-lg md:text-xl font-light text-zinc-50 tabular-nums">{value}</p>
+      <p className="text-sm font-bold md:text-xl md:font-light text-zinc-50 tabular-nums">{value}</p>
     </div>
   );
 }
@@ -21,7 +21,7 @@ export default function TasteSnapshot({ stats }: { stats: ProfileStats }) {
         Taste Snapshot
       </p>
 
-      <div className="grid grid-cols-4 gap-2 md:grid-cols-2 md:gap-x-3 md:gap-y-2">
+      <div className="grid grid-cols-4 gap-1 md:grid-cols-2 md:gap-x-3 md:gap-y-2">
         <StatCell label="Films" value={stats.filmCount} />
         <StatCell label="TV" value={stats.tvCount} />
         <StatCell label="Books" value={stats.bookCount} />
