@@ -16,9 +16,9 @@ export default async function ProfilePage() {
   }
 
   return (
-    <>
+    <div className="pb-24 md:pb-8">
       <ProfileHighlights userId={user.id} />
       <ProfileEditor userId={user.id} />
-    </>
+    </div>
   )
 }

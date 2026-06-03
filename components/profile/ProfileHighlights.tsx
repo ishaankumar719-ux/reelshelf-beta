@@ -12,11 +12,8 @@ export default async function ProfileHighlights({ userId }: { userId: string }) 
   const stats = await getProfileStats(supabase, userId);
 
   return (
-    <section className="w-full py-5 px-4 md:px-6">
-      <div
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible pb-3 md:pb-0"
-        style={{ scrollbarWidth: "none" }}
-      >
+    <section className="w-full py-4 md:py-5 px-4 md:px-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
         <TasteSnapshot stats={stats} />
         {stats.topRatedThisYear.length > 0 && (
           <TopRatedThisYear entries={stats.topRatedThisYear} />

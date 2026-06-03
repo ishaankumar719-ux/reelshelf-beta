@@ -15,18 +15,15 @@ function StatCell({ label, value }: { label: string; value: number }) {
 
 export default function SocialProof({ stats }: { stats: ProfileStats }) {
   return (
-    <div className="snap-start min-w-[220px] md:min-w-0 rounded-2xl bg-white/[0.04] p-5 flex flex-col gap-4 shrink-0 md:shrink">
+    <div className="w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">
         Social
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <StatCell label="Followers" value={stats.followersCount} />
         <StatCell label="Following" value={stats.followingCount} />
         <StatCell label="Reactions" value={stats.totalReactions} />
       </div>
-      <p className="text-[10px] text-zinc-700 leading-snug">
-        Reactions counted across your diary
-      </p>
     </div>
   );
 }

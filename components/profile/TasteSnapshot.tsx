@@ -16,12 +16,12 @@ export default function TasteSnapshot({ stats }: { stats: ProfileStats }) {
     stats.averageRating !== null ? stats.averageRating.toFixed(1) : "—";
 
   return (
-    <div className="snap-start min-w-[260px] md:min-w-0 rounded-2xl bg-white/[0.04] p-5 flex flex-col gap-4 shrink-0 md:shrink">
+    <div className="w-full rounded-2xl bg-white/[0.04] p-4 flex flex-col gap-3">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500">
         Taste Snapshot
       </p>
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         <StatCell label="Films" value={stats.filmCount} />
         <StatCell label="TV" value={stats.tvCount} />
         <StatCell label="Books" value={stats.bookCount} />
