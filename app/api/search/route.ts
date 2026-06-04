@@ -181,27 +181,37 @@ async function searchShortFilms(query: string, limit: number): Promise<SearchRes
   const q = query.trim()
   if (!q) return []
 
-  // Title + channel ilike, plus alias substring match via cast to text
-  const [{ data: mainData }, { data: creditData }] = await Promise.all([
-    supabase
-      .from("short_films")
-      .select("id, title, release_year, thumbnail_url, channel")
-      .or(
-        `title.ilike.%${q}%,channel.ilike.%${q}%,search_aliases::text.ilike.%${q}%`
-      )
-      .limit(limit),
-    // Credits: exact jsonb containment match on name field
-    supabase
-      .from("short_films")
-      .select("id, title, release_year, thumbnail_url, channel")
-      .filter("credits", "cs", JSON.stringify([{ name: q }]))
-      .limit(3),
-  ])
+  // Three parallel queries — each uses supported PostgREST syntax only:
+  // 1. title + channel ilike
+  // 2. search_aliases exact element match (array containment)
+  // 3. credits jsonb containment — exact credit name match
+  const [{ data: mainData }, { data: aliasData }, { data: creditData }] =
+    await Promise.all([
+      supabase
+        .from("short_films")
+        .select("id, title, release_year, thumbnail_url, channel")
+        .or(`title.ilike.%${q}%,channel.ilike.%${q}%`)
+        .limit(limit),
+      supabase
+        .from("short_films")
+        .select("id, title, release_year, thumbnail_url, channel")
+        .contains("search_aliases", [q])
+        .limit(3),
+      supabase
+        .from("short_films")
+        .select("id, title, release_year, thumbnail_url, channel")
+        .filter("credits", "cs", JSON.stringify([{ name: q }]))
+        .limit(3),
+    ])
 
-  // Deduplicate by id
+  // Deduplicate by id across all three result sets
   const seen = new Set<string>()
   const rows: ShortFilmRow[] = []
-  for (const row of [...(mainData ?? []), ...(creditData ?? [])]) {
+  for (const row of [
+    ...(mainData ?? []),
+    ...(aliasData ?? []),
+    ...(creditData ?? []),
+  ]) {
     const r = row as ShortFilmRow
     if (!seen.has(r.id)) {
       seen.add(r.id)

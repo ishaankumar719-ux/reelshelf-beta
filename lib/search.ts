@@ -178,27 +178,37 @@ async function searchShortFilms(query: string): Promise<UniversalSearchResult[]>
   const q = query.trim();
   if (!q) return [];
 
-  // Cast text[] to text so ilike can do substring matching across all aliases
-  const [{ data: mainData }, { data: creditData }] = await Promise.all([
-    supabase
-      .from("short_films")
-      .select("id, title, channel, thumbnail_url, release_year")
-      .or(
-        `title.ilike.%${q}%,channel.ilike.%${q}%,search_aliases::text.ilike.%${q}%`
-      )
-      .limit(5),
-    // Task 3 — exact credit name match (jsonb containment)
-    supabase
-      .from("short_films")
-      .select("id, title, channel, thumbnail_url, release_year")
-      .filter("credits", "cs", JSON.stringify([{ name: q }]))
-      .limit(3),
-  ]);
+  // Three parallel queries — each uses supported PostgREST syntax only:
+  // 1. title + channel ilike (simple substring match)
+  // 2. search_aliases exact element match (array @> ARRAY[q])
+  // 3. credits jsonb containment — exact credit name match
+  const [{ data: mainData }, { data: aliasData }, { data: creditData }] =
+    await Promise.all([
+      supabase
+        .from("short_films")
+        .select("id, title, channel, thumbnail_url, release_year")
+        .or(`title.ilike.%${q}%,channel.ilike.%${q}%`)
+        .limit(5),
+      supabase
+        .from("short_films")
+        .select("id, title, channel, thumbnail_url, release_year")
+        .contains("search_aliases", [q])
+        .limit(3),
+      supabase
+        .from("short_films")
+        .select("id, title, channel, thumbnail_url, release_year")
+        .filter("credits", "cs", JSON.stringify([{ name: q }]))
+        .limit(3),
+    ]);
 
-  // Deduplicate by id
+  // Deduplicate by id across all three result sets
   const seen = new Set<string>();
   const rows: ShortFilmRow[] = [];
-  for (const row of [...(mainData ?? []), ...(creditData ?? [])]) {
+  for (const row of [
+    ...(mainData ?? []),
+    ...(aliasData ?? []),
+    ...(creditData ?? []),
+  ]) {
     const r = row as ShortFilmRow;
     if (!seen.has(r.id)) {
       seen.add(r.id);
