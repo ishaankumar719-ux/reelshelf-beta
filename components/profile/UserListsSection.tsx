@@ -1,7 +1,7 @@
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { fetchListsForProfile } from "@/lib/supabase/lists"
 import ListPreviewCard from "@/components/lists/ListPreviewCard"
-import CreateListButton from "@/components/lists/CreateListButton"
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 
@@ -19,60 +19,96 @@ export default async function UserListsSection({
 
   const lists = await fetchListsForProfile(supabase, userId, isOwner)
 
-  // Empty state — hide the section entirely for non-owners with no public lists
+  // Visitors with no public lists — hide the section entirely
   if (lists.length === 0 && !isOwner) return null
 
   return (
     <section className="w-full py-4 md:py-5 md:px-6" style={{ fontFamily: FONT }}>
-      {/* Section header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 16,
-          paddingInline: 16,
-        }}
-        className="md:px-0"
-      >
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.34)",
-          }}
-        >
-          Lists
-        </span>
 
-        {isOwner && <CreateListButton userId={userId} />}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex justify-between items-center px-4 md:px-0 mb-4">
+        <h2 className="text-xl font-bold text-white" style={{ letterSpacing: "-0.02em" }}>
+          Lists
+        </h2>
+
+        {isOwner && (
+          <Link
+            href="/lists/create"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              height: 32,
+              padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.78)",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.03em",
+              textDecoration: "none",
+              transition: "border-color 0.12s, color 0.12s",
+              fontFamily: FONT,
+            }}
+            onMouseEnter={undefined}
+          >
+            + New List
+          </Link>
+        )}
       </div>
 
-      {/* Empty state for owner with no lists */}
+      {/* ── Owner empty state ───────────────────────────────────────────────── */}
       {lists.length === 0 && isOwner && (
         <div
+          className="mx-4 md:mx-0"
           style={{
-            paddingInline: 16,
-            paddingBottom: 8,
+            borderRadius: 14,
+            border: "1.5px dashed rgba(255,255,255,0.12)",
+            padding: "28px 24px",
+            textAlign: "center",
           }}
-          className="md:px-0"
         >
           <p
             style={{
-              margin: 0,
-              fontSize: 13,
-              color: "rgba(255,255,255,0.22)",
-              fontStyle: "italic",
+              margin: "0 0 16px",
+              fontSize: 14,
+              lineHeight: 1.65,
+              color: "rgba(255,255,255,0.4)",
+              fontFamily: FONT,
             }}
           >
-            No lists yet — create one to organise your favourites.
+            You haven&apos;t created any lists yet.
+            <br />
+            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
+              Create your first list to rank your favourite media.
+            </span>
           </p>
+
+          <Link
+            href="/lists/create"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              height: 44,
+              padding: "0 24px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.07)",
+              color: "rgba(255,255,255,0.88)",
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              textDecoration: "none",
+              fontFamily: FONT,
+            }}
+          >
+            Create your first list
+          </Link>
         </div>
       )}
 
-      {/* Grid */}
+      {/* ── List grid ──────────────────────────────────────────────────────── */}
       {lists.length > 0 && (
         <div
           className="px-4 md:px-0"
@@ -87,6 +123,7 @@ export default async function UserListsSection({
           ))}
         </div>
       )}
+
     </section>
   )
 }
