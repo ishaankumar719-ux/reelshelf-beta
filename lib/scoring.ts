@@ -1,6 +1,6 @@
 import type { ReviewLayers } from "../types/diary";
 
-type MediaType = "movie" | "tv" | "book";
+type MediaType = "movie" | "tv" | "book" | "short_film";
 
 // Weights for each review layer key per media type.
 // These must sum to exactly 0.60 — the 40% overall rating takes the other 0.40.
@@ -45,7 +45,7 @@ const BOOK_LAYER_WEIGHTS: Partial<Record<keyof ReviewLayers, number>> = {
 function getLayerWeights(mediaType: MediaType) {
   if (mediaType === "tv") return TV_LAYER_WEIGHTS;
   if (mediaType === "book") return BOOK_LAYER_WEIGHTS;
-  return FILM_LAYER_WEIGHTS;
+  return FILM_LAYER_WEIGHTS; // movie and short_film share film weights
 }
 
 /**

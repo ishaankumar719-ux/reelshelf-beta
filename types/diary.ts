@@ -36,10 +36,10 @@ export const BOOK_LAYER_DEFS: LayerDef[] = [
   { key: "entertainment_rating", label: "Ending" },
 ]
 
-export function getLayerDefs(mediaType: "movie" | "tv" | "book"): LayerDef[] {
+export function getLayerDefs(mediaType: "movie" | "tv" | "book" | "short_film"): LayerDef[] {
   if (mediaType === "tv") return TV_LAYER_DEFS
   if (mediaType === "book") return BOOK_LAYER_DEFS
-  return FILM_LAYER_DEFS
+  return FILM_LAYER_DEFS // movie and short_film share film layer defs
 }
 
 // Aspect-level ratings, all nullable so they never break existing logs.
@@ -84,7 +84,7 @@ export interface DiaryEntry {
   id: string
   user_id: string
   media_id: string
-  media_type: "movie" | "tv" | "book"
+  media_type: "movie" | "tv" | "book" | "short_film"
   title: string
   poster: string | null
   year: number
@@ -149,7 +149,7 @@ export interface InitialEntryData {
 
 export interface LogMediaInput {
   title: string
-  media_type: "movie" | "tv" | "book"
+  media_type: "movie" | "tv" | "book" | "short_film"
   year: number
   poster: string | null
   creator?: string | null

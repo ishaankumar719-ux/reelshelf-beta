@@ -19,12 +19,14 @@ type WatchlistState = "idle" | "saving" | "saved"
 function getBadgeClasses(mediaType: SearchResultType["media_type"]) {
   if (mediaType === "film") return "border-blue-300/20 bg-blue-400/15 text-blue-100"
   if (mediaType === "series") return "border-emerald-300/20 bg-emerald-400/15 text-emerald-100"
+  if (mediaType === "short_film") return "border-amber-300/20 bg-amber-400/15 text-amber-100"
   return "border-fuchsia-300/20 bg-fuchsia-400/15 text-fuchsia-100"
 }
 
 function getLabel(mediaType: SearchResultType["media_type"]) {
   if (mediaType === "film") return "Film"
   if (mediaType === "series") return "Series"
+  if (mediaType === "short_film") return "Short Film"
   return "Book"
 }
 
@@ -44,6 +46,14 @@ function MediaIcon({ mediaType }: { mediaType: SearchResultType["media_type"] })
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="4" y="6" width="16" height="10.5" rx="2" />
         <path d="M9 19h6" />
+      </svg>
+    )
+  }
+
+  if (mediaType === "short_film") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <polygon points="5,3 19,12 5,21" />
       </svg>
     )
   }
@@ -121,13 +131,17 @@ export default function SearchResult({
     return <UserSearchResult result={result} onSelect={onSelect} active={active} id={id} />
   }
 
-  const posterUrl = result.poster_path ? getPosterUrl(result.poster_path, "w92") : null
+  const posterUrl = result.poster_path
+    ? (result.media_type === "short_film" || result.poster_path.startsWith("http")
+        ? result.poster_path
+        : getPosterUrl(result.poster_path, "w92"))
+    : null
   const meta =
     result.media_type === "book"
       ? [result.year, result.author].filter(Boolean).join(" · ")
       : [result.year, result.director].filter(Boolean).join(" · ")
 
-  // Only films and series support watchlist (books go to reading_shelf — different flow)
+  // Only films and series support watchlist (books go to reading_shelf, short_films have no watchlist yet)
   const supportsWatchlist = result.media_type === "film" || result.media_type === "series"
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -144,18 +158,21 @@ export default function SearchResult({
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("rs:close-search"))
     }
+    const logMediaType =
+      result.media_type === "series" ? "tv" :
+      result.media_type === "book" ? "book" :
+      result.media_type === "short_film" ? "short_film" :
+      "movie"
     openLog({
       title: result.title,
-      media_type:
-        result.media_type === "series"
-          ? "tv"
-          : result.media_type === "book"
-            ? "book"
-            : "movie",
+      media_type: logMediaType,
       year: Number.parseInt(result.year ?? "0", 10) || 0,
-      poster: result.poster_path ? getPosterUrl(result.poster_path, "w342") : null,
+      poster: result.poster_path ?? null,
       creator: result.director ?? result.author ?? null,
-      tmdb_id: result.media_type === "book" ? null : (typeof result.id === "number" ? result.id : null),
+      media_id: result.media_type === "short_film" ? String(result.id) : undefined,
+      tmdb_id: result.media_type === "book" || result.media_type === "short_film"
+        ? null
+        : (typeof result.id === "number" ? result.id : null),
     })
   }
 

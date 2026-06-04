@@ -1,4 +1,4 @@
-export type MediaType = "movie" | "tv" | "book";
+export type MediaType = "movie" | "tv" | "book" | "short_film";
 export type DiaryReviewScope = "title" | "show" | "season" | "episode";
 
 export type SavedMediaItem = {

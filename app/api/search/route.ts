@@ -4,6 +4,7 @@ import { getLocalMovieByTmdbId } from "@/lib/localMovies"
 import { getMovieHrefFromTmdbId } from "@/lib/movieRoutes"
 import { getLocalSeriesByTmdbId } from "@/lib/localSeries"
 import { getSeriesHrefFromTmdbId } from "@/lib/seriesRoutes"
+import { createClient as createSupabaseClient } from "@/lib/supabase/server"
 import type { SearchResult } from "@/src/hooks/useSearch"
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_API_KEY
@@ -22,6 +23,7 @@ type SearchApiResponse = {
   films: SearchResult[]
   series: SearchResult[]
   books: SearchResult[]
+  short_films: SearchResult[]
 }
 
 type SearchType = "film" | "series" | "book"
@@ -152,6 +154,37 @@ async function searchBooks(query: string, _page: number, limit: number): Promise
   }
 }
 
+type ShortFilmRow = {
+  id: string
+  title: string
+  release_year: number | null
+  thumbnail_url: string | null
+  channel: string | null
+}
+
+async function searchShortFilms(query: string, limit: number): Promise<SearchResult[]> {
+  const supabase = await createSupabaseClient()
+  if (!supabase) return []
+
+  const { data } = await supabase
+    .from("short_films")
+    .select("id, title, release_year, thumbnail_url, channel")
+    .ilike("title", `%${query}%`)
+    .limit(limit)
+
+  if (!data) return []
+
+  return (data as ShortFilmRow[]).map((row) => ({
+    id: row.id,
+    media_type: "short_film" as const,
+    title: row.title,
+    year: row.release_year ? String(row.release_year) : null,
+    poster_path: row.thumbnail_url,
+    director: row.channel ?? null,
+    href: `/short-films/${row.id}`,
+  }))
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
@@ -176,14 +209,16 @@ export async function GET(request: Request) {
         films: [],
         series: [],
         books: [],
+        short_films: [],
       })
     }
 
-    const [tmdbResults, books] = await Promise.all([
+    const [tmdbResults, books, shortFilms] = await Promise.all([
       hasType(types, "film") || hasType(types, "series")
         ? searchTmdb(trimmedQuery, page)
         : Promise.resolve([]),
       hasType(types, "book") ? searchBooks(trimmedQuery, page, limit) : Promise.resolve([]),
+      searchShortFilms(trimmedQuery, Math.min(limit, 4)),
     ])
 
     const films = hasType(types, "film")
@@ -228,6 +263,7 @@ export async function GET(request: Request) {
       films,
       series,
       books,
+      short_films: shortFilms,
     })
   } catch (error) {
     console.error("[SEARCH API] uncaught error:", error)
@@ -236,6 +272,7 @@ export async function GET(request: Request) {
       films: [],
       series: [],
       books: [],
+      short_films: [],
     })
   }
 }

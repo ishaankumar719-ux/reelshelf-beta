@@ -19,7 +19,7 @@ import { getProfileInitials } from "@/lib/profile"
 
 export interface MediaReviewsSectionProps {
   mediaIds: string[]
-  mediaType: "movie" | "tv" | "book"
+  mediaType: "movie" | "tv" | "book" | "short_film"
   title: string
   year: number
   poster: string | null
@@ -380,6 +380,7 @@ export default function MediaReviewsSection({
 
   const isBook = mediaType === "book"
   const followingLabel = isBook ? "Read by people you follow" : "Watched by people you follow"
+
 
   return (
     <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 36 }}>

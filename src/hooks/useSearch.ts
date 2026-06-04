@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export interface SearchResult {
   id: number | string
-  media_type: "film" | "series" | "book" | "user"
+  media_type: "film" | "series" | "book" | "user" | "short_film"
   title: string
   year: string | null
   poster_path: string | null
@@ -23,6 +23,7 @@ interface SearchApiResponse {
   films: SearchResult[]
   series: SearchResult[]
   books: SearchResult[]
+  short_films: SearchResult[]
 }
 
 export interface UseSearchReturn {
@@ -111,6 +112,7 @@ export function useSearch(): UseSearchReturn {
           ...(payload.films || []).slice(0, 3),
           ...(payload.series || []).slice(0, 2),
           ...(payload.books || []).slice(0, 2),
+          ...(payload.short_films || []).slice(0, 2),
           ...profileResults,
         ]
         console.log("[SEARCH] Results being set:", nextResults)

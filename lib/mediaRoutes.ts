@@ -18,5 +18,9 @@ export function getMediaHref({
     return getSeriesHrefFromRouteId(id);
   }
 
+  if (mediaType === "short_film") {
+    return `/short-films/${id}`;
+  }
+
   return getBookHrefFromRouteId(id);
 }

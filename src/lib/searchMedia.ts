@@ -4,6 +4,7 @@ type SearchApiResponse = {
   films: SearchResult[]
   series: SearchResult[]
   books: SearchResult[]
+  short_films: SearchResult[]
 }
 
 export async function searchMedia(

@@ -12,7 +12,7 @@ export interface ReviewCoverValue {
 }
 
 interface ReviewCoverPickerProps {
-  mediaType: "movie" | "tv" | "book"
+  mediaType: "movie" | "tv" | "book" | "short_film"
   tmdbId?: number | null
   defaultPosterUrl?: string | null
   value: ReviewCoverValue
@@ -51,7 +51,7 @@ export default function ReviewCoverPicker({
 
   useEffect(() => {
     if (!open) return
-    if (mediaType === "book" || !tmdbId) return
+    if (mediaType === "book" || mediaType === "short_film" || !tmdbId) return
     if (images.length > 0) return
 
     setLoadingImages(true)
@@ -224,7 +224,7 @@ export default function ReviewCoverPicker({
           ) : null}
 
           {/* TMDB image carousel — films and TV only */}
-          {mediaType !== "book" && tmdbId ? (
+          {mediaType !== "book" && mediaType !== "short_film" && tmdbId ? (
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
                 Posters & stills from TMDB

@@ -31,7 +31,7 @@ import { useReviewComments } from "../../hooks/useReviewComments";
 export interface ReviewCardEntry {
   entryId: string;
   mediaId: string;
-  mediaType: "movie" | "tv" | "book";
+  mediaType: "movie" | "tv" | "book" | "short_film";
   title: string;
   year: number;
   poster: string | null;
@@ -88,9 +88,10 @@ function formatWatchedDate(date: string): string {
   });
 }
 
-function getMediaBadgeStyles(mediaType: "movie" | "tv" | "book") {
+function getMediaBadgeStyles(mediaType: "movie" | "tv" | "book" | "short_film") {
   if (mediaType === "movie") return { bg: "rgba(59,130,246,0.14)", border: "rgba(96,165,250,0.3)", color: "rgba(219,234,254,0.9)", label: "FILM" };
   if (mediaType === "tv") return { bg: "rgba(20,184,166,0.14)", border: "rgba(45,212,191,0.3)", color: "rgba(204,251,241,0.9)", label: "SERIES" };
+  if (mediaType === "short_film") return { bg: "rgba(245,158,11,0.14)", border: "rgba(251,191,36,0.3)", color: "rgba(254,243,199,0.9)", label: "SHORT FILM" };
   return { bg: "rgba(168,85,247,0.14)", border: "rgba(192,132,252,0.3)", color: "rgba(245,243,255,0.9)", label: "BOOK" };
 }
 
@@ -198,7 +199,7 @@ function LayerBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ReviewLayersPanel({ mediaType, layers }: { mediaType: "movie" | "tv" | "book"; layers: ReviewLayers }) {
+function ReviewLayersPanel({ mediaType, layers }: { mediaType: "movie" | "tv" | "book" | "short_film"; layers: ReviewLayers }) {
   const [open, setOpen] = useState(false);
   const defs = getLayerDefs(mediaType);
   const filled = defs.filter(({ key }) => layers[key] !== null && layers[key] !== undefined);
@@ -807,7 +808,7 @@ export default function ReviewCard({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const reviewTargetType: ReviewTargetType =
-    mediaType === "movie" ? "film_review"
+    mediaType === "movie" || mediaType === "short_film" ? "film_review"
     : mediaType === "tv" ? "tv_review"
     : "book_review";
 

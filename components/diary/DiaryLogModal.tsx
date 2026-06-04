@@ -42,6 +42,7 @@ function slugifyTitle(title: string) {
 function getMediaLabel(mediaType: LogMediaInput["media_type"]) {
   if (mediaType === "movie") return "Film";
   if (mediaType === "tv") return "Series";
+  if (mediaType === "short_film") return "Short Film";
   return "Book";
 }
 
@@ -59,6 +60,14 @@ function getMediaBadgeStyles(mediaType: LogMediaInput["media_type"]) {
       background: "rgba(20,184,166,0.16)",
       border: "0.5px solid rgba(45,212,191,0.35)",
       color: "rgba(204,251,241,0.92)",
+    };
+  }
+
+  if (mediaType === "short_film") {
+    return {
+      background: "rgba(245,158,11,0.16)",
+      border: "0.5px solid rgba(251,191,36,0.35)",
+      color: "rgba(254,243,199,0.92)",
     };
   }
 
