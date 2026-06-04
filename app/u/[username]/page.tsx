@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { buildActivityEventsFromSources } from "@/lib/activity"
 import { createClient } from "@/lib/supabase/server"
 import { getMediaHref } from "@/lib/mediaRoutes"
+import UserListsSection from "@/components/profile/UserListsSection"
 import {
   buildDisplayBadges,
   computeEarnedBadgeSlugs,
@@ -582,6 +583,7 @@ export default async function PublicProfilePage({
     <div className="pb-24 md:pb-8">
       <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
       <ProfileHighlights userId={profileRow.id} />
+      <UserListsSection userId={profileRow.id} isOwner={isOwner} />
     </div>
   )
 }
