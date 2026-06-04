@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
-import { resolveBookCover } from "@/lib/bookCovers"
 import { getBookHrefFromRouteId } from "@/lib/bookRoutes"
-import { localBooks } from "@/lib/localBooks"
 import { getLocalMovieByTmdbId } from "@/lib/localMovies"
 import { getMovieHrefFromTmdbId } from "@/lib/movieRoutes"
 import { getLocalSeriesByTmdbId } from "@/lib/localSeries"
@@ -104,25 +102,54 @@ async function searchTmdb(query: string, page: number) {
   return mapped
 }
 
-async function searchBooks(query: string, page: number, limit: number): Promise<SearchResult[]> {
-  const matches = localBooks.filter((book) =>
-    [book.title, book.author, book.genre].some((value) => normalize(value).includes(normalize(query)))
-  )
+async function searchBooks(query: string, _page: number, limit: number): Promise<SearchResult[]> {
+  const params = new URLSearchParams({
+    q:           query.trim(),
+    maxResults:  String(Math.min(limit, 10)),
+    printType:   "books",
+    langRestrict: "en",
+  })
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+  if (apiKey) params.set("key", apiKey)
 
-  const start = (page - 1) * limit
-  const slice = matches.slice(start, start + limit)
+  try {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) {
+      console.warn("[BOOK SEARCH] Google Books responded", res.status)
+      return []
+    }
+    const data = await res.json() as { items?: Array<{ id: string; volumeInfo?: Record<string, unknown> }> }
+    if (!data.items) return []
 
-  return Promise.all(
-    slice.map(async (book, index) => ({
-      id: start + index + 1,
-      media_type: "book",
-      title: book.title,
-      year: book.year,
-      poster_path: await resolveBookCover(book),
-      author: book.author,
-      href: getBookHrefFromRouteId(book.id),
-    }))
-  )
+    return data.items.map((item): SearchResult => {
+      const info = (item.volumeInfo ?? {}) as {
+        title?: string
+        authors?: string[]
+        publishedDate?: string
+        imageLinks?: { thumbnail?: string; smallThumbnail?: string }
+      }
+      const rawCover =
+        info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null
+      const cover = rawCover
+        ? rawCover.replace("http://", "https://").replace("&edge=curl", "")
+        : null
+
+      return {
+        id:          item.id,
+        media_type:  "book",
+        title:       info.title ?? "Untitled",
+        year:        info.publishedDate ? String(info.publishedDate).slice(0, 4) : null,
+        poster_path: cover,          // absolute HTTPS — toAbsolutePosterUrl passes it through
+        author:      info.authors?.[0] ?? null,
+        href:        getBookHrefFromRouteId(item.id),
+      } satisfies SearchResult
+    })
+  } catch (err) {
+    console.warn("[BOOK SEARCH] error", err)
+    return []
+  }
 }
 
 export async function GET(request: Request) {

@@ -14,6 +14,7 @@ interface SearchHit {
   title: string
   poster_url: string | null
   year: string | null
+  author?: string | null
 }
 
 // Shape the search API actually returns
@@ -111,6 +112,7 @@ export default function MediaSearchModal({
             title:      r.title,
             poster_url: toAbsolutePosterUrl(r.poster_path),
             year:       r.year ?? null,
+            author:     r.author ?? null,
           })),
         ]
 
@@ -139,6 +141,7 @@ export default function MediaSearchModal({
       title:      hit.title,
       poster_url: hit.poster_url,
       year:       hit.year,
+      author:     hit.author ?? null,
       rank_order: nextRank,
     }])
 
@@ -259,7 +262,9 @@ export default function MediaSearchModal({
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-white truncate">{hit.title}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    {hit.year ? `${hit.year} · ` : ""}
+                    {hit.media_type === "book"
+                      ? (hit.author ? `${hit.author} · ` : "")
+                      : (hit.year ? `${hit.year} · ` : "")}
                     <span className={`font-medium ${TYPE_COLOR[hit.media_type]}`}>
                       {TYPE_LABEL[hit.media_type]}
                     </span>
