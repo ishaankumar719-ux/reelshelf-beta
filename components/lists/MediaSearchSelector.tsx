@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { toAbsolutePosterUrl } from "@/lib/supabase/lists"
 import type { ListMediaType } from "@/lib/supabase/lists"
 
@@ -45,8 +46,10 @@ export default function MediaSearchSelector({
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     inputRef.current?.focus()
   }, [])
 
@@ -117,8 +120,10 @@ export default function MediaSearchSelector({
     book:  "rgba(52,211,153,0.75)",
   }
 
-  return (
-    /* Backdrop */
+  if (!mounted) return null
+
+  return createPortal(
+    /* Backdrop — pure overlay, no flex alignment needed */
     <div
       style={{
         position: "fixed",
@@ -126,27 +131,28 @@ export default function MediaSearchSelector({
         zIndex: 9999,
         background: "rgba(0,0,0,0.72)",
         backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
         fontFamily: FONT,
       }}
       onPointerDown={onClose}
     >
-      {/* Panel */}
+      {/* Panel — anchored to viewport bottom via own fixed positioning */}
       <div
         style={{
-          width: "100%",
-          maxWidth: 560,
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
           borderRadius: "20px 20px 0 0",
           background: "rgba(12,12,20,0.99)",
           border: "1px solid rgba(255,255,255,0.09)",
           borderBottom: "none",
           boxShadow: "0 -8px 48px rgba(0,0,0,0.6)",
-          maxHeight: "88vh",
+          maxHeight: "88dvh",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          zIndex: 10000,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -348,6 +354,7 @@ export default function MediaSearchSelector({
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -8,40 +8,55 @@ import { createClient } from "@/lib/supabase/client"
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 
-function ToggleChip({
+// ── Segmented control ──────────────────────────────────────────────────────────
+// active=true  → left option selected
+// active=false → right option selected
+
+function SegmentedControl({
+  labelA,
+  labelB,
   active,
-  label,
-  onClick,
+  onChange,
 }: {
+  labelA: string
+  labelB: string
   active: boolean
-  label: string
-  onClick: () => void
+  onChange: (v: boolean) => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        height: 36,
-        padding: "0 18px",
-        borderRadius: 999,
-        border: active
-          ? "1px solid rgba(255,255,255,0.22)"
-          : "1px solid rgba(255,255,255,0.09)",
-        background: active ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.02)",
-        color: active ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.32)",
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: "0.03em",
-        cursor: "pointer",
-        fontFamily: FONT,
-        transition: "all 0.12s ease",
-      }}
+    <div
+      className="flex bg-zinc-950 border border-zinc-900 rounded-lg p-1 gap-0.5"
+      style={{ fontFamily: FONT }}
     >
-      {label}
-    </button>
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={[
+          "flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-all duration-100 leading-none",
+          active
+            ? "bg-zinc-800 text-white border border-zinc-700/50"
+            : "text-zinc-500 hover:text-zinc-300",
+        ].join(" ")}
+      >
+        {labelA}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={[
+          "flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-all duration-100 leading-none",
+          !active
+            ? "bg-zinc-800 text-white border border-zinc-700/50"
+            : "text-zinc-500 hover:text-zinc-300",
+        ].join(" ")}
+      >
+        {labelB}
+      </button>
+    </div>
   )
 }
+
+// ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CreateListPage() {
   const { user, loading } = useAuth()
@@ -54,62 +69,25 @@ export default function CreateListPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
+  // ── Loading skeleton ────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div
-        style={{
-          maxWidth: 560,
-          margin: "0 auto",
-          padding: "48px 16px",
-          fontFamily: FONT,
-        }}
-      >
-        <div
-          style={{
-            height: 28,
-            width: 140,
-            borderRadius: 6,
-            background: "rgba(255,255,255,0.06)",
-            marginBottom: 32,
-          }}
-        />
-        {[1, 2, 3].map((n) => (
-          <div
-            key={n}
-            style={{
-              height: n === 2 ? 72 : 44,
-              borderRadius: 8,
-              background: "rgba(255,255,255,0.04)",
-              marginBottom: 12,
-            }}
-          />
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 16px", fontFamily: FONT }}>
+        <div style={{ height: 28, width: 120, borderRadius: 6, background: "rgba(255,255,255,0.06)", marginBottom: 32 }} />
+        {[44, 80, 52, 52].map((h, i) => (
+          <div key={i} style={{ height: h, borderRadius: 10, background: "rgba(255,255,255,0.04)", marginBottom: 14 }} />
         ))}
       </div>
     )
   }
 
-  // ── Auth gate ─────────────────────────────────────────────────────────────
+  // ── Auth gate ───────────────────────────────────────────────────────────────
 
   if (!user) {
     return (
-      <div
-        style={{
-          maxWidth: 560,
-          margin: "0 auto",
-          padding: "80px 16px",
-          textAlign: "center",
-          fontFamily: FONT,
-        }}
-      >
-        <p
-          style={{
-            fontSize: 15,
-            color: "rgba(255,255,255,0.45)",
-            marginBottom: 20,
-          }}
-        >
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "80px 16px", textAlign: "center", fontFamily: FONT }}>
+        <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", marginBottom: 20 }}>
           Sign in required to create lists.
         </p>
         <Link
@@ -135,7 +113,7 @@ export default function CreateListPage() {
     )
   }
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -151,40 +129,58 @@ export default function CreateListPage() {
     setSaving(true)
     setError(null)
 
-    const { data, error: insertError } = await supabase
-      .from("user_lists")
-      .insert([{
-        title: trimmed,
-        description: description.trim() || null,
-        is_public: isPublic,
-        is_ranked: isRanked,
-        user_id: user.id,
-      }])
-      .select()
-      .single()
+    try {
+      // Check if it's the user's first list
+      const { count } = await supabase
+        .from("user_lists")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
 
-    setSaving(false)
+      // Insert the new list row
+      const { data: newList, error: listError } = await supabase
+        .from("user_lists")
+        .insert([{
+          title: trimmed,
+          description: description.trim() || null,
+          is_public: isPublic,
+          is_ranked: isRanked,
+          user_id: user.id,
+        }])
+        .select()
+        .single()
 
-    if (insertError || !data) {
-      setError(insertError?.message ?? "Failed to create list. Please try again.")
-      return
+      if (listError) throw listError
+
+      // If first list, unlock the List Maker achievement natively.
+      // badge_id is UUID → resolve via slug first; silently skip if not found.
+      if (count === 0) {
+        const { data: badgeDef } = await supabase
+          .from("badges")
+          .select("id")
+          .eq("slug", "list_maker")
+          .maybeSingle()
+
+        if (badgeDef?.id) {
+          await supabase
+            .from("user_badges")
+            .insert([{ user_id: user.id, badge_id: badgeDef.id }])
+        }
+      }
+
+      router.push(`/lists/${newList!.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create list. Please try again.")
+    } finally {
+      setSaving(false)
     }
-
-    router.push(`/lists/${data.id}`)
   }
 
-  // ── Form ──────────────────────────────────────────────────────────────────
+  // ── Form ────────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        maxWidth: 560,
-        margin: "0 auto",
-        padding: "36px 16px 80px",
-        fontFamily: FONT,
-      }}
-    >
-      {/* Back link */}
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: "36px 16px 80px", fontFamily: FONT }}>
+
+      {/* Back */}
       <Link
         href="/profile"
         style={{
@@ -215,9 +211,9 @@ export default function CreateListPage() {
       </h1>
 
       <form onSubmit={(e) => void handleSubmit(e)}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-          {/* Title */}
+          {/* ── Title ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label
               htmlFor="list-title"
@@ -254,19 +250,13 @@ export default function CreateListPage() {
                 boxSizing: "border-box",
                 caretColor: "rgba(255,255,255,0.7)",
               }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"
-              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)" }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)" }}
             />
             <span
               style={{
                 fontSize: 11,
-                color: title.length > 85
-                  ? "rgba(251,113,133,0.7)"
-                  : "rgba(255,255,255,0.18)",
+                color: title.length > 85 ? "rgba(251,113,133,0.7)" : "rgba(255,255,255,0.18)",
                 alignSelf: "flex-end",
                 fontVariantNumeric: "tabular-nums",
               }}
@@ -275,7 +265,7 @@ export default function CreateListPage() {
             </span>
           </div>
 
-          {/* Description */}
+          {/* ── Description ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label
               htmlFor="list-description"
@@ -287,14 +277,13 @@ export default function CreateListPage() {
                 color: "rgba(255,255,255,0.32)",
               }}
             >
-              Description
+              Description{" "}
               <span
                 style={{
                   fontWeight: 400,
                   letterSpacing: 0,
                   textTransform: "none",
                   color: "rgba(255,255,255,0.2)",
-                  marginLeft: 6,
                 }}
               >
                 optional
@@ -321,17 +310,13 @@ export default function CreateListPage() {
                 lineHeight: 1.55,
                 caretColor: "rgba(255,255,255,0.7)",
               }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"
-              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)" }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)" }}
             />
           </div>
 
-          {/* Toggles */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* ── Visibility ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span
               style={{
                 fontSize: 11,
@@ -341,39 +326,48 @@ export default function CreateListPage() {
                 color: "rgba(255,255,255,0.32)",
               }}
             >
-              Options
+              Visibility
             </span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <ToggleChip
-                active={isPublic}
-                label={isPublic ? "Public" : "Private"}
-                onClick={() => setIsPublic((v) => !v)}
-              />
-              <ToggleChip
-                active={isRanked}
-                label={isRanked ? "Ranked" : "Unranked"}
-                onClick={() => setIsRanked((v) => !v)}
-              />
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.2)",
-                lineHeight: 1.5,
-              }}
-            >
+            <SegmentedControl
+              labelA="Public"
+              labelB="Private"
+              active={isPublic}
+              onChange={setIsPublic}
+            />
+            <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.55 }}>
               {isPublic
-                ? "Anyone can view this list on your profile."
-                : "Only you can see this list."}
-              {" "}
-              {isRanked
-                ? "Items will have numbered positions."
-                : "Items are unordered."}
+                ? "Public lists appear on your profile and can be viewed by others."
+                : "Private lists are only visible to you."}
             </p>
           </div>
 
-          {/* Error */}
+          {/* ── List Type ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.32)",
+              }}
+            >
+              List Type
+            </span>
+            <SegmentedControl
+              labelA="Ranked"
+              labelB="Unranked"
+              active={isRanked}
+              onChange={setIsRanked}
+            />
+            <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.55 }}>
+              {isRanked
+                ? "Ranked lists display numbered positions."
+                : "Unranked lists are simple collections without ordering."}
+            </p>
+          </div>
+
+          {/* ── Error ── */}
           {error && (
             <p
               style={{
@@ -390,16 +384,10 @@ export default function CreateListPage() {
             </p>
           )}
 
-          {/* Divider */}
-          <div
-            style={{
-              height: "0.5px",
-              background: "rgba(255,255,255,0.06)",
-              margin: "4px 0",
-            }}
-          />
+          {/* ── Divider ── */}
+          <div style={{ height: "0.5px", background: "rgba(255,255,255,0.06)" }} />
 
-          {/* Actions */}
+          {/* ── Actions ── */}
           <div style={{ display: "flex", gap: 10 }}>
             <button
               type="submit"
@@ -409,14 +397,8 @@ export default function CreateListPage() {
                 height: 48,
                 borderRadius: 12,
                 border: "none",
-                background:
-                  saving || !title.trim()
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(255,255,255,0.11)",
-                color:
-                  saving || !title.trim()
-                    ? "rgba(255,255,255,0.25)"
-                    : "rgba(255,255,255,0.94)",
+                background: saving || !title.trim() ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.11)",
+                color: saving || !title.trim() ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.94)",
                 fontSize: 14,
                 fontWeight: 700,
                 letterSpacing: "0.01em",
@@ -427,7 +409,6 @@ export default function CreateListPage() {
             >
               {saving ? "Creating…" : "Create list"}
             </button>
-
             <Link
               href="/profile"
               style={{
