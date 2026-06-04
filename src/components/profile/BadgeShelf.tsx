@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { DisplayBadge } from "@/lib/supabase/badges"
+import BadgeLibrary from "@/components/profile/BadgeLibrary"
 import {
   RARITY_COLOR,
   RARITY_GLOW,
@@ -557,6 +558,7 @@ function LegacyBadgeToken({
 
 export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
   const [selectedBadge, setSelectedBadge] = useState<DisplayBadge | null>(null)
+  const [showLibrary, setShowLibrary]     = useState(false)
   // Track whether we've hydrated (portal requires document)
   const hydrated = useRef(false)
   useEffect(() => { hydrated.current = true }, [])
@@ -579,7 +581,12 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
   return (
     <div style={{ marginTop: 36 }}>
 
-      {/* Modal — rendered via portal to document.body */}
+      {/* Full badge library overlay */}
+      {showLibrary && (
+        <BadgeLibrary badges={badges} onClose={() => setShowLibrary(false)} />
+      )}
+
+      {/* Badge detail modal — rendered via portal to document.body */}
       {selectedBadge ? (
         <BadgeDetailModal
           badge={selectedBadge}
@@ -644,16 +651,53 @@ export default function BadgeShelf({ badges }: { badges: DisplayBadge[] }) {
       {normalBadges.length > 0 ? (
         <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{
-              fontFamily: FONT,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.34)",
-            }}>
-              Badges
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{
+                fontFamily: FONT,
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.34)",
+              }}>
+                Badges
+              </span>
+
+              {/* View All Badges — opens the full library overlay */}
+              <button
+                type="button"
+                onClick={() => setShowLibrary(true)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  height: 22,
+                  padding: "0 9px",
+                  borderRadius: 999,
+                  border: "0.5px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.45)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  transition: "border-color 0.12s, color 0.12s",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"
+                  e.currentTarget.style.color = "rgba(255,255,255,0.72)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"
+                  e.currentTarget.style.color = "rgba(255,255,255,0.45)"
+                }}
+              >
+                View all
+                <span style={{ opacity: 0.5, fontSize: 9 }}>→</span>
+              </button>
+            </div>
 
             {earnedNormal.length > 0 ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
