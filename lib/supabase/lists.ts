@@ -185,6 +185,7 @@ export async function addListItem(
     year: string | null
     rank_order: number
     notes?: string | null
+    author?: string | null
   }
 ): Promise<UserListItem | null> {
   const { data, error } = await supabase
@@ -198,6 +199,7 @@ export async function addListItem(
       year: item.year,
       rank_order: item.rank_order,
       notes: item.notes ?? null,
+      author: item.author ?? null,
     })
     .select()
     .single()

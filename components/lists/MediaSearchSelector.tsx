@@ -18,6 +18,7 @@ export interface MediaSearchResult {
   media_type: ListMediaType
   media_id: string
   title: string
+  subtitle: string | null // author name for books; null for films/TV
   poster_url: string | null
   year: string | null
 }
@@ -28,7 +29,11 @@ interface ApiResult {
   title: string
   year: string | null
   poster_path: string | null
+  author?: string | null
+  director?: string | null
 }
+
+type TypeFilter = "all" | "movie" | "tv" | "book"
 
 interface MediaSearchSelectorProps {
   existingMediaIds?: string[]
@@ -44,8 +49,9 @@ export default function MediaSearchSelector({
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<MediaSearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
   const abortRef = useRef<AbortController | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -67,42 +73,57 @@ export default function MediaSearchSelector({
       abortRef.current = ctrl
       setLoading(true)
 
+      console.log('[LIST_SEARCH] query', q)
+
+      const apiUrl = `/api/search?q=${encodeURIComponent(q)}&types=film,series,book&limit=8`
+      console.log('[LIST_SEARCH] book API URL/source', apiUrl)
+      console.log('[LIST_SEARCH] book search started')
+
       try {
-        const res = await fetch(
-          `/api/search?q=${encodeURIComponent(q)}&types=film,series,book&limit=8`,
-          { signal: ctrl.signal }
-        )
+        const res = await fetch(apiUrl, { signal: ctrl.signal })
         const body = await res.json() as {
           films?: ApiResult[]
           series?: ApiResult[]
           books?: ApiResult[]
         }
 
-        const mapped: MediaSearchResult[] = [
-          ...(body.films ?? []).map((r) => ({
-            media_type: normalizeMediaType(r.media_type),
-            media_id: String(r.id),
-            title: r.title,
-            poster_url: toAbsolutePosterUrl(r.poster_path),
-            year: r.year,
-          })),
-          ...(body.series ?? []).map((r) => ({
-            media_type: normalizeMediaType(r.media_type),
-            media_id: String(r.id),
-            title: r.title,
-            poster_url: toAbsolutePosterUrl(r.poster_path),
-            year: r.year,
-          })),
-          ...(body.books ?? []).map((r) => ({
-            media_type: normalizeMediaType(r.media_type),
-            media_id: String(r.id),
-            title: r.title,
-            poster_url: toAbsolutePosterUrl(r.poster_path),
-            year: r.year,
-          })),
-        ]
+        console.log('[LIST_SEARCH] raw book response', body.books)
 
-        if (!ctrl.signal.aborted) setResults(mapped)
+        const movieResults: MediaSearchResult[] = (body.films ?? []).map((r) => ({
+          media_type: normalizeMediaType(r.media_type),
+          media_id: String(r.id),
+          title: r.title,
+          subtitle: null,
+          poster_url: toAbsolutePosterUrl(r.poster_path),
+          year: r.year,
+        }))
+
+        const tvResults: MediaSearchResult[] = (body.series ?? []).map((r) => ({
+          media_type: normalizeMediaType(r.media_type),
+          media_id: String(r.id),
+          title: r.title,
+          subtitle: null,
+          poster_url: toAbsolutePosterUrl(r.poster_path),
+          year: r.year,
+        }))
+
+        const normalisedBooks: MediaSearchResult[] = (body.books ?? []).map((r) => ({
+          media_type: "book" as const,
+          media_id: String(r.id),
+          title: r.title,
+          subtitle: r.author ?? null,
+          poster_url: toAbsolutePosterUrl(r.poster_path),
+          year: r.year,
+        }))
+
+        console.log('[LIST_SEARCH] movie results count', movieResults.length)
+        console.log('[LIST_SEARCH] tv results count', tvResults.length)
+        console.log('[LIST_SEARCH] normalised book results count', normalisedBooks.length)
+
+        const mergedResults = [...movieResults, ...tvResults, ...normalisedBooks]
+        console.log('[LIST_SEARCH] final merged results count', mergedResults.length)
+
+        if (!ctrl.signal.aborted) setResults(mergedResults)
       } catch {
         // abort or network error — silently ignore
       } finally {
@@ -120,10 +141,21 @@ export default function MediaSearchSelector({
     book:  "rgba(52,211,153,0.75)",
   }
 
+  const FILTER_CHIPS: { label: string; value: TypeFilter }[] = [
+    { label: "All",   value: "all"   },
+    { label: "Films", value: "movie" },
+    { label: "TV",    value: "tv"    },
+    { label: "Books", value: "book"  },
+  ]
+
+  const visible = typeFilter === "all"
+    ? results
+    : results.filter((r) => r.media_type === typeFilter)
+
   if (!mounted) return null
 
   return createPortal(
-    /* Backdrop — pure overlay, no flex alignment needed */
+    /* Backdrop */
     <div
       style={{
         position: "fixed",
@@ -135,7 +167,7 @@ export default function MediaSearchSelector({
       }}
       onPointerDown={onClose}
     >
-      {/* Panel — anchored to viewport bottom via own fixed positioning */}
+      {/* Panel */}
       <div
         style={{
           position: "fixed",
@@ -158,14 +190,7 @@ export default function MediaSearchSelector({
       >
         {/* Drag handle */}
         <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
-          <div
-            style={{
-              width: 36,
-              height: 4,
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.15)",
-            }}
-          />
+          <div style={{ width: 36, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.15)" }} />
         </div>
 
         {/* Search input */}
@@ -182,9 +207,7 @@ export default function MediaSearchSelector({
               paddingInline: 14,
             }}
           >
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.28)", flexShrink: 0 }}>
-              🔍
-            </span>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.28)", flexShrink: 0 }}>🔍</span>
             <input
               ref={inputRef}
               type="text"
@@ -204,7 +227,7 @@ export default function MediaSearchSelector({
             {(loading || query.length > 0) && (
               <button
                 type="button"
-                onClick={() => setQuery("")}
+                onClick={() => { setQuery(""); setTypeFilter("all") }}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -222,9 +245,44 @@ export default function MediaSearchSelector({
           </div>
         </div>
 
+        {/* Filter chips */}
+        {results.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              padding: "0 20px 12px",
+              borderBottom: "0.5px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            {FILTER_CHIPS.map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTypeFilter(value)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontFamily: FONT,
+                  cursor: "pointer",
+                  border: "none",
+                  background: typeFilter === value ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.08)",
+                  color: typeFilter === value ? "#000" : "rgba(255,255,255,0.45)",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Results */}
         <div style={{ overflowY: "auto", flex: 1, paddingBottom: 24 }}>
-          {query.trim().length > 1 && !loading && results.length === 0 && (
+          {query.trim().length > 1 && !loading && visible.length === 0 && (
             <p
               style={{
                 fontSize: 13,
@@ -234,11 +292,13 @@ export default function MediaSearchSelector({
                 fontStyle: "italic",
               }}
             >
-              No results found.
+              {typeFilter !== "all" && results.length > 0
+                ? `No ${TYPE_LABEL[typeFilter as ListMediaType] ?? typeFilter} results. Try another filter.`
+                : "No results found."}
             </p>
           )}
 
-          {results.map((item) => {
+          {visible.map((item) => {
             const alreadyAdded = existingMediaIds.includes(item.media_id)
             return (
               <button
@@ -267,7 +327,7 @@ export default function MediaSearchSelector({
                   (e.currentTarget as HTMLButtonElement).style.background = "transparent"
                 }}
               >
-                {/* Poster */}
+                {/* Poster / placeholder */}
                 <div
                   style={{
                     width: 32,
@@ -297,7 +357,7 @@ export default function MediaSearchSelector({
                         opacity: 0.3,
                       }}
                     >
-                      🎬
+                      {item.media_type === "book" ? "📚" : "🎬"}
                     </div>
                   )}
                 </div>
@@ -319,10 +379,18 @@ export default function MediaSearchSelector({
                     {item.title}
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    {item.year && (
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: FONT }}>
-                        {item.year}
-                      </span>
+                    {item.media_type === "book" ? (
+                      item.subtitle && (
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: FONT }}>
+                          {item.subtitle}
+                        </span>
+                      )
+                    ) : (
+                      item.year && (
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: FONT }}>
+                          {item.year}
+                        </span>
+                      )
                     )}
                     <span
                       style={{

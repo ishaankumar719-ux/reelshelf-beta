@@ -133,6 +133,7 @@ export default function ListItemsEditor({
       poster_url: selected.poster_url,
       year: selected.year,
       rank_order: newRank,
+      author: selected.subtitle ?? null,
     })
 
     if (inserted) {
