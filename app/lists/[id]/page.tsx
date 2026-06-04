@@ -1,399 +1,522 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
-import { fetchListWithItems } from "@/lib/supabase/lists"
+import { createClient } from "@/lib/supabase/client"
 import { getMediaHref } from "@/lib/mediaRoutes"
-import ListItemsEditor from "@/components/lists/ListItemsEditor"
+import ListCoverGrid from "@/components/lists/ListCoverGrid"
+import MediaSearchModal from "@/components/lists/MediaSearchModal"
 
-export const dynamic = "force-dynamic"
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
+type MediaType = "movie" | "tv" | "book"
 
-const TYPE_LABEL: Record<string, string> = { movie: "Film", tv: "TV", book: "Book" }
-const TYPE_COLOR: Record<string, string> = {
-  movie: "rgba(96,165,250,0.75)",
-  tv:    "rgba(167,139,250,0.75)",
-  book:  "rgba(52,211,153,0.75)",
+interface ListItem {
+  id: string
+  media_type: MediaType
+  media_id: string
+  title: string
+  poster_url: string | null
+  year: string | null
+  rank_order: number
+  notes: string | null
 }
 
-function RankBadge({ n }: { n: number }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minWidth: 32,
-        height: 32,
-        borderRadius: 6,
-        background: "rgba(255,255,255,0.05)",
-        border: "0.5px solid rgba(255,255,255,0.1)",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.02em",
-        color: "rgba(255,255,255,0.55)",
-        fontFamily: FONT,
-        flexShrink: 0,
-      }}
-    >
-      #{n}
-    </span>
-  )
+interface ListDetails {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  is_public: boolean
+  is_ranked: boolean
+  created_at: string
 }
 
-export default async function ListDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const supabase = await createClient()
-  if (!supabase) notFound()
+interface Creator {
+  username: string | null
+  display_name: string | null
+  avatar_url: string | null
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const result = await fetchListWithItems(supabase, id)
-  if (!result) notFound()
+const TYPE_LABEL: Record<MediaType, string> = { movie: "Film", tv: "TV", book: "Book" }
 
-  const { list, items, creator } = result
-  const isOwner = user?.id === list.user_id
+// ── Page ──────────────────────────────────────────────────────────────────────
 
-  // Block non-owners from private lists
-  if (!list.is_public && !isOwner) notFound()
+export default function ListDetailPage() {
+  const router   = useRouter()
+  const params   = useParams()
+  const listId   = Array.isArray(params.id) ? params.id[0] : params.id
 
-  const creatorName = creator.display_name || creator.username || "Someone"
-  const creatorHref = creator.username
-    ? `/u/${encodeURIComponent(creator.username)}`
-    : null
+  const [list,              setList]              = useState<ListDetails | null>(null)
+  const [items,             setItems]             = useState<ListItem[]>([])
+  const [creator,           setCreator]           = useState<Creator | null>(null)
+  const [isOwner,           setIsOwner]           = useState(false)
+  const [loading,           setLoading]           = useState(true)
+  const [notFound,          setNotFound]          = useState(false)
+
+  // Edit mode
+  const [editingMeta,       setEditingMeta]       = useState(false)
+  const [editTitle,         setEditTitle]         = useState("")
+  const [editDesc,          setEditDesc]          = useState("")
+  const [editPublic,        setEditPublic]        = useState(true)
+  const [editRanked,        setEditRanked]        = useState(true)
+  const [metaSaving,        setMetaSaving]        = useState(false)
+
+  // Add media
+  const [searchOpen,        setSearchOpen]        = useState(false)
+
+  // Drag state
+  const [draggedIndex,      setDraggedIndex]      = useState<number | null>(null)
+
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+
+  const fetchAll = useCallback(async () => {
+    if (!listId) return
+    const supabase = createClient()
+    if (!supabase) { setNotFound(true); return }
+
+    setLoading(true)
+
+    const [
+      { data: { user } },
+      { data: listData, error: listErr },
+    ] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase
+        .from("user_lists")
+        .select("id, user_id, title, description, is_public, is_ranked, created_at")
+        .eq("id", listId)
+        .single(),
+    ])
+
+    if (listErr || !listData) { setNotFound(true); setLoading(false); return }
+
+    // Private list guard
+    const owned = user?.id === listData.user_id
+    if (!listData.is_public && !owned) { setNotFound(true); setLoading(false); return }
+
+    const [{ data: itemsData }, { data: profileData }] = await Promise.all([
+      supabase
+        .from("user_list_items")
+        .select("id, media_type, media_id, title, poster_url, year, rank_order, notes")
+        .eq("list_id", listId)
+        .order("rank_order", { ascending: true }),
+      supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("id", listData.user_id)
+        .single(),
+    ])
+
+    setList(listData)
+    setItems((itemsData ?? []) as ListItem[])
+    setCreator(profileData as Creator | null)
+    setIsOwner(owned)
+    setEditTitle(listData.title)
+    setEditDesc(listData.description ?? "")
+    setEditPublic(listData.is_public)
+    setEditRanked(listData.is_ranked)
+    setLoading(false)
+  }, [listId])
+
+  useEffect(() => { void fetchAll() }, [fetchAll])
+
+  // ── Metadata save ──────────────────────────────────────────────────────────
+
+  async function saveMetadata() {
+    if (!list) return
+    const supabase = createClient()
+    if (!supabase) return
+    setMetaSaving(true)
+    const { error } = await supabase
+      .from("user_lists")
+      .update({ title: editTitle.trim(), description: editDesc.trim() || null, is_public: editPublic, is_ranked: editRanked, updated_at: new Date().toISOString() })
+      .eq("id", list.id)
+    if (!error) {
+      setList({ ...list, title: editTitle.trim(), description: editDesc.trim() || null, is_public: editPublic, is_ranked: editRanked })
+      setEditingMeta(false)
+    }
+    setMetaSaving(false)
+  }
+
+  // ── Delete list ────────────────────────────────────────────────────────────
+
+  async function deleteList() {
+    if (!list) return
+    if (!window.confirm("Delete this list permanently?")) return
+    const supabase = createClient()
+    if (!supabase) return
+    const { error } = await supabase.from("user_lists").delete().eq("id", list.id)
+    if (!error) router.push("/profile")
+  }
+
+  // ── Remove item ────────────────────────────────────────────────────────────
+
+  async function removeItem(itemId: string) {
+    const supabase = createClient()
+    if (!supabase) return
+    const { error } = await supabase.from("user_list_items").delete().eq("id", itemId)
+    if (!error) {
+      const updated = items
+        .filter((it) => it.id !== itemId)
+        .map((it, idx) => ({ ...it, rank_order: idx + 1 }))
+      setItems(updated)
+      if (updated.length > 0) {
+        await supabase.rpc("update_list_items_order", {
+          payload: updated.map((it) => ({ id: it.id, rank_order: it.rank_order })),
+        })
+      }
+    }
+  }
+
+  // ── Drag-and-drop (ranked lists, desktop) ─────────────────────────────────
+
+  function handleDragStart(index: number) {
+    if (!list?.is_ranked || !isOwner) return
+    setDraggedIndex(index)
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === index || !list?.is_ranked) return
+
+    const reordered = [...items]
+    const [removed] = reordered.splice(draggedIndex, 1)
+    reordered.splice(index, 0, removed)
+
+    setItems(reordered.map((it, idx) => ({ ...it, rank_order: idx + 1 })))
+    setDraggedIndex(index)
+  }
+
+  async function handleDragEnd() {
+    if (draggedIndex === null) return
+    setDraggedIndex(null)
+    if (!isOwner || items.length === 0) return
+
+    const supabase = createClient()
+    if (!supabase) return
+    await supabase.rpc("update_list_items_order", {
+      payload: items.map((it) => ({ id: it.id, rank_order: it.rank_order })),
+    })
+  }
+
+  // ── Render states ──────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <span className="text-zinc-600 text-sm tracking-wide">Loading…</span>
+      </div>
+    )
+  }
+
+  if (notFound || !list) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <p className="text-zinc-500 text-sm">This list doesn&apos;t exist or is private.</p>
+        <Link href="/profile" className="text-xs text-zinc-600 underline underline-offset-4">Go back</Link>
+      </div>
+    )
+  }
+
+  const creatorName = creator?.display_name || creator?.username || "Someone"
+  const creatorHref = creator?.username ? `/u/${encodeURIComponent(creator.username)}` : null
+
+  // ── Main render ────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: "28px 16px 80px",
-        fontFamily: FONT,
-      }}
-    >
-      {/* Back nav */}
+    <main className="min-h-screen bg-black text-white py-10 px-4 md:px-8 max-w-5xl mx-auto pb-24">
+
+      {/* ── Back link ─────────────────────────────────────────────────────── */}
       {creatorHref && (
         <Link
           href={creatorHref}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 12,
-            color: "rgba(255,255,255,0.38)",
-            textDecoration: "none",
-            marginBottom: 24,
-          }}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-8 no-underline"
         >
           ← {creatorName}
         </Link>
       )}
 
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1
-              style={{
-                margin: "0 0 8px",
-                fontSize: "clamp(22px,5vw,32px)",
-                fontWeight: 700,
-                letterSpacing: "-0.03em",
-                color: "rgba(255,255,255,0.94)",
-                lineHeight: 1.15,
-              }}
-            >
-              {list.title}
-            </h1>
+      {/* ── Upper content frame ───────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-8 border-b border-zinc-900 pb-10 mb-10">
 
-            {/* Chips row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              {list.is_ranked && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "rgba(251,191,36,0.8)",
-                    border: "0.5px solid rgba(251,191,36,0.25)",
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                  }}
-                >
-                  Ranked
-                </span>
-              )}
-              {!list.is_ranked && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.3)",
-                    border: "0.5px solid rgba(255,255,255,0.1)",
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                  }}
-                >
-                  Unranked
-                </span>
-              )}
-              {isOwner && !list.is_public && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "rgba(251,113,133,0.8)",
-                    border: "0.5px solid rgba(251,113,133,0.22)",
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                  }}
-                >
-                  Private
-                </span>
-              )}
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </span>
-            </div>
-          </div>
+        {/* Cover grid */}
+        <div className="w-44 h-44 mx-auto lg:mx-0 shrink-0 rounded-xl overflow-hidden shadow-2xl">
+          <ListCoverGrid posters={items.map((i) => i.poster_url ?? "")} />
         </div>
 
-        {/* Creator line */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 14,
-          }}
-        >
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg,#534AB7,#1D9E75)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 9,
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.9)",
-              flexShrink: 0,
-              overflow: "hidden",
-            }}
-          >
-            {creator.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={creator.avatar_url}
-                alt={creatorName}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        {/* Metadata */}
+        <div className="flex-1 space-y-3 text-center lg:text-left">
+          {editingMeta ? (
+            /* ── Edit form ────────────────────────────────────────────────── */
+            <div className="space-y-3 max-w-xl bg-zinc-950 p-5 rounded-xl border border-zinc-900 text-left">
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                maxLength={100}
+                className="w-full bg-zinc-900 border border-zinc-800 focus:border-zinc-700 p-2.5 rounded-lg text-white text-sm outline-none transition-colors"
               />
-            ) : (
-              creatorName.charAt(0).toUpperCase()
-            )}
-          </div>
-          {creatorHref ? (
-            <Link
-              href={creatorHref}
-              style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
-            >
-              {creatorName}
-            </Link>
-          ) : (
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{creatorName}</span>
-          )}
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
-            ·{" "}
-            {new Date(list.created_at).toLocaleDateString("en-US", {
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        </div>
+              <textarea
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                rows={3}
+                placeholder="Description (optional)"
+                className="w-full bg-zinc-900 border border-zinc-800 focus:border-zinc-700 p-2.5 rounded-lg text-white text-sm outline-none resize-none transition-colors"
+              />
 
-        {list.description && (
-          <p
-            style={{
-              margin: "14px 0 0",
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: "rgba(255,255,255,0.5)",
-            }}
-          >
-            {list.description}
-          </p>
-        )}
+              {/* Segmented toggles */}
+              <div className="flex gap-3">
+                <SegPair
+                  labelA="Public" labelB="Private"
+                  active={editPublic} onChange={setEditPublic}
+                />
+                <SegPair
+                  labelA="Ranked" labelB="Unranked"
+                  active={editRanked} onChange={setEditRanked}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => void saveMetadata()}
+                  disabled={metaSaving || !editTitle.trim()}
+                  className="flex-1 bg-white text-black font-semibold py-2 rounded-lg text-xs transition hover:bg-zinc-200 disabled:opacity-40"
+                >
+                  {metaSaving ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingMeta(false)}
+                  className="flex-1 bg-zinc-900 text-zinc-400 py-2 rounded-lg text-xs border border-zinc-800 transition hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Display ──────────────────────────────────────────────────── */
+            <>
+              <div className="flex items-center justify-center lg:justify-start gap-2 flex-wrap">
+                <h1 className="text-3xl font-extrabold tracking-tight">{list.title}</h1>
+                <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-zinc-400 font-semibold">
+                  {list.is_ranked ? "Ranked" : "Collection"}
+                </span>
+                {isOwner && !list.is_public && (
+                  <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 bg-red-950/40 border border-red-900/60 rounded-full text-red-400 font-semibold">
+                    Private
+                  </span>
+                )}
+              </div>
+
+              <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl">
+                {list.description ?? <span className="italic text-zinc-600">No description.</span>}
+              </p>
+
+              <p className="text-xs text-zinc-600">
+                Created by{" "}
+                {creatorHref ? (
+                  <Link href={creatorHref} className="text-zinc-400 font-medium hover:text-white transition-colors no-underline">
+                    @{creator?.username}
+                  </Link>
+                ) : (
+                  <span className="text-zinc-400 font-medium">{creatorName}</span>
+                )}
+                {" · "}
+                {new Date(list.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                {" · "}
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </p>
+
+              {isOwner && (
+                <div className="flex justify-center lg:justify-start gap-2 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMeta(true)}
+                    className="px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs rounded-lg font-medium transition"
+                  >
+                    Edit settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 text-xs rounded-lg font-bold transition"
+                  >
+                    + Add media
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteList()}
+                    className="px-3.5 py-1.5 bg-transparent hover:bg-red-950/30 text-zinc-600 hover:text-red-400 border border-zinc-900 hover:border-red-900/50 text-xs rounded-lg transition ml-auto lg:ml-0"
+                  >
+                    Delete list
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      <div
-        style={{
-          height: "0.5px",
-          background: "rgba(255,255,255,0.07)",
-          marginBottom: 28,
-        }}
-      />
-
-      {/* Owner view: full editor */}
-      {isOwner ? (
-        <ListItemsEditor
-          listId={list.id}
-          initialItems={items}
-          initialList={{
-            title: list.title,
-            description: list.description,
-            is_public: list.is_public,
-            is_ranked: list.is_ranked,
-          }}
-        />
-      ) : (
-        /* Visitor view: static read-only items */
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {items.length === 0 && (
-            <p
-              style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.25)",
-                fontStyle: "italic",
-                margin: 0,
-              }}
+      {/* ── Items ─────────────────────────────────────────────────────────── */}
+      {items.length === 0 ? (
+        <div className="py-20 text-center border border-dashed border-zinc-900 rounded-2xl bg-zinc-950/40 max-w-xl mx-auto space-y-3">
+          <p className="text-zinc-400 text-sm font-medium">This list is empty.</p>
+          <p className="text-xs text-zinc-600 max-w-xs mx-auto leading-relaxed">
+            Add your favourite films, series, or books to build this collection.
+          </p>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="mt-1 px-5 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold rounded-lg transition"
             >
-              No items in this list yet.
-            </p>
+              Add your first item
+            </button>
           )}
-          {items.map((item, idx) => {
-            const href = getMediaHref({ id: item.media_id, mediaType: item.media_type })
+        </div>
+      ) : (
+        <div className="space-y-2 max-w-3xl mx-auto">
+          {items.map((item, index) => {
+            const mediaHref = getMediaHref({ id: item.media_id, mediaType: item.media_type })
+            const isDragging = draggedIndex === index
+
             return (
-              <Link
+              <div
                 key={item.id}
-                href={href}
-                style={{ textDecoration: "none" }}
+                draggable={isOwner && list.is_ranked}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={() => void handleDragEnd()}
+                className={[
+                  "flex items-center gap-4 p-3 rounded-xl border transition-all group",
+                  isDragging
+                    ? "opacity-40 border-zinc-700 bg-zinc-900 scale-[0.98]"
+                    : "border-zinc-900 bg-zinc-950/60 hover:border-zinc-800 hover:bg-zinc-950/90",
+                  isOwner && list.is_ranked ? "cursor-grab active:cursor-grabbing" : "",
+                ].join(" ")}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "12px 0",
-                    borderBottom: "0.5px solid rgba(255,255,255,0.055)",
-                    transition: "background 0.1s",
-                  }}
-                >
-                  {/* Rank number */}
-                  {list.is_ranked && <RankBadge n={idx + 1} />}
-
-                  {/* Poster */}
-                  <div
-                    style={{
-                      width: 40,
-                      height: 60,
-                      borderRadius: 4,
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "0.5px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    {item.poster_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.poster_url}
-                        alt={item.title}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 18,
-                          opacity: 0.3,
-                        }}
-                      >
-                        🎬
-                      </div>
-                    )}
+                {/* Rank */}
+                {list.is_ranked && (
+                  <div className="w-8 text-center text-sm font-black text-zinc-700 group-hover:text-zinc-400 transition-colors shrink-0 select-none">
+                    #{item.rank_order}
                   </div>
+                )}
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
-                      style={{
-                        margin: "0 0 4px",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "rgba(255,255,255,0.88)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
+                {/* Drag handle — visual affordance for ranked owner */}
+                {isOwner && list.is_ranked && (
+                  <div className="hidden md:flex flex-col gap-0.5 shrink-0 opacity-20 group-hover:opacity-50 transition-opacity">
+                    <span className="block w-3 h-px bg-zinc-400" />
+                    <span className="block w-3 h-px bg-zinc-400" />
+                    <span className="block w-3 h-px bg-zinc-400" />
+                  </div>
+                )}
+
+                {/* Poster */}
+                <button
+                  type="button"
+                  onClick={() => router.push(mediaHref)}
+                  className="w-11 h-16 bg-zinc-900 rounded overflow-hidden shrink-0 border border-zinc-800/50 focus:outline-none"
+                  tabIndex={-1}
+                  aria-label={`Go to ${item.title}`}
+                >
+                  {item.poster_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.poster_url}
+                      alt={item.title}
+                      className="w-full h-full object-cover block"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-lg opacity-20">🎬</div>
+                  )}
+                </button>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => router.push(mediaHref)}
+                    className="text-left w-full focus:outline-none"
+                  >
+                    <p className="font-semibold text-sm text-white truncate hover:underline underline-offset-2 decoration-zinc-600">
                       {item.title}
                     </p>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {item.year && (
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                          {item.year}
-                        </span>
-                      )}
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 600,
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          color: TYPE_COLOR[item.media_type] ?? "rgba(255,255,255,0.3)",
-                        }}
-                      >
-                        {TYPE_LABEL[item.media_type] ?? item.media_type}
-                      </span>
-                    </div>
-                    {item.notes && (
-                      <p
-                        style={{
-                          margin: "4px 0 0",
-                          fontSize: 12,
-                          color: "rgba(255,255,255,0.3)",
-                          fontStyle: "italic",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {item.notes}
-                      </p>
-                    )}
-                  </div>
-
-                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.18)", flexShrink: 0 }}>
-                    →
-                  </span>
+                  </button>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {item.year ? `${item.year} · ` : ""}
+                    {TYPE_LABEL[item.media_type] ?? item.media_type}
+                  </p>
+                  {item.notes && (
+                    <p className="text-xs text-zinc-600 italic mt-0.5 truncate">{item.notes}</p>
+                  )}
                 </div>
-              </Link>
+
+                {/* Remove */}
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => void removeItem(item.id)}
+                    aria-label={`Remove ${item.title}`}
+                    className="p-2 text-zinc-700 hover:text-red-400 rounded-lg hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all shrink-0 md:block"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             )
           })}
         </div>
       )}
+
+      {/* ── Media search modal ────────────────────────────────────────────── */}
+      {searchOpen && (
+        <MediaSearchModal
+          listId={list.id}
+          nextRank={items.length + 1}
+          existingMediaIds={items.map((i) => i.media_id)}
+          onClose={() => {
+            setSearchOpen(false)
+            void fetchAll()
+          }}
+        />
+      )}
+    </main>
+  )
+}
+
+// ── Segmented pair (reused in edit form) ──────────────────────────────────────
+
+function SegPair({
+  labelA,
+  labelB,
+  active,
+  onChange,
+}: {
+  labelA: string
+  labelB: string
+  active: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 gap-0.5">
+      {[{ label: labelA, val: true }, { label: labelB, val: false }].map(({ label, val }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onChange(val)}
+          className={[
+            "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+            active === val
+              ? "bg-zinc-700 text-white border border-zinc-600/50"
+              : "text-zinc-500 hover:text-zinc-300",
+          ].join(" ")}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
