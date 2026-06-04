@@ -162,19 +162,8 @@ type ShortFilmRow = {
   channel: string | null
 }
 
-async function searchShortFilms(query: string, limit: number): Promise<SearchResult[]> {
-  const supabase = await createSupabaseClient()
-  if (!supabase) return []
-
-  const { data } = await supabase
-    .from("short_films")
-    .select("id, title, release_year, thumbnail_url, channel")
-    .ilike("title", `%${query}%`)
-    .limit(limit)
-
-  if (!data) return []
-
-  return (data as ShortFilmRow[]).map((row) => ({
+function toShortFilmResult(row: ShortFilmRow): SearchResult {
+  return {
     id: row.id,
     media_type: "short_film" as const,
     title: row.title,
@@ -182,7 +171,45 @@ async function searchShortFilms(query: string, limit: number): Promise<SearchRes
     poster_path: row.thumbnail_url,
     director: row.channel ?? null,
     href: `/short-films/${row.id}`,
-  }))
+  }
+}
+
+async function searchShortFilms(query: string, limit: number): Promise<SearchResult[]> {
+  const supabase = await createSupabaseClient()
+  if (!supabase) return []
+
+  const q = query.trim()
+  if (!q) return []
+
+  // Title + channel ilike, plus alias substring match via cast to text
+  const [{ data: mainData }, { data: creditData }] = await Promise.all([
+    supabase
+      .from("short_films")
+      .select("id, title, release_year, thumbnail_url, channel")
+      .or(
+        `title.ilike.%${q}%,channel.ilike.%${q}%,search_aliases::text.ilike.%${q}%`
+      )
+      .limit(limit),
+    // Credits: exact jsonb containment match on name field
+    supabase
+      .from("short_films")
+      .select("id, title, release_year, thumbnail_url, channel")
+      .filter("credits", "cs", JSON.stringify([{ name: q }]))
+      .limit(3),
+  ])
+
+  // Deduplicate by id
+  const seen = new Set<string>()
+  const rows: ShortFilmRow[] = []
+  for (const row of [...(mainData ?? []), ...(creditData ?? [])]) {
+    const r = row as ShortFilmRow
+    if (!seen.has(r.id)) {
+      seen.add(r.id)
+      rows.push(r)
+    }
+  }
+
+  return rows.map(toShortFilmResult)
 }
 
 export async function GET(request: Request) {

@@ -9,11 +9,12 @@ import {
   getSeriesHrefFromRouteId,
   getSeriesHrefFromTmdbId,
 } from "./seriesRoutes";
+import { createClient as createSupabaseClient } from "./supabase/client";
 
 const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
-export type SearchMediaType = "movie" | "tv" | "book" | "user";
+export type SearchMediaType = "movie" | "tv" | "book" | "user" | "short_film";
 
 export type UniversalSearchResult = {
   id: string;
@@ -162,14 +163,69 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
   return [...movieResults, ...tvResults];
 }
 
+type ShortFilmRow = {
+  id: string;
+  title: string;
+  channel: string | null;
+  thumbnail_url: string | null;
+  release_year: number | null;
+};
+
+async function searchShortFilms(query: string): Promise<UniversalSearchResult[]> {
+  const supabase = createSupabaseClient();
+  if (!supabase) return [];
+
+  const q = query.trim();
+  if (!q) return [];
+
+  // Cast text[] to text so ilike can do substring matching across all aliases
+  const [{ data: mainData }, { data: creditData }] = await Promise.all([
+    supabase
+      .from("short_films")
+      .select("id, title, channel, thumbnail_url, release_year")
+      .or(
+        `title.ilike.%${q}%,channel.ilike.%${q}%,search_aliases::text.ilike.%${q}%`
+      )
+      .limit(5),
+    // Task 3 — exact credit name match (jsonb containment)
+    supabase
+      .from("short_films")
+      .select("id, title, channel, thumbnail_url, release_year")
+      .filter("credits", "cs", JSON.stringify([{ name: q }]))
+      .limit(3),
+  ]);
+
+  // Deduplicate by id
+  const seen = new Set<string>();
+  const rows: ShortFilmRow[] = [];
+  for (const row of [...(mainData ?? []), ...(creditData ?? [])]) {
+    const r = row as ShortFilmRow;
+    if (!seen.has(r.id)) {
+      seen.add(r.id);
+      rows.push(r);
+    }
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    year: row.release_year ? String(row.release_year) : "—",
+    poster: row.thumbnail_url,
+    mediaType: "short_film" as const,
+    href: `/short-films/${row.id}`,
+    subtitle: row.channel ?? undefined,
+  }));
+}
+
 export async function searchAllMedia(
   query: string
 ): Promise<UniversalSearchResult[]> {
   if (!query.trim()) return [];
 
-  const [localBookResults, tmdbResults] = await Promise.all([
+  const [localBookResults, tmdbResults, shortFilmResults] = await Promise.all([
     searchLocalBooks(query),
     searchTMDB(query),
+    searchShortFilms(query),
   ]);
 
   const combined = [
@@ -177,6 +233,7 @@ export async function searchAllMedia(
     ...searchLocalSeries(query),
     ...localBookResults,
     ...tmdbResults,
+    ...shortFilmResults,
   ];
 
   const deduped = combined.filter(

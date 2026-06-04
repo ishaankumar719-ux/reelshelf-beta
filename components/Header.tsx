@@ -13,12 +13,13 @@ import {
   type SearchMediaType,
 } from "../lib/search";
 
-type FilterType = "all" | "movie" | "tv" | "book";
+type FilterType = "all" | "movie" | "tv" | "book" | "short_film";
 
 function getLabel(type: SearchMediaType) {
   if (type === "movie") return "FILM";
   if (type === "tv") return "SERIES";
   if (type === "book") return "BOOK";
+  if (type === "short_film") return "SHORT FILM";
   return "User";
 }
 
@@ -62,7 +63,10 @@ function SearchResultCard({
   onSelect: () => void;
 }) {
   const mediaType =
-    item.mediaType === "movie" ? "film" : item.mediaType === "tv" ? "series" : "book";
+    item.mediaType === "movie" ? "film"
+    : item.mediaType === "tv" ? "series"
+    : item.mediaType === "short_film" ? "film"
+    : "book";
 
   const card = (
     <div
@@ -1221,6 +1225,11 @@ export default function Header() {
                   active={filter === "book"}
                   label="Books"
                   onClick={() => setFilter("book")}
+                />
+                <SearchFilterButton
+                  active={filter === "short_film"}
+                  label="Short Films"
+                  onClick={() => setFilter("short_film")}
                 />
               </div>
 
