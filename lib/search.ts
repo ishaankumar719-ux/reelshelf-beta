@@ -162,37 +162,54 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
   return [...movieResults, ...tvResults];
 }
 
-type BookApiResult = {
+const GOOGLE_BOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
+// NEXT_PUBLIC_ prefix makes the key available client-side; falls back to
+// unauthenticated requests (1 000/day per IP) if not set.
+const GOOGLE_BOOKS_KEY = process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY;
+
+type GoogleBookItem = {
   id: string;
-  title: string;
-  year: string | null;
-  poster_path: string | null;
-  author?: string | null;
-  href?: string;
+  volumeInfo?: {
+    title?: string;
+    authors?: string[];
+    publishedDate?: string;
+    imageLinks?: { thumbnail?: string; smallThumbnail?: string };
+  };
 };
 
-// Calls /api/search (Google Books) so the global header search returns
-// real book results, not just the handful in the local static array.
+// Calls Google Books API directly from the browser — same pattern as searchTMDB.
+// Avoids the /api/search round-trip that was silently returning [] on errors.
 async function searchGoogleBooks(query: string): Promise<UniversalSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
 
   try {
-    const res = await fetch(
-      `/api/search?q=${encodeURIComponent(q)}&types=book&limit=5`,
-      { cache: "no-store" }
-    );
+    const params = new URLSearchParams({ q, maxResults: "5", printType: "books" });
+    if (GOOGLE_BOOKS_KEY) params.set("key", GOOGLE_BOOKS_KEY);
+
+    const res = await fetch(`${GOOGLE_BOOKS_BASE}?${params}`, { cache: "no-store" });
     if (!res.ok) return [];
-    const data = (await res.json()) as { books?: BookApiResult[] };
-    return (data.books ?? []).map((r) => ({
-      id: `gbook-${r.id}`,
-      title: r.title,
-      year: r.year ?? "—",
-      poster: r.poster_path,
-      mediaType: "book" as const,
-      href: r.href ?? getBookHrefFromRouteId(r.id),
-      subtitle: r.author ?? undefined,
-    }));
+
+    const data = (await res.json()) as { items?: GoogleBookItem[] };
+    if (!data.items) return [];
+
+    return data.items.map((item) => {
+      const info = item.volumeInfo ?? {};
+      const raw = info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null;
+      const cover = raw
+        ? raw.replace("http://", "https://").replace("&edge=curl", "")
+        : null;
+
+      return {
+        id: `gbook-${item.id}`,
+        title: info.title ?? "Untitled",
+        year: info.publishedDate ? String(info.publishedDate).slice(0, 4) : "—",
+        poster: cover,
+        mediaType: "book" as const,
+        href: getBookHrefFromRouteId(item.id),
+        subtitle: info.authors?.[0] ?? undefined,
+      };
+    });
   } catch {
     return [];
   }
