@@ -9,7 +9,6 @@ import {
   getSeriesHrefFromRouteId,
   getSeriesHrefFromTmdbId,
 } from "./seriesRoutes";
-import { createClient as createSupabaseClient } from "./supabase/client";
 
 const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const TMDB_BASE = "https://api.themoviedb.org/3";
@@ -163,68 +162,40 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
   return [...movieResults, ...tvResults];
 }
 
-type ShortFilmRow = {
+type ShortFilmApiResult = {
   id: string;
   title: string;
-  channel: string | null;
-  thumbnail_url: string | null;
-  release_year: number | null;
+  year: string | null;
+  poster_path: string | null;
+  director?: string | null;
 };
 
+// Delegates to /api/search which already runs the Supabase short_films query
+// server-side. Avoids importing the browser Supabase client in a module that
+// is also executed during SSR.
 async function searchShortFilms(query: string): Promise<UniversalSearchResult[]> {
-  const supabase = createSupabaseClient();
-  if (!supabase) return [];
-
   const q = query.trim();
   if (!q) return [];
 
-  // Three parallel queries — each uses supported PostgREST syntax only:
-  // 1. title + channel ilike (simple substring match)
-  // 2. search_aliases exact element match (array @> ARRAY[q])
-  // 3. credits jsonb containment — exact credit name match
-  const [{ data: mainData }, { data: aliasData }, { data: creditData }] =
-    await Promise.all([
-      supabase
-        .from("short_films")
-        .select("id, title, channel, thumbnail_url, release_year")
-        .or(`title.ilike.%${q}%,channel.ilike.%${q}%`)
-        .limit(5),
-      supabase
-        .from("short_films")
-        .select("id, title, channel, thumbnail_url, release_year")
-        .contains("search_aliases", [q])
-        .limit(3),
-      supabase
-        .from("short_films")
-        .select("id, title, channel, thumbnail_url, release_year")
-        .filter("credits", "cs", JSON.stringify([{ name: q }]))
-        .limit(3),
-    ]);
-
-  // Deduplicate by id across all three result sets
-  const seen = new Set<string>();
-  const rows: ShortFilmRow[] = [];
-  for (const row of [
-    ...(mainData ?? []),
-    ...(aliasData ?? []),
-    ...(creditData ?? []),
-  ]) {
-    const r = row as ShortFilmRow;
-    if (!seen.has(r.id)) {
-      seen.add(r.id);
-      rows.push(r);
-    }
+  try {
+    const res = await fetch(
+      `/api/search?q=${encodeURIComponent(q)}&limit=5`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { short_films?: ShortFilmApiResult[] };
+    return (data.short_films ?? []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      year: r.year ?? "—",
+      poster: r.poster_path,
+      mediaType: "short_film" as const,
+      href: `/short-films/${r.id}`,
+      subtitle: r.director ?? undefined,
+    }));
+  } catch {
+    return [];
   }
-
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    year: row.release_year ? String(row.release_year) : "—",
-    poster: row.thumbnail_url,
-    mediaType: "short_film" as const,
-    href: `/short-films/${row.id}`,
-    subtitle: row.channel ?? undefined,
-  }));
 }
 
 export async function searchAllMedia(

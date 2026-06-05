@@ -255,7 +255,8 @@ export async function GET(request: Request) {
         ? searchTmdb(trimmedQuery, page)
         : Promise.resolve([]),
       hasType(types, "book") ? searchBooks(trimmedQuery, page, limit) : Promise.resolve([]),
-      searchShortFilms(trimmedQuery, Math.min(limit, 4)),
+      // .catch ensures a Supabase failure never poisons the TMDB/Books results
+      searchShortFilms(trimmedQuery, Math.min(limit, 4)).catch(() => []),
     ])
 
     const films = hasType(types, "film")
