@@ -162,6 +162,42 @@ async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
   return [...movieResults, ...tvResults];
 }
 
+type BookApiResult = {
+  id: string;
+  title: string;
+  year: string | null;
+  poster_path: string | null;
+  author?: string | null;
+  href?: string;
+};
+
+// Calls /api/search (Google Books) so the global header search returns
+// real book results, not just the handful in the local static array.
+async function searchGoogleBooks(query: string): Promise<UniversalSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  try {
+    const res = await fetch(
+      `/api/search?q=${encodeURIComponent(q)}&types=book&limit=5`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { books?: BookApiResult[] };
+    return (data.books ?? []).map((r) => ({
+      id: `gbook-${r.id}`,
+      title: r.title,
+      year: r.year ?? "—",
+      poster: r.poster_path,
+      mediaType: "book" as const,
+      href: r.href ?? getBookHrefFromRouteId(r.id),
+      subtitle: r.author ?? undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 type ShortFilmApiResult = {
   id: string;
   title: string;
@@ -203,16 +239,19 @@ export async function searchAllMedia(
 ): Promise<UniversalSearchResult[]> {
   if (!query.trim()) return [];
 
-  const [localBookResults, tmdbResults, shortFilmResults] = await Promise.all([
-    searchLocalBooks(query),
-    searchTMDB(query),
-    searchShortFilms(query),
-  ]);
+  const [localBookResults, tmdbResults, shortFilmResults, googleBookResults] =
+    await Promise.all([
+      searchLocalBooks(query),
+      searchTMDB(query),
+      searchShortFilms(query),
+      searchGoogleBooks(query),
+    ]);
 
   const combined = [
     ...searchLocalMovies(query),
     ...searchLocalSeries(query),
-    ...localBookResults,
+    ...localBookResults,   // local static books first; dedup drops Google dupes
+    ...googleBookResults,
     ...tmdbResults,
     ...shortFilmResults,
   ];
