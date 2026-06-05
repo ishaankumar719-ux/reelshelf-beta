@@ -10,8 +10,9 @@ import {
   getSeriesHrefFromTmdbId,
 } from "./seriesRoutes";
 
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-const TMDB_BASE = "https://api.themoviedb.org/3";
+// TMDB calls now go through /api/search (server-side TMDB_API_KEY) so the
+// header search no longer depends on NEXT_PUBLIC_TMDB_API_KEY being present
+// in the browser bundle — hot-reloads were clearing it and silently breaking search.
 
 export type SearchMediaType = "movie" | "tv" | "book" | "user" | "short_film";
 
@@ -98,120 +99,85 @@ function searchLocalSeries(query: string): UniversalSearchResult[] {
     }));
 }
 
-async function searchTMDB(query: string): Promise<UniversalSearchResult[]> {
-  if (!API_KEY || !query.trim()) return [];
-
-  const [movieRes, tvRes] = await Promise.all([
-    fetch(
-      `${TMDB_BASE}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(
-        query
-      )}`,
-      { cache: "no-store" }
-    ),
-    fetch(
-      `${TMDB_BASE}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(
-        query
-      )}`,
-      { cache: "no-store" }
-    ),
-  ]);
-
-  const movieData = movieRes.ok ? await movieRes.json() : { results: [] };
-  const tvData = tvRes.ok ? await tvRes.json() : { results: [] };
-
-  const movieResults: UniversalSearchResult[] = (movieData.results || [])
-    .slice(0, 8)
-    .map((item: any) => {
-      const localMovie = getLocalMovieByTmdbId(item.id);
-
-      return {
-        id: `movie-${item.id}`,
-        title: item.title,
-        year: item.release_date ? item.release_date.slice(0, 4) : "—",
-        poster: getFirstPosterUrl(item.poster_path, localMovie?.poster),
-        posterPath: item.poster_path || toPosterPath(localMovie?.poster),
-        tmdbId: item.id,
-        mediaType: "movie" as const,
-        href: localMovie
-          ? getMovieHrefFromRouteId(localMovie.id)
-          : getMovieHrefFromTmdbId(item.id),
-        subtitle: localMovie?.director,
-      };
-    });
-
-  const tvResults: UniversalSearchResult[] = (tvData.results || [])
-    .slice(0, 8)
-    .map((item: any) => {
-      const localTV = getLocalSeriesByTmdbId(item.id);
-
-      return {
-        id: `tv-${item.id}`,
-        title: item.name,
-        year: item.first_air_date ? item.first_air_date.slice(0, 4) : "—",
-        poster: getFirstPosterUrl(item.poster_path, localTV?.posterPath, localTV?.poster),
-        posterPath: item.poster_path || toPosterPath(localTV?.posterPath ?? localTV?.poster),
-        tmdbId: item.id,
-        mediaType: "tv" as const,
-        href: localTV
-          ? getSeriesHrefFromRouteId(localTV.id)
-          : getSeriesHrefFromTmdbId(item.id),
-        subtitle: localTV?.creator,
-      };
-    });
-
-  return [...movieResults, ...tvResults];
-}
-
-const GOOGLE_BOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
-// NEXT_PUBLIC_ prefix makes the key available client-side; falls back to
-// unauthenticated requests (1 000/day per IP) if not set.
-const GOOGLE_BOOKS_KEY = process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY;
-
-type GoogleBookItem = {
-  id: string;
-  volumeInfo?: {
-    title?: string;
-    authors?: string[];
-    publishedDate?: string;
-    imageLinks?: { thumbnail?: string; smallThumbnail?: string };
-  };
+type ApiSearchResult = {
+  id: number | string;
+  media_type?: string;
+  title: string;
+  year: string | null;
+  poster_path: string | null;
+  director?: string | null;
+  author?: string | null;
+  href?: string;
 };
 
-// Calls Google Books API directly from the browser — same pattern as searchTMDB.
-// Avoids the /api/search round-trip that was silently returning [] on errors.
-async function searchGoogleBooks(query: string): Promise<UniversalSearchResult[]> {
+// Single function that delegates films, TV, and books to /api/search.
+// Server-side TMDB_API_KEY is always available — no NEXT_PUBLIC_ dependency.
+// Google Books also runs server-side, so no CORS or key issues.
+async function searchViaApi(query: string): Promise<{
+  films: UniversalSearchResult[];
+  series: UniversalSearchResult[];
+  books: UniversalSearchResult[];
+}> {
+  const empty = { films: [], series: [], books: [] };
   const q = query.trim();
-  if (!q) return [];
+  if (!q) return empty;
 
   try {
-    const params = new URLSearchParams({ q, maxResults: "5", printType: "books" });
-    if (GOOGLE_BOOKS_KEY) params.set("key", GOOGLE_BOOKS_KEY);
+    const res = await fetch(
+      `/api/search?q=${encodeURIComponent(q)}&types=film,series,book&limit=8`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return empty;
 
-    const res = await fetch(`${GOOGLE_BOOKS_BASE}?${params}`, { cache: "no-store" });
-    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      films?: ApiSearchResult[];
+      series?: ApiSearchResult[];
+      books?: ApiSearchResult[];
+    };
 
-    const data = (await res.json()) as { items?: GoogleBookItem[] };
-    if (!data.items) return [];
-
-    return data.items.map((item) => {
-      const info = item.volumeInfo ?? {};
-      const raw = info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null;
-      const cover = raw
-        ? raw.replace("http://", "https://").replace("&edge=curl", "")
-        : null;
-
+    const films: UniversalSearchResult[] = (data.films ?? []).map((r) => {
+      const localMovie = typeof r.id === "number" ? getLocalMovieByTmdbId(r.id) : null;
       return {
-        id: `gbook-${item.id}`,
-        title: info.title ?? "Untitled",
-        year: info.publishedDate ? String(info.publishedDate).slice(0, 4) : "—",
-        poster: cover,
-        mediaType: "book" as const,
-        href: getBookHrefFromRouteId(item.id),
-        subtitle: info.authors?.[0] ?? undefined,
+        id: `movie-${r.id}`,
+        title: r.title,
+        year: r.year ?? "—",
+        poster: getFirstPosterUrl(r.poster_path, localMovie?.poster),
+        posterPath: r.poster_path || toPosterPath(localMovie?.poster),
+        tmdbId: typeof r.id === "number" ? r.id : null,
+        mediaType: "movie" as const,
+        href: r.href ?? (localMovie ? getMovieHrefFromRouteId(localMovie.id) : getMovieHrefFromTmdbId(Number(r.id))),
+        subtitle: r.director ?? localMovie?.director,
       };
     });
+
+    const series: UniversalSearchResult[] = (data.series ?? []).map((r) => {
+      const localTV = typeof r.id === "number" ? getLocalSeriesByTmdbId(r.id) : null;
+      return {
+        id: `tv-${r.id}`,
+        title: r.title,
+        year: r.year ?? "—",
+        poster: getFirstPosterUrl(r.poster_path, localTV?.posterPath, localTV?.poster),
+        posterPath: r.poster_path || toPosterPath(localTV?.posterPath ?? localTV?.poster),
+        tmdbId: typeof r.id === "number" ? r.id : null,
+        mediaType: "tv" as const,
+        href: r.href ?? (localTV ? getSeriesHrefFromRouteId(localTV.id) : getSeriesHrefFromTmdbId(Number(r.id))),
+        subtitle: r.director ?? localTV?.creator,
+      };
+    });
+
+    const books: UniversalSearchResult[] = (data.books ?? []).map((r) => ({
+      id: `gbook-${r.id}`,
+      title: r.title,
+      year: r.year ?? "—",
+      poster: r.poster_path,
+      mediaType: "book" as const,
+      href: r.href ?? getBookHrefFromRouteId(String(r.id)),
+      subtitle: r.author ?? undefined,
+    }));
+
+    return { films, series, books };
   } catch {
-    return [];
+    return empty;
   }
 }
 
@@ -256,20 +222,31 @@ export async function searchAllMedia(
 ): Promise<UniversalSearchResult[]> {
   if (!query.trim()) return [];
 
-  const [localBookResults, tmdbResults, shortFilmResults, googleBookResults] =
-    await Promise.all([
+  // Run local lookups and the single API call in parallel.
+  // Promise.allSettled ensures a failure in any one source never cascades.
+  const [localBooksSettled, apiSettled, shortFilmsSettled] =
+    await Promise.allSettled([
       searchLocalBooks(query),
-      searchTMDB(query),
+      searchViaApi(query),
       searchShortFilms(query),
-      searchGoogleBooks(query),
     ]);
+
+  const localBookResults =
+    localBooksSettled.status === "fulfilled" ? localBooksSettled.value : [];
+  const apiResults =
+    apiSettled.status === "fulfilled"
+      ? apiSettled.value
+      : { films: [], series: [], books: [] };
+  const shortFilmResults =
+    shortFilmsSettled.status === "fulfilled" ? shortFilmsSettled.value : [];
 
   const combined = [
     ...searchLocalMovies(query),
     ...searchLocalSeries(query),
-    ...localBookResults,   // local static books first; dedup drops Google dupes
-    ...googleBookResults,
-    ...tmdbResults,
+    ...localBookResults,       // local static books first; dedup drops API dupes
+    ...apiResults.books,
+    ...apiResults.films,
+    ...apiResults.series,
     ...shortFilmResults,
   ];
 
