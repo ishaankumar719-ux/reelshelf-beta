@@ -5,6 +5,59 @@ import { useSearchParams } from "next/navigation"
 import { searchMedia } from "@/src/lib/searchMedia"
 import { createClient } from "@/lib/supabase/client"
 
+// ─── Client-side Open Library book search ─────────────────────────────────
+// Same source / same endpoint as Mount Rushmore book search.
+// Done client-side so it is never blocked by server-side network restrictions.
+type OLDoc = {
+  key?: string
+  title?: string
+  first_publish_year?: number
+  cover_i?: number
+  author_name?: string[]
+}
+
+async function searchOpenLibraryBooks(
+  query: string,
+  signal?: AbortSignal
+): Promise<SearchResult[]> {
+  try {
+    const res = await fetch(
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(query.trim())}&limit=5`,
+      { signal }
+    )
+    if (!res.ok) {
+      console.warn("[BOOK DEBUG] Open Library responded", res.status)
+      return []
+    }
+    const data = (await res.json()) as { docs?: OLDoc[] }
+    console.log("[BOOK DEBUG] Open Library raw doc count:", data.docs?.length ?? 0)
+    const results = (data.docs ?? [])
+      .filter((doc) => doc.key && doc.title)
+      .slice(0, 5)
+      .map((doc): SearchResult => {
+        const routeId = (doc.key ?? "").replace(/^\/works\//, "")
+        return {
+          id:          `ol-${routeId}`,
+          media_type:  "book",
+          title:       doc.title ?? "",
+          year:        doc.first_publish_year ? String(doc.first_publish_year) : null,
+          poster_path: doc.cover_i
+            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+            : null,
+          author:      doc.author_name?.[0] ?? null,
+          href:        `/books/${routeId}`,
+        }
+      })
+    console.log("[BOOK DEBUG] normalised book count:", results.length)
+    return results
+  } catch (err) {
+    if ((err as Error).name !== "AbortError") {
+      console.error("[BOOK DEBUG] Open Library fetch error:", err)
+    }
+    return []
+  }
+}
+
 export interface SearchResult {
   id: number | string
   media_type: "film" | "series" | "book" | "user" | "short_film"
@@ -99,23 +152,29 @@ export function useSearch(): UseSearchReturn {
       console.log("[SEARCH] request start:", query)
 
       try {
-        const [payload, profileResults] = await Promise.all([
+        const [payload, profileResults, olBooks] = await Promise.all([
           searchMedia(query, {
-            types: "film,series,book",
+            types: "film,series",   // books come from client-side OL fetch below
             limit: 7,
             signal: controller.signal,
           }),
           searchProfiles(query),
+          searchOpenLibraryBooks(query, controller.signal),
         ])
+
+        console.log("[BOOK DEBUG] API film count:", (payload.films || []).length)
+        console.log("[BOOK DEBUG] API series count:", (payload.series || []).length)
+        console.log("[BOOK DEBUG] client OL book count:", olBooks.length)
 
         const nextResults = [
           ...(payload.films || []).slice(0, 3),
           ...(payload.series || []).slice(0, 2),
-          ...(payload.books || []).slice(0, 2),
+          ...olBooks.slice(0, 3),
           ...(payload.short_films || []).slice(0, 2),
           ...profileResults,
         ]
         console.log("[SEARCH] Results being set:", nextResults)
+        console.log("[BOOK DEBUG] book count in final results:", nextResults.filter(r => r.media_type === "book").length)
         setResults(nextResults)
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") {

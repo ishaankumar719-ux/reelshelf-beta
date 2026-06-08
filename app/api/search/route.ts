@@ -104,50 +104,47 @@ async function searchTmdb(query: string, page: number) {
   return mapped
 }
 
-async function searchBooks(query: string, _page: number, limit: number): Promise<SearchResult[]> {
-  const params = new URLSearchParams({
-    q:           query.trim(),
-    maxResults:  String(Math.min(limit, 10)),
-    printType:   "books",
-    langRestrict: "en",
-  })
-  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
-  if (apiKey) params.set("key", apiKey)
+type OpenLibraryDoc = {
+  key?: string
+  title?: string
+  first_publish_year?: number
+  cover_i?: number
+  author_name?: string[]
+}
 
+// Same source as Mount Rushmore book search — Open Library, no API key required.
+async function searchBooks(query: string, _page: number, limit: number): Promise<SearchResult[]> {
   try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, {
-      next: { revalidate: 3600 },
-    })
+    const res = await fetch(
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(query.trim())}&limit=${Math.min(limit, 10)}`,
+      { cache: "no-store" }
+    )
     if (!res.ok) {
-      console.warn("[BOOK SEARCH] Google Books responded", res.status)
+      console.warn("[BOOK SEARCH] Open Library responded", res.status)
       return []
     }
-    const data = await res.json() as { items?: Array<{ id: string; volumeInfo?: Record<string, unknown> }> }
-    if (!data.items) return []
 
-    return data.items.map((item): SearchResult => {
-      const info = (item.volumeInfo ?? {}) as {
-        title?: string
-        authors?: string[]
-        publishedDate?: string
-        imageLinks?: { thumbnail?: string; smallThumbnail?: string }
-      }
-      const rawCover =
-        info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail ?? null
-      const cover = rawCover
-        ? rawCover.replace("http://", "https://").replace("&edge=curl", "")
-        : null
+    const data = (await res.json()) as { docs?: OpenLibraryDoc[] }
+    if (!data.docs) return []
 
-      return {
-        id:          item.id,
-        media_type:  "book",
-        title:       info.title ?? "Untitled",
-        year:        info.publishedDate ? String(info.publishedDate).slice(0, 4) : null,
-        poster_path: cover,          // absolute HTTPS — toAbsolutePosterUrl passes it through
-        author:      info.authors?.[0] ?? null,
-        href:        getBookHrefFromRouteId(item.id),
-      } satisfies SearchResult
-    })
+    return data.docs
+      .filter((doc) => doc.key && doc.title)
+      .slice(0, limit)
+      .map((doc): SearchResult => {
+        // doc.key is "/works/OL123W" — strip prefix for a clean route id
+        const routeId = (doc.key ?? "").replace(/^\/works\//, "")
+        return {
+          id:          doc.key ?? routeId,
+          media_type:  "book",
+          title:       doc.title ?? "Untitled",
+          year:        doc.first_publish_year ? String(doc.first_publish_year) : null,
+          poster_path: doc.cover_i
+            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+            : null,
+          author:      doc.author_name?.[0] ?? null,
+          href:        getBookHrefFromRouteId(routeId),
+        } satisfies SearchResult
+      })
   } catch (err) {
     console.warn("[BOOK SEARCH] error", err)
     return []
