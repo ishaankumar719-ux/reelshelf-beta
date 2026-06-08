@@ -110,21 +110,18 @@ type ApiSearchResult = {
   href?: string;
 };
 
-// Single function that delegates films, TV, and books to /api/search.
-// Server-side TMDB_API_KEY is always available — no NEXT_PUBLIC_ dependency.
-// Google Books also runs server-side, so no CORS or key issues.
+// Films and series via /api/search (server-side TMDB_API_KEY, no browser dependency).
 async function searchViaApi(query: string): Promise<{
   films: UniversalSearchResult[];
   series: UniversalSearchResult[];
-  books: UniversalSearchResult[];
 }> {
-  const empty = { films: [], series: [], books: [] };
+  const empty = { films: [], series: [] };
   const q = query.trim();
   if (!q) return empty;
 
   try {
     const res = await fetch(
-      `/api/search?q=${encodeURIComponent(q)}&types=film,series,book&limit=8`,
+      `/api/search?q=${encodeURIComponent(q)}&types=film,series&limit=8`,
       { cache: "no-store" }
     );
     if (!res.ok) return empty;
@@ -132,7 +129,6 @@ async function searchViaApi(query: string): Promise<{
     const data = (await res.json()) as {
       films?: ApiSearchResult[];
       series?: ApiSearchResult[];
-      books?: ApiSearchResult[];
     };
 
     const films: UniversalSearchResult[] = (data.films ?? []).map((r) => {
@@ -165,19 +161,54 @@ async function searchViaApi(query: string): Promise<{
       };
     });
 
-    const books: UniversalSearchResult[] = (data.books ?? []).map((r) => ({
-      id: `gbook-${r.id}`,
-      title: r.title,
-      year: r.year ?? "—",
-      poster: r.poster_path,
-      mediaType: "book" as const,
-      href: r.href ?? getBookHrefFromRouteId(String(r.id)),
-      subtitle: r.author ?? undefined,
-    }));
-
-    return { films, series, books };
+    return { films, series };
   } catch {
     return empty;
+  }
+}
+
+type OpenLibraryDoc = {
+  key?: string;
+  title?: string;
+  first_publish_year?: number;
+  cover_i?: number;
+  author_name?: string[];
+};
+
+// Same source as Mount Rushmore book search — Open Library, no API key required.
+async function searchOpenLibraryBooks(query: string): Promise<UniversalSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  try {
+    const res = await fetch(
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+
+    const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
+
+    return (data.docs ?? [])
+      .filter((doc) => doc.key && doc.title)
+      .slice(0, 5)
+      .map((doc) => {
+        // doc.key is "/works/OL123W" — strip prefix for a clean route id
+        const routeId = (doc.key ?? "").replace(/^\/works\//, "ol-");
+        return {
+          id: `olbook-${routeId}`,
+          title: doc.title ?? "",
+          year: doc.first_publish_year ? String(doc.first_publish_year) : "—",
+          poster: doc.cover_i
+            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+            : null,
+          mediaType: "book" as const,
+          href: getBookHrefFromRouteId(routeId),
+          subtitle: doc.author_name?.[0] ?? undefined,
+        };
+      });
+  } catch {
+    return [];
   }
 }
 
@@ -222,12 +253,11 @@ export async function searchAllMedia(
 ): Promise<UniversalSearchResult[]> {
   if (!query.trim()) return [];
 
-  // Run local lookups and the single API call in parallel.
-  // Promise.allSettled ensures a failure in any one source never cascades.
-  const [localBooksSettled, apiSettled, shortFilmsSettled] =
+  const [localBooksSettled, apiSettled, openLibrarySettled, shortFilmsSettled] =
     await Promise.allSettled([
       searchLocalBooks(query),
       searchViaApi(query),
+      searchOpenLibraryBooks(query),
       searchShortFilms(query),
     ]);
 
@@ -236,15 +266,17 @@ export async function searchAllMedia(
   const apiResults =
     apiSettled.status === "fulfilled"
       ? apiSettled.value
-      : { films: [], series: [], books: [] };
+      : { films: [], series: [] };
+  const openLibraryResults =
+    openLibrarySettled.status === "fulfilled" ? openLibrarySettled.value : [];
   const shortFilmResults =
     shortFilmsSettled.status === "fulfilled" ? shortFilmsSettled.value : [];
 
   const combined = [
     ...searchLocalMovies(query),
     ...searchLocalSeries(query),
-    ...localBookResults,       // local static books first; dedup drops API dupes
-    ...apiResults.books,
+    ...localBookResults,     // hardcoded local books first
+    ...openLibraryResults,   // Open Library books (same source as Mount Rushmore)
     ...apiResults.films,
     ...apiResults.series,
     ...shortFilmResults,
