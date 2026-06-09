@@ -25,13 +25,9 @@ async function searchOpenLibraryBooks(
       `https://openlibrary.org/search.json?q=${encodeURIComponent(query.trim())}&limit=5`,
       { signal }
     )
-    if (!res.ok) {
-      console.warn("[BOOK DEBUG] Open Library responded", res.status)
-      return []
-    }
+    if (!res.ok) return []
     const data = (await res.json()) as { docs?: OLDoc[] }
-    console.log("[BOOK DEBUG] Open Library raw doc count:", data.docs?.length ?? 0)
-    const results = (data.docs ?? [])
+    return (data.docs ?? [])
       .filter((doc) => doc.key && doc.title)
       .slice(0, 5)
       .map((doc): SearchResult => {
@@ -48,11 +44,9 @@ async function searchOpenLibraryBooks(
           href:        `/books/${routeId}`,
         }
       })
-    console.log("[BOOK DEBUG] normalised book count:", results.length)
-    return results
   } catch (err) {
     if ((err as Error).name !== "AbortError") {
-      console.error("[BOOK DEBUG] Open Library fetch error:", err)
+      console.error("[search] Open Library fetch error:", err)
     }
     return []
   }
@@ -149,7 +143,6 @@ export function useSearch(): UseSearchReturn {
     const timeoutId = window.setTimeout(async () => {
       setIsLoading(true)
       setError(null)
-      console.log("[SEARCH] request start:", query)
 
       try {
         const [payload, profileResults, olBooks] = await Promise.all([
@@ -162,26 +155,18 @@ export function useSearch(): UseSearchReturn {
           searchOpenLibraryBooks(query, controller.signal),
         ])
 
-        console.log("[BOOK DEBUG] API film count:", (payload.films || []).length)
-        console.log("[BOOK DEBUG] API series count:", (payload.series || []).length)
-        console.log("[BOOK DEBUG] client OL book count:", olBooks.length)
-
-        const nextResults = [
+        setResults([
           ...(payload.films || []).slice(0, 3),
           ...(payload.series || []).slice(0, 2),
           ...olBooks.slice(0, 3),
           ...(payload.short_films || []).slice(0, 2),
           ...profileResults,
-        ]
-        console.log("[SEARCH] Results being set:", nextResults)
-        console.log("[BOOK DEBUG] book count in final results:", nextResults.filter(r => r.media_type === "book").length)
-        setResults(nextResults)
+        ])
       } catch (fetchError) {
         if ((fetchError as Error).name === "AbortError") {
           return
         }
 
-        console.log("[SEARCH] Results being set:", [])
         setResults([])
         setError(fetchError instanceof Error ? fetchError.message : "Search failed.")
       } finally {
@@ -199,10 +184,7 @@ export function useSearch(): UseSearchReturn {
 
   return {
     query,
-    setQuery: (value) => {
-      console.log("[SEARCH] setQuery called with:", value)
-      setQuery(value)
-    },
+    setQuery,
     results,
     isLoading,
     error,

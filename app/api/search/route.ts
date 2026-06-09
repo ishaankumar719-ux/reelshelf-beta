@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { getBookHrefFromRouteId } from "@/lib/bookRoutes"
-import { getLocalMovieByTmdbId } from "@/lib/localMovies"
+import { getLocalMovieByTmdbId, localMovies } from "@/lib/localMovies"
 import { getMovieHrefFromTmdbId } from "@/lib/movieRoutes"
-import { getLocalSeriesByTmdbId } from "@/lib/localSeries"
+import { getLocalSeriesByTmdbId, localSeries } from "@/lib/localSeries"
 import { getSeriesHrefFromTmdbId } from "@/lib/seriesRoutes"
 import { createClient as createSupabaseClient } from "@/lib/supabase/server"
 import type { SearchResult } from "@/src/hooks/useSearch"
@@ -46,6 +46,48 @@ function hasType(types: Set<string>, type: SearchType) {
   return types.has(type)
 }
 
+// Used when TMDB_API_KEY is absent — keeps film/series results populated from
+// the curated local dataset so the navbar search doesn't go completely dark.
+function searchLocalMoviesFallback(query: string, limit: number): SearchResult[] {
+  const q = query.toLowerCase().trim()
+  return localMovies
+    .filter(
+      (m) =>
+        m.title.toLowerCase().includes(q) ||
+        (m.director ?? "").toLowerCase().includes(q)
+    )
+    .slice(0, limit)
+    .map((m): SearchResult => ({
+      id: m.tmdbId,
+      media_type: "film",
+      title: m.title,
+      year: m.year,
+      poster_path: toPosterPath(m.poster),
+      director: m.director ?? null,
+      href: getMovieHrefFromTmdbId(m.tmdbId),
+    }))
+}
+
+function searchLocalSeriesFallback(query: string, limit: number): SearchResult[] {
+  const q = query.toLowerCase().trim()
+  return localSeries
+    .filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        (s.creator ?? "").toLowerCase().includes(q)
+    )
+    .slice(0, limit)
+    .map((s): SearchResult => ({
+      id: s.tmdbId,
+      media_type: "series",
+      title: s.title,
+      year: s.year,
+      poster_path: toPosterPath(s.posterPath ?? s.poster),
+      director: s.creator ?? null,
+      href: getSeriesHrefFromTmdbId(s.tmdbId),
+    }))
+}
+
 type TmdbMultiResult = {
   id: number
   media_type: "movie" | "tv" | "person"
@@ -58,12 +100,7 @@ type TmdbMultiResult = {
 }
 
 async function searchTmdb(query: string, page: number) {
-  console.log("[SEARCH API] TMDB key present:", !!TMDB_API_KEY)
-
-  if (!TMDB_API_KEY) {
-    console.error("[SEARCH API] FATAL: TMDB_API_KEY is not set in environment")
-    return []
-  }
+  if (!TMDB_API_KEY) return []
 
   const tmdbUrl =
     `${TMDB_BASE}/search/multi` +
@@ -73,21 +110,14 @@ async function searchTmdb(query: string, page: number) {
     `&language=en-US` +
     `&page=${page}`
 
-  console.log("[SEARCH API] fetching:", tmdbUrl.replace(TMDB_API_KEY, "KEY_HIDDEN"))
-
   const response = await fetch(tmdbUrl, { cache: "no-store" })
-  console.log("[SEARCH API] TMDB response status:", response.status)
 
   const body = (await response.json()) as {
     total_results?: number
     results?: TmdbMultiResult[]
   }
 
-  console.log("[SEARCH API] TMDB total results:", body.total_results)
-  console.log("[SEARCH API] TMDB results array length:", body.results?.length ?? 0)
-  console.log("[SEARCH API] TMDB first result:", JSON.stringify(body.results?.[0] ?? null))
-
-  const mapped = (body.results ?? [])
+  return (body.results ?? [])
     .filter((result) => result.media_type === "movie" || result.media_type === "tv")
     .map((result) => ({
       id: result.id,
@@ -99,9 +129,6 @@ async function searchTmdb(query: string, page: number) {
       overview: result.overview ?? "",
     }))
     .filter((result) => result.title.length > 0)
-
-  console.log("[SEARCH API] mapped count:", mapped.length)
-  return mapped
 }
 
 type OpenLibraryDoc = {
@@ -223,8 +250,6 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
     const query = url.searchParams.get("q") ?? url.searchParams.get("query") ?? ""
-    console.log("[SEARCH API] handler invoked, query:", query)
-
     const trimmedQuery = query.trim()
     const typeParam = url.searchParams.get("type")?.trim() || ""
     const typesParam =
@@ -279,24 +304,35 @@ export async function GET(request: Request) {
           .filter((result) => result.media_type === "tv")
           .slice(0, limit)
           .map((item) => {
-            const localSeries = getLocalSeriesByTmdbId(item.id)
+            const localTV = getLocalSeriesByTmdbId(item.id)
             return {
               id: item.id,
               media_type: "series",
               title: item.title,
               year: item.year,
               poster_path:
-                item.poster_path || toPosterPath(localSeries?.posterPath || localSeries?.poster),
-              director: localSeries?.creator || null,
+                item.poster_path || toPosterPath(localTV?.posterPath || localTV?.poster),
+              director: localTV?.creator || null,
               href: getSeriesHrefFromTmdbId(item.id),
             } satisfies SearchResult
           })
       : []
 
+    // When TMDB is unavailable (missing API key), serve the curated local dataset
+    // so film/series results don't go completely dark.
+    const finalFilms =
+      films.length > 0 || !hasType(types, "film")
+        ? films
+        : searchLocalMoviesFallback(trimmedQuery, limit)
+    const finalSeries =
+      series.length > 0 || !hasType(types, "series")
+        ? series
+        : searchLocalSeriesFallback(trimmedQuery, limit)
+
     return NextResponse.json<SearchApiResponse>({
       results: tmdbResults.slice(0, 20),
-      films,
-      series,
+      films: finalFilms,
+      series: finalSeries,
       books,
       short_films: shortFilms,
     })

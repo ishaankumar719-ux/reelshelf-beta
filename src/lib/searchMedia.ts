@@ -16,8 +16,6 @@ export async function searchMedia(
     signal?: AbortSignal
   }
 ): Promise<SearchApiResponse> {
-  console.log("[SEARCH] Query received:", query)
-
   const params = new URLSearchParams()
   params.set("q", query)
 

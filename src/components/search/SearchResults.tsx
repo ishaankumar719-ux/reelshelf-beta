@@ -4,8 +4,6 @@ import Link from "next/link"
 import SearchResult from "@/src/components/search/SearchResult"
 import type { SearchResult as SearchResultType } from "@/src/hooks/useSearch"
 
-const SEARCH_DEBUG = true
-
 interface SearchResultsProps {
   results: SearchResultType[]
   recentResults: SearchResultType[]
@@ -16,7 +14,6 @@ interface SearchResultsProps {
   onQuerySelect: (q: string) => void
   variant: "dropdown" | "overlay"
   activeIndex?: number
-  debugBookResults?: SearchResultType[]
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -47,7 +44,6 @@ export default function SearchResults({
   onQuerySelect,
   variant,
   activeIndex = -1,
-  debugBookResults = [],
 }: SearchResultsProps) {
   const films = results.filter((item) => item.media_type === "film")
   const series = results.filter((item) => item.media_type === "series")
@@ -111,33 +107,6 @@ export default function SearchResults({
         <LoadingDots />
       ) : results.length > 0 ? (
         <div>
-          {/* ── Debug panel ─────────────────────────────────────────── */}
-          {SEARCH_DEBUG && (
-            <pre style={{
-              margin: "0 0 8px",
-              padding: "8px 10px",
-              background: "rgba(255,100,0,0.12)",
-              border: "1px solid rgba(255,100,0,0.4)",
-              borderRadius: 6,
-              fontSize: 10,
-              color: "rgba(255,180,80,0.9)",
-              fontFamily: "monospace",
-              lineHeight: 1.6,
-              whiteSpace: "pre-wrap",
-            }}>
-              {[
-                "SEARCH DEBUG",
-                `query: "${query}"`,
-                `film count: ${films.length}`,
-                `series count: ${series.length}`,
-                `book search function called: true`,
-                `book normalised count: ${books.length}`,
-                `book render count: ${books.length}`,
-                `book error: ${books.length === 0 ? "zero results returned — check [BOOK DEBUG] in console" : "none"}`,
-              ].join("\n")}
-            </pre>
-          )}
-
           {films.length > 0 ? (
             <div>
               <SectionLabel>Films</SectionLabel>
@@ -222,27 +191,6 @@ export default function SearchResults({
             </div>
           ) : null}
 
-          {/* ── Forced book test (debug only) ───────────────────────── */}
-          {SEARCH_DEBUG && debugBookResults.length > 0 && (
-            <div className="mt-3">
-              <SectionLabel>BOOK DEBUG RESULTS (direct Open Library)</SectionLabel>
-              <div className="space-y-1">
-                {debugBookResults.map((result) => {
-                  runningIndex += 1
-                  return (
-                    <SearchResult
-                      key={`debug-book-${result.id}`}
-                      id={`global-search-option-${runningIndex}`}
-                      result={result}
-                      onSelect={() => onSelect(result)}
-                      active={activeIndex === runningIndex}
-                      mobileFriendly={variant === "overlay"}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
           <div className="mt-4 border-t border-white/8 px-2.5 pt-4">
             <Link

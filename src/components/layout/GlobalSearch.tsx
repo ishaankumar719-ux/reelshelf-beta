@@ -8,8 +8,6 @@ import SearchResults from "@/src/components/search/SearchResults"
 import { useSearch, type SearchResult } from "@/src/hooks/useSearch"
 import { useSearchHistory } from "@/src/hooks/useSearchHistory"
 
-const DEBUG_BOOK_TRIGGERS = ["project hail", "strange house", "guest list", "housemaid", "dune"]
-
 function SearchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -36,7 +34,6 @@ export default function GlobalSearch() {
   const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null)
   const [mounted, setMounted] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [debugBookResults, setDebugBookResults] = useState<SearchResult[]>([])
 
   const selectableItems = useMemo(() => {
     if (query.trim()) {
@@ -138,52 +135,6 @@ export default function GlobalSearch() {
     setActiveIndex(-1)
   }, [pathname])
 
-  // Forced book test: directly call Open Library (same as Mount Rushmore) for
-  // known-book queries so the debug panel can show whether the function works
-  // in this browser context.
-  useEffect(() => {
-    const q = query.trim().toLowerCase()
-    if (q.length < 2 || !DEBUG_BOOK_TRIGGERS.some((t) => q.includes(t))) {
-      setDebugBookResults([])
-      return
-    }
-
-    let cancelled = false
-    console.log("[BOOK DEBUG] forced OL test firing for:", q)
-
-    fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5`)
-      .then((r) => r.json())
-      .then((data: { docs?: Array<{ key?: string; title?: string; first_publish_year?: number; cover_i?: number; author_name?: string[] }> }) => {
-        if (cancelled) return
-        console.log("[BOOK DEBUG] forced OL test raw doc count:", data.docs?.length ?? 0)
-        const mapped: SearchResult[] = (data.docs ?? [])
-          .filter((doc) => doc.key && doc.title)
-          .slice(0, 5)
-          .map((doc) => {
-            const routeId = (doc.key ?? "").replace(/^\/works\//, "")
-            return {
-              id:          `debug-ol-${routeId}`,
-              media_type:  "book" as const,
-              title:       doc.title ?? "",
-              year:        doc.first_publish_year ? String(doc.first_publish_year) : null,
-              poster_path: doc.cover_i
-                ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
-                : null,
-              author:      doc.author_name?.[0] ?? null,
-              href:        `/books/${routeId}`,
-            }
-          })
-        console.log("[BOOK DEBUG] forced OL test normalised count:", mapped.length)
-        setDebugBookResults(mapped)
-      })
-      .catch((err) => {
-        console.error("[BOOK DEBUG] forced OL test error:", err)
-        setDebugBookResults([])
-      })
-
-    return () => { cancelled = true }
-  }, [query])
-
   function closeAll() {
     setIsDesktopOpen(false)
     setIsMobileOpen(false)
@@ -205,7 +156,6 @@ export default function GlobalSearch() {
     if (!normalized) return
 
     addQuery(normalized)
-    console.log("[SEARCH] navigation start, query:", normalized)
     router.push(`/search?q=${encodeURIComponent(normalized)}`)
     setIsDesktopOpen(false)
     setIsMobileOpen(false)
@@ -213,7 +163,6 @@ export default function GlobalSearch() {
   }
 
   function handleInputChange(value: string) {
-    console.log("[SEARCH] raw input value:", value)
     setQuery(value)
   }
 
@@ -276,7 +225,6 @@ export default function GlobalSearch() {
             }}
             variant="dropdown"
             activeIndex={activeIndex}
-            debugBookResults={debugBookResults}
           />
         </div>,
         document.body
@@ -360,8 +308,7 @@ export default function GlobalSearch() {
                 onQuerySelect={setQuery}
                 variant="overlay"
                 activeIndex={activeIndex}
-                debugBookResults={debugBookResults}
-              />
+                  />
             </div>
           </div>
         </div>,
