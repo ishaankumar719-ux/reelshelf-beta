@@ -32,6 +32,21 @@ export interface UserListItem {
   created_at: string
 }
 
+export interface DiscoveryList {
+  id: string
+  title: string
+  description: string | null
+  is_ranked: boolean
+  created_at: string
+  item_count: number
+  media_types: ListMediaType[]
+  posters: string[]
+  creator: {
+    username: string | null
+    display_name: string | null
+  }
+}
+
 export interface ListWithItems {
   list: UserList
   items: UserListItem[]

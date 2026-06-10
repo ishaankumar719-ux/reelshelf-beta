@@ -683,6 +683,18 @@ export default function Header() {
               </Link>
 
               <Link
+                href="/lists"
+                style={{
+                  color: "#9ca3af",
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Lists
+              </Link>
+
+              <Link
                 href="/profile"
                 style={{
                   color: "#9ca3af",
