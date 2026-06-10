@@ -12,6 +12,7 @@ import {
 } from "../../../lib/localBooks";
 import { getBookHrefFromRouteId, normalizeBookRouteId, isOpenLibraryId } from "../../../lib/bookRoutes";
 import { resolveBookCover, resolveBooksWithCovers } from "../../../lib/bookCovers";
+import BookDescription from "../../../components/BookDescription";
 
 function BackButton() {
   return (
@@ -321,6 +322,29 @@ type OLWorkData = {
   subjects: string[];
 };
 
+function cleanDescription(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, "")                          // HTML tags
+    .replace(/\*{1,2}([^*\n]+)\*{1,2}/g, "$1")       // *italic* / **bold**
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")          // [text](url) → text
+    .replace(/^[-*]{3,}\s*$/gm, "")                   // --- *** dividers
+    .replace(/^Source title:.*$/gim, "")               // "Source title: X" lines
+    .replace(/https?:\/\/\S+/g, "")                    // bare URLs
+    .replace(/\n{3,}/g, "\n\n")                        // collapse excess newlines
+    .trim();
+}
+
+function extractOLDescription(raw: unknown): string {
+  if (typeof raw === "string") return cleanDescription(raw);
+  if (raw && typeof raw === "object" && "value" in (raw as object)) {
+    return cleanDescription(((raw as Record<string, unknown>).value as string) ?? "");
+  }
+  return "";
+}
+
+const DESCRIPTION_MIN = 50;
+const DESCRIPTION_FALLBACK = "No overview is available for this book yet.";
+
 async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> {
   try {
     const worksRes = await fetch(
@@ -330,7 +354,7 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
     if (!worksRes.ok) return null;
     const work = await worksRes.json() as {
       title?: string;
-      description?: string | { value?: string };
+      description?: unknown;
       covers?: number[];
       authors?: Array<{ author?: { key?: string } }>;
       first_publish_date?: string;
@@ -338,27 +362,70 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
     };
 
     const title = work.title ?? "Unknown Title";
-    const description =
-      typeof work.description === "string"
-        ? work.description
-        : (work.description?.value ?? "");
     const coverUrl = work.covers?.[0]
       ? `https://covers.openlibrary.org/b/id/${work.covers[0]}-L.jpg`
       : null;
     const year = (work.first_publish_date ?? "").match(/\d{4}/)?.[0] ?? "—";
     const subjects = (work.subjects ?? []).slice(0, 3) as string[];
 
-    let author = "Unknown Author";
+    // Priority 1: work description
+    let description = extractOLDescription(work.description);
+
     const authorKey = work.authors?.[0]?.author?.key;
-    if (authorKey) {
-      const authorRes = await fetch(
-        `https://openlibrary.org${authorKey}.json`,
-        { cache: "force-cache" }
-      );
-      if (authorRes.ok) {
-        const authorData = await authorRes.json() as { name?: string };
-        author = authorData.name ?? "Unknown Author";
+    const needsMoreDesc = description.length < DESCRIPTION_MIN;
+
+    // Fetch author + (if needed) editions in parallel
+    const [authorData, editionsData] = await Promise.all([
+      authorKey
+        ? fetch(`https://openlibrary.org${authorKey}.json`, { cache: "force-cache" })
+            .then((r) => (r.ok ? (r.json() as Promise<{ name?: string }>) : null))
+            .catch(() => null)
+        : Promise.resolve(null),
+      needsMoreDesc
+        ? fetch(`https://openlibrary.org/works/${workId}/editions.json?limit=5`, { cache: "force-cache" })
+            .then((r) => (r.ok ? (r.json() as Promise<{ entries?: Array<{ description?: unknown }> }>) : null))
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    const author = authorData?.name ?? "Unknown Author";
+
+    // Priority 2: best edition description
+    if (description.length < DESCRIPTION_MIN && editionsData?.entries) {
+      for (const edition of editionsData.entries) {
+        const edDesc = extractOLDescription(edition.description);
+        if (edDesc.length >= DESCRIPTION_MIN) {
+          description = edDesc;
+          break;
+        }
       }
+    }
+
+    // Priority 3: Google Books
+    if (description.length < DESCRIPTION_MIN && title !== "Unknown Title") {
+      try {
+        const gbRes = await fetch(
+          `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}&maxResults=3`,
+          { cache: "force-cache" }
+        );
+        if (gbRes.ok) {
+          const gbData = await gbRes.json() as { items?: Array<{ volumeInfo?: { description?: string } }> };
+          for (const item of (gbData.items ?? [])) {
+            const gbDesc = cleanDescription(item.volumeInfo?.description ?? "");
+            if (gbDesc.length >= DESCRIPTION_MIN) {
+              description = gbDesc;
+              break;
+            }
+          }
+        }
+      } catch {
+        // network errors are non-fatal
+      }
+    }
+
+    // Priority 4: static fallback
+    if (description.length < DESCRIPTION_MIN) {
+      description = DESCRIPTION_FALLBACK;
     }
 
     return { title, author, year, description, coverUrl, subjects };
@@ -512,40 +579,28 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
 
             <ActionButtons book={book} />
 
-            {data.description && (
-              <section
+            <section
+              style={{
+                padding: 22,
+                borderRadius: 22,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <p
                 style={{
-                  padding: 22,
-                  borderRadius: 22,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
+                  margin: "0 0 12px",
+                  color: "#9ca3af",
+                  fontSize: 12,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
-                <p
-                  style={{
-                    margin: "0 0 12px",
-                    color: "#9ca3af",
-                    fontSize: 12,
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                  }}
-                >
-                  Overview
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    maxWidth: 760,
-                    color: "#d1d5db",
-                    lineHeight: 1.8,
-                    fontSize: 17,
-                  }}
-                >
-                  {data.description}
-                </p>
-              </section>
-            )}
+                Overview
+              </p>
+              <BookDescription text={data.description} />
+            </section>
           </div>
         </div>
       </section>
@@ -787,17 +842,7 @@ export default async function BookDetailPage({
                 Overview
               </p>
 
-              <p
-                style={{
-                  margin: 0,
-                  maxWidth: 760,
-                  color: "#d1d5db",
-                  lineHeight: 1.8,
-                  fontSize: 17,
-                }}
-              >
-                {book.overview}
-              </p>
+              <BookDescription text={book.overview} />
             </section>
           </div>
         </div>
