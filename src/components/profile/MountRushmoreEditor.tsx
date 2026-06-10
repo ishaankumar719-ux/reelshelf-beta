@@ -218,7 +218,7 @@ export default function MountRushmoreEditor({
 
           setResults(
             (data.docs ?? []).map((doc) => ({
-              media_id: doc.key ?? "",
+              media_id: (doc.key ?? "").replace(/^\/works\//, ""),
               media_type: "book" as const,
               title: doc.title ?? "",
               year: doc.first_publish_year ? String(doc.first_publish_year) : null,

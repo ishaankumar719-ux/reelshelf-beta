@@ -161,7 +161,7 @@ async function searchBooks(query: string, _page: number, limit: number): Promise
         // doc.key is "/works/OL123W" — strip prefix for a clean route id
         const routeId = (doc.key ?? "").replace(/^\/works\//, "")
         return {
-          id:          doc.key ?? routeId,
+          id:          routeId,
           media_type:  "book",
           title:       doc.title ?? "Untitled",
           year:        doc.first_publish_year ? String(doc.first_publish_year) : null,

@@ -10,7 +10,7 @@ import {
   localBooks,
   type LocalBook,
 } from "../../../lib/localBooks";
-import { getBookHrefFromRouteId, normalizeBookRouteId } from "../../../lib/bookRoutes";
+import { getBookHrefFromRouteId, normalizeBookRouteId, isOpenLibraryId } from "../../../lib/bookRoutes";
 import { resolveBookCover, resolveBooksWithCovers } from "../../../lib/bookCovers";
 
 function BackButton() {
@@ -310,6 +310,261 @@ function getRelatedBooks(book: LocalBook) {
   return [...sameAuthor, ...sameGenre, ...others].slice(0, 8);
 }
 
+// ── Open Library data fetching ────────────────────────────────────────────────
+
+type OLWorkData = {
+  title: string;
+  author: string;
+  year: string;
+  description: string;
+  coverUrl: string | null;
+  subjects: string[];
+};
+
+async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> {
+  try {
+    const worksRes = await fetch(
+      `https://openlibrary.org/works/${workId}.json`,
+      { cache: "force-cache" }
+    );
+    if (!worksRes.ok) return null;
+    const work = await worksRes.json() as {
+      title?: string;
+      description?: string | { value?: string };
+      covers?: number[];
+      authors?: Array<{ author?: { key?: string } }>;
+      first_publish_date?: string;
+      subjects?: string[];
+    };
+
+    const title = work.title ?? "Unknown Title";
+    const description =
+      typeof work.description === "string"
+        ? work.description
+        : (work.description?.value ?? "");
+    const coverUrl = work.covers?.[0]
+      ? `https://covers.openlibrary.org/b/id/${work.covers[0]}-L.jpg`
+      : null;
+    const year = (work.first_publish_date ?? "").match(/\d{4}/)?.[0] ?? "—";
+    const subjects = (work.subjects ?? []).slice(0, 3) as string[];
+
+    let author = "Unknown Author";
+    const authorKey = work.authors?.[0]?.author?.key;
+    if (authorKey) {
+      const authorRes = await fetch(
+        `https://openlibrary.org${authorKey}.json`,
+        { cache: "force-cache" }
+      );
+      if (authorRes.ok) {
+        const authorData = await authorRes.json() as { name?: string };
+        author = authorData.name ?? "Unknown Author";
+      }
+    }
+
+    return { title, author, year, description, coverUrl, subjects };
+  } catch {
+    return null;
+  }
+}
+
+async function OpenLibraryBookPage({ workId }: { workId: string }) {
+  const data = await fetchOpenLibraryWork(workId);
+
+  if (!data) {
+    notFound();
+  }
+
+  const book = {
+    id: workId,
+    mediaType: "book" as const,
+    title: data.title,
+    year: parseInt(data.year, 10) || 0,
+    poster: data.coverUrl || undefined,
+    director: data.author,
+    genres: data.subjects,
+    runtime: undefined,
+    voteAverage: undefined,
+  };
+
+  return (
+    <main style={{ padding: "0 0 80px" }}>
+      <TrackRecentView item={book} />
+      <style>{`
+        @media (max-width: 900px) {
+          .book-detail-grid { grid-template-columns: 1fr !important; }
+          .book-detail-cover { max-width: 320px; }
+        }
+      `}</style>
+
+      <BackButton />
+
+      <section
+        className="book-detail-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 320px) minmax(0, 1fr)",
+          gap: 34,
+          alignItems: "start",
+        }}
+      >
+        <div
+          className="book-detail-cover"
+          style={{
+            position: "relative",
+            aspectRatio: "2 / 3",
+            borderRadius: 24,
+            overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.1)",
+            background:
+              "radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%), linear-gradient(180deg, #171717 0%, #0a0a0a 100%)",
+            boxShadow: "0 24px 70px rgba(0,0,0,0.42)",
+          }}
+        >
+          {data.coverUrl ? (
+            <img
+              src={data.coverUrl}
+              alt={data.title}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          ) : (
+            <FallbackCover />
+          )}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.04) 42%, rgba(0,0,0,0.1) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 28,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(20,20,20,0.98) 0%, rgba(10,10,10,0.96) 100%)",
+            boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+            padding: 28,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 38%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div style={{ position: "relative" }}>
+            <p
+              style={{
+                margin: 0,
+                marginBottom: 12,
+                color: "#7f7f7f",
+                fontSize: 11,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              Book
+            </p>
+
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "clamp(26px, 7vw, 56px)",
+                lineHeight: 1.04,
+                letterSpacing: "clamp(-0.6px, -0.2vw, -2px)",
+                fontWeight: 500,
+              }}
+            >
+              {data.title}
+            </h1>
+
+            <p
+              style={{
+                margin: "16px 0 0",
+                color: "#d1d5db",
+                fontSize: 17,
+                lineHeight: 1.7,
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+              }}
+            >
+              {data.year} · By {data.author}
+            </p>
+
+            {data.subjects.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 22 }}>
+                {data.subjects.map((s) => (
+                  <DetailPill key={s} label={s} />
+                ))}
+                <DetailPill label={data.author} />
+              </div>
+            )}
+
+            <ActionButtons book={book} />
+
+            {data.description && (
+              <section
+                style={{
+                  padding: 22,
+                  borderRadius: 22,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.03)",
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 12px",
+                    color: "#9ca3af",
+                    fontSize: 12,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                  }}
+                >
+                  Overview
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    maxWidth: 760,
+                    color: "#d1d5db",
+                    lineHeight: 1.8,
+                    fontSize: 17,
+                  }}
+                >
+                  {data.description}
+                </p>
+              </section>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <MediaReviewsSection
+        mediaIds={[workId]}
+        mediaType="book"
+        title={data.title}
+        year={book.year}
+        poster={data.coverUrl}
+        creator={data.author}
+        href={`/books/${workId}`}
+      />
+    </main>
+  );
+}
+
+// ── Main page (local books + Open Library) ────────────────────────────────────
+
 export default async function BookDetailPage({
   params,
 }: {
@@ -329,6 +584,10 @@ export default async function BookDetailPage({
 
   if (normalizedId !== id) {
     redirect(`/books/${normalizedId}`);
+  }
+
+  if (isOpenLibraryId(normalizedId)) {
+    return <OpenLibraryBookPage workId={normalizedId} />;
   }
 
   const book = getLocalBookByRouteId(normalizedId);

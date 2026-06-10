@@ -194,7 +194,7 @@ async function searchOpenLibraryBooks(query: string): Promise<UniversalSearchRes
       .slice(0, 5)
       .map((doc) => {
         // doc.key is "/works/OL123W" — strip prefix for a clean route id
-        const routeId = (doc.key ?? "").replace(/^\/works\//, "ol-");
+        const routeId = (doc.key ?? "").replace(/^\/works\//, "");
         return {
           id: `olbook-${routeId}`,
           title: doc.title ?? "",
