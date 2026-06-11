@@ -342,7 +342,7 @@ function extractOLDescription(raw: unknown): string {
   return "";
 }
 
-const DESCRIPTION_MIN = 50;
+const DESCRIPTION_MIN = 80;
 const DESCRIPTION_FALLBACK = "No overview is available for this book yet.";
 
 async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> {
@@ -355,6 +355,8 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
     const work = await worksRes.json() as {
       title?: string;
       description?: unknown;
+      first_sentence?: unknown;
+      excerpt?: unknown;
       covers?: number[];
       authors?: Array<{ author?: { key?: string } }>;
       first_publish_date?: string;
@@ -370,6 +372,18 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
 
     // Priority 1: work description
     let description = extractOLDescription(work.description);
+
+    // Priority 2: first_sentence
+    if (description.length < DESCRIPTION_MIN) {
+      const fs = extractOLDescription(work.first_sentence);
+      if (fs.length >= DESCRIPTION_MIN) description = fs;
+    }
+
+    // Priority 3: excerpt
+    if (description.length < DESCRIPTION_MIN) {
+      const ex = extractOLDescription(work.excerpt);
+      if (ex.length >= DESCRIPTION_MIN) description = ex;
+    }
 
     const authorKey = work.authors?.[0]?.author?.key;
     const needsMoreDesc = description.length < DESCRIPTION_MIN;
@@ -390,7 +404,7 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
 
     const author = authorData?.name ?? "Unknown Author";
 
-    // Priority 2: best edition description
+    // Priority 4: best edition description
     if (description.length < DESCRIPTION_MIN && editionsData?.entries) {
       for (const edition of editionsData.entries) {
         const edDesc = extractOLDescription(edition.description);
@@ -401,7 +415,7 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
       }
     }
 
-    // Priority 3: Google Books
+    // Priority 5: Google Books
     if (description.length < DESCRIPTION_MIN && title !== "Unknown Title") {
       try {
         const gbRes = await fetch(
@@ -423,7 +437,17 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
       }
     }
 
-    // Priority 4: static fallback
+    // Priority 6: subjects-based summary
+    if (description.length < DESCRIPTION_MIN && subjects.length > 0) {
+      const parts = subjects.slice(0, 3);
+      const last = parts[parts.length - 1];
+      const rest = parts.slice(0, -1);
+      description = rest.length > 0
+        ? `A work covering themes of ${rest.join(", ")} and ${last}.`
+        : `A work covering the theme of ${last}.`;
+    }
+
+    // Priority 7: static fallback
     if (description.length < DESCRIPTION_MIN) {
       description = DESCRIPTION_FALLBACK;
     }
