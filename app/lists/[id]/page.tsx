@@ -170,16 +170,16 @@ export default function ListDetailPage() {
     }
   }
 
-  // ── Drag-and-drop (ranked lists, desktop) ─────────────────────────────────
+  // ── Drag-and-drop (owner only, desktop) ───────────────────────────────────
 
   function handleDragStart(index: number) {
-    if (!list?.is_ranked || !isOwner) return
+    if (!isOwner) return
     setDraggedIndex(index)
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault()
-    if (draggedIndex === null || draggedIndex === index || !list?.is_ranked) return
+    if (draggedIndex === null || draggedIndex === index || !isOwner) return
 
     const reordered = [...items]
     const [removed] = reordered.splice(draggedIndex, 1)
@@ -378,6 +378,14 @@ export default function ListDetailPage() {
         </div>
       ) : (
         <div className="space-y-2 max-w-3xl mx-auto">
+          {isOwner && (
+            <div className="flex items-center justify-between mb-1 px-1">
+              <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold">
+                {list.is_ranked ? "Ranking" : "Custom Order"}
+              </span>
+              <span className="text-[10px] text-zinc-600">Drag to reorder</span>
+            </div>
+          )}
           {items.map((item, index) => {
             const mediaHref = getMediaHref({ id: item.media_id, mediaType: item.media_type })
             const isDragging = draggedIndex === index
@@ -385,28 +393,28 @@ export default function ListDetailPage() {
             return (
               <div
                 key={item.id}
-                draggable={isOwner && list.is_ranked}
+                draggable={isOwner}
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={() => void handleDragEnd()}
                 className={[
-                  "flex items-center gap-4 p-3 rounded-xl border transition-all group",
+                  "flex items-center gap-4 p-3 rounded-xl border transition-all duration-200 group",
                   isDragging
                     ? "opacity-40 border-zinc-700 bg-zinc-900 scale-[0.98]"
                     : "border-zinc-900 bg-zinc-950/60 hover:border-zinc-800 hover:bg-zinc-950/90",
-                  isOwner && list.is_ranked ? "cursor-grab active:cursor-grabbing" : "",
+                  isOwner ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
               >
-                {/* Rank */}
+                {/* Rank — only shown for ranked lists */}
                 {list.is_ranked && (
                   <div className="w-8 text-center text-sm font-black text-zinc-700 group-hover:text-zinc-400 transition-colors shrink-0 select-none">
                     #{item.rank_order}
                   </div>
                 )}
 
-                {/* Drag handle — visual affordance for ranked owner */}
-                {isOwner && list.is_ranked && (
-                  <div className="hidden md:flex flex-col gap-0.5 shrink-0 opacity-20 group-hover:opacity-50 transition-opacity">
+                {/* Drag handle — visible affordance for the owner on any list */}
+                {isOwner && (
+                  <div className="hidden md:flex flex-col gap-0.5 shrink-0 opacity-40 group-hover:opacity-80 transition-opacity">
                     <span className="block w-3 h-px bg-zinc-400" />
                     <span className="block w-3 h-px bg-zinc-400" />
                     <span className="block w-3 h-px bg-zinc-400" />
