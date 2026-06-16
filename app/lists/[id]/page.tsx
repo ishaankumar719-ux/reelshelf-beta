@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { getMediaHref } from "@/lib/mediaRoutes"
-import ListCoverGrid from "@/components/lists/ListCoverGrid"
+import ListCoverCollage from "@/components/lists/ListCoverCollage"
 import MediaSearchModal from "@/components/lists/MediaSearchModal"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -243,7 +243,12 @@ export default function ListDetailPage() {
 
         {/* Cover grid */}
         <div className="w-44 h-44 mx-auto lg:mx-0 shrink-0 rounded-xl overflow-hidden shadow-2xl">
-          <ListCoverGrid posters={items.map((i) => i.poster_url ?? "")} />
+          <ListCoverCollage
+            items={items.slice(0, 4).map((i) => ({
+              url: i.poster_url,
+              alt: `${TYPE_LABEL[i.media_type] ?? "Cover"} cover — ${i.title}`,
+            }))}
+          />
         </div>
 
         {/* Metadata */}

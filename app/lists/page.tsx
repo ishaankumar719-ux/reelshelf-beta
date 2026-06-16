@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import ListsDiscoveryClient from "@/components/lists/ListsDiscoveryClient"
-import type { DiscoveryList, ListMediaType } from "@/lib/supabase/lists"
+import type { DiscoveryList, ListItemCover, ListMediaType } from "@/lib/supabase/lists"
 
 export const dynamic = "force-dynamic"
 
@@ -15,8 +15,9 @@ type RawList = {
 
 type RawItem = {
   list_id: string
-  media_type: string
+  media_type: ListMediaType
   poster_url: string | null
+  title: string
 }
 
 type RawProfile = {
@@ -49,8 +50,9 @@ export default async function ListsDiscoveryPage() {
   const [{ data: items }, { data: profiles }] = await Promise.all([
     supabase
       .from("user_list_items")
-      .select("list_id, media_type, poster_url")
-      .in("list_id", listIds),
+      .select("list_id, media_type, poster_url, title")
+      .in("list_id", listIds)
+      .order("rank_order", { ascending: true }),
     supabase
       .from("profiles")
       .select("id, username, display_name")
@@ -71,10 +73,11 @@ export default async function ListsDiscoveryPage() {
   const lists: DiscoveryList[] = (rawLists as RawList[]).map((list) => {
     const listItems = itemsByList.get(list.id) ?? []
     const mediaTypesSet = new Set(listItems.map((i) => i.media_type))
-    const posters = listItems
-      .map((i) => i.poster_url)
-      .filter((p): p is string => typeof p === "string" && p.length > 0)
-      .slice(0, 4)
+    const coverItems: ListItemCover[] = listItems.slice(0, 4).map((i) => ({
+      media_type: i.media_type,
+      poster_url: i.poster_url,
+      title: i.title,
+    }))
     const profile = profileMap.get(list.user_id)
 
     return {
@@ -85,7 +88,7 @@ export default async function ListsDiscoveryPage() {
       created_at: list.created_at,
       item_count: listItems.length,
       media_types: Array.from(mediaTypesSet) as ListMediaType[],
-      posters,
+      coverItems,
       creator: {
         username: profile?.username ?? null,
         display_name: profile?.display_name ?? null,

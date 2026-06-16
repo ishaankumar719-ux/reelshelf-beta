@@ -15,8 +15,15 @@ export interface UserList {
   updated_at: string
 }
 
+export interface ListItemCover {
+  media_type: ListMediaType
+  poster_url: string | null
+  title: string
+}
+
 export interface UserListWithCount extends UserList {
   item_count: number
+  coverItems: ListItemCover[]
 }
 
 export interface UserListItem {
@@ -40,7 +47,7 @@ export interface DiscoveryList {
   created_at: string
   item_count: number
   media_types: ListMediaType[]
-  posters: string[]
+  coverItems: ListItemCover[]
   creator: {
     username: string | null
     display_name: string | null
@@ -90,19 +97,27 @@ export async function fetchListsForProfile(
   if (error || !data || (data as UserList[]).length === 0) return []
 
   const ids = (data as UserList[]).map((l) => l.id)
-  const { data: countRows } = await supabase
+  const { data: itemRows } = await supabase
     .from("user_list_items")
-    .select("list_id")
+    .select("list_id, media_type, poster_url, title")
     .in("list_id", ids)
+    .order("rank_order", { ascending: true })
+
+  type ItemRow = { list_id: string; media_type: ListMediaType; poster_url: string | null; title: string }
 
   const counts = new Map<string, number>()
-  for (const row of countRows ?? []) {
+  const covers = new Map<string, ListItemCover[]>()
+  for (const row of (itemRows ?? []) as ItemRow[]) {
     counts.set(row.list_id, (counts.get(row.list_id) ?? 0) + 1)
+    const bucket = covers.get(row.list_id) ?? []
+    if (bucket.length < 4) bucket.push({ media_type: row.media_type, poster_url: row.poster_url, title: row.title })
+    covers.set(row.list_id, bucket)
   }
 
   return (data as UserList[]).map((l) => ({
     ...l,
     item_count: counts.get(l.id) ?? 0,
+    coverItems: covers.get(l.id) ?? [],
   }))
 }
 

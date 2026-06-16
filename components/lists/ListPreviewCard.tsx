@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { deleteList } from "@/lib/supabase/lists"
 import type { UserListWithCount } from "@/lib/supabase/lists"
+import ListCoverCollage from "@/components/lists/ListCoverCollage"
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
+
+const TYPE_LABEL: Record<string, string> = { movie: "Film", tv: "TV", book: "Book" }
 
 interface ListPreviewCardProps {
   list: UserListWithCount
@@ -50,7 +53,18 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
         e.currentTarget.style.background = "rgba(255,255,255,0.025)"
       }}
     >
-      <Link href={href} style={{ display: "block", padding: "16px 16px 14px", textDecoration: "none" }}>
+      <Link href={href} style={{ display: "block", textDecoration: "none" }}>
+        {/* Cover collage */}
+        <div style={{ position: "relative", width: "100%", height: 128, overflow: "hidden", background: "#06060e" }}>
+          <ListCoverCollage
+            items={list.coverItems.map((i) => ({
+              url: i.poster_url,
+              alt: `${TYPE_LABEL[i.media_type] ?? "Cover"} cover — ${i.title}`,
+            }))}
+          />
+        </div>
+
+        <div style={{ padding: "16px 16px 14px" }}>
         {/* Top row: title + chips */}
         <div
           style={{
@@ -151,6 +165,7 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
               year: "numeric",
             })}
           </span>
+        </div>
         </div>
       </Link>
 

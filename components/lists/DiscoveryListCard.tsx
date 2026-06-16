@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import ListCoverGrid from "@/components/lists/ListCoverGrid"
+import ListCoverCollage from "@/components/lists/ListCoverCollage"
 import type { DiscoveryList } from "@/lib/supabase/lists"
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
@@ -64,7 +64,12 @@ export default function DiscoveryListCard({ list }: DiscoveryListCardProps) {
 
         {/* ── Cover collage ───────────────────────────────────────────── */}
         <div style={{ position: "relative", width: "100%", height: 160, overflow: "hidden", background: "#06060e" }}>
-          <ListCoverGrid posters={list.posters} />
+          <ListCoverCollage
+            items={list.coverItems.map((i) => ({
+              url: i.poster_url,
+              alt: `${MEDIA_BADGE[i.media_type]?.label ?? "Cover"} cover — ${i.title}`,
+            }))}
+          />
 
           {/* Bottom gradient for depth */}
           <div
