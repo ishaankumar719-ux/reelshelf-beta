@@ -113,7 +113,7 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
                 Ranked
               </span>
             )}
-            {isOwner && !list.is_public && (
+            {list.visibility === "private" && (
               <span
                 style={{
                   fontSize: 8,
@@ -128,7 +128,25 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
                   flexShrink: 0,
                 }}
               >
-                Private
+                🔒 Private
+              </span>
+            )}
+            {list.visibility === "unlisted" && (
+              <span
+                style={{
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "rgba(96,165,250,0.8)",
+                  border: "0.5px solid rgba(96,165,250,0.2)",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  fontFamily: FONT,
+                  flexShrink: 0,
+                }}
+              >
+                🔗 Unlisted
               </span>
             )}
           </div>

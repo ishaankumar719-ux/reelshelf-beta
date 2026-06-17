@@ -4,12 +4,14 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 export type ListMediaType = "movie" | "tv" | "book"
 
+export type ListVisibility = "public" | "private" | "unlisted"
+
 export interface UserList {
   id: string
   user_id: string
   title: string
   description: string | null
-  is_public: boolean
+  visibility: ListVisibility
   is_ranked: boolean
   created_at: string
   updated_at: string
@@ -81,16 +83,16 @@ export function toAbsolutePosterUrl(path: string | null | undefined): string | n
 export async function fetchListsForProfile(
   supabase: SupabaseClient,
   userId: string,
-  includePrivate: boolean
+  isOwnerView: boolean
 ): Promise<UserListWithCount[]> {
   let query = supabase
     .from("user_lists")
-    .select("id, user_id, title, description, is_public, is_ranked, created_at, updated_at")
+    .select("id, user_id, title, description, visibility, is_ranked, created_at, updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
 
-  if (!includePrivate) {
-    query = query.eq("is_public", true)
+  if (!isOwnerView) {
+    query = query.eq("visibility", "public")
   }
 
   const { data, error } = await query
@@ -127,7 +129,7 @@ export async function fetchListWithItems(
 ): Promise<ListWithItems | null> {
   const { data: listData, error: listError } = await supabase
     .from("user_lists")
-    .select("id, user_id, title, description, is_public, is_ranked, created_at, updated_at")
+    .select("id, user_id, title, description, visibility, is_ranked, created_at, updated_at")
     .eq("id", listId)
     .single()
 
@@ -163,7 +165,7 @@ export async function fetchListWithItems(
 export async function createList(
   supabase: SupabaseClient,
   userId: string,
-  data: { title: string; description?: string; is_public: boolean; is_ranked: boolean }
+  data: { title: string; description?: string; visibility: ListVisibility; is_ranked: boolean }
 ): Promise<UserList | null> {
   const { data: result, error } = await supabase
     .from("user_lists")
@@ -171,7 +173,7 @@ export async function createList(
       user_id: userId,
       title: data.title.trim(),
       description: data.description?.trim() || null,
-      is_public: data.is_public,
+      visibility: data.visibility,
       is_ranked: data.is_ranked,
     })
     .select()
@@ -184,12 +186,12 @@ export async function createList(
 export async function updateList(
   supabase: SupabaseClient,
   listId: string,
-  data: Partial<Pick<UserList, "title" | "description" | "is_public" | "is_ranked">>
+  data: Partial<Pick<UserList, "title" | "description" | "visibility" | "is_ranked">>
 ): Promise<boolean> {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (data.title !== undefined) patch.title = data.title.trim()
   if (data.description !== undefined) patch.description = data.description?.trim() || null
-  if (data.is_public !== undefined) patch.is_public = data.is_public
+  if (data.visibility !== undefined) patch.visibility = data.visibility
   if (data.is_ranked !== undefined) patch.is_ranked = data.is_ranked
 
   const { error } = await supabase.from("user_lists").update(patch).eq("id", listId)

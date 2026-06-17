@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/components/AuthProvider"
 import { createClient } from "@/lib/supabase/client"
+import type { ListVisibility } from "@/lib/supabase/lists"
 
 const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 
@@ -56,6 +57,43 @@ function SegmentedControl({
   )
 }
 
+const VISIBILITY_OPTIONS: { value: ListVisibility; label: string }[] = [
+  { value: "public", label: "Public" },
+  { value: "private", label: "Private" },
+  { value: "unlisted", label: "Unlisted" },
+]
+
+function VisibilitySegmented({
+  value,
+  onChange,
+}: {
+  value: ListVisibility
+  onChange: (v: ListVisibility) => void
+}) {
+  return (
+    <div
+      className="flex bg-zinc-950 border border-zinc-900 rounded-lg p-1 gap-0.5"
+      style={{ fontFamily: FONT }}
+    >
+      {VISIBILITY_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={[
+            "flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-all duration-100 leading-none",
+            value === opt.value
+              ? "bg-zinc-800 text-white border border-zinc-700/50"
+              : "text-zinc-500 hover:text-zinc-300",
+          ].join(" ")}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CreateListPage() {
@@ -64,7 +102,7 @@ export default function CreateListPage() {
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [isPublic, setIsPublic] = useState(true)
+  const [visibility, setVisibility] = useState<ListVisibility>("public")
   const [isRanked, setIsRanked] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -142,7 +180,7 @@ export default function CreateListPage() {
         .insert([{
           title: trimmed,
           description: description.trim() || null,
-          is_public: isPublic,
+          visibility,
           is_ranked: isRanked,
           user_id: user.id,
         }])
@@ -328,16 +366,14 @@ export default function CreateListPage() {
             >
               Visibility
             </span>
-            <SegmentedControl
-              labelA="Public"
-              labelB="Private"
-              active={isPublic}
-              onChange={setIsPublic}
+            <VisibilitySegmented
+              value={visibility}
+              onChange={setVisibility}
             />
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.55 }}>
-              {isPublic
-                ? "Public lists appear on your profile and can be viewed by others."
-                : "Private lists are only visible to you."}
+              {visibility === "public" && "Public lists appear on your profile and can be viewed by others."}
+              {visibility === "private" && "Private lists are only visible to you."}
+              {visibility === "unlisted" && "Unlisted lists won't appear on your profile or in Discover, but anyone with the direct link can view them."}
             </p>
           </div>
 

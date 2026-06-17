@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { getMediaHref } from "@/lib/mediaRoutes"
 import ListCoverCollage from "@/components/lists/ListCoverCollage"
 import MediaSearchModal from "@/components/lists/MediaSearchModal"
+import type { ListVisibility } from "@/lib/supabase/lists"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ interface ListDetails {
   user_id: string
   title: string
   description: string | null
-  is_public: boolean
+  visibility: ListVisibility
   is_ranked: boolean
   created_at: string
 }
@@ -59,7 +60,7 @@ export default function ListDetailPage() {
   const [editingMeta,       setEditingMeta]       = useState(false)
   const [editTitle,         setEditTitle]         = useState("")
   const [editDesc,          setEditDesc]          = useState("")
-  const [editPublic,        setEditPublic]        = useState(true)
+  const [editVisibility,    setEditVisibility]    = useState<ListVisibility>("public")
   const [editRanked,        setEditRanked]        = useState(true)
   const [metaSaving,        setMetaSaving]        = useState(false)
 
@@ -85,16 +86,16 @@ export default function ListDetailPage() {
       supabase.auth.getUser(),
       supabase
         .from("user_lists")
-        .select("id, user_id, title, description, is_public, is_ranked, created_at")
+        .select("id, user_id, title, description, visibility, is_ranked, created_at")
         .eq("id", listId)
         .single(),
     ])
 
     if (listErr || !listData) { setNotFound(true); setLoading(false); return }
 
-    // Private list guard
+    // Private list guard — public and unlisted (direct link) are both viewable
     const owned = user?.id === listData.user_id
-    if (!listData.is_public && !owned) { setNotFound(true); setLoading(false); return }
+    if (listData.visibility === "private" && !owned) { setNotFound(true); setLoading(false); return }
 
     const [{ data: itemsData }, { data: profileData }] = await Promise.all([
       supabase
@@ -115,7 +116,7 @@ export default function ListDetailPage() {
     setIsOwner(owned)
     setEditTitle(listData.title)
     setEditDesc(listData.description ?? "")
-    setEditPublic(listData.is_public)
+    setEditVisibility(listData.visibility)
     setEditRanked(listData.is_ranked)
     setLoading(false)
   }, [listId])
@@ -131,10 +132,10 @@ export default function ListDetailPage() {
     setMetaSaving(true)
     const { error } = await supabase
       .from("user_lists")
-      .update({ title: editTitle.trim(), description: editDesc.trim() || null, is_public: editPublic, is_ranked: editRanked, updated_at: new Date().toISOString() })
+      .update({ title: editTitle.trim(), description: editDesc.trim() || null, visibility: editVisibility, is_ranked: editRanked, updated_at: new Date().toISOString() })
       .eq("id", list.id)
     if (!error) {
-      setList({ ...list, title: editTitle.trim(), description: editDesc.trim() || null, is_public: editPublic, is_ranked: editRanked })
+      setList({ ...list, title: editTitle.trim(), description: editDesc.trim() || null, visibility: editVisibility, is_ranked: editRanked })
       setEditingMeta(false)
     }
     setMetaSaving(false)
@@ -272,9 +273,8 @@ export default function ListDetailPage() {
 
               {/* Segmented toggles */}
               <div className="flex gap-3">
-                <SegPair
-                  labelA="Public" labelB="Private"
-                  active={editPublic} onChange={setEditPublic}
+                <VisibilityPicker
+                  value={editVisibility} onChange={setEditVisibility}
                 />
                 <SegPair
                   labelA="Ranked" labelB="Unranked"
@@ -308,9 +308,14 @@ export default function ListDetailPage() {
                 <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded-full text-zinc-400 font-semibold">
                   {list.is_ranked ? "Ranked" : "Collection"}
                 </span>
-                {isOwner && !list.is_public && (
+                {list.visibility === "private" && (
                   <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 bg-red-950/40 border border-red-900/60 rounded-full text-red-400 font-semibold">
-                    Private
+                    🔒 Private
+                  </span>
+                )}
+                {list.visibility === "unlisted" && (
+                  <span className="text-[10px] uppercase tracking-widest px-2.5 py-1 bg-blue-950/40 border border-blue-900/60 rounded-full text-blue-400 font-semibold">
+                    🔗 Unlisted
                   </span>
                 )}
               </div>
@@ -497,6 +502,42 @@ export default function ListDetailPage() {
         />
       )}
     </main>
+  )
+}
+
+// ── Visibility picker (reused in edit form) ────────────────────────────────────
+
+const VISIBILITY_OPTIONS: { value: ListVisibility; label: string }[] = [
+  { value: "public", label: "Public" },
+  { value: "private", label: "Private" },
+  { value: "unlisted", label: "Unlisted" },
+]
+
+function VisibilityPicker({
+  value,
+  onChange,
+}: {
+  value: ListVisibility
+  onChange: (v: ListVisibility) => void
+}) {
+  return (
+    <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 gap-0.5">
+      {VISIBILITY_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={[
+            "px-3 py-1 text-xs font-semibold rounded-md transition-all",
+            value === opt.value
+              ? "bg-zinc-700 text-white border border-zinc-600/50"
+              : "text-zinc-500 hover:text-zinc-300",
+          ].join(" ")}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   )
 }
 

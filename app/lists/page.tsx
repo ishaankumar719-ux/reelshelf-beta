@@ -36,7 +36,7 @@ export default async function ListsDiscoveryPage() {
   const { data: rawLists } = await supabase
     .from("user_lists")
     .select("id, user_id, title, description, is_ranked, created_at")
-    .eq("is_public", true)
+    .eq("visibility", "public")
     .order("created_at", { ascending: false })
     .limit(100)
 
