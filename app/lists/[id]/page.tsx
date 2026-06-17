@@ -6,6 +6,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { getMediaHref } from "@/lib/mediaRoutes"
 import ListCoverCollage from "@/components/lists/ListCoverCollage"
+import ListEngagementButtons from "@/components/lists/ListEngagementButtons"
 import MediaSearchModal from "@/components/lists/MediaSearchModal"
 import type { ListVisibility } from "@/lib/supabase/lists"
 
@@ -31,6 +32,8 @@ interface ListDetails {
   description: string | null
   visibility: ListVisibility
   is_ranked: boolean
+  like_count: number
+  save_count: number
   created_at: string
 }
 
@@ -55,6 +58,9 @@ export default function ListDetailPage() {
   const [isOwner,           setIsOwner]           = useState(false)
   const [loading,           setLoading]           = useState(true)
   const [notFound,          setNotFound]          = useState(false)
+  const [currentUserId,     setCurrentUserId]     = useState<string | null>(null)
+  const [isLiked,           setIsLiked]           = useState(false)
+  const [isSaved,           setIsSaved]           = useState(false)
 
   // Edit mode
   const [editingMeta,       setEditingMeta]       = useState(false)
@@ -86,7 +92,7 @@ export default function ListDetailPage() {
       supabase.auth.getUser(),
       supabase
         .from("user_lists")
-        .select("id, user_id, title, description, visibility, is_ranked, created_at")
+        .select("id, user_id, title, description, visibility, is_ranked, like_count, save_count, created_at")
         .eq("id", listId)
         .single(),
     ])
@@ -97,7 +103,12 @@ export default function ListDetailPage() {
     const owned = user?.id === listData.user_id
     if (listData.visibility === "private" && !owned) { setNotFound(true); setLoading(false); return }
 
-    const [{ data: itemsData }, { data: profileData }] = await Promise.all([
+    const [
+      { data: itemsData },
+      { data: profileData },
+      { data: likeRow },
+      { data: saveRow },
+    ] = await Promise.all([
       supabase
         .from("user_list_items")
         .select("id, media_type, media_id, title, poster_url, year, rank_order, notes")
@@ -108,12 +119,21 @@ export default function ListDetailPage() {
         .select("username, display_name, avatar_url")
         .eq("id", listData.user_id)
         .single(),
+      user && !owned
+        ? supabase.from("list_likes").select("id").eq("list_id", listId).eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      user && !owned
+        ? supabase.from("list_saves").select("id").eq("list_id", listId).eq("user_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
 
     setList(listData)
     setItems((itemsData ?? []) as ListItem[])
     setCreator(profileData as Creator | null)
     setIsOwner(owned)
+    setCurrentUserId(user?.id ?? null)
+    setIsLiked(likeRow !== null)
+    setIsSaved(saveRow !== null)
     setEditTitle(listData.title)
     setEditDesc(listData.description ?? "")
     setEditVisibility(listData.visibility)
@@ -338,6 +358,20 @@ export default function ListDetailPage() {
                 {" · "}
                 {items.length} {items.length === 1 ? "item" : "items"}
               </p>
+
+              {/* Engagement buttons — visible to non-owners, static counts to owner */}
+              <div className="flex justify-center lg:justify-start pt-1">
+                <ListEngagementButtons
+                  listId={list.id}
+                  ownerId={list.user_id}
+                  currentUserId={currentUserId}
+                  initialLikeCount={list.like_count}
+                  initialSaveCount={list.save_count}
+                  initialIsLiked={isLiked}
+                  initialIsSaved={isSaved}
+                  compact={false}
+                />
+              </div>
 
               {isOwner && (
                 <div className="flex justify-center lg:justify-start gap-2 pt-1 flex-wrap">

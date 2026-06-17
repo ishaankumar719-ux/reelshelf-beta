@@ -13,6 +13,9 @@ export interface UserList {
   description: string | null
   visibility: ListVisibility
   is_ranked: boolean
+  like_count: number
+  save_count: number
+  trending_score: number
   created_at: string
   updated_at: string
 }
@@ -43,9 +46,13 @@ export interface UserListItem {
 
 export interface DiscoveryList {
   id: string
+  user_id: string
   title: string
   description: string | null
   is_ranked: boolean
+  like_count: number
+  save_count: number
+  trending_score: number
   created_at: string
   item_count: number
   media_types: ListMediaType[]
@@ -87,7 +94,7 @@ export async function fetchListsForProfile(
 ): Promise<UserListWithCount[]> {
   let query = supabase
     .from("user_lists")
-    .select("id, user_id, title, description, visibility, is_ranked, created_at, updated_at")
+    .select("id, user_id, title, description, visibility, is_ranked, like_count, save_count, trending_score, created_at, updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
 
@@ -129,7 +136,7 @@ export async function fetchListWithItems(
 ): Promise<ListWithItems | null> {
   const { data: listData, error: listError } = await supabase
     .from("user_lists")
-    .select("id, user_id, title, description, visibility, is_ranked, created_at, updated_at")
+    .select("id, user_id, title, description, visibility, is_ranked, like_count, save_count, trending_score, created_at, updated_at")
     .eq("id", listId)
     .single()
 

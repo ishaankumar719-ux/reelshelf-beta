@@ -13,36 +13,32 @@ const GRID: React.CSSProperties = {
   gap: 16,
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <h2
-        style={{
-          margin: 0,
-          fontSize: 15,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.78)",
-          letterSpacing: "-0.01em",
-          fontFamily: FONT,
-        }}
-      >
-        {title}
-      </h2>
-      {subtitle && (
-        <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>
-          {subtitle}
-        </p>
-      )}
-    </div>
-  )
+type SortMode = "trending" | "liked" | "recent"
+
+const SORT_LABELS: Record<SortMode, string> = {
+  trending: "Trending",
+  liked:    "Most Liked",
+  recent:   "Recent",
 }
 
 interface ListsDiscoveryClientProps {
   lists: DiscoveryList[]
+  currentUserId: string | null
+  likedListIds: string[]
+  savedListIds: string[]
 }
 
-export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProps) {
+export default function ListsDiscoveryClient({
+  lists,
+  currentUserId,
+  likedListIds,
+  savedListIds,
+}: ListsDiscoveryClientProps) {
   const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<SortMode>("trending")
+
+  const likedSet = useMemo(() => new Set(likedListIds), [likedListIds])
+  const savedSet = useMemo(() => new Set(savedListIds), [savedListIds])
 
   const filtered = useMemo<DiscoveryList[] | null>(() => {
     const q = search.trim().toLowerCase()
@@ -56,12 +52,29 @@ export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProp
     )
   }, [lists, search])
 
-  const trending = useMemo(
-    () => [...lists].sort((a, b) => b.item_count - a.item_count).slice(0, 12),
-    [lists],
-  )
-  const recent = useMemo(() => lists.slice(0, 12), [lists])
-  const mixed = useMemo(() => lists.filter((l) => l.media_types.length >= 2), [lists])
+  const sorted = useMemo(() => {
+    const copy = [...lists]
+    if (sort === "trending") {
+      copy.sort((a, b) => b.trending_score - a.trending_score || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else if (sort === "liked") {
+      copy.sort((a, b) => b.like_count - a.like_count || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else {
+      copy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    }
+    return copy
+  }, [lists, sort])
+
+  function renderCard(l: DiscoveryList) {
+    return (
+      <DiscoveryListCard
+        key={l.id}
+        list={l}
+        currentUserId={currentUserId}
+        isLiked={likedSet.has(l.id)}
+        isSaved={savedSet.has(l.id)}
+      />
+    )
+  }
 
   return (
     <main style={{ maxWidth: 1280, margin: "0 auto", padding: "0 20px 80px", fontFamily: FONT }}>
@@ -98,7 +111,6 @@ export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProp
           Explore rankings, recommendations and collections from the ReelShelf community.
         </p>
 
-        {/* Search bar */}
         <input
           type="search"
           placeholder="Search by title, description or creator…"
@@ -124,7 +136,7 @@ export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProp
         />
       </div>
 
-      {/* ── Global empty state ─────────────────────────────────────────────── */}
+      {/* ── Empty state ────────────────────────────────────────────────────── */}
       {lists.length === 0 && (
         <div
           style={{
@@ -134,14 +146,7 @@ export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProp
             borderRadius: 16,
           }}
         >
-          <p
-            style={{
-              margin: "0 0 20px",
-              fontSize: 14,
-              color: "rgba(255,255,255,0.38)",
-              lineHeight: 1.65,
-            }}
-          >
+          <p style={{ margin: "0 0 20px", fontSize: 14, color: "rgba(255,255,255,0.38)", lineHeight: 1.65 }}>
             Nobody has created any public lists yet.
           </p>
           <Link
@@ -174,46 +179,62 @@ export default function ListsDiscoveryClient({ lists }: ListsDiscoveryClientProp
           </p>
         ) : (
           <section style={{ marginBottom: 48 }}>
-            <SectionHeader title={`Results (${filtered.length})`} />
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(255,255,255,0.38)", fontFamily: FONT }}>
+              {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            </p>
             <div style={GRID}>
-              {filtered.map((l) => <DiscoveryListCard key={l.id} list={l} />)}
+              {filtered.map((l) => renderCard(l))}
             </div>
           </section>
         )
       )}
 
-      {/* ── Sections (only when not searching) ─────────────────────────────── */}
+      {/* ── Sorted section (only when not searching) ───────────────────────── */}
       {filtered === null && lists.length > 0 && (
         <>
-          {trending.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader title="Trending" subtitle="Most-populated public lists" />
-              <div style={GRID}>
-                {trending.map((l) => <DiscoveryListCard key={l.id} list={l} />)}
-              </div>
-            </section>
-          )}
+          {/* Sort controls */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 24,
+              background: "rgba(255,255,255,0.03)",
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              borderRadius: 10,
+              padding: "4px 5px",
+              width: "fit-content",
+            }}
+          >
+            {(["trending", "liked", "recent"] as SortMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setSort(mode)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 7,
+                  border: sort === mode ? "0.5px solid rgba(255,255,255,0.14)" : "none",
+                  background: sort === mode ? "rgba(255,255,255,0.09)" : "transparent",
+                  color: sort === mode ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.36)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                  transition: "background 0.12s, color 0.12s",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {SORT_LABELS[mode]}
+              </button>
+            ))}
+          </div>
 
-          {recent.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader title="Recently Added" />
-              <div style={GRID}>
-                {recent.map((l) => <DiscoveryListCard key={l.id} list={l} />)}
-              </div>
-            </section>
-          )}
-
-          {mixed.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader
-                title="Mixed Media"
-                subtitle="Lists spanning films, TV, and books"
-              />
-              <div style={GRID}>
-                {mixed.map((l) => <DiscoveryListCard key={l.id} list={l} />)}
-              </div>
-            </section>
-          )}
+          <section>
+            <div style={GRID}>
+              {sorted.map((l) => renderCard(l))}
+            </div>
+          </section>
         </>
       )}
     </main>
