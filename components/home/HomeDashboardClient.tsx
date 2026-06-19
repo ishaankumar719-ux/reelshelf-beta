@@ -36,6 +36,8 @@ import {
   subscribeToFollows,
   type FriendsActivityEntry,
 } from "../../lib/supabase/social";
+import DiscoveryListCard from "../lists/DiscoveryListCard";
+import type { DiscoveryList } from "../../lib/supabase/lists";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -392,10 +394,12 @@ export default function HomeDashboardClient({
   trendingMovies,
   trendingSeries,
   trendingBooks,
+  recentLists = [],
 }: {
   trendingMovies: DashboardItem[];
   trendingSeries: DashboardItem[];
   trendingBooks: DashboardItem[];
+  recentLists?: DiscoveryList[];
 }) {
   const { user, displayName, loading } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
@@ -880,6 +884,32 @@ export default function HomeDashboardClient({
 
       {/* ── TRENDING THIS WEEK ─────────────────────────────────────────────────── */}
       <TrendingThisWeek />
+
+      {/* ── RECENT LISTS ───────────────────────────────────────────────────────── */}
+      {recentLists.length > 0 && (
+        <Section
+          eyebrow="Community"
+          title="Recent lists"
+          action={
+            <Link href="/lists" style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 10, fontFamily: SANS, border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "3px 10px" }}>
+              Browse all
+            </Link>
+          }
+        >
+          <div className="home-row" style={{ gap: 10 }}>
+            {recentLists.map((list) => (
+              <div key={list.id} style={{ minWidth: 230, maxWidth: 260, flexShrink: 0 }}>
+                <DiscoveryListCard
+                  list={list}
+                  currentUserId={user?.id ?? null}
+                  isLiked={false}
+                  isSaved={false}
+                />
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* ── DISCOVERY RAILS ────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (

@@ -7,6 +7,11 @@ import { getMovieHrefFromRouteId } from "../lib/movieRoutes";
 import { getTMDBPosterUrl } from "../lib/posters";
 import { getSeriesHrefFromRouteId } from "../lib/seriesRoutes";
 import { localSeries } from "../lib/localSeries";
+import { createClient } from "../lib/supabase/server";
+import { fetchRecentPublicLists } from "../lib/supabase/lists";
+import type { DiscoveryList } from "../lib/supabase/lists";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const resolvedBooks = await resolveBooksWithCovers(localBooks.slice(0, 10));
@@ -41,11 +46,18 @@ export default async function Home() {
     href: getBookHrefFromRouteId(book.id),
   }));
 
+  let recentLists: DiscoveryList[] = [];
+  const supabase = await createClient();
+  if (supabase) {
+    recentLists = await fetchRecentPublicLists(supabase, 6);
+  }
+
   return (
     <HomeDashboardClient
       trendingMovies={trendingMovies}
       trendingSeries={trendingSeries}
       trendingBooks={trendingBooks}
+      recentLists={recentLists}
     />
   );
 }

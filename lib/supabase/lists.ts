@@ -255,6 +255,83 @@ export async function removeListItem(
   return !error
 }
 
+export async function fetchRecentPublicLists(
+  supabase: SupabaseClient,
+  limit = 6
+): Promise<DiscoveryList[]> {
+  const { data: rawLists } = await supabase
+    .from("user_lists")
+    .select("id, user_id, title, description, is_ranked, like_count, save_count, trending_score, created_at")
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (!rawLists || rawLists.length === 0) return []
+
+  type RawList = {
+    id: string; user_id: string; title: string; description: string | null
+    is_ranked: boolean; like_count: number; save_count: number
+    trending_score: number; created_at: string
+  }
+  type RawItem = { list_id: string; media_type: ListMediaType; poster_url: string | null; title: string }
+  type RawProfile = { id: string; username: string | null; display_name: string | null }
+
+  const listIds = (rawLists as RawList[]).map((l) => l.id)
+  const userIds = Array.from(new Set((rawLists as RawList[]).map((l) => l.user_id)))
+
+  const [{ data: items }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("user_list_items")
+      .select("list_id, media_type, poster_url, title")
+      .in("list_id", listIds)
+      .order("rank_order", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds),
+  ])
+
+  const profileMap = new Map(
+    (profiles as RawProfile[] ?? []).map((p) => [p.id, p])
+  )
+
+  const itemsByList = new Map<string, RawItem[]>()
+  for (const item of (items as RawItem[] ?? [])) {
+    const bucket = itemsByList.get(item.list_id) ?? []
+    bucket.push(item)
+    itemsByList.set(item.list_id, bucket)
+  }
+
+  return (rawLists as RawList[]).map((list) => {
+    const listItems = itemsByList.get(list.id) ?? []
+    const mediaTypesSet = new Set(listItems.map((i) => i.media_type))
+    const coverItems: ListItemCover[] = listItems.slice(0, 4).map((i) => ({
+      media_type: i.media_type,
+      poster_url: i.poster_url,
+      title: i.title,
+    }))
+    const profile = profileMap.get(list.user_id)
+    return {
+      id: list.id,
+      user_id: list.user_id,
+      title: list.title,
+      description: list.description,
+      is_ranked: list.is_ranked,
+      like_count: list.like_count,
+      save_count: list.save_count,
+      trending_score: list.trending_score,
+      created_at: list.created_at,
+      item_count: listItems.length,
+      media_types: Array.from(mediaTypesSet) as ListMediaType[],
+      coverItems,
+      creator: {
+        username: profile?.username ?? null,
+        display_name: profile?.display_name ?? null,
+      },
+    }
+  })
+}
+
 // Batch-update rank_order for two swapped items.
 export async function updateItemRankOrders(
   supabase: SupabaseClient,
