@@ -249,6 +249,24 @@ export default function ListDetailPage() {
   return (
     <main className="min-h-screen bg-black text-white py-10 px-4 md:px-8 max-w-5xl mx-auto pb-24">
 
+      {/* ── INLINE DEBUG BUTTONS — bypass ListEngagementButtons entirely ──── */}
+      <div style={{ position: "fixed", top: 80, left: 20, zIndex: 9999, display: "flex", gap: 12 }}>
+        <button
+          type="button"
+          style={{ padding: "10px 20px", background: "red", color: "white", border: "none", borderRadius: 6, fontSize: 16, cursor: "pointer" }}
+          onClick={() => console.log("INLINE LIKE CLICKED")}
+        >
+          LIKE (inline)
+        </button>
+        <button
+          type="button"
+          style={{ padding: "10px 20px", background: "blue", color: "white", border: "none", borderRadius: 6, fontSize: 16, cursor: "pointer" }}
+          onClick={() => console.log("INLINE SAVE CLICKED")}
+        >
+          SAVE (inline)
+        </button>
+      </div>
+
       {/* ── Back link ─────────────────────────────────────────────────────── */}
       {creatorHref && (
         <Link
