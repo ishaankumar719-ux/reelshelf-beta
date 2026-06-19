@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { createAdminClient } from "./admin"
 
 export interface EngagementCounts {
   like_count: number
@@ -30,7 +31,9 @@ export async function recalculateListScores(
   const recencyBonus = hasRecentActivity ? 10 : 0
   const trendingScore = lc * 2 + sc * 3 + recencyBonus
 
-  await supabase
+  // Use service-role client to bypass the owner-only UPDATE RLS policy on user_lists.
+  const admin = createAdminClient() ?? supabase
+  await admin
     .from("user_lists")
     .update({ like_count: lc, save_count: sc, trending_score: trendingScore })
     .eq("id", listId)
