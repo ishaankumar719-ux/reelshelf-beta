@@ -33,6 +33,8 @@ export default function ListEngagementButtons({
   const [isSaved, setIsSaved] = useState(initialIsSaved)
   const [isLikeLoading, setIsLikeLoading] = useState(false)
   const [isSaveLoading, setIsSaveLoading] = useState(false)
+  const [likeError, setLikeError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const isOwner = currentUserId === ownerId
 
@@ -42,6 +44,7 @@ export default function ListEngagementButtons({
       return
     }
 
+    setLikeError(null)
     const wasLiked = isLiked
     const prevCount = likeCount
     setIsLiked(!wasLiked)
@@ -51,6 +54,7 @@ export default function ListEngagementButtons({
     const method = wasLiked ? "DELETE" : "POST"
     try {
       const res = await fetch(`/api/lists/${listId}/like`, { method })
+      console.log("[LIKE] response status:", res.status)
       if (res.ok) {
         const data = (await res.json()) as EngagementResponse
         setLikeCount(data.like_count)
@@ -62,12 +66,17 @@ export default function ListEngagementButtons({
       } else if (res.status === 409) {
         setIsLiked(true)
       } else {
+        const body = await res.text()
+        console.error("[LIKE] failed:", res.status, body)
         setIsLiked(wasLiked)
         setLikeCount(prevCount)
+        setLikeError("Couldn't update — try again")
       }
-    } catch {
+    } catch (err) {
+      console.error("[LIKE] fetch threw:", err)
       setIsLiked(wasLiked)
       setLikeCount(prevCount)
+      setLikeError("Couldn't update — try again")
     } finally {
       setIsLikeLoading(false)
     }
@@ -79,6 +88,7 @@ export default function ListEngagementButtons({
       return
     }
 
+    setSaveError(null)
     const wasSaved = isSaved
     const prevCount = saveCount
     setIsSaved(!wasSaved)
@@ -88,6 +98,7 @@ export default function ListEngagementButtons({
     const method = wasSaved ? "DELETE" : "POST"
     try {
       const res = await fetch(`/api/lists/${listId}/save`, { method })
+      console.log("[SAVE] response status:", res.status)
       if (res.ok) {
         const data = (await res.json()) as EngagementResponse
         setLikeCount(data.like_count)
@@ -99,12 +110,17 @@ export default function ListEngagementButtons({
       } else if (res.status === 409) {
         setIsSaved(true)
       } else {
+        const body = await res.text()
+        console.error("[SAVE] failed:", res.status, body)
         setIsSaved(wasSaved)
         setSaveCount(prevCount)
+        setSaveError("Couldn't update — try again")
       }
-    } catch {
+    } catch (err) {
+      console.error("[SAVE] fetch threw:", err)
       setIsSaved(wasSaved)
       setSaveCount(prevCount)
+      setSaveError("Couldn't update — try again")
     } finally {
       setIsSaveLoading(false)
     }
@@ -114,18 +130,20 @@ export default function ListEngagementButtons({
   if (isOwner) {
     return (
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600">
+        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600 select-none">
           ♡ {likeCount}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600">
+        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600 select-none">
           🔖 {saveCount}
         </span>
+        {!compact && (
+          <span className="text-[10px] text-zinc-700 select-none">· your list</span>
+        )}
       </div>
     )
   }
 
   if (compact) {
-    // Compact: used on discovery/profile cards
     return (
       <div className="flex items-center gap-2">
         <button
@@ -164,39 +182,46 @@ export default function ListEngagementButtons({
 
   // Full size: list detail page
   return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        aria-label={isLiked ? "Unlike this list" : "Like this list"}
-        disabled={isLikeLoading}
-        onClick={() => void handleLike()}
-        className={[
-          "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
-          isLiked
-            ? "bg-red-950/30 border-red-900/50 text-red-400 hover:bg-red-950/50"
-            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
-          isLikeLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
-        ].join(" ")}
-      >
-        {isLiked ? "♥" : "♡"}
-        <span>{isLiked ? "Liked" : "Like"}{likeCount > 0 ? ` · ${likeCount}` : ""}</span>
-      </button>
-      <button
-        type="button"
-        aria-label={isSaved ? "Unsave this list" : "Save this list"}
-        disabled={isSaveLoading}
-        onClick={() => void handleSave()}
-        className={[
-          "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
-          isSaved
-            ? "bg-blue-950/30 border-blue-900/50 text-blue-400 hover:bg-blue-950/50"
-            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
-          isSaveLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
-        ].join(" ")}
-      >
-        🔖
-        <span>{isSaved ? "Saved" : "Save"}{saveCount > 0 ? ` · ${saveCount}` : ""}</span>
-      </button>
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={isLiked ? "Unlike this list" : "Like this list"}
+          disabled={isLikeLoading}
+          onClick={() => void handleLike()}
+          className={[
+            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+            isLiked
+              ? "bg-red-950/30 border-red-900/50 text-red-400 hover:bg-red-950/50"
+              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+            isLikeLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+          ].join(" ")}
+        >
+          {isLiked ? "♥" : "♡"}
+          <span>{isLiked ? "Liked" : "Like"}{likeCount > 0 ? ` · ${likeCount}` : ""}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={isSaved ? "Unsave this list" : "Save this list"}
+          disabled={isSaveLoading}
+          onClick={() => void handleSave()}
+          className={[
+            "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+            isSaved
+              ? "bg-blue-950/30 border-blue-900/50 text-blue-400 hover:bg-blue-950/50"
+              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+            isSaveLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+          ].join(" ")}
+        >
+          🔖
+          <span>{isSaved ? "Saved" : "Save"}{saveCount > 0 ? ` · ${saveCount}` : ""}</span>
+        </button>
+      </div>
+      {(likeError || saveError) && (
+        <p className="text-[11px] text-red-400">
+          {likeError ?? saveError}
+        </p>
+      )}
     </div>
   )
 }
