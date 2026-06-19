@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface ListEngagementButtonsProps {
@@ -18,11 +18,13 @@ type EngagementResponse = { like_count: number; save_count: number }
 
 export default function ListEngagementButtons({
   listId,
+  ownerId,
   currentUserId,
   initialLikeCount,
   initialSaveCount,
   initialIsLiked,
   initialIsSaved,
+  compact = false,
 }: ListEngagementButtonsProps) {
   const router = useRouter()
   const [likeCount, setLikeCount] = useState(initialLikeCount)
@@ -32,13 +34,9 @@ export default function ListEngagementButtons({
   const [isLikeLoading, setIsLikeLoading] = useState(false)
   const [isSaveLoading, setIsSaveLoading] = useState(false)
 
-  useEffect(() => {
-    console.log("ListEngagementButtons mounted and hydrated")
-  }, [])
+  const isOwner = currentUserId === ownerId
 
   async function handleLike() {
-    console.log("LIKE BUTTON CLICKED")
-
     if (!currentUserId) {
       router.push("/login")
       return
@@ -52,9 +50,7 @@ export default function ListEngagementButtons({
 
     const method = wasLiked ? "DELETE" : "POST"
     try {
-      console.log("LIKE: fetching", method, `/api/lists/${listId}/like`)
       const res = await fetch(`/api/lists/${listId}/like`, { method })
-      console.log("LIKE: response status", res.status)
       if (res.ok) {
         const data = (await res.json()) as EngagementResponse
         setLikeCount(data.like_count)
@@ -66,12 +62,10 @@ export default function ListEngagementButtons({
       } else if (res.status === 409) {
         setIsLiked(true)
       } else {
-        console.error("LIKE: unexpected status", res.status)
         setIsLiked(wasLiked)
         setLikeCount(prevCount)
       }
-    } catch (err) {
-      console.error("LIKE: fetch threw", err)
+    } catch {
       setIsLiked(wasLiked)
       setLikeCount(prevCount)
     } finally {
@@ -80,8 +74,6 @@ export default function ListEngagementButtons({
   }
 
   async function handleSave() {
-    console.log("SAVE BUTTON CLICKED")
-
     if (!currentUserId) {
       router.push("/login")
       return
@@ -95,9 +87,7 @@ export default function ListEngagementButtons({
 
     const method = wasSaved ? "DELETE" : "POST"
     try {
-      console.log("SAVE: fetching", method, `/api/lists/${listId}/save`)
       const res = await fetch(`/api/lists/${listId}/save`, { method })
-      console.log("SAVE: response status", res.status)
       if (res.ok) {
         const data = (await res.json()) as EngagementResponse
         setLikeCount(data.like_count)
@@ -109,12 +99,10 @@ export default function ListEngagementButtons({
       } else if (res.status === 409) {
         setIsSaved(true)
       } else {
-        console.error("SAVE: unexpected status", res.status)
         setIsSaved(wasSaved)
         setSaveCount(prevCount)
       }
-    } catch (err) {
-      console.error("SAVE: fetch threw", err)
+    } catch {
       setIsSaved(wasSaved)
       setSaveCount(prevCount)
     } finally {
@@ -122,45 +110,92 @@ export default function ListEngagementButtons({
     }
   }
 
+  // Owner sees static counts — cannot engage with own list
+  if (isOwner) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600">
+          ♡ {likeCount}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-600">
+          🔖 {saveCount}
+        </span>
+      </div>
+    )
+  }
+
+  if (compact) {
+    // Compact: used on discovery/profile cards
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={isLiked ? "Unlike this list" : "Like this list"}
+          disabled={isLikeLoading}
+          onClick={() => void handleLike()}
+          className={[
+            "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors",
+            isLiked
+              ? "bg-red-950/30 border-red-900/50 text-red-400 hover:bg-red-950/50"
+              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+            isLikeLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+          ].join(" ")}
+        >
+          {isLiked ? "♥" : "♡"} {likeCount}
+        </button>
+        <button
+          type="button"
+          aria-label={isSaved ? "Unsave this list" : "Save this list"}
+          disabled={isSaveLoading}
+          onClick={() => void handleSave()}
+          className={[
+            "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors",
+            isSaved
+              ? "bg-blue-950/30 border-blue-900/50 text-blue-400 hover:bg-blue-950/50"
+              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+            isSaveLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+          ].join(" ")}
+        >
+          🔖 {saveCount}
+        </button>
+      </div>
+    )
+  }
+
+  // Full size: list detail page
   return (
-    <div style={{ display: "flex", gap: "12px", padding: "4px 0" }}>
+    <div className="flex items-center gap-2">
       <button
         type="button"
+        aria-label={isLiked ? "Unlike this list" : "Like this list"}
         disabled={isLikeLoading}
-        style={{
-          cursor: isLikeLoading ? "wait" : "pointer",
-          zIndex: 10,
-          position: "relative",
-          padding: "8px 16px",
-          border: "1px solid white",
-          color: "white",
-          background: "transparent",
-          fontSize: 14,
-          pointerEvents: "auto",
-          opacity: isLikeLoading ? 0.5 : 1,
-        }}
         onClick={() => void handleLike()}
+        className={[
+          "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+          isLiked
+            ? "bg-red-950/30 border-red-900/50 text-red-400 hover:bg-red-950/50"
+            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+          isLikeLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+        ].join(" ")}
       >
-        {isLiked ? "♥" : "♡"} Like {likeCount}
+        {isLiked ? "♥" : "♡"}
+        <span>{isLiked ? "Liked" : "Like"}{likeCount > 0 ? ` · ${likeCount}` : ""}</span>
       </button>
       <button
         type="button"
+        aria-label={isSaved ? "Unsave this list" : "Save this list"}
         disabled={isSaveLoading}
-        style={{
-          cursor: isSaveLoading ? "wait" : "pointer",
-          zIndex: 10,
-          position: "relative",
-          padding: "8px 16px",
-          border: "1px solid white",
-          color: "white",
-          background: "transparent",
-          fontSize: 14,
-          pointerEvents: "auto",
-          opacity: isSaveLoading ? 0.5 : 1,
-        }}
         onClick={() => void handleSave()}
+        className={[
+          "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+          isSaved
+            ? "bg-blue-950/30 border-blue-900/50 text-blue-400 hover:bg-blue-950/50"
+            : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300",
+          isSaveLoading ? "opacity-50 cursor-wait" : "cursor-pointer",
+        ].join(" ")}
       >
-        🔖 Save {saveCount}
+        🔖
+        <span>{isSaved ? "Saved" : "Save"}{saveCount > 0 ? ` · ${saveCount}` : ""}</span>
       </button>
     </div>
   )
