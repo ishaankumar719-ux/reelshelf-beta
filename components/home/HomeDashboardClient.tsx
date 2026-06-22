@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
 import SocialRecommendations from "./SocialRecommendations";
@@ -48,6 +49,23 @@ type DashboardItem = {
   year: number;
   poster?: string | null;
   href: string;
+};
+
+type BookOfMonthItem = {
+  id: string;
+  title: string;
+  year: number;
+  author: string;
+  genre: string;
+  overview: string;
+  coverUrl?: string | null;
+  href: string;
+};
+
+type LuckyPool = {
+  movie: Array<{ title: string; href: string }>;
+  tv: Array<{ title: string; href: string }>;
+  book: Array<{ title: string; href: string }>;
 };
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -413,13 +431,22 @@ export default function HomeDashboardClient({
   trendingSeries,
   trendingBooks,
   recentLists = [],
+  staffPicks = [],
+  hiddenGems = [],
+  bookOfMonth = null,
+  luckyPools = null,
 }: {
   trendingMovies: DashboardItem[];
   trendingSeries: DashboardItem[];
   trendingBooks: DashboardItem[];
   recentLists?: DiscoveryList[];
+  staffPicks?: DashboardItem[];
+  hiddenGems?: DashboardItem[];
+  bookOfMonth?: BookOfMonthItem | null;
+  luckyPools?: LuckyPool | null;
 }) {
   const { user, displayName, loading } = useAuth();
+  const router = useRouter();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
   const [isDiaryLoaded, setIsDiaryLoaded] = useState(false);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
@@ -554,6 +581,17 @@ export default function HomeDashboardClient({
       })
       .slice(0, 10);
   }, [diaryEntries, user]);
+
+  const handleLucky = useCallback(
+    (type: "movie" | "tv" | "book") => {
+      if (!luckyPools) return;
+      const pool = luckyPools[type];
+      if (!pool.length) return;
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      router.push(item.href);
+    },
+    [luckyPools, router]
+  );
 
   const timeOfDay = getTimeOfDay();
   const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
@@ -1044,6 +1082,233 @@ export default function HomeDashboardClient({
                 poster={item.poster}
                 href={item.href}
               />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── STAFF PICKS ────────────────────────────────────────────────────────── */}
+      {staffPicks.length > 0 && (
+        <Section
+          eyebrow="Editorial"
+          title="Staff picks"
+          serif
+          action={
+            <span style={{ color: "#3a3a3a", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: SANS }}>
+              Curated for you
+            </span>
+          }
+        >
+          <div className="home-row">
+            {staffPicks.map((item) => (
+              <PosterTile
+                key={`staffpick-${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+                badge="Staff Pick"
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── HIDDEN GEMS ────────────────────────────────────────────────────────── */}
+      {hiddenGems.length > 0 && (
+        <Section eyebrow="Discover" title="Hidden gems" serif>
+          <div className="home-row">
+            {hiddenGems.map((item) => (
+              <PosterTile
+                key={`gem-${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+                badge="Hidden Gem"
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── BOOK OF THE MONTH ──────────────────────────────────────────────────── */}
+      {bookOfMonth && (
+        <Section eyebrow="Editorial" title="Book of the month" serif>
+          <Link
+            href={bookOfMonth.href}
+            style={{ display: "block", textDecoration: "none", color: "inherit" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "clamp(14px, 3vw, 22px)",
+                alignItems: "flex-start",
+                background: "linear-gradient(135deg, rgba(14,14,14,0.96) 0%, rgba(9,9,9,0.98) 100%)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 14,
+                padding: "clamp(14px, 2.5vw, 20px)",
+                transition: "border-color 0.18s ease",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)")}
+            >
+              {/* Cover */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: "clamp(72px, 14vw, 100px)",
+                  aspectRatio: "2/3",
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  background: "#141414",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                {bookOfMonth.coverUrl ? (
+                  <img
+                    src={bookOfMonth.coverUrl}
+                    alt={bookOfMonth.title}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      background: "linear-gradient(135deg,#181818,#0c0c0c)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 28, fontWeight: 700, fontFamily: SANS }}>
+                      {bookOfMonth.title[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Metadata */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: "rgba(251,191,36,0.1)",
+                      border: "0.5px solid rgba(251,191,36,0.22)",
+                      color: "#fbbf24",
+                      fontSize: 9,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      fontFamily: SANS,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Book of the Month
+                  </span>
+                  <span style={{ color: "#3a3a3a", fontSize: 10, fontFamily: SANS }}>{bookOfMonth.genre}</span>
+                </div>
+                <h3
+                  style={{
+                    margin: "0 0 4px",
+                    fontSize: "clamp(15px, 2.8vw, 20px)",
+                    fontWeight: 400,
+                    letterSpacing: "-0.3px",
+                    lineHeight: 1.15,
+                    fontFamily: SERIF,
+                    color: "rgba(255,255,255,0.9)",
+                  }}
+                >
+                  {bookOfMonth.title}
+                </h3>
+                <p style={{ margin: "0 0 10px", fontSize: 12, color: "#4a4a4a", fontFamily: SANS }}>
+                  {bookOfMonth.author} · {bookOfMonth.year}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "clamp(12px, 1.8vw, 13px)",
+                    color: "rgba(255,255,255,0.44)",
+                    lineHeight: 1.6,
+                    fontFamily: SERIF,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {bookOfMonth.overview}
+                </p>
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.32)",
+                    fontFamily: SANS,
+                  }}
+                >
+                  View book
+                  <span style={{ fontSize: 10 }}>→</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </Section>
+      )}
+
+      {/* ── FEELING LUCKY ──────────────────────────────────────────────────────── */}
+      {luckyPools && (
+        <Section eyebrow="Discover" title="Feeling lucky?">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(
+              [
+                { type: "movie", label: "Random Film", emoji: "🎬" },
+                { type: "tv", label: "Random Series", emoji: "📺" },
+                { type: "book", label: "Random Book", emoji: "📚" },
+              ] as const
+            ).map(({ type, label, emoji }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleLucky(type)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  height: 38,
+                  padding: "0 16px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)",
+                  fontSize: 12,
+                  fontFamily: SANS,
+                  cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget;
+                  el.style.background = "rgba(255,255,255,0.08)";
+                  el.style.borderColor = "rgba(255,255,255,0.2)";
+                  el.style.color = "rgba(255,255,255,0.88)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget;
+                  el.style.background = "rgba(255,255,255,0.04)";
+                  el.style.borderColor = "rgba(255,255,255,0.1)";
+                  el.style.color = "rgba(255,255,255,0.62)";
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                {label}
+              </button>
             ))}
           </div>
         </Section>
