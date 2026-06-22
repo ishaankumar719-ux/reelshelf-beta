@@ -449,6 +449,7 @@ export default function HomeDashboardClient({
   const router = useRouter();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
   const [isDiaryLoaded, setIsDiaryLoaded] = useState(false);
+  const [listCount, setListCount] = useState(0);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
   const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
 
@@ -518,6 +519,22 @@ export default function HomeDashboardClient({
       if (mounted) setTonightPickItems(items);
     })();
 
+    return () => { mounted = false; };
+  }, [loading, user]);
+
+  // List count for hero stat
+  useEffect(() => {
+    if (loading || !user?.id) return;
+    let mounted = true;
+    void (async () => {
+      const client = createSupabaseBrowserClient();
+      if (!client) return;
+      const { count } = await client
+        .from("user_lists")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (mounted && count != null) setListCount(count);
+    })();
     return () => { mounted = false; };
   }, [loading, user]);
 
@@ -765,7 +782,7 @@ export default function HomeDashboardClient({
         <span>Search films, series, books…</span>
       </button>
 
-      {/* ── HERO ─────────────────────────────────────────────────────────────────── */}
+      {/* ── 1. HERO ──────────────────────────────────────────────────────────────── */}
       <div className="home-hero">
         {/* Left: greeting + stats */}
         <div style={{ position: "relative", zIndex: 1 }}>
@@ -780,10 +797,11 @@ export default function HomeDashboardClient({
           </h1>
           {/* Inline stats */}
           <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
-            {([
+            {[
               { label: "Diary", value: diaryEntries.length, href: "/diary" },
               { label: "Watchlist", value: watchlistCount, href: "/watchlist" },
-            ] as const).map((stat) => (
+              ...(user ? [{ label: "Lists", value: listCount, href: "/lists" }] : []),
+            ].map((stat) => (
               <Link
                 key={stat.label}
                 href={stat.href}
@@ -824,69 +842,21 @@ export default function HomeDashboardClient({
           >
             Discover
           </Link>
+          <Link
+            href="/lists/create"
+            style={{
+              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
+              textDecoration: "none", fontSize: 12, fontFamily: SANS, whiteSpace: "nowrap",
+            }}
+          >
+            + List
+          </Link>
         </div>
       </div>
 
-      {/* ── TONIGHT'S PICKS ────────────────────────────────────────────────────── */}
-      <div className="picks-wrap">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(10px, 2vw, 14px)" }}>
-            <div>
-              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
-              <h2 style={{ margin: 0, fontSize: "clamp(17px, 3vw, 22px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
-                Pick something for me
-              </h2>
-            </div>
-            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap" }}>
-              Open watchlist
-            </Link>
-          </div>
-          <TonightsPick watchlistItems={tonightPickItems} />
-        </div>
-      </div>
-
-      {/* ── FRIENDS ACTIVITY — only renders after query resolves (no placeholders) */}
-      {friendsHasFollows !== null && (
-        <Section
-          eyebrow="Social"
-          title="What friends are watching"
-          serif
-          action={
-            <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-              Find people
-            </Link>
-          }
-        >
-          {friendsActivity.length > 0 ? (
-            <div className="home-row">
-              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
-                <FriendActivityCard
-                  key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
-                  entry={entry}
-                  userId={user?.id ?? null}
-                />
-              ))}
-            </div>
-          ) : friendsHasFollows ? (
-            <EmptyRail message="No recent activity from your circle yet." href="/discover" cta="Explore" />
-          ) : (
-            <EmptyRail message="Follow a few shelves to see what your circle is watching." href="/discover" cta="Discover people" />
-          )}
-        </Section>
-      )}
-
-      {/* ── MOOD RECOMMENDATIONS ───────────────────────────────────────────────── */}
-      <MoodRecommendations />
-
-      {/* ── CIRCLE DISCOVERY — Systems 3 + 4 + 7 ─────────────────────────────── */}
-      {friendsHasFollows !== null && (
-        <CircleDiscovery
-          friendsActivity={friendsActivity}
-          friendsHasFollows={friendsHasFollows}
-        />
-      )}
-
-      {/* ── CONTINUE WATCHING ──────────────────────────────────────────────────── */}
+      {/* ── 2. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
       {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
         <Section
           eyebrow="In Progress"
@@ -921,98 +891,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── RECENTLY LOGGED ────────────────────────────────────────────────────── */}
-      {user && (
-        <Section
-          eyebrow="Diary"
-          title="Recently logged"
-          serif
-          action={
-            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-              Open diary
-            </Link>
-          }
-        >
-          {!isDiaryLoaded ? (
-            <div className="home-row">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <SkeletonTile key={i} />
-              ))}
-            </div>
-          ) : recentlyLogged.length > 0 ? (
-            <div className="home-row">
-              {recentlyLogged.map((entry) => (
-                <PosterTile
-                  key={`${entry.mediaType}-${entry.id}`}
-                  title={entry.title}
-                  mediaType={entry.mediaType}
-                  poster={entry.poster}
-                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
-                  rating={entry.rating}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
-          )}
-        </Section>
-      )}
-
-      {/* ── DAILY REEL ─────────────────────────────────────────────────────────── */}
-      <DailyReelCard />
-
-      {/* ── BECAUSE YOU LIKED (TMDB) ───────────────────────────────────────────── */}
-      <BecauseYouLiked
-        diaryEntries={diaryEntries.map((e) => ({
-          media_id: e.id, title: e.title, rating: e.rating, watched_date: e.watchedDate,
-        }))}
-      />
-
-      {/* ── BECAUSE YOU LIKED (social collaborative) — System 2 ─────────────── */}
-      <SocialRecommendations diaryEntries={diaryEntries} />
-
-      {/* ── PEOPLE TO FOLLOW ───────────────────────────────────────────────────── */}
-      <PeopleToFollowSection variant="home" />
-
-      {/* ── TOP RATED ──────────────────────────────────────────────────────────── */}
-      {topRated.length > 0 && (
-        <Section
-          eyebrow="Your Taste"
-          title="Top rated by you"
-          action={
-            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-              Full diary
-            </Link>
-          }
-        >
-          <div className="home-row">
-            {topRated.map((entry) => (
-              <PosterTile
-                key={`${entry.mediaType}-${entry.id}`}
-                title={entry.title}
-                mediaType={entry.mediaType}
-                poster={entry.poster}
-                href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
-                rating={entry.rating}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* ── RECOMMENDATION ROWS ────────────────────────────────────────────────── */}
-      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
-      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
-      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
-
-      {/* ── GAMIFICATION (lower priority) ──────────────────────────────────────── */}
-      <GamificationWidgets variant="home" />
-      <WeeklyChallengesSection />
-
-      {/* ── TRENDING THIS WEEK ─────────────────────────────────────────────────── */}
-      <TrendingThisWeek />
-
-      {/* ── RECENT LISTS ───────────────────────────────────────────────────────── */}
+      {/* ── 3. RECENT LISTS ──────────────────────────────────────────────────────── */}
       {recentLists.length > 0 && (
         <Section
           eyebrow="Community"
@@ -1038,7 +917,37 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── DISCOVERY RAILS ────────────────────────────────────────────────────── */}
+      {/* ── 4. FRIENDS ACTIVITY ──────────────────────────────────────────────────── */}
+      {user && friendsHasFollows !== null && (
+        <Section
+          eyebrow="Social"
+          title="Friends activity"
+          serif
+          action={
+            <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Find people
+            </Link>
+          }
+        >
+          {friendsActivity.length > 0 ? (
+            <div className="home-row">
+              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
+                <FriendActivityCard
+                  key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
+                  entry={entry}
+                  userId={user?.id ?? null}
+                />
+              ))}
+            </div>
+          ) : friendsHasFollows ? (
+            <EmptyRail message="No activity from your circle in the last 7 days." href="/discover" cta="Explore" />
+          ) : (
+            <EmptyRail message="Follow people to see their activity here." href="/discover" cta="Discover people" />
+          )}
+        </Section>
+      )}
+
+      {/* ── 5–7. TRENDING ────────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
         <Section eyebrow="Discover" title="Trending films">
           <div className="home-row">
@@ -1087,34 +996,59 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── STAFF PICKS ────────────────────────────────────────────────────────── */}
-      {staffPicks.length > 0 && (
-        <Section
-          eyebrow="Editorial"
-          title="Staff picks"
-          serif
-          action={
-            <span style={{ color: "#3a3a3a", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: SANS }}>
-              Curated for you
-            </span>
-          }
-        >
-          <div className="home-row">
-            {staffPicks.map((item) => (
-              <PosterTile
-                key={`staffpick-${item.mediaType}-${item.id}`}
-                title={item.title}
-                mediaType={item.mediaType}
-                poster={item.poster}
-                href={item.href}
-                badge="Staff Pick"
-              />
+      {/* ── 8. FEELING LUCKY ─────────────────────────────────────────────────────── */}
+      {luckyPools && (
+        <Section eyebrow="Discover" title="Feeling lucky?">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(
+              [
+                { type: "movie", label: "Random Film", emoji: "🎬" },
+                { type: "tv", label: "Random Series", emoji: "📺" },
+                { type: "book", label: "Random Book", emoji: "📚" },
+              ] as const
+            ).map(({ type, label, emoji }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleLucky(type)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  height: 38,
+                  padding: "0 16px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)",
+                  fontSize: 12,
+                  fontFamily: SANS,
+                  cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget;
+                  el.style.background = "rgba(255,255,255,0.08)";
+                  el.style.borderColor = "rgba(255,255,255,0.2)";
+                  el.style.color = "rgba(255,255,255,0.88)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget;
+                  el.style.background = "rgba(255,255,255,0.04)";
+                  el.style.borderColor = "rgba(255,255,255,0.1)";
+                  el.style.color = "rgba(255,255,255,0.62)";
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                {label}
+              </button>
             ))}
           </div>
         </Section>
       )}
 
-      {/* ── HIDDEN GEMS ────────────────────────────────────────────────────────── */}
+      {/* ── 9. HIDDEN GEMS ───────────────────────────────────────────────────────── */}
       {hiddenGems.length > 0 && (
         <Section eyebrow="Discover" title="Hidden gems" serif>
           <div className="home-row">
@@ -1132,7 +1066,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── BOOK OF THE MONTH ──────────────────────────────────────────────────── */}
+      {/* ── 10. BOOK OF THE MONTH ────────────────────────────────────────────────── */}
       {bookOfMonth && (
         <Section eyebrow="Editorial" title="Book of the month" serif>
           <Link
@@ -1262,53 +1196,150 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── FEELING LUCKY ──────────────────────────────────────────────────────── */}
-      {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(
-              [
-                { type: "movie", label: "Random Film", emoji: "🎬" },
-                { type: "tv", label: "Random Series", emoji: "📺" },
-                { type: "book", label: "Random Book", emoji: "📚" },
-              ] as const
-            ).map(({ type, label, emoji }) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleLucky(type)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  height: 38,
-                  padding: "0 16px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.62)",
-                  fontSize: 12,
-                  fontFamily: SANS,
-                  cursor: "pointer",
-                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget;
-                  el.style.background = "rgba(255,255,255,0.08)";
-                  el.style.borderColor = "rgba(255,255,255,0.2)";
-                  el.style.color = "rgba(255,255,255,0.88)";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget;
-                  el.style.background = "rgba(255,255,255,0.04)";
-                  el.style.borderColor = "rgba(255,255,255,0.1)";
-                  el.style.color = "rgba(255,255,255,0.62)";
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                {label}
-              </button>
+      {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
+
+      {/* ── TONIGHT'S PICKS ────────────────────────────────────────────────────── */}
+      <div className="picks-wrap">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(10px, 2vw, 14px)" }}>
+            <div>
+              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(17px, 3vw, 22px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
+                Pick something for me
+              </h2>
+            </div>
+            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap" }}>
+              Open watchlist
+            </Link>
+          </div>
+          <TonightsPick watchlistItems={tonightPickItems} />
+        </div>
+      </div>
+
+      {/* ── RECENTLY LOGGED ────────────────────────────────────────────────────── */}
+      {user && (
+        <Section
+          eyebrow="Diary"
+          title="Recently logged"
+          serif
+          action={
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Open diary
+            </Link>
+          }
+        >
+          {!isDiaryLoaded ? (
+            <div className="home-row">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTile key={i} />
+              ))}
+            </div>
+          ) : recentlyLogged.length > 0 ? (
+            <div className="home-row">
+              {recentlyLogged.map((entry) => (
+                <PosterTile
+                  key={`${entry.mediaType}-${entry.id}`}
+                  title={entry.title}
+                  mediaType={entry.mediaType}
+                  poster={entry.poster}
+                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                  rating={entry.rating}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
+          )}
+        </Section>
+      )}
+
+      {/* ── MOOD RECOMMENDATIONS ───────────────────────────────────────────────── */}
+      <MoodRecommendations />
+
+      {/* ── CIRCLE DISCOVERY — Systems 3 + 4 + 7 ─────────────────────────────── */}
+      {friendsHasFollows !== null && (
+        <CircleDiscovery
+          friendsActivity={friendsActivity}
+          friendsHasFollows={friendsHasFollows}
+        />
+      )}
+
+      {/* ── DAILY REEL ─────────────────────────────────────────────────────────── */}
+      <DailyReelCard />
+
+      {/* ── BECAUSE YOU LIKED (TMDB) ───────────────────────────────────────────── */}
+      <BecauseYouLiked
+        diaryEntries={diaryEntries.map((e) => ({
+          media_id: e.id, title: e.title, rating: e.rating, watched_date: e.watchedDate,
+        }))}
+      />
+
+      {/* ── BECAUSE YOU LIKED (social collaborative) — System 2 ─────────────── */}
+      <SocialRecommendations diaryEntries={diaryEntries} />
+
+      {/* ── PEOPLE TO FOLLOW ───────────────────────────────────────────────────── */}
+      <PeopleToFollowSection variant="home" />
+
+      {/* ── TOP RATED ──────────────────────────────────────────────────────────── */}
+      {topRated.length > 0 && (
+        <Section
+          eyebrow="Your Taste"
+          title="Top rated by you"
+          action={
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Full diary
+            </Link>
+          }
+        >
+          <div className="home-row">
+            {topRated.map((entry) => (
+              <PosterTile
+                key={`${entry.mediaType}-${entry.id}`}
+                title={entry.title}
+                mediaType={entry.mediaType}
+                poster={entry.poster}
+                href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                rating={entry.rating}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── RECOMMENDATION ROWS ────────────────────────────────────────────────── */}
+      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
+      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
+      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
+
+      {/* ── GAMIFICATION (lower priority) ──────────────────────────────────────── */}
+      <GamificationWidgets variant="home" />
+      <WeeklyChallengesSection />
+
+      {/* ── TRENDING THIS WEEK ─────────────────────────────────────────────────── */}
+      <TrendingThisWeek />
+
+      {/* ── STAFF PICKS ────────────────────────────────────────────────────────── */}
+      {staffPicks.length > 0 && (
+        <Section
+          eyebrow="Editorial"
+          title="Staff picks"
+          serif
+          action={
+            <span style={{ color: "#3a3a3a", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: SANS }}>
+              Curated for you
+            </span>
+          }
+        >
+          <div className="home-row">
+            {staffPicks.map((item) => (
+              <PosterTile
+                key={`staffpick-${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+                badge="Staff Pick"
+              />
             ))}
           </div>
         </Section>

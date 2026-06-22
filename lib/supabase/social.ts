@@ -462,12 +462,15 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
     return { entries: [], hasFollows: false };
   }
 
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
   const [{ data: diaryRows, error: diaryError }, { data: profileRows, error: profileError }] =
     await Promise.all([
       client
         .from("diary_entries")
         .select(DIARY_SELECT)
         .in("user_id", followedIds)
+        .gte("saved_at", sevenDaysAgo)
         .order("saved_at", { ascending: false })
         .limit(24),
       client
