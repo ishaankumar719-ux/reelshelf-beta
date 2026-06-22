@@ -442,16 +442,21 @@ function Section({
   children,
   action,
   serif,
+  panel,
 }: {
   eyebrow?: string;
   title: string;
   children: React.ReactNode;
   action?: React.ReactNode;
   serif?: boolean;
+  panel?: boolean;
 }) {
   return (
-    <section style={{ marginBottom: "clamp(28px, 4.5vw, 42px)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(10px, 2vw, 14px)" }}>
+    <section
+      className={panel ? "section-panel" : undefined}
+      style={{ marginBottom: "clamp(14px, 2.4vw, 20px)" }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
           {eyebrow && (
             <span style={{ color: "#565656", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>
@@ -832,11 +837,11 @@ export default function HomeDashboardClient({
 
         /* ── Tonight's picks ── */
         .picks-wrap {
-          border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.07);
           background: linear-gradient(160deg, rgba(14,14,14,0.96) 0%, rgba(8,8,8,0.98) 100%);
-          padding: clamp(14px, 2.5vw, 20px);
-          margin-bottom: clamp(28px, 4.5vw, 42px);
+          padding: clamp(12px, 2vw, 16px);
+          margin-bottom: clamp(14px, 2.4vw, 20px);
           position: relative;
           overflow: hidden;
         }
@@ -845,36 +850,47 @@ export default function HomeDashboardClient({
           position: absolute;
           top: -60px; right: -60px;
           width: 240px; height: 200px;
-          background: radial-gradient(ellipse at center, rgba(99,102,241,0.07) 0%, transparent 68%);
+          background: radial-gradient(ellipse at center, rgba(99,102,241,0.06) 0%, transparent 68%);
           pointer-events: none;
         }
 
-        /* ── Hero ── */
+        /* ── Section panel — subtle alternating background ── */
+        .section-panel {
+          background: rgba(255,255,255,0.018);
+          border-radius: 12px;
+          padding: clamp(12px, 2vw, 16px);
+          border: 1px solid rgba(255,255,255,0.04);
+        }
+        .section-panel .scroll-row-wrap::after {
+          background: linear-gradient(to left, rgba(18,18,18,0.85) 0%, transparent 100%);
+        }
+
+        /* ── Hero — compact dashboard header ── */
         .home-hero {
-          border-radius: 16px;
+          border-radius: 12px;
           border: 1px solid rgba(255,255,255,0.06);
           background: linear-gradient(135deg, rgba(12,12,14,0.97) 0%, rgba(8,8,10,0.98) 100%);
-          padding: clamp(16px, 2.8vw, 24px) clamp(16px, 2.8vw, 26px);
-          margin-bottom: clamp(24px, 4vw, 36px);
+          padding: clamp(10px, 1.6vw, 13px) clamp(14px, 2.4vw, 20px);
+          margin-bottom: clamp(12px, 2vw, 16px);
           position: relative;
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
+          gap: 10px;
           flex-wrap: wrap;
         }
         .home-hero::after {
           content: "";
           position: absolute;
           bottom: -40px; left: -30px;
-          width: 200px; height: 150px;
-          background: radial-gradient(ellipse at center, rgba(45,212,191,0.05) 0%, transparent 70%);
+          width: 180px; height: 130px;
+          background: radial-gradient(ellipse at center, rgba(45,212,191,0.04) 0%, transparent 70%);
           pointer-events: none;
         }
 
         /* ── Mobile search ── */
-        .home-mobile-search { display: none; margin-bottom: 12px; }
+        .home-mobile-search { display: none; margin-bottom: 10px; }
         @media (max-width: 700px) {
           .home-mobile-search { display: flex; }
         }
@@ -913,15 +929,16 @@ export default function HomeDashboardClient({
         <div style={{ position: "relative", zIndex: 1 }}>
           <h1 style={{
             margin: 0,
-            fontSize: "clamp(17px, 3.2vw, 23px)",
+            fontSize: "clamp(13px, 2vw, 15px)",
             fontWeight: 600,
-            letterSpacing: "-0.5px",
+            letterSpacing: "-0.3px",
             lineHeight: 1.1,
+            color: "rgba(255,255,255,0.88)",
           }}>
             {displayName ? `Good ${timeOfDay}, ${displayName}` : `Good ${timeOfDay}`}
           </h1>
           {/* Inline stats */}
-          <div style={{ display: "flex", gap: 20, marginTop: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 14, marginTop: 5, flexWrap: "wrap" }}>
             {[
               { label: "Diary", value: diaryEntries.length, href: "/diary" },
               { label: "Watchlist", value: watchlistCount, href: "/watchlist" },
@@ -930,12 +947,12 @@ export default function HomeDashboardClient({
               <Link
                 key={stat.label}
                 href={stat.href}
-                style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "baseline", gap: 5 }}
+                style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "baseline", gap: 4 }}
               >
-                <span style={{ fontSize: "clamp(18px, 3vw, 22px)", fontWeight: 700, letterSpacing: "-0.8px", lineHeight: 1 }}>
+                <span style={{ fontSize: "clamp(14px, 2vw, 16px)", fontWeight: 700, letterSpacing: "-0.6px", lineHeight: 1 }}>
                   {stat.value}
                 </span>
-                <span style={{ fontSize: 10, color: "#484848", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: SANS }}>
+                <span style={{ fontSize: 9, color: "#484848", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: SANS }}>
                   {stat.label}
                 </span>
               </Link>
@@ -944,13 +961,13 @@ export default function HomeDashboardClient({
         </div>
 
         {/* Right: quick actions */}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 7, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Link
             href="/diary/log"
             style={{
-              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
               borderRadius: 999, background: "white", color: "black",
-              textDecoration: "none", fontSize: 12, fontWeight: 600, fontFamily: SANS,
+              textDecoration: "none", fontSize: 11, fontWeight: 600, fontFamily: SANS,
               letterSpacing: "0.01em", whiteSpace: "nowrap",
             }}
           >
@@ -959,10 +976,10 @@ export default function HomeDashboardClient({
           <Link
             href="/movies"
             style={{
-              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
               borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
-              textDecoration: "none", fontSize: 12, fontFamily: SANS, whiteSpace: "nowrap",
+              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.65)",
+              textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap",
             }}
           >
             Discover
@@ -970,10 +987,10 @@ export default function HomeDashboardClient({
           <Link
             href="/lists/create"
             style={{
-              display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px",
+              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
               borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
-              textDecoration: "none", fontSize: 12, fontFamily: SANS, whiteSpace: "nowrap",
+              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.65)",
+              textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap",
             }}
           >
             + List
@@ -981,9 +998,28 @@ export default function HomeDashboardClient({
         </div>
       </div>
 
-      {/* ── 2. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
+      {/* ── 2. TONIGHT'S PICKS ───────────────────────────────────────────────────── */}
+      <div className="picks-wrap">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
+            <div>
+              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
+              <h2 style={{ margin: 0, fontSize: "clamp(15px, 2.6vw, 19px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
+                Pick something for me
+              </h2>
+            </div>
+            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS, whiteSpace: "nowrap" }}>
+              Open watchlist
+            </Link>
+          </div>
+          <TonightsPick watchlistItems={tonightPickItems} />
+        </div>
+      </div>
+
+      {/* ── 3. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
       {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
         <Section
+          panel
           eyebrow="In Progress"
           title="Continue watching"
           serif
@@ -995,10 +1031,32 @@ export default function HomeDashboardClient({
         >
           {!isDiaryLoaded ? (
             <div className="home-row">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <SkeletonTile key={i} />
               ))}
             </div>
+          ) : continueWatching.length === 1 ? (
+            <Link
+              href={getMediaHref({ id: continueWatching[0].id, mediaType: continueWatching[0].mediaType })}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "inherit" }}
+            >
+              <div style={{ width: 48, height: 72, borderRadius: 6, overflow: "hidden", flexShrink: 0, background: "#111", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {continueWatching[0].poster && (
+                  <img src={continueWatching[0].poster} alt={continueWatching[0].title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: "0 0 3px", fontSize: 9, color: "#565656", fontFamily: SANS, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {continueWatching[0].seasonNumber ? `Season ${continueWatching[0].seasonNumber}` : "Series"}
+                </p>
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {continueWatching[0].title}
+                </h3>
+              </div>
+              <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 28, padding: "0 12px", borderRadius: 999, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.65)", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap" }}>
+                Continue →
+              </span>
+            </Link>
           ) : (
             <ScrollRow>
               {continueWatching.map((entry) => (
@@ -1016,7 +1074,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 3. RECENT LISTS ──────────────────────────────────────────────────────── */}
+      {/* ── 4. RECENT LISTS ──────────────────────────────────────────────────────── */}
       {recentLists.length > 0 && (
         <Section
           eyebrow="Community"
@@ -1042,7 +1100,101 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 4. FRIENDS ACTIVITY ──────────────────────────────────────────────────── */}
+      {/* ── 5. RECENTLY LOGGED ───────────────────────────────────────────────────── */}
+      {user && (
+        <Section
+          panel
+          eyebrow="Diary"
+          title="Recently logged"
+          serif
+          action={
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Open diary
+            </Link>
+          }
+        >
+          {!isDiaryLoaded ? (
+            <div className="home-row">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTile key={i} />
+              ))}
+            </div>
+          ) : recentlyLogged.length > 0 ? (
+            <ScrollRow>
+              {recentlyLogged.map((entry) => (
+                <PosterTile
+                  key={`${entry.mediaType}-${entry.id}`}
+                  title={entry.title}
+                  mediaType={entry.mediaType}
+                  poster={entry.poster}
+                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                  rating={entry.rating}
+                />
+              ))}
+            </ScrollRow>
+          ) : (
+            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
+          )}
+        </Section>
+      )}
+
+      {/* ── 6. MOOD RECOMMENDATIONS ──────────────────────────────────────────────── */}
+      <MoodRecommendations />
+
+      {/* ── 7. TRENDING FILMS ────────────────────────────────────────────────────── */}
+      {trendingMovies.length > 0 && (
+        <Section panel eyebrow="Discover" title="Trending films">
+          <ScrollRow>
+            {trendingMovies.map((item) => (
+              <PosterTile
+                key={`${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+              />
+            ))}
+          </ScrollRow>
+        </Section>
+      )}
+
+      {/* ── 8. TRENDING SERIES ───────────────────────────────────────────────────── */}
+      {trendingSeries.length > 0 && (
+        <Section eyebrow="Discover" title="Trending series">
+          <ScrollRow>
+            {trendingSeries.map((item) => (
+              <PosterTile
+                key={`${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+              />
+            ))}
+          </ScrollRow>
+        </Section>
+      )}
+
+      {/* ── 9. TRENDING BOOKS ────────────────────────────────────────────────────── */}
+      {trendingBooks.length > 0 && (
+        <Section panel eyebrow="Discover" title="Trending books">
+          <ScrollRow>
+            {trendingBooks.map((item) => (
+              <PosterTile
+                key={`${item.mediaType}-${item.id}`}
+                title={item.title}
+                mediaType={item.mediaType}
+                poster={item.poster}
+                href={item.href}
+              />
+            ))}
+          </ScrollRow>
+        </Section>
+      )}
+
+      {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
+
+      {/* Friends Activity */}
       {user && friendsHasFollows === null && (
         <Section eyebrow="Social" title="Friends activity" serif>
           <div className="home-row">
@@ -1081,56 +1233,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 5–7. TRENDING ────────────────────────────────────────────────────────── */}
-      {trendingMovies.length > 0 && (
-        <Section eyebrow="Discover" title="Trending films">
-          <ScrollRow>
-            {trendingMovies.map((item) => (
-              <PosterTile
-                key={`${item.mediaType}-${item.id}`}
-                title={item.title}
-                mediaType={item.mediaType}
-                poster={item.poster}
-                href={item.href}
-              />
-            ))}
-          </ScrollRow>
-        </Section>
-      )}
-
-      {trendingSeries.length > 0 && (
-        <Section eyebrow="Discover" title="Trending series">
-          <ScrollRow>
-            {trendingSeries.map((item) => (
-              <PosterTile
-                key={`${item.mediaType}-${item.id}`}
-                title={item.title}
-                mediaType={item.mediaType}
-                poster={item.poster}
-                href={item.href}
-              />
-            ))}
-          </ScrollRow>
-        </Section>
-      )}
-
-      {trendingBooks.length > 0 && (
-        <Section eyebrow="Discover" title="Trending books">
-          <ScrollRow>
-            {trendingBooks.map((item) => (
-              <PosterTile
-                key={`${item.mediaType}-${item.id}`}
-                title={item.title}
-                mediaType={item.mediaType}
-                poster={item.poster}
-                href={item.href}
-              />
-            ))}
-          </ScrollRow>
-        </Section>
-      )}
-
-      {/* ── 8. FEELING LUCKY ─────────────────────────────────────────────────────── */}
+      {/* Feeling Lucky */}
       {luckyPools && (
         <Section eyebrow="Discover" title="Feeling lucky?">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1146,33 +1249,13 @@ export default function HomeDashboardClient({
                 type="button"
                 onClick={() => handleLucky(type)}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  height: 38,
-                  padding: "0 16px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.62)",
-                  fontSize: 12,
-                  fontFamily: SANS,
-                  cursor: "pointer",
-                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease",
-                  whiteSpace: "nowrap",
+                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
+                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget;
-                  el.style.background = "rgba(255,255,255,0.08)";
-                  el.style.borderColor = "rgba(255,255,255,0.2)";
-                  el.style.color = "rgba(255,255,255,0.88)";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget;
-                  el.style.background = "rgba(255,255,255,0.04)";
-                  el.style.borderColor = "rgba(255,255,255,0.1)";
-                  el.style.color = "rgba(255,255,255,0.62)";
-                }}
+                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
+                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
               >
                 <span style={{ fontSize: 14 }}>{emoji}</span>
                 {label}
@@ -1182,7 +1265,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 9. HIDDEN GEMS ───────────────────────────────────────────────────────── */}
+      {/* Hidden Gems */}
       {hiddenGems.length > 0 && (
         <Section eyebrow="Discover" title="Hidden gems" serif>
           <ScrollRow>
@@ -1200,131 +1283,43 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 10. BOOK OF THE MONTH ────────────────────────────────────────────────── */}
+      {/* Book of the Month */}
       {bookOfMonth && (
         <Section eyebrow="Editorial" title="Book of the month" serif>
-          <Link
-            href={bookOfMonth.href}
-            style={{ display: "block", textDecoration: "none", color: "inherit" }}
-          >
+          <Link href={bookOfMonth.href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
             <div
               className="botm-card"
-              style={{
-                display: "flex",
-                gap: "clamp(14px, 3vw, 22px)",
-                alignItems: "flex-start",
-                background: "linear-gradient(135deg, rgba(14,14,14,0.96) 0%, rgba(9,9,9,0.98) 100%)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 14,
-                padding: "clamp(14px, 2.5vw, 20px)",
-                transition: "border-color 0.18s ease",
-              }}
+              style={{ display: "flex", gap: "clamp(14px, 3vw, 22px)", alignItems: "flex-start", background: "linear-gradient(135deg, rgba(14,14,14,0.96) 0%, rgba(9,9,9,0.98) 100%)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "clamp(14px, 2.5vw, 20px)", transition: "border-color 0.18s ease" }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)")}
             >
-              {/* Cover */}
-              <div
-                className="botm-cover"
-                style={{
-                  flexShrink: 0,
-                  width: "clamp(72px, 14vw, 100px)",
-                  aspectRatio: "2/3",
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  background: "#141414",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
+              <div className="botm-cover" style={{ flexShrink: 0, width: "clamp(72px, 14vw, 100px)", aspectRatio: "2/3", borderRadius: 10, overflow: "hidden", background: "#141414", border: "1px solid rgba(255,255,255,0.06)" }}>
                 {bookOfMonth.coverUrl ? (
-                  <img
-                    src={bookOfMonth.coverUrl}
-                    alt={bookOfMonth.title}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
+                  <img src={bookOfMonth.coverUrl} alt={bookOfMonth.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      background: "linear-gradient(135deg,#181818,#0c0c0c)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 28, fontWeight: 700, fontFamily: SANS }}>
-                      {bookOfMonth.title[0]}
-                    </span>
+                  <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 28, fontWeight: 700, fontFamily: SANS }}>{bookOfMonth.title[0]}</span>
                   </div>
                 )}
               </div>
-
-              {/* Metadata */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      background: "rgba(251,191,36,0.1)",
-                      border: "0.5px solid rgba(251,191,36,0.22)",
-                      color: "#fbbf24",
-                      fontSize: 9,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      fontFamily: SANS,
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: "rgba(251,191,36,0.1)", border: "0.5px solid rgba(251,191,36,0.22)", color: "#fbbf24", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: SANS, fontWeight: 600 }}>
                     Book of the Month
                   </span>
                   <span style={{ color: "#3a3a3a", fontSize: 10, fontFamily: SANS }}>{bookOfMonth.genre}</span>
                 </div>
-                <h3
-                  style={{
-                    margin: "0 0 4px",
-                    fontSize: "clamp(15px, 2.8vw, 20px)",
-                    fontWeight: 400,
-                    letterSpacing: "-0.3px",
-                    lineHeight: 1.15,
-                    fontFamily: SERIF,
-                    color: "rgba(255,255,255,0.9)",
-                  }}
-                >
+                <h3 style={{ margin: "0 0 4px", fontSize: "clamp(15px, 2.8vw, 20px)", fontWeight: 400, letterSpacing: "-0.3px", lineHeight: 1.15, fontFamily: SERIF, color: "rgba(255,255,255,0.9)" }}>
                   {bookOfMonth.title}
                 </h3>
                 <p style={{ margin: "0 0 10px", fontSize: 12, color: "#4a4a4a", fontFamily: SANS }}>
                   {bookOfMonth.author} · {bookOfMonth.year}
                 </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "clamp(12px, 1.8vw, 13px)",
-                    color: "rgba(255,255,255,0.44)",
-                    lineHeight: 1.6,
-                    fontFamily: SERIF,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
+                <p style={{ margin: 0, fontSize: "clamp(12px, 1.8vw, 13px)", color: "rgba(255,255,255,0.44)", lineHeight: 1.6, fontFamily: SERIF, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {bookOfMonth.overview}
                 </p>
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    color: "rgba(255,255,255,0.32)",
-                    fontFamily: SANS,
-                  }}
-                >
-                  View book
-                  <span style={{ fontSize: 10 }}>→</span>
+                <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.32)", fontFamily: SANS }}>
+                  View book <span style={{ fontSize: 10 }}>→</span>
                 </div>
               </div>
             </div>
@@ -1332,67 +1327,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
-
-      {/* ── TONIGHT'S PICKS ────────────────────────────────────────────────────── */}
-      <div className="picks-wrap">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(10px, 2vw, 14px)" }}>
-            <div>
-              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
-              <h2 style={{ margin: 0, fontSize: "clamp(17px, 3vw, 22px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
-                Pick something for me
-              </h2>
-            </div>
-            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap" }}>
-              Open watchlist
-            </Link>
-          </div>
-          <TonightsPick watchlistItems={tonightPickItems} />
-        </div>
-      </div>
-
-      {/* ── RECENTLY LOGGED ────────────────────────────────────────────────────── */}
-      {user && (
-        <Section
-          eyebrow="Diary"
-          title="Recently logged"
-          serif
-          action={
-            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-              Open diary
-            </Link>
-          }
-        >
-          {!isDiaryLoaded ? (
-            <div className="home-row">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <SkeletonTile key={i} />
-              ))}
-            </div>
-          ) : recentlyLogged.length > 0 ? (
-            <ScrollRow>
-              {recentlyLogged.map((entry) => (
-                <PosterTile
-                  key={`${entry.mediaType}-${entry.id}`}
-                  title={entry.title}
-                  mediaType={entry.mediaType}
-                  poster={entry.poster}
-                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
-                  rating={entry.rating}
-                />
-              ))}
-            </ScrollRow>
-          ) : (
-            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
-          )}
-        </Section>
-      )}
-
-      {/* ── MOOD RECOMMENDATIONS ───────────────────────────────────────────────── */}
-      <MoodRecommendations />
-
-      {/* ── CIRCLE DISCOVERY — Systems 3 + 4 + 7 ─────────────────────────────── */}
+      {/* Circle Discovery */}
       {friendsHasFollows !== null && (
         <CircleDiscovery
           friendsActivity={friendsActivity}
@@ -1400,23 +1335,23 @@ export default function HomeDashboardClient({
         />
       )}
 
-      {/* ── DAILY REEL ─────────────────────────────────────────────────────────── */}
+      {/* Daily Reel */}
       <DailyReelCard />
 
-      {/* ── BECAUSE YOU LIKED (TMDB) ───────────────────────────────────────────── */}
+      {/* Because You Liked (TMDB) */}
       <BecauseYouLiked
         diaryEntries={diaryEntries.map((e) => ({
           media_id: e.id, title: e.title, rating: e.rating, watched_date: e.watchedDate,
         }))}
       />
 
-      {/* ── BECAUSE YOU LIKED (social collaborative) — System 2 ─────────────── */}
+      {/* Social Recommendations */}
       <SocialRecommendations diaryEntries={diaryEntries} />
 
-      {/* ── PEOPLE TO FOLLOW ───────────────────────────────────────────────────── */}
+      {/* People to Follow */}
       <PeopleToFollowSection variant="home" />
 
-      {/* ── TOP RATED ──────────────────────────────────────────────────────────── */}
+      {/* Top Rated */}
       {topRated.length > 0 && (
         <Section
           eyebrow="Your Taste"
@@ -1442,19 +1377,19 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── RECOMMENDATION ROWS ────────────────────────────────────────────────── */}
+      {/* Recommendation Rows */}
       <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
       <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
       <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
 
-      {/* ── GAMIFICATION (lower priority) ──────────────────────────────────────── */}
+      {/* Gamification */}
       <GamificationWidgets variant="home" />
       <WeeklyChallengesSection />
 
-      {/* ── TRENDING THIS WEEK ─────────────────────────────────────────────────── */}
+      {/* Trending This Week */}
       <TrendingThisWeek />
 
-      {/* ── STAFF PICKS ────────────────────────────────────────────────────────── */}
+      {/* Staff Picks */}
       {staffPicks.length > 0 && (
         <Section
           eyebrow="Editorial"
