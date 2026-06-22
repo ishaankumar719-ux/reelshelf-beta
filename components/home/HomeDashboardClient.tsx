@@ -330,6 +330,24 @@ function FriendActivityCard({
   );
 }
 
+// ─── Skeleton tile ─────────────────────────────────────────────────────────────
+
+function SkeletonTile() {
+  return (
+    <div
+      style={{
+        width: "min(104px, 25vw)",
+        flexShrink: 0,
+        aspectRatio: "2/3",
+        borderRadius: 8,
+        background: "linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%)",
+        backgroundSize: "200% 100%",
+        animation: "skeleton-shimmer 1.6s ease infinite",
+      }}
+    />
+  );
+}
+
 // ─── Section header ────────────────────────────────────────────────────────────
 
 function Section({
@@ -403,6 +421,7 @@ export default function HomeDashboardClient({
 }) {
   const { user, displayName, loading } = useAuth();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
+  const [isDiaryLoaded, setIsDiaryLoaded] = useState(false);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
   const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
 
@@ -413,6 +432,7 @@ export default function HomeDashboardClient({
   // Seed from localStorage immediately; re-sync on local add/remove
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
+    setIsDiaryLoaded(true);
 
     function mapLocal(): SavedItem[] {
       return getWatchlist().map((e) => ({
@@ -513,6 +533,28 @@ export default function HomeDashboardClient({
 
   // trendingAmongFriends is now handled inside CircleDiscovery (System 3)
 
+  const continueWatching = useMemo(() => {
+    if (!user) return [];
+    const tvEntries = diaryEntries.filter((e) => e.mediaType === "tv");
+    const completedShowIds = new Set(
+      tvEntries
+        .filter((e) => !e.reviewScope || e.reviewScope === "show" || e.reviewScope === "title")
+        .map((e) => e.showId ?? e.id)
+    );
+    const seen = new Set<string>();
+    return tvEntries
+      .filter((e) => {
+        const scope = e.reviewScope;
+        if (scope !== "season" && scope !== "episode") return false;
+        const showKey = e.showId ?? e.id;
+        if (completedShowIds.has(showKey)) return false;
+        if (seen.has(showKey)) return false;
+        seen.add(showKey);
+        return true;
+      })
+      .slice(0, 10);
+  }, [diaryEntries, user]);
+
   const timeOfDay = getTimeOfDay();
   const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
 
@@ -521,6 +563,10 @@ export default function HomeDashboardClient({
   return (
     <main style={{ padding: "0 0 80px" }}>
       <style>{`
+        @keyframes skeleton-shimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
         /* Scroll rails — System 8: mandatory snap, touch-friendly, no clipping */
         .home-row {
           display: flex;
@@ -802,34 +848,77 @@ export default function HomeDashboardClient({
         />
       )}
 
+      {/* ── CONTINUE WATCHING ──────────────────────────────────────────────────── */}
+      {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
+        <Section
+          eyebrow="In Progress"
+          title="Continue watching"
+          serif
+          action={
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              All diary
+            </Link>
+          }
+        >
+          {!isDiaryLoaded ? (
+            <div className="home-row">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTile key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="home-row">
+              {continueWatching.map((entry) => (
+                <PosterTile
+                  key={`tv-${entry.showId ?? entry.id}`}
+                  title={entry.title}
+                  mediaType={entry.mediaType}
+                  poster={entry.poster}
+                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                  badge={entry.seasonNumber ? `S${entry.seasonNumber}` : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
       {/* ── RECENTLY LOGGED ────────────────────────────────────────────────────── */}
-      <Section
-        eyebrow="Diary"
-        title="Recently logged"
-        serif
-        action={
-          <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-            Open diary
-          </Link>
-        }
-      >
-        {recentlyLogged.length > 0 ? (
-          <div className="home-row">
-            {recentlyLogged.map((entry) => (
-              <PosterTile
-                key={`${entry.mediaType}-${entry.id}`}
-                title={entry.title}
-                mediaType={entry.mediaType}
-                poster={entry.poster}
-                href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
-                rating={entry.rating}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
-        )}
-      </Section>
+      {user && (
+        <Section
+          eyebrow="Diary"
+          title="Recently logged"
+          serif
+          action={
+            <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Open diary
+            </Link>
+          }
+        >
+          {!isDiaryLoaded ? (
+            <div className="home-row">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <SkeletonTile key={i} />
+              ))}
+            </div>
+          ) : recentlyLogged.length > 0 ? (
+            <div className="home-row">
+              {recentlyLogged.map((entry) => (
+                <PosterTile
+                  key={`${entry.mediaType}-${entry.id}`}
+                  title={entry.title}
+                  mediaType={entry.mediaType}
+                  poster={entry.poster}
+                  href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+                  rating={entry.rating}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
+          )}
+        </Section>
+      )}
 
       {/* ── DAILY REEL ─────────────────────────────────────────────────────────── */}
       <DailyReelCard />
