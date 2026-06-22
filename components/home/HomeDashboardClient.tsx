@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BecauseYouLiked from "./BecauseYouLiked";
 import BecauseYouLikedRow from "../BecauseYouLikedRow";
@@ -138,7 +138,7 @@ function PosterTile({
       className="poster-tile"
       style={{
         display: "block",
-        width: "min(104px, 25vw)",
+        width: "min(124px, 27vw)",
         flexShrink: 0,
         textDecoration: "none",
         color: "inherit",
@@ -147,11 +147,11 @@ function PosterTile({
       <div
         style={{
           position: "relative",
-          borderRadius: 8,
+          borderRadius: 10,
           overflow: "hidden",
           paddingBottom: "150%",
           background: "#0f0f0f",
-          border: "1px solid rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.07)",
         }}
       >
         {poster ? (
@@ -163,35 +163,35 @@ function PosterTile({
           />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 20, fontWeight: 700, fontFamily: SANS }}>{title[0]}</span>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 22, fontWeight: 700, fontFamily: SANS }}>{title[0]}</span>
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.85) 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 48%, rgba(0,0,0,0.9) 100%)" }} />
         {typeof rating === "number" && (
           <div style={{
-            position: "absolute", top: 5, right: 5,
-            background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)",
-            borderRadius: 4, padding: "2px 5px",
-            color: "#f0c060", fontSize: 9, fontWeight: 700, fontFamily: SANS,
+            position: "absolute", top: 6, right: 6,
+            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
+            borderRadius: 5, padding: "2px 6px",
+            color: "#f0c060", fontSize: 9.5, fontWeight: 700, fontFamily: SANS,
           }}>
             {rating.toFixed(1)}
           </div>
         )}
         {badge && typeof rating !== "number" && (
           <div style={{
-            position: "absolute", top: 5, left: 5,
-            background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)",
-            borderRadius: 4, padding: "2px 5px",
-            color: "rgba(255,255,255,0.58)", fontSize: 8, fontFamily: SANS,
+            position: "absolute", top: 6, left: 6,
+            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
+            borderRadius: 5, padding: "2px 6px",
+            color: "rgba(255,255,255,0.55)", fontSize: 8, fontFamily: SANS,
           }}>
             {badge}
           </div>
         )}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "5px 6px" }}>
-          <p style={{ margin: 0, fontSize: 7, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 8px" }}>
+          <p style={{ margin: 0, fontSize: 7.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
             {mediaLabel(mediaType)}
           </p>
-          <h3 style={{ margin: "1px 0 0", fontSize: 9.5, fontWeight: 600, lineHeight: 1.2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <h3 style={{ margin: "2px 0 0", fontSize: 10, fontWeight: 600, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {title}
           </h3>
         </div>
@@ -354,15 +354,83 @@ function SkeletonTile() {
   return (
     <div
       style={{
-        width: "min(104px, 25vw)",
+        width: "min(124px, 27vw)",
         flexShrink: 0,
         aspectRatio: "2/3",
-        borderRadius: 8,
+        borderRadius: 10,
         background: "linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%)",
         backgroundSize: "200% 100%",
         animation: "skeleton-shimmer 1.6s ease infinite",
+        border: "1px solid rgba(255,255,255,0.04)",
       }}
     />
+  );
+}
+
+function SkeletonFriendCard() {
+  return (
+    <div
+      style={{
+        width: "min(210px, 52vw)",
+        flexShrink: 0,
+        aspectRatio: "210/310",
+        borderRadius: 12,
+        background: "linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%)",
+        backgroundSize: "200% 100%",
+        animation: "skeleton-shimmer 1.6s ease infinite",
+        border: "1px solid rgba(255,255,255,0.04)",
+      }}
+    />
+  );
+}
+
+function ScrollRow({ children, gap = 10 }: { children: React.ReactNode; gap?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [showL, setShowL] = useState(false);
+  const [showR, setShowR] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      setShowL(el.scrollLeft > 8);
+      setShowR(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+    };
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(el);
+    el.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro?.disconnect();
+      el.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  const scroll = (dir: "left" | "right") =>
+    ref.current?.scrollBy({ left: dir === "left" ? -380 : 380, behavior: "smooth" });
+
+  return (
+    <div className="scroll-row-wrap">
+      <button
+        type="button"
+        className={`scroll-arrow scroll-arrow-l${showL ? " scroll-arrow--vis" : ""}`}
+        onClick={() => scroll("left")}
+        aria-label="Scroll left"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        className={`scroll-arrow scroll-arrow-r${showR ? " scroll-arrow--vis" : ""}`}
+        onClick={() => scroll("right")}
+        aria-label="Scroll right"
+      >
+        ›
+      </button>
+      <div ref={ref} className="home-row" style={{ gap }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -382,19 +450,19 @@ function Section({
   serif?: boolean;
 }) {
   return (
-    <section style={{ marginBottom: "clamp(18px, 3.5vw, 26px)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(8px, 1.8vw, 12px)" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+    <section style={{ marginBottom: "clamp(28px, 4.5vw, 42px)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(10px, 2vw, 14px)" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
           {eyebrow && (
-            <span style={{ color: "#3e3e3e", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>
+            <span style={{ color: "#565656", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>
               {eyebrow}
             </span>
           )}
           <h2 style={{
             margin: 0,
-            fontSize: serif ? "clamp(17px, 3vw, 22px)" : "clamp(14px, 2.5vw, 17px)",
+            fontSize: serif ? "clamp(17px, 3vw, 22px)" : "clamp(15px, 2.6vw, 18px)",
             lineHeight: 1.1,
-            letterSpacing: serif ? "-0.4px" : "-0.25px",
+            letterSpacing: serif ? "-0.4px" : "-0.3px",
             fontWeight: serif ? 400 : 500,
             fontFamily: serif ? SERIF : "inherit",
           }}>
@@ -622,31 +690,87 @@ export default function HomeDashboardClient({
           0%   { background-position: 200% 0; }
           100% { background-position: -200% 0; }
         }
-        /* Scroll rails — System 8: mandatory snap, touch-friendly, no clipping */
+
+        /* ── Scroll rails ── */
         .home-row {
           display: flex;
-          gap: 8px;
+          gap: 10px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           scroll-snap-type: x mandatory;
           scroll-behavior: smooth;
           overscroll-behavior-x: contain;
           scrollbar-width: none;
-          padding-bottom: 2px;
-          padding-inline: 2px;
+          padding-bottom: 6px;
+          padding-inline: 2px 24px;
+          scroll-padding-inline-start: 2px;
           cursor: grab;
         }
         .home-row::-webkit-scrollbar { display: none; }
         .home-row > * { scroll-snap-align: start; min-height: 44px; }
         .home-row:active { cursor: grabbing; }
 
-        /* Poster hover lift */
-        .poster-tile { transition: transform 0.18s ease; }
-        .poster-tile:hover { transform: translateY(-3px) scale(1.02); }
+        /* ── Desktop scroll arrow navigation ── */
+        .scroll-row-wrap { position: relative; }
+        .scroll-row-wrap::after {
+          content: "";
+          position: absolute;
+          top: 0; right: 0; bottom: 6px;
+          width: 52px;
+          background: linear-gradient(to left, rgba(5,5,5,0.72) 0%, transparent 100%);
+          pointer-events: none;
+          z-index: 2;
+        }
+        .scroll-arrow {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 10;
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.13);
+          background: rgba(8,8,10,0.9);
+          backdrop-filter: blur(12px);
+          color: rgba(255,255,255,0.62);
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 0 1px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.18s ease, background 0.14s ease, color 0.14s ease;
+        }
+        .scroll-arrow-l { left: -14px; }
+        .scroll-arrow-r { right: -14px; }
+        .scroll-row-wrap:hover .scroll-arrow.scroll-arrow--vis {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .scroll-arrow:hover {
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.9);
+        }
+        @media (hover: none) {
+          .scroll-arrow { display: none !important; }
+          .scroll-row-wrap::after { display: none; }
+        }
 
-        /* Friend card hover */
-        .friend-card { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
-        .friend-card:hover { border-color: rgba(255,255,255,0.13); box-shadow: 0 8px 32px rgba(0,0,0,0.56); }
+        /* ── Poster tile hover lift ── */
+        .poster-tile { transition: transform 0.2s ease; }
+        .poster-tile:hover { transform: translateY(-4px) scale(1.03); }
+
+        /* ── Friend card hover ── */
+        .friend-card {
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.2s ease;
+        }
+        .friend-card:hover {
+          border-color: rgba(255,255,255,0.13);
+          box-shadow: 0 10px 36px rgba(0,0,0,0.6);
+          transform: translateY(-2px);
+        }
 
         /* ── Reaction tray ── */
         .rc-tray {
@@ -662,9 +786,7 @@ export default function HomeDashboardClient({
           z-index: 4;
           justify-content: center;
         }
-        /* Desktop: reveal on card hover */
         .friend-card:hover .rc-tray { opacity: 1; pointer-events: auto; }
-        /* State-driven open (mobile button tap) */
         .rc-tray--open { opacity: 1 !important; pointer-events: auto !important; }
 
         .rc-btn {
@@ -686,7 +808,6 @@ export default function HomeDashboardClient({
         .rc-btn--active { background: rgba(255,255,255,0.18) !important; border-color: rgba(255,255,255,0.35) !important; }
         .rc-btn:disabled { opacity: 0.55; cursor: default; }
 
-        /* Mobile trigger — shown only on touch-primary devices */
         .rc-trigger {
           display: none;
           position: absolute;
@@ -704,19 +825,18 @@ export default function HomeDashboardClient({
           z-index: 5;
           -webkit-tap-highlight-color: transparent;
         }
-        /* On touch-primary (no hover capability), show trigger and disable CSS hover tray */
         @media (hover: none) {
           .rc-trigger { display: flex; }
           .friend-card:hover .rc-tray { opacity: 0; pointer-events: none; }
         }
 
-        /* Tonight's picks */
+        /* ── Tonight's picks ── */
         .picks-wrap {
           border-radius: 16px;
           border: 1px solid rgba(255,255,255,0.08);
           background: linear-gradient(160deg, rgba(14,14,14,0.96) 0%, rgba(8,8,8,0.98) 100%);
           padding: clamp(14px, 2.5vw, 20px);
-          margin-bottom: clamp(20px, 3.5vw, 30px);
+          margin-bottom: clamp(28px, 4.5vw, 42px);
           position: relative;
           overflow: hidden;
         }
@@ -729,13 +849,13 @@ export default function HomeDashboardClient({
           pointer-events: none;
         }
 
-        /* Hero */
+        /* ── Hero ── */
         .home-hero {
           border-radius: 16px;
           border: 1px solid rgba(255,255,255,0.06);
           background: linear-gradient(135deg, rgba(12,12,14,0.97) 0%, rgba(8,8,10,0.98) 100%);
-          padding: clamp(14px, 2.5vw, 20px) clamp(14px, 2.5vw, 22px);
-          margin-bottom: clamp(16px, 3vw, 22px);
+          padding: clamp(16px, 2.8vw, 24px) clamp(16px, 2.8vw, 26px);
+          margin-bottom: clamp(24px, 4vw, 36px);
           position: relative;
           overflow: hidden;
           display: flex;
@@ -753,14 +873,19 @@ export default function HomeDashboardClient({
           pointer-events: none;
         }
 
-        /* Mobile search */
-        .home-mobile-search { display: none; margin-bottom: 10px; }
-
+        /* ── Mobile search ── */
+        .home-mobile-search { display: none; margin-bottom: 12px; }
         @media (max-width: 700px) {
           .home-mobile-search { display: flex; }
         }
         @media (max-width: 640px) {
-          .home-row { gap: 6px; }
+          .home-row { gap: 8px; }
+        }
+
+        /* ── Book of Month — mobile vertical stack ── */
+        @media (max-width: 440px) {
+          .botm-card { flex-direction: column !important; }
+          .botm-cover { width: 88px !important; }
         }
       `}</style>
 
@@ -875,7 +1000,7 @@ export default function HomeDashboardClient({
               ))}
             </div>
           ) : (
-            <div className="home-row">
+            <ScrollRow>
               {continueWatching.map((entry) => (
                 <PosterTile
                   key={`tv-${entry.showId ?? entry.id}`}
@@ -886,7 +1011,7 @@ export default function HomeDashboardClient({
                   badge={entry.seasonNumber ? `S${entry.seasonNumber}` : undefined}
                 />
               ))}
-            </div>
+            </ScrollRow>
           )}
         </Section>
       )}
@@ -902,7 +1027,7 @@ export default function HomeDashboardClient({
             </Link>
           }
         >
-          <div className="home-row" style={{ gap: 10 }}>
+          <ScrollRow gap={12}>
             {recentLists.map((list) => (
               <div key={list.id} style={{ minWidth: 230, maxWidth: 260, flexShrink: 0 }}>
                 <DiscoveryListCard
@@ -913,11 +1038,20 @@ export default function HomeDashboardClient({
                 />
               </div>
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
       {/* ── 4. FRIENDS ACTIVITY ──────────────────────────────────────────────────── */}
+      {user && friendsHasFollows === null && (
+        <Section eyebrow="Social" title="Friends activity" serif>
+          <div className="home-row">
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonFriendCard key={i} />
+            ))}
+          </div>
+        </Section>
+      )}
       {user && friendsHasFollows !== null && (
         <Section
           eyebrow="Social"
@@ -930,7 +1064,7 @@ export default function HomeDashboardClient({
           }
         >
           {friendsActivity.length > 0 ? (
-            <div className="home-row">
+            <ScrollRow gap={10}>
               {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
                 <FriendActivityCard
                   key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
@@ -938,7 +1072,7 @@ export default function HomeDashboardClient({
                   userId={user?.id ?? null}
                 />
               ))}
-            </div>
+            </ScrollRow>
           ) : friendsHasFollows ? (
             <EmptyRail message="No activity from your circle in the last 7 days." href="/discover" cta="Explore" />
           ) : (
@@ -950,7 +1084,7 @@ export default function HomeDashboardClient({
       {/* ── 5–7. TRENDING ────────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
         <Section eyebrow="Discover" title="Trending films">
-          <div className="home-row">
+          <ScrollRow>
             {trendingMovies.map((item) => (
               <PosterTile
                 key={`${item.mediaType}-${item.id}`}
@@ -960,13 +1094,13 @@ export default function HomeDashboardClient({
                 href={item.href}
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
       {trendingSeries.length > 0 && (
         <Section eyebrow="Discover" title="Trending series">
-          <div className="home-row">
+          <ScrollRow>
             {trendingSeries.map((item) => (
               <PosterTile
                 key={`${item.mediaType}-${item.id}`}
@@ -976,13 +1110,13 @@ export default function HomeDashboardClient({
                 href={item.href}
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
       {trendingBooks.length > 0 && (
         <Section eyebrow="Discover" title="Trending books">
-          <div className="home-row">
+          <ScrollRow>
             {trendingBooks.map((item) => (
               <PosterTile
                 key={`${item.mediaType}-${item.id}`}
@@ -992,7 +1126,7 @@ export default function HomeDashboardClient({
                 href={item.href}
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
@@ -1051,7 +1185,7 @@ export default function HomeDashboardClient({
       {/* ── 9. HIDDEN GEMS ───────────────────────────────────────────────────────── */}
       {hiddenGems.length > 0 && (
         <Section eyebrow="Discover" title="Hidden gems" serif>
-          <div className="home-row">
+          <ScrollRow>
             {hiddenGems.map((item) => (
               <PosterTile
                 key={`gem-${item.mediaType}-${item.id}`}
@@ -1062,7 +1196,7 @@ export default function HomeDashboardClient({
                 badge="Hidden Gem"
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
@@ -1074,6 +1208,7 @@ export default function HomeDashboardClient({
             style={{ display: "block", textDecoration: "none", color: "inherit" }}
           >
             <div
+              className="botm-card"
               style={{
                 display: "flex",
                 gap: "clamp(14px, 3vw, 22px)",
@@ -1089,11 +1224,12 @@ export default function HomeDashboardClient({
             >
               {/* Cover */}
               <div
+                className="botm-cover"
                 style={{
                   flexShrink: 0,
                   width: "clamp(72px, 14vw, 100px)",
                   aspectRatio: "2/3",
-                  borderRadius: 8,
+                  borderRadius: 10,
                   overflow: "hidden",
                   background: "#141414",
                   border: "1px solid rgba(255,255,255,0.06)",
@@ -1235,7 +1371,7 @@ export default function HomeDashboardClient({
               ))}
             </div>
           ) : recentlyLogged.length > 0 ? (
-            <div className="home-row">
+            <ScrollRow>
               {recentlyLogged.map((entry) => (
                 <PosterTile
                   key={`${entry.mediaType}-${entry.id}`}
@@ -1246,7 +1382,7 @@ export default function HomeDashboardClient({
                   rating={entry.rating}
                 />
               ))}
-            </div>
+            </ScrollRow>
           ) : (
             <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
           )}
@@ -1291,7 +1427,7 @@ export default function HomeDashboardClient({
             </Link>
           }
         >
-          <div className="home-row">
+          <ScrollRow>
             {topRated.map((entry) => (
               <PosterTile
                 key={`${entry.mediaType}-${entry.id}`}
@@ -1302,7 +1438,7 @@ export default function HomeDashboardClient({
                 rating={entry.rating}
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
 
@@ -1330,7 +1466,7 @@ export default function HomeDashboardClient({
             </span>
           }
         >
-          <div className="home-row">
+          <ScrollRow>
             {staffPicks.map((item) => (
               <PosterTile
                 key={`staffpick-${item.mediaType}-${item.id}`}
@@ -1341,7 +1477,7 @@ export default function HomeDashboardClient({
                 badge="Staff Pick"
               />
             ))}
-          </div>
+          </ScrollRow>
         </Section>
       )}
     </main>
