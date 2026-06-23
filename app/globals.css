@@ -245,6 +245,64 @@ img {
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* ─── Motion — all wrapped in prefers-reduced-motion ────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  /* Page / content fade-in */
+  @keyframes rs-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .rs-page-fade {
+    animation: rs-fade-in 0.3s ease-out both;
+  }
+
+  /* Skeleton shimmer — single authoritative definition */
+  @keyframes rs-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  /* Button press scale-down feedback */
+  .rs-btn-press {
+    transition: transform 0.1s ease;
+  }
+  .rs-btn-press:active {
+    transform: scale(0.95);
+  }
+
+  /* Card active / press state — partial lift compressed */
+  .rs-card-hover:active {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: 0.05s;
+  }
+}
+
+/* Skeleton base — works even with reduced-motion (just no animation) */
+.rs-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--rs-radius-card);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-skeleton {
+    animation: rs-shimmer 1.6s linear infinite;
+  }
+}
+
+/* Horizontal scroll container — hide scrollbar (use alongside overflow-x: auto) */
+.hide-scroll-x {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.hide-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Section heading update — use title type scale ──────────────────────── */
 .rs-section-title {
   font-size: var(--rs-text-title);

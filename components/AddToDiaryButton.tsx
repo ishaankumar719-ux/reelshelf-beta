@@ -38,6 +38,7 @@ export default function AddToDiaryButton({ movie }: Props) {
     <button
       type="button"
       onClick={handleAdd}
+      className="rs-btn-press"
       style={{
         padding: "12px 18px",
         borderRadius: 999,

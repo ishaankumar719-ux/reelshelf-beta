@@ -276,6 +276,7 @@ function RelatedBooksSection({
       </p>
 
       <div
+        className="hide-scroll-x"
         style={{
           display: "flex",
           gap: 16,

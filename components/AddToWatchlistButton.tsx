@@ -51,6 +51,7 @@ export default function AddToWatchlistButton({
       type="button"
       onClick={handleAdd}
       disabled={added}
+      className="rs-btn-press"
       style={{
         background: added ? "rgba(255,255,255,0.1)" : "transparent",
         color: "white",

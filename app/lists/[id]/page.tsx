@@ -226,8 +226,25 @@ export default function ListDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <span className="text-zinc-600 text-sm tracking-wide">Loading…</span>
+      <div style={{ padding: "40px 16px", maxWidth: 768, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 24, marginBottom: 40, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div className="rs-skeleton" style={{ width: 176, height: 176, borderRadius: 12, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 12, paddingTop: 8 }}>
+            <div className="rs-skeleton" style={{ height: 32, width: "65%", borderRadius: 6 }} />
+            <div className="rs-skeleton" style={{ height: 13, width: "40%", borderRadius: 4 }} />
+            <div className="rs-skeleton" style={{ height: 13, width: "80%", borderRadius: 4 }} />
+            <div className="rs-skeleton" style={{ height: 13, width: "55%", borderRadius: 4 }} />
+          </div>
+        </div>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12, padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="rs-skeleton" style={{ width: 44, height: 64, borderRadius: 6, flexShrink: 0 }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="rs-skeleton" style={{ height: 13, width: "58%", borderRadius: 4 }} />
+              <div className="rs-skeleton" style={{ height: 11, width: "32%", borderRadius: 4 }} />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }

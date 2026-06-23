@@ -247,6 +247,7 @@ function RecommendationsSection({
       </p>
 
       <div
+        className="hide-scroll-x"
         style={{
           display: "flex",
           gap: 16,

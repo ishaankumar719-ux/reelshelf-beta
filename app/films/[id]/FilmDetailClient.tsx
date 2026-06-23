@@ -65,6 +65,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      className="rs-btn-press"
       style={{
         padding: "10px 20px",
         borderRadius: 10,

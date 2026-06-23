@@ -117,7 +117,7 @@ export default async function RootLayout({
             <EasterEggProvider>
               <AppNav />
               <GlobalSearch />
-              <main className="app-shell-main rs-page-root">
+              <main className="app-shell-main rs-page-root rs-page-fade">
                 {children}
               </main>
               <BetaFeedbackButton />
