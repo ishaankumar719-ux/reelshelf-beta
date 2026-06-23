@@ -278,7 +278,9 @@ export default async function PublicProfilePage({
       stats: {
         films: 0,
         series: 0,
+        books: 0,
         reviews: 0,
+        lists: 0,
         watchlist: 0,
         followers: 0,
         following: 0,
@@ -300,8 +302,11 @@ export default async function PublicProfilePage({
     { count: followersCount },
     { count: followingCount },
     { count: reviewTextCount },
+    { count: listsCount },
     { data: gamificationData },
     { allDefs, earnedMap },
+    { data: listActivityData },
+    { data: watchlistActivityData },
   ] = await Promise.all([
     supabase
       .from("mount_rushmore")
@@ -316,7 +321,7 @@ export default async function PublicProfilePage({
       .in("review_scope", ["show", "title"])
       .not("poster", "is", null)
       .order("watched_date", { ascending: false })
-      .limit(10),
+      .limit(20),
     supabase
       .from("diary_entries")
       .select("id, title, media_id, media_type, year, poster, rating, watched_date, review, created_at, review_scope, watched_in_cinema, favourite")
@@ -350,11 +355,28 @@ export default async function PublicProfilePage({
       .eq("user_id", profileRow.id)
       .or("review.neq.,score_rating.not.is.null,cinematography_rating.not.is.null,writing_rating.not.is.null,performances_rating.not.is.null,direction_rating.not.is.null,rewatchability_rating.not.is.null,emotional_impact_rating.not.is.null,entertainment_rating.not.is.null"),
     supabase
+      .from("user_lists")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profileRow.id),
+    supabase
       .from("user_gamification")
       .select("longest_streak, comments_received, likes_received")
       .eq("user_id", profileRow.id)
       .maybeSingle(),
     fetchBadgesForProfile(supabase, profileRow.id),
+    supabase
+      .from("user_lists")
+      .select("id, title, created_at")
+      .eq("user_id", profileRow.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("saved_items")
+      .select("id, media_id, title, media_type, poster, created_at")
+      .eq("user_id", profileRow.id)
+      .eq("list_type", "watchlist")
+      .order("created_at", { ascending: false })
+      .limit(20),
   ])
 
   const rushmoreRows = (rushmoreData ?? []) as RushmoreRow[]
@@ -495,6 +517,7 @@ export default async function PublicProfilePage({
 
   const films = allRows.filter((entry) => entry.media_type === "movie").length
   const series = allRows.filter((entry) => entry.media_type === "tv").length
+  const books = allRows.filter((entry) => entry.media_type === "book").length
   const reviews = allRows.filter((entry) => parseRating(entry.rating) !== null).length
   const cinemaVisits = allRows.filter((entry) => entry.media_type === "movie" && entry.watched_in_cinema === true).length
 
@@ -522,6 +545,14 @@ export default async function PublicProfilePage({
       created_at: entry.created_at,
       watched_in_cinema: entry.watched_in_cinema ?? false,
     })),
+    savedRows: (watchlistActivityData ?? []).map((row) => ({
+      id: row.id as string,
+      media_id: (row.media_id as string | null) ?? null,
+      title: row.title as string,
+      media_type: row.media_type as "movie" | "tv" | "book",
+      poster: (row.poster as string | null) ?? null,
+      created_at: row.created_at as string,
+    })),
     rushmoreRows: rushmoreRows.map((row) => ({
       id: `${row.media_type}-${row.position}`,
       title: row.title,
@@ -529,13 +560,18 @@ export default async function PublicProfilePage({
       poster_path: row.poster_path,
       created_at: row.created_at,
     })),
+    listRows: (listActivityData ?? []).map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      created_at: row.created_at as string | null,
+    })),
     profile: {
       username: profileRow.username ?? normalizedUsername,
       display_name: profileRow.display_name,
       avatar_url: profileRow.avatar_url,
     },
     userId: profileRow.id,
-    limit: 5,
+    limit: 20,
   })
 
   const profile: PublicProfileShowcaseData = {
@@ -569,7 +605,9 @@ export default async function PublicProfilePage({
     stats: {
       films,
       series,
+      books,
       reviews,
+      lists: listsCount ?? 0,
       watchlist: watchlistCount,
       followers: followersCount || 0,
       following: followingCount || 0,

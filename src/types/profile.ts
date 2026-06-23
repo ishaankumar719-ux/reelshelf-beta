@@ -65,7 +65,9 @@ export interface MediaShelfItem {
 export interface PublicProfileStats {
   films: number
   series: number
+  books: number
   reviews: number
+  lists: number
   watchlist: number
   followers: number
   following: number

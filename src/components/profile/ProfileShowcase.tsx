@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import ActivityFeed from "@/components/activity/ActivityFeed"
 import PublicDiaryEntriesGrid from "@/components/PublicDiaryEntriesGrid"
 import type { ActivityEvent } from "@/lib/activity"
 import type { PublicDiaryEntry } from "@/lib/publicProfiles"
@@ -38,6 +37,216 @@ interface ProfileShowcaseProps {
 type RushmoreTab = "movie" | "tv" | "book"
 
 const INITIAL_COLORS = ["#1D9E75", "#534AB7", "#D85A30", "#D4537E"] as const
+
+function formatMemberSince(createdAt: string): string {
+  const d = new Date(createdAt)
+  if (isNaN(d.getTime())) return ""
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+}
+
+function relativeTime(timestamp: string): string {
+  const diff = Date.now() - new Date(timestamp).getTime()
+  const minute = 60_000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const week = 7 * day
+  const month = 30 * day
+  const year = 365 * day
+  if (diff < minute) return "just now"
+  if (diff < hour) return `${Math.floor(diff / minute)}m ago`
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`
+  if (diff < 2 * day) return "yesterday"
+  if (diff < week) return `${Math.floor(diff / day)}d ago`
+  if (diff < 2 * week) return "1 week ago"
+  if (diff < month) return `${Math.floor(diff / week)} weeks ago`
+  if (diff < year) return `${Math.floor(diff / month)} months ago`
+  return `${Math.floor(diff / year)}y ago`
+}
+
+function getTimelineActionLabel(event: ActivityEvent): string {
+  switch (event.type) {
+    case "reviewed": return "Reviewed"
+    case "finished_series": return "Finished"
+    case "watched_episode": return event.media_type === "book" ? "Started reading" : "Started watching"
+    case "watchlisted": return "Watchlisted"
+    case "added_favourite": return "Marked favourite"
+    case "list_created": return "Created a list"
+    case "rushmore": return "Updated Favourite Four"
+    case "challenge_completed": return "Completed a challenge"
+    default: return "Logged"
+  }
+}
+
+function getTimelineDotColor(type: ActivityEvent["type"]): string {
+  switch (type) {
+    case "reviewed": return "#D4AF37"
+    case "finished_series": return "#1D9E75"
+    case "added_favourite": return "#D4537E"
+    case "watchlisted": return "#534AB7"
+    case "list_created": return "#534AB7"
+    case "rushmore": return "#D85A30"
+    default: return "rgba(255,255,255,0.38)"
+  }
+}
+
+function TimelineItem({ event }: { event: ActivityEvent }) {
+  const router = useRouter()
+  const [imgError, setImgError] = useState(false)
+  const label = getTimelineActionLabel(event)
+  const timeAgo = relativeTime(event.timestamp)
+  const isListEvent = event.type === "list_created"
+  const isRushmoreEvent = event.type === "rushmore"
+
+  const posterSrc = event.poster
+    ? event.poster.startsWith("http")
+      ? event.poster
+      : `https://image.tmdb.org/t/p/w92${event.poster}`
+    : null
+
+  const href =
+    !isListEvent && !isRushmoreEvent && event.media_id
+      ? getRouteForMedia(event.media_type, event.media_id)
+      : null
+
+  return (
+    <div style={{ display: "flex", gap: 12, paddingBottom: 18 }}>
+      <div
+        style={{
+          width: 16,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          paddingTop: 4,
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: getTimelineDotColor(event.type),
+            border: "2px solid #08080f",
+            boxSizing: "border-box" as const,
+          }}
+        />
+      </div>
+
+      <div
+        style={{ display: "flex", gap: 10, flex: 1, minWidth: 0, cursor: href ? "pointer" : "default" }}
+        onClick={() => href && router.push(href)}
+        role={href ? "button" : undefined}
+        tabIndex={href ? 0 : undefined}
+        onKeyDown={(e) => e.key === "Enter" && href && router.push(href)}
+      >
+        {posterSrc && !imgError && (
+          <div
+            style={{
+              width: 32,
+              flexShrink: 0,
+              aspectRatio: "2 / 3",
+              borderRadius: 4,
+              overflow: "hidden",
+              background: "#10111c",
+              alignSelf: "flex-start",
+            }}
+          >
+            <img
+              src={posterSrc}
+              alt={event.title}
+              onError={() => setImgError(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          </div>
+        )}
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.82)", lineHeight: 1.4 }}>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase" as const,
+                color: "rgba(255,255,255,0.36)",
+                fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                marginRight: 5,
+              }}
+            >
+              {label}
+            </span>
+            {event.isBatch
+              ? `${event.batchCount ?? ""} items`
+              : event.title}
+          </p>
+          <p style={{ margin: "3px 0 0", fontSize: 10, color: "rgba(255,255,255,0.28)", letterSpacing: "0.01em" }}>
+            {timeAgo}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfileActivityTimeline({ events }: { events: ActivityEvent[] }) {
+  const [showAll, setShowAll] = useState(false)
+  const visible = showAll ? events : events.slice(0, 10)
+
+  if (events.length === 0) {
+    return (
+      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontStyle: "italic", margin: 0 }}>
+        No activity yet
+      </p>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ position: "relative" }}>
+        {visible.length > 1 && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: 7,
+              top: 12,
+              bottom: 18,
+              width: 1,
+              background: "rgba(255,255,255,0.07)",
+            }}
+          />
+        )}
+        <div>
+          {visible.map((event) => (
+            <TimelineItem key={event.id} event={event} />
+          ))}
+        </div>
+      </div>
+
+      {events.length > 10 && !showAll && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          style={{
+            marginTop: 4,
+            padding: "7px 16px",
+            borderRadius: 999,
+            border: "0.5px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.04)",
+            fontSize: 11,
+            color: "rgba(255,255,255,0.5)",
+            cursor: "pointer",
+            letterSpacing: "0.03em",
+          }}
+        >
+          Show more
+        </button>
+      )}
+    </div>
+  )
+}
 
 function sectionLabelStyle() {
   return {
@@ -1107,11 +1316,15 @@ export default function ProfileShowcase({
   }
 
   const u = profile.username
+  const totalLogged = profile.stats.films + profile.stats.series + profile.stats.books
   const stats = [
+    { label: "Logged",     value: totalLogged,                href: null as string | null },
     { label: "Films",      value: profile.stats.films,        href: `/u/${u}/films` },
-    { label: "Series",     value: profile.stats.series,       href: `/u/${u}/series` },
-    { label: "Reviews",    value: profile.stats.reviews,      href: `/u/${u}/reviews` },
+    { label: "TV",         value: profile.stats.series,       href: `/u/${u}/series` },
+    { label: "Books",      value: profile.stats.books,        href: null as string | null },
+    { label: "Lists",      value: profile.stats.lists,        href: null as string | null },
     { label: "Watchlist",  value: profile.stats.watchlist,    href: `/u/${u}/watchlist` },
+    { label: "Reviews",    value: profile.stats.reviews,      href: `/u/${u}/reviews` },
     { label: "Followers",  value: profile.stats.followers,    href: `/u/${u}/followers` },
     { label: "Following",  value: profile.stats.following,    href: `/u/${u}/following` },
     ...(profile.stats.cinemaVisits > 0
@@ -1210,6 +1423,11 @@ export default function ProfileShowcase({
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,0.36)", margin: "5px 0 0", letterSpacing: "0.01em" }}>
                   @{profile.username}
                 </p>
+                {profile.created_at ? (
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", margin: "5px 0 0", letterSpacing: "0.03em" }}>
+                    Member since {formatMemberSince(profile.created_at)}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -1439,7 +1657,7 @@ export default function ProfileShowcase({
 
         <div style={{ marginTop: 40 }}>
           <span style={sectionLabelStyle()}>Recent activity</span>
-          <ActivityFeed events={activityEvents.slice(0, 5)} emptyMessage="No activity yet" />
+          <ProfileActivityTimeline events={activityEvents} />
         </div>
 
         {profile.highest_rated.length > 0 ? (

@@ -130,6 +130,14 @@ const TYPE_CONFIG: Record<ActivityType, TypeConfig> = {
     badgeBorder: "rgba(255,200,0,0.22)",
     verb: "completed",
   },
+  list_created: {
+    label: "List",
+    dotColor: "rgba(99,102,241,0.85)",
+    badgeColor: "rgba(160,163,255,0.9)",
+    badgeBg: "rgba(99,102,241,0.09)",
+    badgeBorder: "rgba(99,102,241,0.24)",
+    verb: "created a list",
+  },
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

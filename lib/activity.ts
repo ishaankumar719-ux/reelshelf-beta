@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series" | "watched_episode" | "added_favourite" | "challenge_completed"
+export type ActivityType = "logged" | "reviewed" | "watchlisted" | "rushmore" | "finished_series" | "watched_episode" | "added_favourite" | "challenge_completed" | "list_created"
 
 export interface ActivityEvent {
   id: string
@@ -85,6 +85,12 @@ type RushmoreActivityRow = {
   created_at: string | null
 }
 
+type ListActivityRow = {
+  id: string
+  title: string
+  created_at: string | null
+}
+
 const BATCH_MS = 60000
 
 function toRating(rating: unknown): number | null {
@@ -153,6 +159,7 @@ export function buildActivityEventsFromSources({
   diaryRows,
   savedRows = [],
   rushmoreRows = [],
+  listRows = [],
   profile,
   userId,
   limit = 50,
@@ -160,6 +167,7 @@ export function buildActivityEventsFromSources({
   diaryRows: DiaryActivityRow[]
   savedRows?: SavedActivityRow[]
   rushmoreRows?: RushmoreActivityRow[]
+  listRows?: ListActivityRow[]
   profile: ActivityEvent["profile"]
   userId: string
   limit?: number
@@ -231,7 +239,24 @@ export function buildActivityEventsFromSources({
         ]
       : []
 
-  const merged = [...diaryEvents, ...savedEvents, ...rushmoreEvent].sort(
+  const listEvents: ActivityEvent[] = listRows
+    .filter((row) => row.created_at !== null)
+    .map((row) => ({
+      id: `list-${row.id}`,
+      type: "list_created" as const,
+      user_id: userId,
+      profile,
+      title: row.title,
+      media_type: "movie" as const,
+      media_id: row.id,
+      poster: null,
+      rating: null,
+      review: null,
+      timestamp: row.created_at!,
+      isBatch: false,
+    }))
+
+  const merged = [...diaryEvents, ...savedEvents, ...rushmoreEvent, ...listEvents].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   )
 
