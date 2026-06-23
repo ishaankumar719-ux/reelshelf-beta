@@ -43,6 +43,7 @@ export default function SearchResultCard({
   if (variant === "grid") {
     return (
       <div
+        className="rs-card-hover"
         onClick={onNavigate}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -52,9 +53,10 @@ export default function SearchResultCard({
           style={{
             position: "relative",
             aspectRatio: "2/3",
-            borderRadius: "10px",
+            borderRadius: "var(--rs-radius-card)",
             overflow: "hidden",
-            background: "#111122",
+            background: "var(--rs-surface-card)",
+            border: "1px solid var(--rs-border-subtle)",
           }}
         >
           {result.poster_path && !imgError ? (
@@ -149,9 +151,9 @@ export default function SearchResultCard({
         <div style={{ marginTop: "8px" }}>
           <p
             style={{
-              fontSize: "12px",
+              fontSize: "var(--rs-text-body)",
               fontWeight: 500,
-              color: "rgba(255,255,255,0.82)",
+              color: "var(--rs-text-primary)",
               overflow: "hidden",
               display: "-webkit-box",
               WebkitLineClamp: 2,
@@ -164,8 +166,8 @@ export default function SearchResultCard({
           </p>
           <p
             style={{
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.35)",
+              fontSize: "var(--rs-text-caption)",
+              color: "var(--rs-text-secondary)",
               marginTop: "3px",
             }}
           >

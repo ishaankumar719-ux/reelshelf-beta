@@ -77,6 +77,7 @@ export default function WatchlistCard({
 
   return (
     <div
+      className="rs-card-hover"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{ cursor: "pointer" }}
@@ -85,9 +86,10 @@ export default function WatchlistCard({
         style={{
           position: "relative",
           aspectRatio: "2 / 3",
-          borderRadius: "12px",
+          borderRadius: "var(--rs-radius-card)",
           overflow: "hidden",
-          backgroundColor: "#111122",
+          backgroundColor: "var(--rs-surface-card)",
+          border: "1px solid var(--rs-border-subtle)",
         }}
       >
         {!showFallback && (
@@ -239,9 +241,9 @@ export default function WatchlistCard({
       <div style={{ padding: "8px 2px 0", marginTop: "0" }}>
         <p
           style={{
-            fontSize: "12px",
+            fontSize: "var(--rs-text-body)",
             fontWeight: 500,
-            color: "rgba(255,255,255,0.82)",
+            color: "var(--rs-text-primary)",
             margin: "0 0 2px",
             overflow: "hidden",
             display: "-webkit-box",
@@ -255,8 +257,8 @@ export default function WatchlistCard({
 
         <p
           style={{
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.35)",
+            fontSize: "var(--rs-text-caption)",
+            color: "var(--rs-text-secondary)",
             margin: 0,
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -269,8 +271,8 @@ export default function WatchlistCard({
 
         <p
           style={{
-            fontSize: "10px",
-            color: "rgba(255,255,255,0.2)",
+            fontSize: "var(--rs-text-micro)",
+            color: "var(--rs-text-muted)",
             margin: "3px 0 0",
           }}
         >

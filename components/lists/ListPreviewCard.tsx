@@ -35,27 +35,12 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
 
   return (
     <div
-      style={{
-        position: "relative",
-        borderRadius: 12,
-        border: "0.5px solid rgba(255,255,255,0.09)",
-        background: "rgba(255,255,255,0.025)",
-        overflow: "hidden",
-        transition: "border-color 0.15s, background 0.15s",
-        opacity: deleting ? 0.4 : 1,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"
-        e.currentTarget.style.background = "rgba(255,255,255,0.04)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"
-        e.currentTarget.style.background = "rgba(255,255,255,0.025)"
-      }}
+      className="rs-card rs-card-hover"
+      style={{ position: "relative", opacity: deleting ? 0.4 : 1 }}
     >
       <Link href={href} style={{ display: "block", textDecoration: "none" }}>
         {/* Cover collage */}
-        <div style={{ position: "relative", width: "100%", height: 128, overflow: "hidden", background: "#06060e" }}>
+        <div style={{ position: "relative", width: "100%", height: 128, overflow: "hidden", background: "#06060e", borderRadius: "var(--rs-radius-card) var(--rs-radius-card) 0 0" }}>
           <ListCoverCollage
             items={list.coverItems.map((i) => ({
               url: i.poster_url,
@@ -78,9 +63,9 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
           <p
             style={{
               margin: 0,
-              fontSize: 14,
+              fontSize: "var(--rs-text-heading)",
               fontWeight: 700,
-              color: "rgba(255,255,255,0.88)",
+              color: "var(--rs-text-primary)",
               lineHeight: 1.25,
               letterSpacing: "-0.01em",
               fontFamily: FONT,
@@ -157,9 +142,9 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
           <p
             style={{
               margin: "0 0 8px",
-              fontSize: 12,
+              fontSize: "var(--rs-text-body)",
               lineHeight: 1.55,
-              color: "rgba(255,255,255,0.38)",
+              color: "var(--rs-text-secondary)",
               fontFamily: FONT,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -175,7 +160,7 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
         {/* Footer: item count + engagement counts + date */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", fontFamily: FONT }}>
+            <span style={{ fontSize: "var(--rs-text-caption)", color: "var(--rs-text-muted)", fontFamily: FONT }}>
               {list.item_count} {list.item_count === 1 ? "item" : "items"}
             </span>
             {(list.like_count > 0 || list.save_count > 0) && (
@@ -196,7 +181,7 @@ export default function ListPreviewCard({ list, isOwner }: ListPreviewCardProps)
               </>
             )}
           </div>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", fontFamily: FONT }}>
+          <span style={{ fontSize: "var(--rs-text-caption)", color: "var(--rs-text-muted)", fontFamily: FONT }}>
             {new Date(list.updated_at).toLocaleDateString("en-US", {
               month: "short",
               year: "numeric",

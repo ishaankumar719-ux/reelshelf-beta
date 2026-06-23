@@ -115,8 +115,8 @@ function MediaCardInner({
 
   return (
     <article className={["group", sizeClassMap[size], className].filter(Boolean).join(" ")}>
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-[#0b0b12] shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
-        <div className="relative aspect-[2/3] bg-[#0d0d1a]">
+      <div className="rs-card-hover rounded-card border border-rs-border-subtle bg-rs-surface-card">
+        <div className="relative aspect-[2/3] bg-rs-surface-card overflow-hidden rounded-t-card">
           {!showFallback ? (
             <Image
               src={resolvedPosterUrl}
@@ -175,12 +175,12 @@ function MediaCardInner({
           ) : null}
         </div>
 
-        <div className="border-t border-white/6 bg-[#0a0a10] px-3 py-3">
-          <p className="truncate text-sm font-medium text-white">{title}</p>
+        <div className="border-t border-rs-border-subtle bg-rs-surface-card px-3 py-3 rounded-b-card">
+          <p className="truncate text-heading text-rs-text-primary">{title}</p>
           {(year ?? null) !== null && year !== undefined && year !== "" ? (
-            <p className="mt-1 truncate text-xs text-white/55">{year}</p>
+            <p className="mt-1 truncate text-caption text-rs-text-secondary">{year}</p>
           ) : (
-            <p className="mt-1 text-xs text-white/40">No year</p>
+            <p className="mt-1 text-caption text-rs-text-muted">No year</p>
           )}
         </div>
       </div>
@@ -226,9 +226,9 @@ export function MediaCardSkeleton({
         }
       `}</style>
       <div className={[sizeClassMap[size], className].filter(Boolean).join(" ")}>
-        <div className="overflow-hidden rounded-lg border border-white/10 bg-[#0b0b12]">
+        <div className="rounded-card border border-rs-border-subtle bg-rs-surface-card">
           <div
-            className="aspect-[2/3]"
+            className="aspect-[2/3] overflow-hidden rounded-t-card"
             style={{
               background:
                 "linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.03) 100%)",
@@ -236,7 +236,7 @@ export function MediaCardSkeleton({
               animation: "reelshelf-shimmer 1.6s linear infinite",
             }}
           />
-          <div className="space-y-2 border-t border-white/6 bg-[#0a0a10] px-3 py-3">
+          <div className="space-y-2 border-t border-rs-border-subtle bg-rs-surface-card px-3 py-3 rounded-b-card">
             <div
               className="h-4 rounded"
               style={{

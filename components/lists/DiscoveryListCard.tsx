@@ -35,33 +35,12 @@ export default function DiscoveryListCard({ list, currentUserId, isLiked, isSave
     : list.creator.display_name ?? null
 
   return (
-    <div
-      style={{
-        borderRadius: 14,
-        border: "0.5px solid rgba(255,255,255,0.09)",
-        background: "rgba(255,255,255,0.025)",
-        overflow: "hidden",
-        transition: "border-color 0.18s, background 0.18s, transform 0.2s ease, box-shadow 0.2s ease",
-        fontFamily: FONT,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"
-        e.currentTarget.style.background = "rgba(255,255,255,0.04)"
-        e.currentTarget.style.transform = "translateY(-3px)"
-        e.currentTarget.style.boxShadow = "0 12px 36px rgba(99,102,241,0.18), 0 4px 16px rgba(0,0,0,0.38)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"
-        e.currentTarget.style.background = "rgba(255,255,255,0.025)"
-        e.currentTarget.style.transform = "translateY(0)"
-        e.currentTarget.style.boxShadow = ""
-      }}
-    >
+    <div className="rs-card rs-card-hover">
       {/* ── Clickable area navigates to list ───────────────────────────── */}
       <Link href={href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
 
         {/* Cover collage */}
-        <div style={{ position: "relative", width: "100%", height: 160, overflow: "hidden", background: "#06060e" }}>
+        <div style={{ position: "relative", width: "100%", height: 160, overflow: "hidden", background: "#06060e", borderRadius: "var(--rs-radius-card) var(--rs-radius-card) 0 0" }}>
           <ListCoverCollage
             items={list.coverItems.map((i) => ({
               url: i.poster_url,
@@ -106,9 +85,9 @@ export default function DiscoveryListCard({ list, currentUserId, isLiked, isSave
           <p
             style={{
               margin: "0 0 8px",
-              fontSize: 13,
+              fontSize: "var(--rs-text-heading)",
               fontWeight: 700,
-              color: "rgba(255,255,255,0.88)",
+              color: "var(--rs-text-primary)",
               lineHeight: 1.3,
               letterSpacing: "-0.01em",
               overflow: "hidden",
@@ -140,14 +119,14 @@ export default function DiscoveryListCard({ list, currentUserId, isLiked, isSave
               >
                 {initial}
               </div>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.34)", lineHeight: 1 }}>
+              <span style={{ fontSize: "var(--rs-text-caption)", color: "var(--rs-text-muted)", lineHeight: 1 }}>
                 {creatorLabel}
               </span>
             </div>
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.24)" }}>
+            <span style={{ fontSize: "var(--rs-text-micro)", color: "var(--rs-text-muted)" }}>
               {list.item_count} {list.item_count === 1 ? "item" : "items"}
             </span>
             {list.media_types.map((type) => {

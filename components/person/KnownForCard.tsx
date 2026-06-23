@@ -31,6 +31,7 @@ export default function KnownForCard({
   return (
     <Link
       href={href}
+      className="rs-card-hover"
       style={{
         display: "block",
         width: 144,
@@ -45,10 +46,10 @@ export default function KnownForCard({
         style={{
           position: "relative",
           aspectRatio: "2 / 3",
-          borderRadius: 14,
+          borderRadius: "var(--rs-radius-card)",
           overflow: "hidden",
           background: "linear-gradient(160deg, #14142a, #1c1c36)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          border: "1px solid var(--rs-border-subtle)",
           boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
         }}
       >
@@ -140,9 +141,9 @@ export default function KnownForCard({
       {/* Title */}
       <p
         style={{
-          fontSize: 12,
+          fontSize: "var(--rs-text-body)",
           fontWeight: 500,
-          color: "rgba(255,255,255,0.84)",
+          color: "var(--rs-text-primary)",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
@@ -159,8 +160,8 @@ export default function KnownForCard({
       {year ? (
         <p
           style={{
-            fontSize: 11,
-            color: "rgba(255,255,255,0.3)",
+            fontSize: "var(--rs-text-caption)",
+            color: "var(--rs-text-muted)",
             margin: "3px 0 0",
             lineHeight: 1,
           }}

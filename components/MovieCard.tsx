@@ -17,8 +17,8 @@ export default function MovieCard({
 }: MovieCardProps) {
   return (
     <Link href={`/films/${id}`} className="group block">
-      <article className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/80 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-zinc-900">
-        <div className="overflow-hidden">
+      <article className="rs-card-hover rounded-card border border-rs-border-subtle bg-rs-surface-card">
+        <div className="overflow-hidden rounded-t-card">
           <img
             src={image}
             alt={title}
@@ -26,20 +26,20 @@ export default function MovieCard({
           />
         </div>
 
-        <div className="p-5">
-          <p className="text-[11px] uppercase tracking-[0.25em] text-zinc-500">
+        <div className="p-4">
+          <p className="text-micro uppercase tracking-label text-rs-text-muted">
             {year}
           </p>
 
-          <h3 className="mt-2 line-clamp-2 text-xl font-semibold text-white">
+          <h3 className="mt-2 line-clamp-2 text-heading text-rs-text-primary">
             {title}
           </h3>
 
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-400">
+          <p className="mt-3 line-clamp-3 text-body text-rs-text-secondary">
             {description}
           </p>
 
-          <div className="mt-5 inline-flex items-center text-sm font-medium text-white/80 transition group-hover:text-white">
+          <div className="mt-4 inline-flex items-center text-caption text-rs-text-secondary transition group-hover:text-rs-text-primary">
             View details
             <span className="ml-2 transition group-hover:translate-x-1">→</span>
           </div>
