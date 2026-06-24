@@ -303,11 +303,13 @@ export async function GET() {
   if (existing) {
     const enriched = enrichPick(existing.media_type as "film" | "tv" | "book", existing.media_id as string)
     if (!enriched) return NextResponse.json({ error: "Pick media not found" }, { status: 404 })
+    const prefs = await buildUserPreferences(supabase, user.id)
+    const reasons = generateReasons(existing.media_type as "film" | "tv" | "book", existing.media_id as string, enriched.creator, prefs)
     return NextResponse.json({
       id: existing.id as string,
       pick_date: existing.pick_date as string,
       reroll_count: existing.reroll_count as number,
-      reasons: (existing.reasons as string[]) ?? [],
+      reasons,
       ...enriched,
     } satisfies DailyPickData)
   }
@@ -329,7 +331,7 @@ export async function GET() {
 
   const { data: inserted, error } = await supabase
     .from("daily_picks")
-    .insert({ user_id: user.id, pick_date: today, media_type: best.media_type, media_id: best.media_id, reroll_count: 0, reasons })
+    .insert({ user_id: user.id, pick_date: today, media_type: best.media_type, media_id: best.media_id, reroll_count: 0 })
     .select()
     .single()
 
@@ -384,7 +386,7 @@ export async function POST() {
 
   const { data: updated, error } = await supabase
     .from("daily_picks")
-    .update({ media_type: best.media_type, media_id: best.media_id, reroll_count: 1, reasons })
+    .update({ media_type: best.media_type, media_id: best.media_id, reroll_count: 1 })
     .eq("id", existing.id as string)
     .select()
     .single()
