@@ -236,7 +236,7 @@ export default function DailyPickCard() {
                   fontFamily: SANS,
                 }}
               >
-                ✦ Today&apos;s Pick
+                ✦ Today&apos;s Story
               </span>
               <span
                 style={{
@@ -294,7 +294,7 @@ export default function DailyPickCard() {
                 fontFamily: SANS,
               }}
             >
-              A story selected for today.
+              Hand-picked for your next great experience.
             </p>
 
             {/* Overview */}
