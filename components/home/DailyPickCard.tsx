@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useAuth } from "../AuthProvider"
 import DiaryLogModal from "../diary/DiaryLogModal"
 import { addToWatchlist } from "../../lib/watchlist"
@@ -65,6 +65,50 @@ function DailyPickSkeleton() {
   )
 }
 
+// ─── Reason chips ─────────────────────────────────────────────────────────────
+
+function ReasonChips({ reasons }: { reasons: string[] }) {
+  if (reasons.length === 0) return null
+  return (
+    <div style={{ marginTop: 14 }}>
+      <p
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.28)",
+          fontFamily: SANS,
+          marginBottom: 7,
+          margin: "0 0 7px",
+        }}
+      >
+        Why this pick?
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {reasons.map((reason, i) => (
+          <span
+            key={i}
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.45)",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: 999,
+              padding: "3px 10px",
+              fontFamily: SANS,
+              letterSpacing: "0.01em",
+              lineHeight: 1.4,
+            }}
+          >
+            {reason}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DailyPickCard() {
@@ -73,8 +117,24 @@ export default function DailyPickCard() {
   const [fetchState, setFetchState] = useState<"idle" | "loading" | "done" | "error">("idle")
   const [visible, setVisible] = useState(false)
   const [rerolling, setRerolling] = useState(false)
+  const [showRerollSkeleton, setShowRerollSkeleton] = useState(false)
   const [watchlistDone, setWatchlistDone] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const isMounted = useRef(true)
+
+  useEffect(() => {
+    isMounted.current = true
+    return () => { isMounted.current = false }
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReducedMotion(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
 
   const fetchPick = useCallback(async () => {
     setFetchState("loading")
@@ -82,69 +142,68 @@ export default function DailyPickCard() {
       const res = await fetch("/api/daily-pick")
       if (!res.ok) throw new Error("fetch failed")
       const data = (await res.json()) as DailyPickData
+      if (!isMounted.current) return
       setPick(data)
       setFetchState("done")
-      requestAnimationFrame(() => setVisible(true))
+      requestAnimationFrame(() => { if (isMounted.current) setVisible(true) })
     } catch {
-      setFetchState("error")
+      if (isMounted.current) setFetchState("error")
     }
   }, [])
 
   useEffect(() => {
-    if (!authLoading && user) {
-      void fetchPick()
-    }
+    if (!authLoading && user) void fetchPick()
   }, [authLoading, user, fetchPick])
 
   const handleReroll = useCallback(async () => {
     if (rerolling || !pick || pick.reroll_count >= 1) return
     setRerolling(true)
-    setVisible(false)
+
+    if (!reducedMotion) {
+      setVisible(false)
+      await new Promise<void>((res) => setTimeout(res, 200))
+    }
+
+    if (!isMounted.current) { setRerolling(false); return }
+    setShowRerollSkeleton(true)
+
     try {
       const res = await fetch("/api/daily-pick", { method: "POST" })
       if (!res.ok) throw new Error("reroll failed")
       const data = (await res.json()) as DailyPickData
+      if (!isMounted.current) return
       setPick(data)
-      requestAnimationFrame(() => setVisible(true))
+      setShowRerollSkeleton(false)
+      if (reducedMotion) {
+        setVisible(true)
+      } else {
+        requestAnimationFrame(() => { if (isMounted.current) setVisible(true) })
+      }
     } catch {
-      // keep existing pick on error
+      if (!isMounted.current) return
+      setShowRerollSkeleton(false)
       setVisible(true)
     } finally {
-      setRerolling(false)
+      if (isMounted.current) setRerolling(false)
     }
-  }, [pick, rerolling])
+  }, [pick, rerolling, reducedMotion])
 
   const handleAddToWatchlist = useCallback(async () => {
     if (!pick || watchlistDone) return
     const logType = mediaTypeToLogType(pick.media_type)
-    addToWatchlist({
-      id: pick.media_id,
-      mediaType: logType,
-      title: pick.title,
-      poster: pick.poster ?? undefined,
-      year: Number(pick.year) || 0,
-      director: pick.creator ?? undefined,
-    })
+    addToWatchlist({ id: pick.media_id, mediaType: logType, title: pick.title, poster: pick.poster ?? undefined, year: Number(pick.year) || 0, director: pick.creator ?? undefined })
     setWatchlistDone(true)
-    void upsertSavedItemToBackend({
-      id: pick.media_id,
-      mediaType: logType,
-      title: pick.title,
-      poster: pick.poster ?? undefined,
-      year: Number(pick.year) || 0,
-      director: pick.creator ?? undefined,
-      addedAt: new Date().toISOString(),
-    })
+    void upsertSavedItemToBackend({ id: pick.media_id, mediaType: logType, title: pick.title, poster: pick.poster ?? undefined, year: Number(pick.year) || 0, director: pick.creator ?? undefined, addedAt: new Date().toISOString() })
   }, [pick, watchlistDone])
 
   function handleLogSaved(_entry: DiaryEntry) {
     setLogOpen(false)
   }
 
-  // Don't render anything for logged-out users
   if (!user && !authLoading) return null
   if (authLoading || fetchState === "idle") return null
   if (fetchState === "loading") return <DailyPickSkeleton />
+  if (showRerollSkeleton) return <DailyPickSkeleton />
   if (fetchState === "error" || !pick) return null
 
   const accentColor = mediaTypeColor(pick.media_type)
@@ -163,7 +222,7 @@ export default function DailyPickCard() {
           border: "1px solid rgba(255,255,255,0.08)",
           marginBottom: "clamp(12px, 2vw, 16px)",
           opacity: visible ? 1 : 0,
-          transition: "opacity 0.3s ease",
+          transition: reducedMotion ? "none" : "opacity 0.3s ease",
           boxShadow: "0 16px 48px rgba(0,0,0,0.55)",
         }}
       >
@@ -185,8 +244,7 @@ export default function DailyPickCard() {
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(to right, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.35) 100%)",
+            background: "linear-gradient(to right, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.35) 100%)",
           }}
         />
 
@@ -224,7 +282,7 @@ export default function DailyPickCard() {
 
           {/* Text content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Label */}
+            {/* Label row */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
               <span
                 style={{
@@ -236,7 +294,7 @@ export default function DailyPickCard() {
                   fontFamily: SANS,
                 }}
               >
-                ✦ Today&apos;s Story
+                ✨ Your Daily Pick
               </span>
               <span
                 style={{
@@ -273,34 +331,19 @@ export default function DailyPickCard() {
             </h2>
 
             {/* Meta row */}
-            <p
-              style={{
-                margin: "0 0 8px",
-                fontSize: 12,
-                color: "rgba(255,255,255,0.38)",
-                fontFamily: SANS,
-              }}
-            >
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "rgba(255,255,255,0.38)", fontFamily: SANS }}>
               {[pick.year, pick.genre, pick.creator].filter(Boolean).join(" · ")}
             </p>
 
-            {/* Subtext */}
-            <p
-              style={{
-                margin: "0 0 12px",
-                fontSize: 11,
-                color: "rgba(255,255,255,0.32)",
-                letterSpacing: "0.02em",
-                fontFamily: SANS,
-              }}
-            >
-              Hand-picked for your next great experience.
+            {/* Subtitle */}
+            <p style={{ margin: "0 0 12px", fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.02em", fontFamily: SANS }}>
+              One story. Every day.
             </p>
 
             {/* Overview */}
             <p
               style={{
-                margin: "0 0 18px",
+                margin: "0 0 4px",
                 fontSize: "clamp(12px, 1.8vw, 13px)",
                 color: "rgba(255,255,255,0.52)",
                 lineHeight: 1.65,
@@ -314,8 +357,11 @@ export default function DailyPickCard() {
               {pick.overview}
             </p>
 
+            {/* Why this pick? */}
+            <ReasonChips reasons={pick.reasons} />
+
             {/* Action buttons */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 18 }}>
               {/* Log It */}
               <button
                 type="button"
@@ -366,7 +412,7 @@ export default function DailyPickCard() {
                 {watchlistDone ? "Added ✓" : "Add to Watchlist"}
               </button>
 
-              {/* Choose Another / reroll */}
+              {/* Surprise Me / reroll */}
               <button
                 type="button"
                 onClick={() => void handleReroll()}
@@ -396,14 +442,13 @@ export default function DailyPickCard() {
                   ? "Choosing…"
                   : !rerollsLeft
                     ? "No more rerolls today"
-                    : "Choose Another"}
+                    : "✨ Surprise Me"}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Log modal */}
       {logOpen && pick && (
         <DiaryLogModal
           isOpen={logOpen}
