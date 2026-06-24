@@ -13,7 +13,8 @@ import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
 import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
-import DailyReelCard from "./DailyReelCard";
+import DailyReelCard from "./DailyReelCard"
+import DailyPickCard from "./DailyPickCard";
 import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
 import ReactionTray from "../ReactionTray/ReactionTray";
 import CommentDrawer from "../CommentDrawer/CommentDrawer";
@@ -904,6 +905,9 @@ export default function HomeDashboardClient({
           .botm-cover { width: 88px !important; }
         }
       `}</style>
+
+      {/* ── 0. DAILY PICK ────────────────────────────────────────────────────────── */}
+      <DailyPickCard />
 
       {/* Mobile search */}
       <button
