@@ -191,7 +191,8 @@ export default function BecauseYouLikedRow({
   }
 
   return (
-    <section style={{ marginTop: 34 }}>
+    <section className="bylr-section" style={{ marginTop: 34 }}>
+      <style>{`.bylr-section .rs-card-hover { border-color: var(--rs-border-subtle); }`}</style>
       <h2
         style={{
           margin: "0 0 6px",
