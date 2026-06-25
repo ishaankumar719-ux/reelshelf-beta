@@ -125,6 +125,7 @@ function PosterTile({
   href,
   rating,
   badge,
+  size = "medium",
 }: {
   title: string;
   mediaType: MediaType;
@@ -132,14 +133,17 @@ function PosterTile({
   href: string;
   rating?: number | null;
   badge?: string;
+  size?: "large" | "medium" | "compact";
 }) {
+  const cardWidth =
+    size === "large" ? "min(156px, 38vw)" : size === "compact" ? "min(104px, 24vw)" : "min(124px, 27vw)";
   return (
     <Link
       href={href}
       className="poster-tile"
       style={{
         display: "block",
-        width: "min(124px, 27vw)",
+        width: cardWidth,
         flexShrink: 0,
         textDecoration: "none",
         color: "inherit",
@@ -353,12 +357,14 @@ function FriendActivityCard({
 
 // ─── Skeleton tile ─────────────────────────────────────────────────────────────
 
-function SkeletonTile() {
+function SkeletonTile({ size = "medium" }: { size?: "large" | "medium" | "compact" }) {
+  const cardWidth =
+    size === "large" ? "min(156px, 38vw)" : size === "compact" ? "min(104px, 24vw)" : "min(124px, 27vw)";
   return (
     <div
       className="rs-skeleton"
       style={{
-        width: "min(124px, 27vw)",
+        width: cardWidth,
         flexShrink: 0,
         aspectRatio: "2/3",
         border: "1px solid rgba(255,255,255,0.04)",
@@ -441,6 +447,7 @@ function Section({
   serif,
   panel,
   fadeIn,
+  variant = "medium",
 }: {
   eyebrow?: string;
   title: string;
@@ -449,14 +456,30 @@ function Section({
   serif?: boolean;
   panel?: boolean;
   fadeIn?: boolean;
+  variant?: "large" | "medium" | "compact";
 }) {
+  const sectionMb =
+    variant === "large"
+      ? "clamp(22px, 3.5vw, 32px)"
+      : variant === "compact"
+      ? "clamp(10px, 1.8vw, 14px)"
+      : "clamp(16px, 2.8vw, 22px)";
+  const titleSize =
+    variant === "large"
+      ? serif ? "clamp(19px, 3.2vw, 24px)" : "clamp(17px, 2.8vw, 20px)"
+      : variant === "compact"
+      ? "clamp(13px, 2.2vw, 15px)"
+      : serif ? "var(--rs-text-title)" : "clamp(15px, 2.6vw, 18px)";
+  const titleWeight = variant === "large" ? (serif ? 400 : 600) : (serif ? 400 : 500);
+  const headerMb = variant === "compact" ? "clamp(6px, 1.2vw, 9px)" : "clamp(8px, 1.6vw, 12px)";
+
   return (
     <section
       className={panel ? "section-panel" : undefined}
       {...(fadeIn ? { "data-fade-section": "true" } : {})}
-      style={{ marginBottom: "clamp(14px, 2.4vw, 20px)" }}
+      style={{ marginBottom: sectionMb }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8, marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8, marginBottom: headerMb }}>
         <div>
           {eyebrow && (
             <p style={{ margin: "0 0 3px", fontSize: "var(--rs-text-micro)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--rs-text-muted)", fontFamily: SANS, lineHeight: 1 }}>
@@ -465,10 +488,10 @@ function Section({
           )}
           <h2 style={{
             margin: 0,
-            fontSize: serif ? "var(--rs-text-title)" : "clamp(15px, 2.6vw, 18px)",
+            fontSize: titleSize,
             lineHeight: 1.1,
             letterSpacing: serif ? "-0.4px" : "-0.3px",
-            fontWeight: serif ? 400 : 500,
+            fontWeight: titleWeight,
             fontFamily: serif ? SERIF : "inherit",
           }}>
             {title}
@@ -712,6 +735,30 @@ export default function HomeDashboardClient({
           100% { background-position: -200% 0; }
         }
 
+        /* ── Full-bleed hero (DailyPickCard) ── */
+        .home-full-bleed { /* desktop: card owns its margin */ }
+        @media (max-width: 760px) {
+          .home-full-bleed {
+            margin-inline: -14px;
+            margin-bottom: clamp(14px, 2.4vw, 20px);
+          }
+          .home-full-bleed .dp-card {
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            margin-bottom: 0 !important;
+          }
+          .home-full-bleed > div:not(.dp-card) {
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            margin-bottom: 0 !important;
+          }
+        }
+        @media (max-width: 390px) {
+          .home-full-bleed { margin-inline: -12px; }
+        }
+
         /* ── Scroll rails ── */
         .home-row {
           display: flex;
@@ -777,6 +824,21 @@ export default function HomeDashboardClient({
         @media (hover: none) {
           .scroll-arrow { display: none !important; }
           .scroll-row-wrap::after { display: none; }
+        }
+
+        /* ── Mobile: full-bleed carousels extend to screen edges ── */
+        @media (max-width: 760px) {
+          .scroll-row-wrap { margin-inline: -14px; }
+          .home-row { padding-inline: 14px 32px; gap: 9px; }
+          /* Inside panels: carousel stays within panel bounds */
+          .section-panel .scroll-row-wrap { margin-inline: 0; }
+          .section-panel .home-row { padding-inline: 2px 24px; }
+        }
+        @media (max-width: 390px) {
+          .scroll-row-wrap { margin-inline: -12px; }
+          .home-row { padding-inline: 12px 28px; }
+          .section-panel .scroll-row-wrap { margin-inline: 0; }
+          .section-panel .home-row { padding-inline: 2px 20px; }
         }
 
         /* ── Poster tile hover lift ── */
@@ -870,58 +932,15 @@ export default function HomeDashboardClient({
           .friend-card:hover .rc-tray { opacity: 0; pointer-events: none; }
         }
 
-        /* ── Tonight's picks ── */
-        .picks-wrap {
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.07);
-          background: linear-gradient(160deg, rgba(14,14,14,0.96) 0%, rgba(8,8,8,0.98) 100%);
-          padding: clamp(12px, 2vw, 16px);
-          margin-bottom: clamp(14px, 2.4vw, 20px);
-          position: relative;
-          overflow: hidden;
-        }
-        .picks-wrap::before {
-          content: "";
-          position: absolute;
-          top: -60px; right: -60px;
-          width: 240px; height: 200px;
-          background: radial-gradient(ellipse at center, rgba(99,102,241,0.06) 0%, transparent 68%);
-          pointer-events: none;
-        }
-
-        /* ── Section panel — subtle alternating background ── */
-        .section-panel {
-          background: rgba(255,255,255,0.018);
-          border-radius: 12px;
-          padding: clamp(12px, 2vw, 16px);
-          border: 1px solid rgba(255,255,255,0.04);
-        }
-        .section-panel .scroll-row-wrap::after {
-          background: linear-gradient(to left, rgba(18,18,18,0.85) 0%, transparent 100%);
-        }
-
-        /* ── Hero — compact dashboard header ── */
+        /* ── Hero — flat, editorial, no card box ── */
         .home-hero {
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.06);
-          background: linear-gradient(135deg, rgba(12,12,14,0.97) 0%, rgba(8,8,10,0.98) 100%);
-          padding: clamp(10px, 1.6vw, 13px) clamp(14px, 2.4vw, 20px);
-          margin-bottom: clamp(12px, 2vw, 16px);
-          position: relative;
-          overflow: hidden;
+          padding: clamp(4px, 0.8vw, 8px) 0;
+          margin-bottom: clamp(18px, 3vw, 26px);
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 10px;
           flex-wrap: wrap;
-        }
-        .home-hero::after {
-          content: "";
-          position: absolute;
-          bottom: -40px; left: -30px;
-          width: 180px; height: 130px;
-          background: radial-gradient(ellipse at center, rgba(45,212,191,0.04) 0%, transparent 70%);
-          pointer-events: none;
         }
 
         /* ── Mobile search ── */
@@ -929,8 +948,16 @@ export default function HomeDashboardClient({
         @media (max-width: 700px) {
           .home-mobile-search { display: flex; }
         }
-        @media (max-width: 640px) {
-          .home-row { gap: 8px; }
+
+        /* ── Section panel — elevated surface for grouped personal sections ── */
+        .section-panel {
+          background: rgba(255,255,255,0.025);
+          border-radius: 14px;
+          padding: clamp(14px, 2.4vw, 20px);
+          border: 1px solid rgba(255,255,255,0.05);
+        }
+        .section-panel .scroll-row-wrap::after {
+          background: linear-gradient(to left, rgba(14,14,14,0.9) 0%, transparent 100%);
         }
 
         /* ── Book of Month — mobile vertical stack ── */
@@ -940,8 +967,10 @@ export default function HomeDashboardClient({
         }
       `}</style>
 
-      {/* ── 0. DAILY PICK ────────────────────────────────────────────────────────── */}
-      <DailyPickCard />
+      {/* ── 0. DAILY PICK — full-bleed on mobile ────────────────────────────────── */}
+      <div className="home-full-bleed">
+        <DailyPickCard />
+      </div>
 
       {/* Mobile search */}
       <button
@@ -1037,22 +1066,19 @@ export default function HomeDashboardClient({
       </div>
 
       {/* ── 2. TONIGHT'S PICKS ───────────────────────────────────────────────────── */}
-      <div className="picks-wrap">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
-            <div>
-              <p style={{ margin: "0 0 2px", color: "#3a3a3a", fontSize: 8, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>Tonight</p>
-              <h2 style={{ margin: 0, fontSize: "clamp(15px, 2.6vw, 19px)", fontWeight: 400, letterSpacing: "-0.4px", lineHeight: 1, fontFamily: SERIF }}>
-                Pick something for me
-              </h2>
-            </div>
-            <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS, whiteSpace: "nowrap" }}>
-              Open watchlist
-            </Link>
-          </div>
-          <TonightsPick watchlistItems={tonightPickItems} />
-        </div>
-      </div>
+      <Section
+        eyebrow="Tonight"
+        title="Pick something for me"
+        serif
+        variant="compact"
+        action={
+          <Link href="/watchlist" style={{ color: "#424242", textDecoration: "none", fontSize: 10, fontFamily: SANS, whiteSpace: "nowrap" }}>
+            Open watchlist
+          </Link>
+        }
+      >
+        <TonightsPick watchlistItems={tonightPickItems} />
+      </Section>
 
       {/* ── 3. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
       {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
@@ -1062,6 +1088,7 @@ export default function HomeDashboardClient({
           title="Continue watching"
           serif
           fadeIn
+          variant="large"
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               All diary
@@ -1071,7 +1098,7 @@ export default function HomeDashboardClient({
           {!isDiaryLoaded ? (
             <div className="home-row">
               {[0, 1, 2, 3].map((i) => (
-                <SkeletonTile key={i} />
+                <SkeletonTile key={i} size="large" />
               ))}
             </div>
           ) : continueWatching.length === 1 ? (
@@ -1106,6 +1133,7 @@ export default function HomeDashboardClient({
                   poster={entry.poster}
                   href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
                   badge={entry.seasonNumber ? `S${entry.seasonNumber}` : undefined}
+                  size="large"
                 />
               ))}
             </ScrollRow>
@@ -1143,11 +1171,11 @@ export default function HomeDashboardClient({
       {/* ── 5. RECENTLY LOGGED ───────────────────────────────────────────────────── */}
       {user && (
         <Section
-          panel
           eyebrow="Diary"
           title="Recently logged"
           serif
           fadeIn
+          variant="large"
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Open diary
@@ -1157,7 +1185,7 @@ export default function HomeDashboardClient({
           {!isDiaryLoaded ? (
             <div className="home-row">
               {[0, 1, 2, 3, 4, 5].map((i) => (
-                <SkeletonTile key={i} />
+                <SkeletonTile key={i} size="large" />
               ))}
             </div>
           ) : recentlyLogged.length > 0 ? (
@@ -1170,6 +1198,7 @@ export default function HomeDashboardClient({
                   poster={entry.poster}
                   href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
                   rating={entry.rating}
+                  size="large"
                 />
               ))}
             </ScrollRow>
@@ -1184,7 +1213,7 @@ export default function HomeDashboardClient({
 
       {/* ── 7. TRENDING FILMS ────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
-        <Section panel eyebrow="Discover" title="Trending films" fadeIn>
+        <Section eyebrow="Discover" title="Trending films" fadeIn variant="large">
           <ScrollRow>
             {trendingMovies.map((item) => (
               <PosterTile
@@ -1193,6 +1222,7 @@ export default function HomeDashboardClient({
                 mediaType={item.mediaType}
                 poster={item.poster}
                 href={item.href}
+                size="large"
               />
             ))}
           </ScrollRow>
@@ -1201,7 +1231,7 @@ export default function HomeDashboardClient({
 
       {/* ── 8. TRENDING SERIES ───────────────────────────────────────────────────── */}
       {trendingSeries.length > 0 && (
-        <Section eyebrow="Discover" title="Trending series" fadeIn>
+        <Section eyebrow="Discover" title="Trending series" fadeIn variant="medium">
           <ScrollRow>
             {trendingSeries.map((item) => (
               <PosterTile
@@ -1218,7 +1248,7 @@ export default function HomeDashboardClient({
 
       {/* ── 9. TRENDING BOOKS ────────────────────────────────────────────────────── */}
       {trendingBooks.length > 0 && (
-        <Section panel eyebrow="Discover" title="Trending books" fadeIn>
+        <Section eyebrow="Discover" title="Trending books" fadeIn variant="medium">
           <ScrollRow>
             {trendingBooks.map((item) => (
               <PosterTile
@@ -1237,7 +1267,7 @@ export default function HomeDashboardClient({
 
       {/* Friends Activity */}
       {user && friendsHasFollows === null && (
-        <Section eyebrow="Social" title="Friends activity" serif fadeIn>
+        <Section eyebrow="Social" title="Friends activity" serif fadeIn variant="medium">
           <div className="home-row">
             {[0, 1, 2, 3].map((i) => (
               <SkeletonFriendCard key={i} />
@@ -1247,10 +1277,12 @@ export default function HomeDashboardClient({
       )}
       {user && friendsHasFollows !== null && (
         <Section
+          panel
           eyebrow="Social"
           title="Friends activity"
           serif
           fadeIn
+          variant="medium"
           action={
             <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Find people
@@ -1277,7 +1309,7 @@ export default function HomeDashboardClient({
 
       {/* Feeling Lucky */}
       {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn>
+        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(
               [
@@ -1309,7 +1341,7 @@ export default function HomeDashboardClient({
 
       {/* Hidden Gems */}
       {hiddenGems.length > 0 && (
-        <Section eyebrow="Discover" title="Hidden gems" serif fadeIn>
+        <Section eyebrow="Discover" title="Hidden gems" serif fadeIn variant="compact">
           <ScrollRow>
             {hiddenGems.map((item) => (
               <PosterTile
@@ -1319,6 +1351,7 @@ export default function HomeDashboardClient({
                 poster={item.poster}
                 href={item.href}
                 badge="Hidden Gem"
+                size="compact"
               />
             ))}
           </ScrollRow>
@@ -1399,6 +1432,7 @@ export default function HomeDashboardClient({
           eyebrow="Your Taste"
           title="Top rated by you"
           fadeIn
+          variant="medium"
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Full diary
@@ -1439,6 +1473,7 @@ export default function HomeDashboardClient({
           title="Staff picks"
           serif
           fadeIn
+          variant="compact"
           action={
             <span style={{ color: "#3a3a3a", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: SANS }}>
               Curated for you
@@ -1454,6 +1489,7 @@ export default function HomeDashboardClient({
                 poster={item.poster}
                 href={item.href}
                 badge="Staff Pick"
+                size="compact"
               />
             ))}
           </ScrollRow>
