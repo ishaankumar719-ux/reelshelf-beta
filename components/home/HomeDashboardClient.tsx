@@ -706,9 +706,11 @@ export default function HomeDashboardClient({
     [luckyPools, router]
   );
 
-  // Fade-in sections as they scroll into the viewport
+  // Fade-in sections as they scroll into the viewport.
+  // Re-runs when auth / diary / friends resolve so sections that mount after
+  // the initial render (all user-conditional sections) get observed too.
   useEffect(() => {
-    const els = document.querySelectorAll('[data-fade-section]')
+    const els = document.querySelectorAll('[data-fade-section]:not(.section-visible)')
     if (!els.length) return
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
@@ -720,7 +722,7 @@ export default function HomeDashboardClient({
     }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' })
     els.forEach(el => observer.observe(el))
     return () => observer.disconnect()
-  }, [])
+  }, [user?.id, isDiaryLoaded, friendsHasFollows])
 
   const timeOfDay = getTimeOfDay();
   const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
@@ -1250,7 +1252,44 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 6. MOOD RECOMMENDATIONS ──────────────────────────────────────────────── */}
+      {/* ── 8. MORE FILMS / SERIES / BOOKS YOU'LL LOVE ─────────────────────────── */}
+      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
+      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
+      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
+
+      {/* ── 9. FEELING LUCKY ─────────────────────────────────────────────────────── */}
+      {luckyPools && (
+        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(
+              [
+                { type: "movie", label: "Random Film", emoji: "🎬" },
+                { type: "tv", label: "Random Series", emoji: "📺" },
+                { type: "book", label: "Random Book", emoji: "📚" },
+              ] as const
+            ).map(({ type, label, emoji }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleLucky(type)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
+                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
+                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
+              >
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── MOOD RECOMMENDATIONS ─────────────────────────────────────────────────── */}
       <MoodRecommendations />
 
       {/* ── 7. TRENDING FILMS ────────────────────────────────────────────────────── */}
@@ -1306,38 +1345,6 @@ export default function HomeDashboardClient({
       )}
 
       {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
-
-      {/* Feeling Lucky */}
-      {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(
-              [
-                { type: "movie", label: "Random Film", emoji: "🎬" },
-                { type: "tv", label: "Random Series", emoji: "📺" },
-                { type: "book", label: "Random Book", emoji: "📚" },
-              ] as const
-            ).map(({ type, label, emoji }) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleLucky(type)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
-                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
-                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
-                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
-              >
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                {label}
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
 
       {/* Hidden Gems */}
       {hiddenGems.length > 0 && (
@@ -1453,11 +1460,6 @@ export default function HomeDashboardClient({
           </ScrollRow>
         </Section>
       )}
-
-      {/* Recommendation Rows */}
-      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
-      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
-      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
 
       {/* Gamification */}
       <GamificationWidgets variant="home" />
