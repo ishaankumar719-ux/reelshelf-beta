@@ -148,11 +148,11 @@ function PosterTile({
       <div
         style={{
           position: "relative",
-          borderRadius: 10,
+          borderRadius: "var(--rs-radius-card)",
           overflow: "hidden",
           paddingBottom: "150%",
           background: "#0f0f0f",
-          border: "1px solid rgba(255,255,255,0.07)",
+          border: "1px solid var(--rs-border-subtle)",
         }}
       >
         {poster ? (
@@ -160,7 +160,9 @@ function PosterTile({
             src={poster}
             alt={title}
             loading="lazy"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            ref={(el) => { if (el?.complete) el.style.opacity = "1" }}
+            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.3s ease" }}
           />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -232,9 +234,9 @@ function FriendActivityCard({
         position: "relative",
         width: "min(210px, 52vw)",
         flexShrink: 0,
-        borderRadius: 12,
+        borderRadius: "var(--rs-radius-card)",
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.07)",
+        border: "1px solid var(--rs-border-subtle)",
         background: "#0b0b0b",
         boxShadow: "0 4px 20px rgba(0,0,0,0.44)",
         display: "flex",
@@ -254,7 +256,7 @@ function FriendActivityCard({
             display: "grid", placeItems: "center",
           }}>
             {entry.avatarUrl ? (
-              <img src={entry.avatarUrl} alt={ownerLabel} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              <img src={entry.avatarUrl} alt={ownerLabel} ref={(el) => { if (el?.complete) el.style.opacity = "1" }} onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.25s ease" }} />
             ) : (
               <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 7, fontWeight: 700, fontFamily: SANS }}>
                 {getProfileInitials({ displayName: entry.displayName, username: entry.username })}
@@ -285,7 +287,7 @@ function FriendActivityCard({
       {/* Poster */}
       <Link href={entry.href} style={{ display: "block", position: "relative", paddingBottom: "136%", textDecoration: "none", color: "inherit", marginTop: 8 }}>
         {entry.poster ? (
-          <img src={entry.poster} alt={entry.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <img src={entry.poster} alt={entry.title} ref={(el) => { if (el?.complete) el.style.opacity = "1" }} onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1" }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.3s ease" }} />
         ) : (
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,#1a1a1a,#0d0d0d)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 32, fontWeight: 700, fontFamily: SANS }}>R</span>
@@ -354,14 +356,11 @@ function FriendActivityCard({
 function SkeletonTile() {
   return (
     <div
+      className="rs-skeleton"
       style={{
         width: "min(124px, 27vw)",
         flexShrink: 0,
         aspectRatio: "2/3",
-        borderRadius: 10,
-        background: "linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%)",
-        backgroundSize: "200% 100%",
-        animation: "skeleton-shimmer 1.6s ease infinite",
         border: "1px solid rgba(255,255,255,0.04)",
       }}
     />
@@ -371,14 +370,11 @@ function SkeletonTile() {
 function SkeletonFriendCard() {
   return (
     <div
+      className="rs-skeleton"
       style={{
         width: "min(210px, 52vw)",
         flexShrink: 0,
         aspectRatio: "210/310",
-        borderRadius: 12,
-        background: "linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%)",
-        backgroundSize: "200% 100%",
-        animation: "skeleton-shimmer 1.6s ease infinite",
         border: "1px solid rgba(255,255,255,0.04)",
       }}
     />
@@ -444,6 +440,7 @@ function Section({
   action,
   serif,
   panel,
+  fadeIn,
 }: {
   eyebrow?: string;
   title: string;
@@ -451,22 +448,24 @@ function Section({
   action?: React.ReactNode;
   serif?: boolean;
   panel?: boolean;
+  fadeIn?: boolean;
 }) {
   return (
     <section
       className={panel ? "section-panel" : undefined}
+      {...(fadeIn ? { "data-fade-section": "true" } : {})}
       style={{ marginBottom: "clamp(14px, 2.4vw, 20px)" }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8, marginBottom: "clamp(8px, 1.6vw, 12px)" }}>
+        <div>
           {eyebrow && (
-            <span style={{ color: "#565656", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: SANS }}>
+            <p style={{ margin: "0 0 3px", fontSize: "var(--rs-text-micro)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--rs-text-muted)", fontFamily: SANS, lineHeight: 1 }}>
               {eyebrow}
-            </span>
+            </p>
           )}
           <h2 style={{
             margin: 0,
-            fontSize: serif ? "clamp(17px, 3vw, 22px)" : "clamp(15px, 2.6vw, 18px)",
+            fontSize: serif ? "var(--rs-text-title)" : "clamp(15px, 2.6vw, 18px)",
             lineHeight: 1.1,
             letterSpacing: serif ? "-0.4px" : "-0.3px",
             fontWeight: serif ? 400 : 500,
@@ -684,6 +683,22 @@ export default function HomeDashboardClient({
     [luckyPools, router]
   );
 
+  // Fade-in sections as they scroll into the viewport
+  useEffect(() => {
+    const els = document.querySelectorAll('[data-fade-section]')
+    if (!els.length) return
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('section-visible')
+          observer.unobserve(entry.target)
+        }
+      }
+    }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' })
+    els.forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
   const timeOfDay = getTimeOfDay();
   const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
 
@@ -767,15 +782,34 @@ export default function HomeDashboardClient({
         /* ── Poster tile hover lift ── */
         .poster-tile { transition: transform 0.2s ease; }
         .poster-tile:hover { transform: translateY(-4px) scale(1.03); }
+        .poster-tile:hover > div { border-color: var(--rs-border-strong); box-shadow: 0 12px 36px rgba(0,0,0,0.55); }
 
         /* ── Friend card hover ── */
         .friend-card {
           transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.2s ease;
         }
         .friend-card:hover {
-          border-color: rgba(255,255,255,0.13);
+          border-color: var(--rs-border-strong);
           box-shadow: 0 10px 36px rgba(0,0,0,0.6);
           transform: translateY(-2px);
+        }
+
+        /* ── Active / press states ── */
+        @media (prefers-reduced-motion: no-preference) {
+          .poster-tile:active { transform: translateY(-1px) scale(0.98); transition-duration: 0.05s; }
+          .friend-card:active { transform: scale(0.99); transition-duration: 0.05s; }
+        }
+
+        /* ── Section viewport fade-in ── */
+        [data-fade-section] {
+          opacity: 0;
+          transition: opacity 0.4s ease;
+        }
+        [data-fade-section].section-visible {
+          opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [data-fade-section] { opacity: 1; transition: none; }
         }
 
         /* ── Reaction tray ── */
@@ -1027,6 +1061,7 @@ export default function HomeDashboardClient({
           eyebrow="In Progress"
           title="Continue watching"
           serif
+          fadeIn
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               All diary
@@ -1083,6 +1118,7 @@ export default function HomeDashboardClient({
         <Section
           eyebrow="Community"
           title="Recent lists"
+          fadeIn
           action={
             <Link href="/lists" style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 10, fontFamily: SANS, border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "3px 10px" }}>
               Browse all
@@ -1111,6 +1147,7 @@ export default function HomeDashboardClient({
           eyebrow="Diary"
           title="Recently logged"
           serif
+          fadeIn
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Open diary
@@ -1147,7 +1184,7 @@ export default function HomeDashboardClient({
 
       {/* ── 7. TRENDING FILMS ────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
-        <Section panel eyebrow="Discover" title="Trending films">
+        <Section panel eyebrow="Discover" title="Trending films" fadeIn>
           <ScrollRow>
             {trendingMovies.map((item) => (
               <PosterTile
@@ -1164,7 +1201,7 @@ export default function HomeDashboardClient({
 
       {/* ── 8. TRENDING SERIES ───────────────────────────────────────────────────── */}
       {trendingSeries.length > 0 && (
-        <Section eyebrow="Discover" title="Trending series">
+        <Section eyebrow="Discover" title="Trending series" fadeIn>
           <ScrollRow>
             {trendingSeries.map((item) => (
               <PosterTile
@@ -1181,7 +1218,7 @@ export default function HomeDashboardClient({
 
       {/* ── 9. TRENDING BOOKS ────────────────────────────────────────────────────── */}
       {trendingBooks.length > 0 && (
-        <Section panel eyebrow="Discover" title="Trending books">
+        <Section panel eyebrow="Discover" title="Trending books" fadeIn>
           <ScrollRow>
             {trendingBooks.map((item) => (
               <PosterTile
@@ -1200,7 +1237,7 @@ export default function HomeDashboardClient({
 
       {/* Friends Activity */}
       {user && friendsHasFollows === null && (
-        <Section eyebrow="Social" title="Friends activity" serif>
+        <Section eyebrow="Social" title="Friends activity" serif fadeIn>
           <div className="home-row">
             {[0, 1, 2, 3].map((i) => (
               <SkeletonFriendCard key={i} />
@@ -1213,6 +1250,7 @@ export default function HomeDashboardClient({
           eyebrow="Social"
           title="Friends activity"
           serif
+          fadeIn
           action={
             <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Find people
@@ -1239,7 +1277,7 @@ export default function HomeDashboardClient({
 
       {/* Feeling Lucky */}
       {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?">
+        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(
               [
@@ -1271,7 +1309,7 @@ export default function HomeDashboardClient({
 
       {/* Hidden Gems */}
       {hiddenGems.length > 0 && (
-        <Section eyebrow="Discover" title="Hidden gems" serif>
+        <Section eyebrow="Discover" title="Hidden gems" serif fadeIn>
           <ScrollRow>
             {hiddenGems.map((item) => (
               <PosterTile
@@ -1289,15 +1327,15 @@ export default function HomeDashboardClient({
 
       {/* Book of the Month */}
       {bookOfMonth && (
-        <Section eyebrow="Editorial" title="Book of the month" serif>
+        <Section eyebrow="Editorial" title="Book of the month" serif fadeIn>
           <Link href={bookOfMonth.href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
             <div
               className="botm-card"
-              style={{ display: "flex", gap: "clamp(14px, 3vw, 22px)", alignItems: "flex-start", background: "linear-gradient(135deg, rgba(14,14,14,0.96) 0%, rgba(9,9,9,0.98) 100%)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "clamp(14px, 2.5vw, 20px)", transition: "border-color 0.18s ease" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)")}
+              style={{ display: "flex", gap: "clamp(14px, 3vw, 22px)", alignItems: "flex-start", background: "linear-gradient(135deg, rgba(14,14,14,0.96) 0%, rgba(9,9,9,0.98) 100%)", border: "1px solid var(--rs-border-subtle)", borderRadius: "var(--rs-radius-card)", padding: "clamp(14px, 2.5vw, 20px)", transition: "border-color 0.18s ease" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "var(--rs-border-strong)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = "var(--rs-border-subtle)")}
             >
-              <div className="botm-cover" style={{ flexShrink: 0, width: "clamp(72px, 14vw, 100px)", aspectRatio: "2/3", borderRadius: 10, overflow: "hidden", background: "#141414", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="botm-cover" style={{ flexShrink: 0, width: "clamp(72px, 14vw, 100px)", aspectRatio: "2/3", borderRadius: "var(--rs-radius-card)", overflow: "hidden", background: "#141414", border: "1px solid var(--rs-border-subtle)" }}>
                 {bookOfMonth.coverUrl ? (
                   <img src={bookOfMonth.coverUrl} alt={bookOfMonth.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 ) : (
@@ -1360,6 +1398,7 @@ export default function HomeDashboardClient({
         <Section
           eyebrow="Your Taste"
           title="Top rated by you"
+          fadeIn
           action={
             <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
               Full diary
@@ -1399,6 +1438,7 @@ export default function HomeDashboardClient({
           eyebrow="Editorial"
           title="Staff picks"
           serif
+          fadeIn
           action={
             <span style={{ color: "#3a3a3a", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: SANS }}>
               Curated for you
