@@ -1080,7 +1080,49 @@ export default function HomeDashboardClient({
         <TonightsPick watchlistItems={tonightPickItems} />
       </Section>
 
-      {/* ── 3. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
+      {/* ── 3. FRIENDS ACTIVITY ──────────────────────────────────────────────────── */}
+      {user && friendsHasFollows === null && (
+        <Section eyebrow="Social" title="Friends activity" serif fadeIn variant="medium">
+          <div className="home-row">
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonFriendCard key={i} />
+            ))}
+          </div>
+        </Section>
+      )}
+      {user && friendsHasFollows !== null && (
+        <Section
+          panel
+          eyebrow="Social"
+          title="Friends activity"
+          serif
+          fadeIn
+          variant="medium"
+          action={
+            <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
+              Find people
+            </Link>
+          }
+        >
+          {friendsActivity.length > 0 ? (
+            <ScrollRow gap={10}>
+              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
+                <FriendActivityCard
+                  key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
+                  entry={entry}
+                  userId={user?.id ?? null}
+                />
+              ))}
+            </ScrollRow>
+          ) : friendsHasFollows ? (
+            <EmptyRail message="No activity from your circle in the last 7 days." href="/discover" cta="Explore" />
+          ) : (
+            <EmptyRail message="Follow people to see their activity here." href="/discover" cta="Discover people" />
+          )}
+        </Section>
+      )}
+
+      {/* ── 4. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
       {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
         <Section
           panel
@@ -1264,48 +1306,6 @@ export default function HomeDashboardClient({
       )}
 
       {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
-
-      {/* Friends Activity */}
-      {user && friendsHasFollows === null && (
-        <Section eyebrow="Social" title="Friends activity" serif fadeIn variant="medium">
-          <div className="home-row">
-            {[0, 1, 2, 3].map((i) => (
-              <SkeletonFriendCard key={i} />
-            ))}
-          </div>
-        </Section>
-      )}
-      {user && friendsHasFollows !== null && (
-        <Section
-          panel
-          eyebrow="Social"
-          title="Friends activity"
-          serif
-          fadeIn
-          variant="medium"
-          action={
-            <Link href="/discover" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-              Find people
-            </Link>
-          }
-        >
-          {friendsActivity.length > 0 ? (
-            <ScrollRow gap={10}>
-              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
-                <FriendActivityCard
-                  key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
-                  entry={entry}
-                  userId={user?.id ?? null}
-                />
-              ))}
-            </ScrollRow>
-          ) : friendsHasFollows ? (
-            <EmptyRail message="No activity from your circle in the last 7 days." href="/discover" cta="Explore" />
-          ) : (
-            <EmptyRail message="Follow people to see their activity here." href="/discover" cta="Discover people" />
-          )}
-        </Section>
-      )}
 
       {/* Feeling Lucky */}
       {luckyPools && (
