@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import TriviaHub from "@/components/trivia/TriviaHub"
+import { localMovies } from "@/lib/localMovies"
+import DailyReelPage from "@/components/daily-reel/DailyReelPage"
+import type { HiddenGem } from "@/components/daily-reel/DailyReelPage"
 import type { TriviaQuestion, TriviaProgress, TriviaAnswerRecord, CommunityStat } from "@/components/trivia/TriviaHub"
-import DailyReelEditorial from "@/components/daily-reel/DailyReelEditorial"
 import type { ArticleData, StaffPickData, UpcomingRelease, FanPickData } from "@/components/daily-reel/DailyReelEditorial"
 
 export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Daily Reel – ReelShelf",
-  description: "Three daily trivia questions covering Film, TV, and Books.",
+  description: "Your daily edition — pick, question, story, and more.",
 }
 
 type Category = "film" | "tv" | "book"
@@ -30,13 +31,12 @@ type AnswerRow = {
   question_id: string
 }
 
-// ─── Rotation — uses the authenticated server client (no admin needed) ─────────
+// ─── Trivia rotation ──────────────────────────────────────────────────────────
 
 async function getOrCreateRotation(
   supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
   today: string,
 ): Promise<RotationRow | null> {
-  // 1. Read existing rotation for today
   const { data: existing } = await supabase
     .from("trivia_daily_rotation")
     .select("rotation_date, film_question_id, tv_question_id, book_question_id")
@@ -45,7 +45,6 @@ async function getOrCreateRotation(
 
   if (existing) return existing as RotationRow
 
-  // 2. Build exclusion sets from last 30 days so we don't repeat recently used questions
   const cutoff = new Date(today)
   cutoff.setDate(cutoff.getDate() - 30)
   const cutoffStr = cutoff.toISOString().split("T")[0]
@@ -65,7 +64,6 @@ async function getOrCreateRotation(
       .select("id")
       .eq("category", cat)
       .eq("active", true)
-
     if (!all || all.length === 0) return null
     const eligible = (all as { id: string }[]).filter(q => !recent.has(q.id))
     const pool = eligible.length > 0 ? eligible : (all as { id: string }[])
@@ -74,7 +72,7 @@ async function getOrCreateRotation(
 
   const [filmId, tvId, bookId] = await Promise.all([
     pickQuestion("film", recentFilm),
-    pickQuestion("tv",   recentTv),
+    pickQuestion("tv", recentTv),
     pickQuestion("book", recentBook),
   ])
 
@@ -85,7 +83,6 @@ async function getOrCreateRotation(
     book_question_id: bookId,
   }
 
-  // Upsert handles the race where two simultaneous requests both try to insert today's row
   const { data: upserted, error } = await supabase
     .from("trivia_daily_rotation")
     .upsert(rotation, { onConflict: "rotation_date", ignoreDuplicates: false })
@@ -93,7 +90,6 @@ async function getOrCreateRotation(
     .maybeSingle()
 
   if (error) {
-    // Fallback: re-read (another request may have won the race)
     const { data: fallback } = await supabase
       .from("trivia_daily_rotation")
       .select("rotation_date, film_question_id, tv_question_id, book_question_id")
@@ -105,13 +101,10 @@ async function getOrCreateRotation(
   return (upserted as RotationRow | null) ?? rotation
 }
 
-// ─── Community stats — requires admin (service role key). Degrades gracefully. ─
+// ─── Community stats ──────────────────────────────────────────────────────────
 
-async function getCommunityStats(
-  questionIds: string[],
-): Promise<Record<string, CommunityStat>> {
+async function getCommunityStats(questionIds: string[]): Promise<Record<string, CommunityStat>> {
   if (questionIds.length === 0) return {}
-
   const admin = createAdminClient()
   if (!admin) return {}
 
@@ -127,110 +120,118 @@ async function getCommunityStats(
     const matching = rows.filter(r => r.question_id === qid)
     if (matching.length === 0) { stats[qid] = null; continue }
     const correct = matching.filter(r => r.is_correct).length
-    stats[qid] = {
-      totalAnswers: matching.length,
-      percentCorrect: Math.round((correct / matching.length) * 100),
-    }
+    stats[qid] = { totalAnswers: matching.length, percentCorrect: Math.round((correct / matching.length) * 100) }
   }
 
   return stats
 }
 
-// ─── Editorial data fetching ───────────────────────────────────────────────────
+// ─── Editorial data ───────────────────────────────────────────────────────────
 
 async function fetchEditorialData(
   supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
-): Promise<{
-  featuredArticle: ArticleData | null
-  staffPicks: StaffPickData[]
-  upcomingItems: UpcomingRelease[]
-  fanPicks: FanPickData[]
-}> {
-  // 1. Featured article — most recent published
-  const { data: articleRows } = await supabase
-    .from("articles")
-    .select("id, title, body, cover_image, author, published_at")
-    .eq("is_published", true)
-    .order("published_at", { ascending: false })
-    .limit(1)
-  const featuredArticle = (articleRows?.[0] ?? null) as ArticleData | null
+): Promise<{ featuredArticle: ArticleData | null; staffPicks: StaffPickData[] }> {
+  const [articleRes, pickRes] = await Promise.all([
+    supabase
+      .from("articles")
+      .select("id, title, body, cover_image, author, published_at")
+      .eq("is_published", true)
+      .order("published_at", { ascending: false })
+      .limit(1),
+    supabase
+      .from("staff_picks")
+      .select("id, media_type, title, poster_url, year, reason")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true })
+      .limit(6),
+  ])
 
-  // 2. Staff picks — active, ordered by display_order
-  const { data: pickRows } = await supabase
-    .from("staff_picks")
-    .select("id, media_type, title, poster_url, year, reason")
-    .eq("is_active", true)
-    .order("display_order", { ascending: true })
-    .limit(6)
-  const staffPicks = (pickRows ?? []) as StaffPickData[]
-
-  // 3. Upcoming releases from TMDB
-  const upcomingItems: UpcomingRelease[] = []
-  const tmdbKey = process.env.TMDB_API_KEY
-  if (tmdbKey) {
-    try {
-      const [moviesRes, tvRes] = await Promise.all([
-        fetch(`https://api.themoviedb.org/3/movie/upcoming?api_key=${tmdbKey}&language=en-US&page=1`, {
-          next: { revalidate: 3600 },
-        }),
-        fetch(`https://api.themoviedb.org/3/tv/on_the_air?api_key=${tmdbKey}&language=en-US&page=1`, {
-          next: { revalidate: 3600 },
-        }),
-      ])
-      if (moviesRes.ok) {
-        const d = (await moviesRes.json()) as { results?: { id: number; title: string; poster_path: string | null; release_date: string }[] }
-        for (const m of (d.results ?? []).slice(0, 7)) {
-          upcomingItems.push({ id: m.id, title: m.title, poster_path: m.poster_path, release_date: m.release_date, media_type: "movie" })
-        }
-      }
-      if (tvRes.ok) {
-        const d = (await tvRes.json()) as { results?: { id: number; name: string; poster_path: string | null; first_air_date?: string }[] }
-        for (const s of (d.results ?? []).slice(0, 5)) {
-          upcomingItems.push({ id: s.id, title: s.name, poster_path: s.poster_path, release_date: s.first_air_date ?? "", media_type: "tv" })
-        }
-      }
-      upcomingItems.sort((a, b) => a.release_date.localeCompare(b.release_date))
-      upcomingItems.splice(10)
-    } catch {
-      // TMDB unavailable — section suppresses cleanly
-    }
+  return {
+    featuredArticle: (articleRes.data?.[0] ?? null) as ArticleData | null,
+    staffPicks: (pickRes.data ?? []) as StaffPickData[],
   }
+}
 
-  // 4. Fan picks — most logged in last 7 days (admin bypasses per-user RLS)
-  const fanPicks: FanPickData[] = []
-  const admin = createAdminClient()
-  if (admin) {
-    try {
-      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      const { data: logRows } = await admin
-        .from("diary_entries")
-        .select("media_id, media_type, title, poster")
-        .gte("saved_at", cutoff)
-      if (logRows) {
-        const counts = new Map<string, FanPickData>()
-        for (const row of logRows as { media_id: string; media_type: string; title: string; poster: string | null }[]) {
-          const key = `${row.media_type}:${row.media_id}`
-          const existing = counts.get(key)
-          if (existing) {
-            existing.log_count++
-          } else {
-            counts.set(key, { media_id: row.media_id, media_type: row.media_type, title: row.title, poster: row.poster, log_count: 1 })
-          }
-        }
-        const sorted = Array.from(counts.values()).sort((a, b) => b.log_count - a.log_count)
-        fanPicks.push(...sorted.slice(0, 8))
-      }
-    } catch {
-      // Fan picks unavailable — section suppresses cleanly
-    }
+// ─── Hidden gem ───────────────────────────────────────────────────────────────
+
+// Curated set of films that are critically acclaimed but often overlooked.
+// Picked from localMovies by ID.
+const HIDDEN_GEM_IDS = [
+  "blade-runner-2049",
+  "arrival",
+  "midsommar",
+  "heat",
+  "nightcrawler",
+  "drive",
+  "sicario",
+  "no-country-for-old-men",
+  "se7en",
+]
+
+function dateSeed(dateStr: string): number {
+  return dateStr.replace(/-/g, "").split("").reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 0)
+}
+
+async function getHiddenGem(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  userId: string,
+  today: string,
+): Promise<HiddenGem | null> {
+  // Fetch the user's logged film IDs so we can exclude them
+  const { data: diaryRows } = await supabase
+    .from("diary_entries")
+    .select("media_id")
+    .eq("user_id", userId)
+    .eq("media_type", "movie")
+
+  const loggedIds = new Set(((diaryRows ?? []) as { media_id: string }[]).map(r => r.media_id))
+
+  const eligible = HIDDEN_GEM_IDS.filter(id => !loggedIds.has(id))
+  const pool = eligible.length > 0 ? eligible : HIDDEN_GEM_IDS
+
+  const seed = dateSeed(today)
+  const pickedId = pool[seed % pool.length]
+
+  const movie = localMovies.find(m => m.id === pickedId)
+  if (!movie) return null
+
+  return {
+    id: movie.id,
+    title: movie.title,
+    year: movie.year,
+    poster: movie.poster ?? null,
+    overview: movie.overview,
+    creator: movie.director,
+    media_type: "film",
   }
+}
 
-  return { featuredArticle, staffPicks, upcomingItems, fanPicks }
+// ─── Daily progress ───────────────────────────────────────────────────────────
+
+type DailyProgressRow = {
+  picked: boolean
+  question_answered: boolean
+  story_read: boolean
+  staff_picks_explored: boolean
+} | null
+
+async function getDailyProgress(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  userId: string,
+  today: string,
+): Promise<DailyProgressRow> {
+  const { data } = await supabase
+    .from("daily_progress")
+    .select("picked, question_answered, story_read, staff_picks_explored")
+    .eq("user_id", userId)
+    .eq("progress_date", today)
+    .maybeSingle()
+  return data as DailyProgressRow
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function DailyReelPage() {
+export default async function DailyReelPageRoute() {
   const supabase = await createClient()
   if (!supabase) redirect("/")
 
@@ -239,13 +240,14 @@ export default async function DailyReelPage() {
 
   const today = new Date().toISOString().split("T")[0]!
 
-  // Fetch editorial sections in parallel with trivia rotation
-  const [rotation, editorial] = await Promise.all([
+  const [rotation, editorial, hiddenGem, initialDailyProgress] = await Promise.all([
     getOrCreateRotation(supabase, today),
     fetchEditorialData(supabase),
+    getHiddenGem(supabase, user.id, today),
+    getDailyProgress(supabase, user.id, today),
   ])
 
-  // Fetch the three questions
+  // Fetch trivia questions from today's rotation
   const questionIds = [
     rotation?.film_question_id,
     rotation?.tv_question_id,
@@ -284,7 +286,7 @@ export default async function DailyReelPage() {
     }
   }
 
-  // User progress
+  // User trivia progress (streaks)
   const { data: progressRow } = await supabase
     .from("trivia_user_progress")
     .select("*")
@@ -304,7 +306,7 @@ export default async function DailyReelPage() {
       }
     : null
 
-  // Community stats for answered questions (admin-only; empty if key absent)
+  // Community stats for already-answered questions
   const answeredIds = (answerRows ?? []).map((r: AnswerRow) => r.question_id)
   const communityStatsMap = await getCommunityStats(answeredIds)
 
@@ -314,20 +316,18 @@ export default async function DailyReelPage() {
   }
 
   return (
-    <>
-      <DailyReelEditorial
-        featuredArticle={editorial.featuredArticle}
-        staffPicks={editorial.staffPicks}
-        upcomingItems={editorial.upcomingItems}
-        fanPicks={editorial.fanPicks}
-      />
-      <TriviaHub
-        today={today}
-        questions={questions}
-        initialAnswers={initialAnswers}
-        initialProgress={initialProgress}
-        initialCommunityStats={initialCommunityStats}
-      />
-    </>
+    <DailyReelPage
+      today={today}
+      userId={user.id}
+      rotation={rotation}
+      questions={questions}
+      initialAnswers={initialAnswers}
+      initialProgress={initialProgress}
+      initialCommunityStats={initialCommunityStats}
+      featuredArticle={editorial.featuredArticle}
+      staffPicks={editorial.staffPicks}
+      hiddenGem={hiddenGem}
+      initialDailyProgress={initialDailyProgress}
+    />
   )
 }
