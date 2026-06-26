@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import TriviaHub from "@/components/trivia/TriviaHub"
 import type { TriviaQuestion, TriviaProgress, TriviaAnswerRecord, CommunityStat } from "@/components/trivia/TriviaHub"
+import DailyReelEditorial from "@/components/daily-reel/DailyReelEditorial"
+import type { ArticleData, StaffPickData, UpcomingRelease, FanPickData } from "@/components/daily-reel/DailyReelEditorial"
 
 export const dynamic = "force-dynamic"
 
@@ -134,6 +136,98 @@ async function getCommunityStats(
   return stats
 }
 
+// ─── Editorial data fetching ───────────────────────────────────────────────────
+
+async function fetchEditorialData(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+): Promise<{
+  featuredArticle: ArticleData | null
+  staffPicks: StaffPickData[]
+  upcomingItems: UpcomingRelease[]
+  fanPicks: FanPickData[]
+}> {
+  // 1. Featured article — most recent published
+  const { data: articleRows } = await supabase
+    .from("articles")
+    .select("id, title, body, cover_image, author, published_at")
+    .eq("is_published", true)
+    .order("published_at", { ascending: false })
+    .limit(1)
+  const featuredArticle = (articleRows?.[0] ?? null) as ArticleData | null
+
+  // 2. Staff picks — active, ordered by display_order
+  const { data: pickRows } = await supabase
+    .from("staff_picks")
+    .select("id, media_type, title, poster_url, year, reason")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true })
+    .limit(6)
+  const staffPicks = (pickRows ?? []) as StaffPickData[]
+
+  // 3. Upcoming releases from TMDB
+  const upcomingItems: UpcomingRelease[] = []
+  const tmdbKey = process.env.TMDB_API_KEY
+  if (tmdbKey) {
+    try {
+      const [moviesRes, tvRes] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/movie/upcoming?api_key=${tmdbKey}&language=en-US&page=1`, {
+          next: { revalidate: 3600 },
+        }),
+        fetch(`https://api.themoviedb.org/3/tv/on_the_air?api_key=${tmdbKey}&language=en-US&page=1`, {
+          next: { revalidate: 3600 },
+        }),
+      ])
+      if (moviesRes.ok) {
+        const d = (await moviesRes.json()) as { results?: { id: number; title: string; poster_path: string | null; release_date: string }[] }
+        for (const m of (d.results ?? []).slice(0, 7)) {
+          upcomingItems.push({ id: m.id, title: m.title, poster_path: m.poster_path, release_date: m.release_date, media_type: "movie" })
+        }
+      }
+      if (tvRes.ok) {
+        const d = (await tvRes.json()) as { results?: { id: number; name: string; poster_path: string | null; first_air_date?: string }[] }
+        for (const s of (d.results ?? []).slice(0, 5)) {
+          upcomingItems.push({ id: s.id, title: s.name, poster_path: s.poster_path, release_date: s.first_air_date ?? "", media_type: "tv" })
+        }
+      }
+      upcomingItems.sort((a, b) => a.release_date.localeCompare(b.release_date))
+      upcomingItems.splice(10)
+    } catch {
+      // TMDB unavailable — section suppresses cleanly
+    }
+  }
+
+  // 4. Fan picks — most logged in last 7 days (admin bypasses per-user RLS)
+  const fanPicks: FanPickData[] = []
+  const admin = createAdminClient()
+  if (admin) {
+    try {
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: logRows } = await admin
+        .from("diary_entries")
+        .select("media_id, media_type, title, poster")
+        .gte("saved_at", cutoff)
+      if (logRows) {
+        const counts = new Map<string, FanPickData>()
+        for (const row of logRows as { media_id: string; media_type: string; title: string; poster: string | null }[]) {
+          const key = `${row.media_type}:${row.media_id}`
+          const existing = counts.get(key)
+          if (existing) {
+            existing.log_count++
+          } else {
+            counts.set(key, { media_id: row.media_id, media_type: row.media_type, title: row.title, poster: row.poster, log_count: 1 })
+          }
+        }
+        const sorted = Array.from(counts.values()).sort((a, b) => b.log_count - a.log_count)
+        fanPicks.push(...sorted.slice(0, 8))
+      }
+    } catch {
+      // Fan picks unavailable — section suppresses cleanly
+    }
+  }
+
+  return { featuredArticle, staffPicks, upcomingItems, fanPicks }
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DailyReelPage() {
@@ -145,7 +239,11 @@ export default async function DailyReelPage() {
 
   const today = new Date().toISOString().split("T")[0]!
 
-  const rotation = await getOrCreateRotation(supabase, today)
+  // Fetch editorial sections in parallel with trivia rotation
+  const [rotation, editorial] = await Promise.all([
+    getOrCreateRotation(supabase, today),
+    fetchEditorialData(supabase),
+  ])
 
   // Fetch the three questions
   const questionIds = [
@@ -216,12 +314,20 @@ export default async function DailyReelPage() {
   }
 
   return (
-    <TriviaHub
-      today={today}
-      questions={questions}
-      initialAnswers={initialAnswers}
-      initialProgress={initialProgress}
-      initialCommunityStats={initialCommunityStats}
-    />
+    <>
+      <DailyReelEditorial
+        featuredArticle={editorial.featuredArticle}
+        staffPicks={editorial.staffPicks}
+        upcomingItems={editorial.upcomingItems}
+        fanPicks={editorial.fanPicks}
+      />
+      <TriviaHub
+        today={today}
+        questions={questions}
+        initialAnswers={initialAnswers}
+        initialProgress={initialProgress}
+        initialCommunityStats={initialCommunityStats}
+      />
+    </>
   )
 }
