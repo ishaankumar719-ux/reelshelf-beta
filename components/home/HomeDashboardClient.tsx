@@ -460,10 +460,10 @@ function Section({
 }) {
   const sectionMb =
     variant === "large"
-      ? "clamp(22px, 3.5vw, 32px)"
+      ? "clamp(18px, 2.8vw, 26px)"
       : variant === "compact"
-      ? "clamp(10px, 1.8vw, 14px)"
-      : "clamp(16px, 2.8vw, 22px)";
+      ? "clamp(8px, 1.4vw, 12px)"
+      : "clamp(14px, 2.2vw, 18px)";
   const titleSize =
     variant === "large"
       ? serif ? "clamp(19px, 3.2vw, 24px)" : "clamp(17px, 2.8vw, 20px)"
@@ -639,8 +639,8 @@ function ContinueYourStoryCard({
         </div>
 
         {/* Bottom: action button — entire card is tappable, button is visual affordance */}
-        <span style={{
-          alignSelf: "flex-start",
+        <span className="cys-resume" style={{
+          alignSelf: "flex-end",
           display: "inline-flex",
           alignItems: "center",
           height: 26,
@@ -1108,6 +1108,11 @@ export default function HomeDashboardClient({
           .cys-card:active { transform: scale(0.99) !important; transition-duration: 0.05s !important; }
         }
 
+        /* ── Continue Your Story: mobile full-width resume button ── */
+        @media (max-width: 700px) {
+          .cys-resume { align-self: stretch !important; justify-content: center; display: flex !important; }
+        }
+
         /* ── Book of Month — mobile vertical stack ── */
         @media (max-width: 440px) {
           .botm-card { flex-direction: column !important; }
@@ -1240,7 +1245,6 @@ export default function HomeDashboardClient({
       )}
       {user && friendsHasFollows !== null && (
         <Section
-          panel
           eyebrow="Social"
           title="Friends activity"
           serif
@@ -1252,9 +1256,9 @@ export default function HomeDashboardClient({
             </Link>
           }
         >
-          {friendsActivity.length > 0 ? (
+          {friendsActivity.filter((entry) => entry.title?.trim()).length > 0 ? (
             <ScrollRow gap={10}>
-              {friendsActivity.filter((entry) => entry.title?.trim()).map((entry) => (
+              {friendsActivity.filter((entry) => entry.title?.trim()).slice(0, 8).map((entry) => (
                 <FriendActivityCard
                   key={`${entry.profileId}-${entry.mediaType}-${entry.id}-${entry.savedAt}`}
                   entry={entry}
@@ -1333,7 +1337,7 @@ export default function HomeDashboardClient({
           }
         >
           <ScrollRow gap={12}>
-            {recentLists.map((list) => (
+            {recentLists.slice(0, 8).map((list) => (
               <div key={list.id} style={{ minWidth: 230, maxWidth: 260, flexShrink: 0 }}>
                 <DiscoveryListCard
                   list={list}
@@ -1348,7 +1352,7 @@ export default function HomeDashboardClient({
       )}
 
       {/* ── 5. RECENTLY LOGGED ───────────────────────────────────────────────────── */}
-      {user && (
+      {user && (!isDiaryLoaded || recentlyLogged.length > 0) && (
         <Section
           eyebrow="Diary"
           title="Recently logged"
@@ -1367,7 +1371,7 @@ export default function HomeDashboardClient({
                 <SkeletonTile key={i} size="large" />
               ))}
             </div>
-          ) : recentlyLogged.length > 0 ? (
+          ) : (
             <ScrollRow>
               {recentlyLogged.map((entry) => (
                 <PosterTile
@@ -1381,53 +1385,11 @@ export default function HomeDashboardClient({
                 />
               ))}
             </ScrollRow>
-          ) : (
-            <EmptyRail message="Log your first film, series, or book." href="/movies" cta="Browse titles" />
           )}
         </Section>
       )}
 
-      {/* ── 8. MORE FILMS / SERIES / BOOKS YOU'LL LOVE ─────────────────────────── */}
-      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
-      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
-      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
-
-      {/* ── 9. FEELING LUCKY ─────────────────────────────────────────────────────── */}
-      {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(
-              [
-                { type: "movie", label: "Random Film", emoji: "🎬" },
-                { type: "tv", label: "Random Series", emoji: "📺" },
-                { type: "book", label: "Random Book", emoji: "📚" },
-              ] as const
-            ).map(({ type, label, emoji }) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleLucky(type)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
-                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
-                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
-                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
-              >
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                {label}
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* ── MOOD RECOMMENDATIONS ─────────────────────────────────────────────────── */}
-      <MoodRecommendations />
-
-      {/* ── 7. TRENDING FILMS ────────────────────────────────────────────────────── */}
+      {/* ── TRENDING FILMS ───────────────────────────────────────────────────────── */}
       {trendingMovies.length > 0 && (
         <Section eyebrow="Discover" title="Trending films" fadeIn variant="large">
           <ScrollRow>
@@ -1445,7 +1407,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 8. TRENDING SERIES ───────────────────────────────────────────────────── */}
+      {/* ── TRENDING SERIES ──────────────────────────────────────────────────────── */}
       {trendingSeries.length > 0 && (
         <Section eyebrow="Discover" title="Trending series" fadeIn variant="medium">
           <ScrollRow>
@@ -1462,7 +1424,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 9. TRENDING BOOKS ────────────────────────────────────────────────────── */}
+      {/* ── TRENDING BOOKS ───────────────────────────────────────────────────────── */}
       {trendingBooks.length > 0 && (
         <Section eyebrow="Discover" title="Trending books" fadeIn variant="medium">
           <ScrollRow>
@@ -1479,9 +1441,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── SECONDARY SECTIONS ───────────────────────────────────────────────────── */}
-
-      {/* Hidden Gems */}
+      {/* ── HIDDEN GEMS ──────────────────────────────────────────────────────────── */}
       {hiddenGems.length > 0 && (
         <Section eyebrow="Discover" title="Hidden gems" serif fadeIn variant="compact">
           <ScrollRow>
@@ -1500,7 +1460,7 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* Book of the Month */}
+      {/* ── BOOK OF THE MONTH ────────────────────────────────────────────────────── */}
       {bookOfMonth && (
         <Section eyebrow="Editorial" title="Book of the month" serif fadeIn>
           <Link href={bookOfMonth.href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
@@ -1543,6 +1503,46 @@ export default function HomeDashboardClient({
           </Link>
         </Section>
       )}
+
+      {/* ── FEELING LUCKY ────────────────────────────────────────────────────────── */}
+      {luckyPools && (
+        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(
+              [
+                { type: "movie", label: "Random Film", emoji: "🎬" },
+                { type: "tv", label: "Random Series", emoji: "📺" },
+                { type: "book", label: "Random Book", emoji: "📚" },
+              ] as const
+            ).map(({ type, label, emoji }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleLucky(type)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
+                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
+                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
+              >
+                <span style={{ fontSize: 14 }}>{emoji}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── MOOD RECOMMENDATIONS ─────────────────────────────────────────────────── */}
+      <MoodRecommendations />
+
+      {/* ── MORE FILMS / SERIES / BOOKS YOU'LL LOVE ─────────────────────────────── */}
+      <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
+      <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
+      <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
 
       {/* Circle Discovery */}
       {friendsHasFollows !== null && (
