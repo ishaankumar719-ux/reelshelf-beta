@@ -520,43 +520,57 @@ function EmptyRail({ message, href, cta }: { message: string; href: string; cta:
   );
 }
 
-// ─── Continue Watching card (2+ carousel state) ────────────────────────────────
+// ─── Continue Your Story card ──────────────────────────────────────────────────
 
-function ContinueWatchingCard({ entry }: { entry: DiaryMovie }) {
+function ContinueYourStoryCard({
+  entry,
+  fullWidth = false,
+}: {
+  entry: DiaryMovie;
+  fullWidth?: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
-  const seasonInfo =
-    entry.seasonNumber && entry.episodeNumber
-      ? `S${entry.seasonNumber} E${entry.episodeNumber}`
-      : entry.seasonNumber
-      ? `Season ${entry.seasonNumber}`
+
+  const mediaEmoji =
+    entry.mediaType === "movie" ? "🎬" : entry.mediaType === "tv" ? "📺" : "📚";
+  const mediaLabel =
+    entry.mediaType === "movie" ? "Film" : entry.mediaType === "tv" ? "Series" : "Book";
+  const actionLabel = entry.mediaType === "book" ? "Resume Reading" : "Resume";
+
+  // Only TV has season/episode data; no paused-position or page-progress fields exist
+  const progressInfo =
+    entry.mediaType === "tv" && entry.seasonNumber
+      ? [
+          `Season ${entry.seasonNumber}`,
+          entry.episodeNumber ? `Episode ${entry.episodeNumber}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
       : null;
 
   return (
     <Link
       href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+      className="cys-card"
       style={{
-        display: "block",
-        width: "min(120px, 28vw)",
+        display: "flex",
+        width: fullWidth ? "100%" : "min(240px, 58vw)",
         flexShrink: 0,
         textDecoration: "none",
         color: "inherit",
+        background: "var(--rs-surface-card)",
+        border: `1px solid ${hovered ? "var(--rs-border-strong)" : "var(--rs-border-subtle)"}`,
+        borderRadius: "var(--rs-radius-card)",
+        overflow: "hidden",
+        transform: hovered ? "translateY(-2px)" : "none",
+        boxShadow: hovered ? "0 8px 24px rgba(0,0,0,0.45)" : "none",
+        transition: "border-color 0.18s ease, transform 0.2s ease, box-shadow 0.2s ease",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div
-        style={{
-          position: "relative",
-          borderRadius: "var(--rs-radius-card)",
-          overflow: "hidden",
-          paddingBottom: "138%",
-          background: "#0f0f0f",
-          border: `1px solid ${hovered ? "var(--rs-border-strong)" : "var(--rs-border-subtle)"}`,
-          transform: hovered ? "translateY(-3px)" : "none",
-          boxShadow: hovered ? "0 10px 30px rgba(0,0,0,0.55)" : "none",
-          transition: "border-color 0.18s ease, transform 0.2s ease, box-shadow 0.2s ease",
-        }}
-      >
+      {/* Poster — 2:3 portrait, left corners rounded by card overflow */}
+      <div style={{ width: 64, height: 96, flexShrink: 0, position: "relative", background: "#0f0f0f" }}>
         {entry.poster ? (
           <img
             src={entry.poster}
@@ -566,28 +580,82 @@ function ContinueWatchingCard({ entry }: { entry: DiaryMovie }) {
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.3s ease" }}
           />
         ) : (
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 20, fontWeight: 700, fontFamily: SANS }}>{entry.title[0]}</span>
-          </div>
-        )}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.9) 100%)" }} />
-        {hovered && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.22)" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", height: 24, padding: "0 10px", borderRadius: 999, background: "white", color: "black", fontSize: 9, fontWeight: 700, fontFamily: SANS, whiteSpace: "nowrap" }}>
-              Continue →
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 16, fontWeight: 700, fontFamily: SANS }}>
+              {entry.title[0]}
             </span>
           </div>
         )}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "5px 7px" }}>
-          {seasonInfo && (
-            <p style={{ margin: "0 0 1px", fontSize: 7, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
-              {seasonInfo}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0, padding: "10px 12px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        {/* Top: title + badge */}
+        <div>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: progressInfo ? 4 : 0 }}>
+            <h3 style={{
+              margin: 0,
+              fontSize: "var(--rs-text-heading)",
+              fontWeight: 600,
+              lineHeight: 1.2,
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              color: "var(--rs-text-primary)",
+            }}>
+              {entry.title}
+            </h3>
+            <span style={{
+              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              fontSize: 8,
+              color: "var(--rs-text-muted)",
+              background: "rgba(255,255,255,0.05)",
+              border: "0.5px solid rgba(255,255,255,0.1)",
+              borderRadius: 4,
+              padding: "2px 5px",
+              fontFamily: SANS,
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}>
+              {mediaEmoji} {mediaLabel}
+            </span>
+          </div>
+          {progressInfo && (
+            <p style={{
+              margin: 0,
+              fontSize: "var(--rs-text-caption)",
+              color: "var(--rs-text-muted)",
+              fontFamily: SANS,
+              lineHeight: 1.3,
+            }}>
+              {progressInfo}
             </p>
           )}
-          <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, lineHeight: 1.2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {entry.title}
-          </h3>
         </div>
+
+        {/* Bottom: action button — entire card is tappable, button is visual affordance */}
+        <span style={{
+          alignSelf: "flex-start",
+          display: "inline-flex",
+          alignItems: "center",
+          height: 26,
+          padding: "0 12px",
+          borderRadius: 999,
+          background: "white",
+          color: "black",
+          fontSize: 10,
+          fontWeight: 600,
+          fontFamily: SANS,
+          whiteSpace: "nowrap",
+          marginTop: 8,
+        }}>
+          {actionLabel} →
+        </span>
       </div>
     </Link>
   );
@@ -1035,13 +1103,9 @@ export default function HomeDashboardClient({
           background: linear-gradient(to left, rgba(14,14,14,0.9) 0%, transparent 100%);
         }
 
-        /* ── Continue Watching: single-item card hover ── */
-        .cw-single {
-          transition: border-color 0.18s ease, background 0.18s ease;
-        }
-        .cw-single:hover {
-          border-color: var(--rs-border-strong) !important;
-          background: rgba(255,255,255,0.04) !important;
+        /* ── Continue Your Story: card press feedback ── */
+        @media (prefers-reduced-motion: no-preference) {
+          .cys-card:active { transform: scale(0.99) !important; transition-duration: 0.05s !important; }
         }
 
         /* ── Book of Month — mobile vertical stack ── */
@@ -1206,73 +1270,35 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── 4. CONTINUE WATCHING ─────────────────────────────────────────────────── */}
-      {/* State 0: 0 items → suppressed entirely by the outer guard */}
+      {/* ── 4. CONTINUE YOUR STORY ───────────────────────────────────────────────── */}
+      {/* State 0: 0 items → outer guard suppresses entirely — no container, no height */}
       {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
         !isDiaryLoaded ? (
-          /* Loading skeleton — brief, no panel overhead */
-          <section
-            data-fade-section="true"
-            style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}
-          >
+          /* Loading — landscape skeleton tiles matching card proportions */
+          <section data-fade-section="true" style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}>
             <div className="home-row">
               {[0, 1, 2, 3].map((i) => (
-                <SkeletonTile key={i} size="medium" />
+                <div
+                  key={i}
+                  className="rs-skeleton"
+                  style={{ width: "min(240px, 58vw)", height: 96, flexShrink: 0, borderRadius: "var(--rs-radius-card)" }}
+                />
               ))}
             </div>
           </section>
         ) : continueWatching.length === 1 ? (
-          /* State 1: single compact horizontal card — notification-height, no panel */
-          <section
-            data-fade-section="true"
-            style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}
-          >
+          /* State 1: single full-width landscape card */
+          <section data-fade-section="true" style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}>
             <p style={{ margin: "0 0 8px", fontSize: "var(--rs-text-micro)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--rs-text-muted)", fontFamily: SANS }}>
-              In Progress
+              Continue Your Story
             </p>
-            <Link
-              href={getMediaHref({ id: continueWatching[0].id, mediaType: continueWatching[0].mediaType })}
-              className="cw-single"
-              style={{
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "10px 14px 10px 10px",
-                background: "var(--rs-surface-card)",
-                borderRadius: "var(--rs-radius-card)",
-                border: "1px solid var(--rs-border-subtle)",
-                textDecoration: "none", color: "inherit",
-              }}
-            >
-              <div style={{ width: 44, height: 60, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: "#111", border: "1px solid var(--rs-border-subtle)" }}>
-                {continueWatching[0].poster && (
-                  <img
-                    src={continueWatching[0].poster}
-                    alt={continueWatching[0].title}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: "0 0 3px", fontSize: "var(--rs-text-micro)", color: "var(--rs-text-muted)", fontFamily: SANS, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {continueWatching[0].seasonNumber && continueWatching[0].episodeNumber
-                    ? `S${continueWatching[0].seasonNumber} · E${continueWatching[0].episodeNumber}`
-                    : continueWatching[0].seasonNumber
-                    ? `Season ${continueWatching[0].seasonNumber}`
-                    : "Series"}
-                </p>
-                <h3 style={{ margin: 0, fontSize: "var(--rs-text-heading)", fontWeight: 600, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {continueWatching[0].title}
-                </h3>
-              </div>
-              <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 26, padding: "0 12px", borderRadius: 999, background: "white", color: "black", fontSize: 10, fontWeight: 600, fontFamily: SANS, whiteSpace: "nowrap" }}>
-                Continue →
-              </span>
-            </Link>
+            <ContinueYourStoryCard entry={continueWatching[0]} fullWidth />
           </section>
         ) : (
-          /* State 2: compact carousel — shorter cards than Trending (120px vs 156px wide) */
+          /* State 2: compact landscape carousel */
           <Section
             eyebrow="In Progress"
-            title="Continue watching"
+            title="Continue Your Story"
             serif
             fadeIn
             variant="medium"
@@ -1282,9 +1308,9 @@ export default function HomeDashboardClient({
               </Link>
             }
           >
-            <ScrollRow gap={9}>
+            <ScrollRow gap={10}>
               {continueWatching.map((entry) => (
-                <ContinueWatchingCard
+                <ContinueYourStoryCard
                   key={`tv-${entry.showId ?? entry.id}`}
                   entry={entry}
                 />
