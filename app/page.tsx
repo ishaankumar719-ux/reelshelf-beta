@@ -1,4 +1,5 @@
 import HomeDashboardClient from "../components/home/HomeDashboardClient";
+import type { RecommendedItem } from "../components/home/HomeDashboardClient";
 import { resolveBooksWithCovers } from "../lib/bookCovers";
 import { getBookHrefFromRouteId } from "../lib/bookRoutes";
 import { localBooks } from "../lib/localBooks";
@@ -11,11 +12,106 @@ import { createClient } from "../lib/supabase/server";
 import { fetchRecentPublicLists } from "../lib/supabase/lists";
 import type { DiscoveryList } from "../lib/supabase/lists";
 import { staffPickIds, hiddenGemIds, bookOfMonthId } from "../lib/editorial";
+import {
+  buildUserContext,
+  scoreCandidate,
+  generateReasons,
+} from "../lib/recommendation-engine";
 
 export const dynamic = "force-dynamic";
 
+// ─── Recommendations ──────────────────────────────────────────────────────────
+
+async function getRecommendations(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  userId: string,
+  bookCoverMap: Map<string, string | null>,
+): Promise<RecommendedItem[]> {
+  try {
+    const ctx = await buildUserContext(supabase, userId, { excludeWatchlist: false })
+
+    const scored = [
+      ...localMovies
+        .filter((m) => !ctx.loggedFilmIds.has(m.id))
+        .map((m) => scoreCandidate("film", m.id, m.director, ctx)),
+      ...localSeries
+        .filter((s) => !ctx.loggedTvIds.has(s.id))
+        .map((s) => scoreCandidate("tv", s.id, s.creator, ctx)),
+      ...localBooks
+        .filter((b) => !ctx.loggedBookIds.has(b.id))
+        .map((b) => scoreCandidate("book", b.id, b.author, ctx)),
+    ]
+      .filter((c) => c.totalScore > -500)
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .slice(0, 8)
+
+    return scored.flatMap((candidate): RecommendedItem[] => {
+      const reasons = generateReasons(candidate)
+
+      if (candidate.mediaType === "film") {
+        const m = localMovies.find((x) => x.id === candidate.mediaId)
+        if (!m) return []
+        return [{
+          id: m.id,
+          mediaType: "movie",
+          title: m.title,
+          year: Number(m.year),
+          poster: (m.poster as string | null) ?? null,
+          href: getMovieHrefFromRouteId(m.id),
+          reasons,
+        }]
+      }
+
+      if (candidate.mediaType === "tv") {
+        const s = localSeries.find((x) => x.id === candidate.mediaId)
+        if (!s) return []
+        return [{
+          id: s.id,
+          mediaType: "tv",
+          title: s.title,
+          year: Number(s.year),
+          poster: getTMDBPosterUrl(s.posterPath ?? s.poster) ?? null,
+          href: getSeriesHrefFromRouteId(s.id),
+          reasons,
+        }]
+      }
+
+      const b = localBooks.find((x) => x.id === candidate.mediaId)
+      if (!b) return []
+      return [{
+        id: b.id,
+        mediaType: "book",
+        title: b.title,
+        year: Number(b.year),
+        poster: bookCoverMap.get(b.id) ?? null,
+        href: getBookHrefFromRouteId(b.id),
+        reasons,
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function Home() {
-  const resolvedBooks = await resolveBooksWithCovers(localBooks.slice(0, 10));
+  const supabase = await createClient();
+
+  const [resolvedBooks, recentListsResult, userResult] = await Promise.all([
+    resolveBooksWithCovers(localBooks.slice(0, 10)),
+    supabase ? fetchRecentPublicLists(supabase, 6) : Promise.resolve<DiscoveryList[]>([]),
+    supabase ? supabase.auth.getUser() : Promise.resolve({ data: { user: null } }),
+  ]);
+
+  const user = userResult.data.user;
+  const recentLists: DiscoveryList[] = recentListsResult;
+
+  const bookCoverMap = new Map(resolvedBooks.map((b) => [b.id, b.coverUrl ?? null]));
+
+  const recommendations: RecommendedItem[] = supabase && user
+    ? await getRecommendations(supabase, user.id, bookCoverMap)
+    : [];
 
   const trendingMovies = localMovies.slice(0, 10).map((movie) => ({
     id: movie.id,
@@ -47,13 +143,7 @@ export default async function Home() {
     href: getBookHrefFromRouteId(book.id),
   }));
 
-  let recentLists: DiscoveryList[] = [];
-  const supabase = await createClient();
-  if (supabase) {
-    recentLists = await fetchRecentPublicLists(supabase, 6);
-  }
-
-  // ── Staff Picks ─────────────────────────────────────────────────────────────
+  // ── Staff Picks ──────────────────────────────────────────────────────────────
   const staffPicks = [
     ...localMovies
       .filter((m) => (staffPickIds.movie as string[]).includes(m.id))
@@ -87,7 +177,7 @@ export default async function Home() {
       })),
   ];
 
-  // ── Hidden Gems ─────────────────────────────────────────────────────────────
+  // ── Hidden Gems ──────────────────────────────────────────────────────────────
   const hiddenGems = [
     ...localMovies
       .filter((m) => (hiddenGemIds.movie as string[]).includes(m.id))
@@ -163,6 +253,7 @@ export default async function Home() {
       hiddenGems={hiddenGems}
       bookOfMonth={bookOfMonth}
       luckyPools={luckyPools}
+      recommendations={recommendations}
     />
   );
 }

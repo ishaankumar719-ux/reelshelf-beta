@@ -13,8 +13,7 @@ import PeopleToFollowSection from "../PeopleToFollowSection";
 import TonightsPick from "./TonightsPick";
 import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
-import DailyReelCard from "./DailyReelCard"
-import DailyPickCard from "./DailyPickCard";
+import DailyReelCard from "./DailyReelCard";
 import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
 import ReactionTray from "../ReactionTray/ReactionTray";
 import CommentDrawer from "../CommentDrawer/CommentDrawer";
@@ -50,6 +49,16 @@ type DashboardItem = {
   year: number;
   poster?: string | null;
   href: string;
+};
+
+export type RecommendedItem = {
+  id: string;
+  mediaType: "movie" | "tv" | "book";
+  title: string;
+  year: number;
+  poster: string | null;
+  href: string;
+  reasons: string[];
 };
 
 type BookOfMonthItem = {
@@ -207,8 +216,7 @@ function PosterTile({
   );
 }
 
-// ─── Friend activity card — wide, Letterboxd-energy ───────────────────────────
-
+// ─── Friend activity card ──────────────────────────────────────────────────────
 
 function FriendActivityCard({
   entry,
@@ -247,7 +255,6 @@ function FriendActivityCard({
         flexDirection: "column",
       }}
     >
-      {/* Avatar + username header */}
       <div style={{ padding: "8px 10px 0", display: "flex", alignItems: "center", gap: 7 }}>
         <Link
           href={entry.username ? `/u/${entry.username}` : "#"}
@@ -288,7 +295,6 @@ function FriendActivityCard({
         )}
       </div>
 
-      {/* Poster */}
       <Link href={entry.href} style={{ display: "block", position: "relative", paddingBottom: "136%", textDecoration: "none", color: "inherit", marginTop: 8 }}>
         {entry.poster ? (
           <img src={entry.poster} alt={entry.title} ref={(el) => { if (el?.complete) el.style.opacity = "1" }} onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1" }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.3s ease" }} />
@@ -313,10 +319,8 @@ function FriendActivityCard({
             {entry.title}
           </h3>
         </div>
-
       </Link>
 
-      {/* Review snippet */}
       {entry.review.trim() && (
         <Link href={entry.href} style={{ display: "block", padding: "7px 10px 8px", borderTop: "1px solid rgba(255,255,255,0.05)", textDecoration: "none", color: "inherit", flex: 1 }}>
           <p style={{
@@ -329,7 +333,6 @@ function FriendActivityCard({
         </Link>
       )}
 
-      {/* ── Reaction tray ── */}
       {entry.entryId && (
         <ReactionTray
           targetType="diary_entry"
@@ -341,7 +344,6 @@ function FriendActivityCard({
         />
       )}
 
-      {/* ── Comment drawer ── */}
       {entry.entryId && (
         <CommentDrawer
           isOpen={commentOpen}
@@ -355,7 +357,7 @@ function FriendActivityCard({
   );
 }
 
-// ─── Skeleton tile ─────────────────────────────────────────────────────────────
+// ─── Skeleton tiles ────────────────────────────────────────────────────────────
 
 function SkeletonTile({ size = "medium" }: { size?: "large" | "medium" | "compact" }) {
   const cardWidth =
@@ -504,7 +506,7 @@ function Section({
   );
 }
 
-// ─── Compact inline empty state ────────────────────────────────────────────────
+// ─── Empty rail ────────────────────────────────────────────────────────────────
 
 function EmptyRail({ message, href, cta }: { message: string; href: string; cta: string }) {
   return (
@@ -520,24 +522,12 @@ function EmptyRail({ message, href, cta }: { message: string; href: string; cta:
   );
 }
 
-// ─── Continue Your Story card ──────────────────────────────────────────────────
+// ─── Continue Your Story — single cinematic hero (State 2) ─────────────────────
 
-function ContinueYourStoryCard({
-  entry,
-  fullWidth = false,
-}: {
-  entry: DiaryMovie;
-  fullWidth?: boolean;
-}) {
+function CYSSingleHero({ entry }: { entry: DiaryMovie }) {
   const [hovered, setHovered] = useState(false);
-
-  const mediaEmoji =
-    entry.mediaType === "movie" ? "🎬" : entry.mediaType === "tv" ? "📺" : "📚";
-  const mediaLabel =
-    entry.mediaType === "movie" ? "Film" : entry.mediaType === "tv" ? "Series" : "Book";
+  const label = entry.mediaType === "movie" ? "Film" : entry.mediaType === "tv" ? "TV Series" : "Book";
   const actionLabel = entry.mediaType === "book" ? "Resume Reading" : "Resume";
-
-  // Only TV has season/episode data; no paused-position or page-progress fields exist
   const progressInfo =
     entry.mediaType === "tv" && entry.seasonNumber
       ? [
@@ -549,12 +539,165 @@ function ContinueYourStoryCard({
       : null;
 
   return (
+    <section style={{ marginBottom: "clamp(18px,3vw,26px)" }}>
+      <p style={{
+        margin: "0 0 8px",
+        fontSize: "var(--rs-text-micro)",
+        fontWeight: 700,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "var(--rs-text-muted)",
+        fontFamily: SANS,
+      }}>
+        Continue Your Story
+      </p>
+      <Link
+        href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
+        className="cys-hero"
+        style={{
+          display: "block",
+          textDecoration: "none",
+          color: "inherit",
+          position: "relative",
+          borderRadius: "var(--rs-radius-card)",
+          overflow: "hidden",
+          height: "clamp(122px, 20vw, 168px)",
+          border: `1px solid ${hovered ? "var(--rs-border-strong)" : "var(--rs-border-subtle)"}`,
+          boxShadow: hovered ? "0 12px 40px rgba(0,0,0,0.6)" : "0 4px 16px rgba(0,0,0,0.35)",
+          transition: "border-color 0.18s ease, box-shadow 0.2s ease",
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Blurred bg poster */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: entry.poster
+              ? `url(${entry.poster}) center/cover no-repeat`
+              : "linear-gradient(135deg,#1a1a2e,#0d0d1a)",
+            filter: "blur(3px) brightness(0.3) saturate(1.4)",
+            transform: "scale(1.08)",
+          }}
+        />
+        {/* Directional overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to right, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.72) 50%, rgba(0,0,0,0.28) 100%)",
+          }}
+        />
+        {/* Content row */}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", height: "100%", alignItems: "stretch" }}>
+          {/* Poster thumbnail */}
+          {entry.poster && (
+            <div style={{ width: "clamp(74px,12vw,96px)", flexShrink: 0, overflow: "hidden" }}>
+              <img
+                src={entry.poster}
+                alt={entry.title}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            </div>
+          )}
+          {/* Text */}
+          <div style={{
+            flex: 1,
+            minWidth: 0,
+            padding: "clamp(14px,2.2vw,20px) clamp(14px,2vw,18px)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}>
+            <div>
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "2px 8px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.08)",
+                border: "0.5px solid rgba(255,255,255,0.14)",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: 8,
+                fontFamily: SANS,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}>
+                {label}
+              </span>
+              <h2 style={{
+                margin: "0 0 4px",
+                fontSize: "clamp(15px,2.8vw,21px)",
+                fontWeight: 700,
+                letterSpacing: "-0.4px",
+                lineHeight: 1.15,
+                color: "rgba(255,255,255,0.96)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {entry.title}
+              </h2>
+              {progressInfo && (
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "rgba(255,255,255,0.4)", fontFamily: SANS }}>
+                  {progressInfo}
+                </p>
+              )}
+              {/* Thin progress bar */}
+              <div style={{ height: 2, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", maxWidth: 180 }}>
+                <div style={{ height: "100%", width: "35%", background: "var(--rs-accent-primary)", borderRadius: 999 }} />
+              </div>
+            </div>
+            {/* Action */}
+            <span className="cys-resume" style={{
+              alignSelf: "flex-end",
+              display: "inline-flex",
+              alignItems: "center",
+              height: 28,
+              padding: "0 13px",
+              borderRadius: 999,
+              background: "white",
+              color: "black",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: SANS,
+              whiteSpace: "nowrap",
+              marginTop: 8,
+            }}>
+              {actionLabel} →
+            </span>
+          </div>
+        </div>
+      </Link>
+    </section>
+  );
+}
+
+// ─── Continue Your Story — compact carousel card (State 3) ─────────────────────
+
+function CYSCompactCard({ entry }: { entry: DiaryMovie }) {
+  const [hovered, setHovered] = useState(false);
+  const label = entry.mediaType === "movie" ? "Film" : entry.mediaType === "tv" ? "TV Series" : "Book";
+  const actionLabel = entry.mediaType === "book" ? "Resume Reading" : "Resume";
+  const progressInfo =
+    entry.mediaType === "tv" && entry.seasonNumber
+      ? [
+          `Season ${entry.seasonNumber}`,
+          entry.episodeNumber ? `Ep ${entry.episodeNumber}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : null;
+
+  return (
     <Link
       href={getMediaHref({ id: entry.id, mediaType: entry.mediaType })}
       className="cys-card"
       style={{
         display: "flex",
-        width: fullWidth ? "100%" : "min(240px, 58vw)",
+        width: "min(240px, 58vw)",
         flexShrink: 0,
         textDecoration: "none",
         color: "inherit",
@@ -569,7 +712,6 @@ function ContinueYourStoryCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Poster — 2:3 portrait, left corners rounded by card overflow */}
       <div style={{ width: 64, height: 96, flexShrink: 0, position: "relative", background: "#0f0f0f" }}>
         {entry.poster ? (
           <img
@@ -581,16 +723,11 @@ function ContinueYourStoryCard({
           />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 16, fontWeight: 700, fontFamily: SANS }}>
-              {entry.title[0]}
-            </span>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 16, fontWeight: 700, fontFamily: SANS }}>{entry.title[0]}</span>
           </div>
         )}
       </div>
-
-      {/* Content */}
       <div style={{ flex: 1, minWidth: 0, padding: "10px 12px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        {/* Top: title + badge */}
         <div>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: progressInfo ? 4 : 0 }}>
             <h3 style={{
@@ -611,7 +748,6 @@ function ContinueYourStoryCard({
               flexShrink: 0,
               display: "inline-flex",
               alignItems: "center",
-              gap: 3,
               fontSize: 8,
               color: "var(--rs-text-muted)",
               background: "rgba(255,255,255,0.05)",
@@ -622,23 +758,19 @@ function ContinueYourStoryCard({
               lineHeight: 1,
               whiteSpace: "nowrap",
             }}>
-              {mediaEmoji} {mediaLabel}
+              {label}
             </span>
           </div>
           {progressInfo && (
-            <p style={{
-              margin: 0,
-              fontSize: "var(--rs-text-caption)",
-              color: "var(--rs-text-muted)",
-              fontFamily: SANS,
-              lineHeight: 1.3,
-            }}>
+            <p style={{ margin: "0 0 6px", fontSize: "var(--rs-text-caption)", color: "var(--rs-text-muted)", fontFamily: SANS, lineHeight: 1.3 }}>
               {progressInfo}
             </p>
           )}
+          {/* Thin progress bar */}
+          <div style={{ height: 2, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginTop: progressInfo ? 0 : 6 }}>
+            <div style={{ height: "100%", width: "35%", background: "var(--rs-accent-primary)", borderRadius: 999 }} />
+          </div>
         </div>
-
-        {/* Bottom: action button — entire card is tappable, button is visual affordance */}
         <span className="cys-resume" style={{
           alignSelf: "flex-end",
           display: "inline-flex",
@@ -661,6 +793,185 @@ function ContinueYourStoryCard({
   );
 }
 
+// ─── Continue Your Story hero — all 4 states ──────────────────────────────────
+
+function ContinueYourStoryHero({
+  entries,
+  displayName,
+  timeOfDay,
+  isLoading,
+}: {
+  entries: DiaryMovie[];
+  displayName: string | null;
+  timeOfDay: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <section data-fade-section="true" style={{ marginBottom: "clamp(18px,3vw,26px)" }}>
+        <div
+          className="rs-skeleton"
+          style={{ height: "clamp(110px,18vw,150px)", borderRadius: "var(--rs-radius-card)" }}
+        />
+      </section>
+    );
+  }
+
+  // State 1: logged in, nothing in progress — welcome hero
+  if (entries.length === 0) {
+    return (
+      <section style={{ marginBottom: "clamp(18px,3vw,26px)" }}>
+        <div style={{
+          padding: "clamp(20px,3.5vw,30px) clamp(18px,3vw,24px)",
+          background: "linear-gradient(135deg, rgba(16,16,24,0.98) 0%, rgba(9,9,13,1) 100%)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "var(--rs-radius-card)",
+        }}>
+          <h1 style={{
+            margin: "0 0 5px",
+            fontSize: "clamp(18px,3.2vw,24px)",
+            fontWeight: 600,
+            letterSpacing: "-0.5px",
+            lineHeight: 1.1,
+            color: "rgba(255,255,255,0.92)",
+          }}>
+            Good {timeOfDay}{displayName ? `, ${displayName}` : ""}.
+          </h1>
+          <p style={{
+            margin: "0 0 18px",
+            fontSize: 13,
+            color: "rgba(255,255,255,0.38)",
+            fontFamily: SANS,
+            lineHeight: 1.4,
+          }}>
+            Ready to start something new?
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link
+              href="/movies"
+              style={{
+                display: "inline-flex", alignItems: "center", height: 32, padding: "0 14px",
+                borderRadius: 999, background: "white", color: "black",
+                textDecoration: "none", fontSize: 12, fontWeight: 600, fontFamily: SANS,
+                letterSpacing: "0.01em", whiteSpace: "nowrap",
+              }}
+            >
+              Browse Films
+            </Link>
+            <Link
+              href="/daily-reel"
+              style={{
+                display: "inline-flex", alignItems: "center", height: 32, padding: "0 14px",
+                borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.72)",
+                textDecoration: "none", fontSize: 12, fontFamily: SANS, whiteSpace: "nowrap",
+              }}
+            >
+              Pick Something For Me
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // State 2: one item in progress — full-width cinematic hero
+  if (entries.length === 1) {
+    return <CYSSingleHero entry={entries[0]} />;
+  }
+
+  // State 3: multiple items — carousel
+  return (
+    <section style={{ marginBottom: "clamp(18px,3vw,26px)" }}>
+      <p style={{
+        margin: "0 0 8px",
+        fontSize: "var(--rs-text-micro)",
+        fontWeight: 700,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "var(--rs-text-muted)",
+        fontFamily: SANS,
+      }}>
+        Continue Your Story
+      </p>
+      <ScrollRow gap={10}>
+        {entries.map((entry) => (
+          <CYSCompactCard
+            key={`tv-${entry.showId ?? entry.id}`}
+            entry={entry}
+          />
+        ))}
+      </ScrollRow>
+    </section>
+  );
+}
+
+// ─── Recommendation card ───────────────────────────────────────────────────────
+
+function RecommendationCard({ item }: { item: RecommendedItem }) {
+  const reason = item.reasons[0] ?? null;
+  const cardWidth = "min(124px, 27vw)";
+  return (
+    <Link
+      href={item.href}
+      className="poster-tile"
+      style={{ display: "block", width: cardWidth, flexShrink: 0, textDecoration: "none", color: "inherit" }}
+    >
+      <div
+        style={{
+          position: "relative",
+          borderRadius: "var(--rs-radius-card)",
+          overflow: "hidden",
+          paddingBottom: "150%",
+          background: "#0f0f0f",
+          border: "1px solid var(--rs-border-subtle)",
+          marginBottom: 7,
+        }}
+      >
+        {item.poster ? (
+          <img
+            src={item.poster}
+            alt={item.title}
+            loading="lazy"
+            ref={(el) => { if (el?.complete) el.style.opacity = "1" }}
+            onLoad={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "1" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0, transition: "opacity 0.3s ease" }}
+          />
+        ) : (
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#181818,#0c0c0c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "rgba(255,255,255,0.08)", fontSize: 22, fontWeight: 700, fontFamily: SANS }}>{item.title[0]}</span>
+          </div>
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 48%, rgba(0,0,0,0.9) 100%)" }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 8px" }}>
+          <p style={{ margin: 0, fontSize: 7.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: SANS }}>
+            {item.mediaType === "movie" ? "Film" : item.mediaType === "tv" ? "Series" : "Book"}
+          </p>
+          <h3 style={{ margin: "2px 0 0", fontSize: 10, fontWeight: 600, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {item.title}
+          </h3>
+        </div>
+      </div>
+      {reason && (
+        <p style={{
+          margin: 0,
+          fontSize: 10,
+          color: "rgba(255,255,255,0.38)",
+          fontFamily: SERIF,
+          fontStyle: "italic",
+          lineHeight: 1.35,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}>
+          {reason}
+        </p>
+      )}
+    </Link>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function HomeDashboardClient({
@@ -672,6 +983,7 @@ export default function HomeDashboardClient({
   hiddenGems = [],
   bookOfMonth = null,
   luckyPools = null,
+  recommendations = [],
 }: {
   trendingMovies: DashboardItem[];
   trendingSeries: DashboardItem[];
@@ -681,20 +993,17 @@ export default function HomeDashboardClient({
   hiddenGems?: DashboardItem[];
   bookOfMonth?: BookOfMonthItem | null;
   luckyPools?: LuckyPool | null;
+  recommendations?: RecommendedItem[];
 }) {
   const { user, displayName, loading } = useAuth();
   const router = useRouter();
   const [diaryEntries, setDiaryEntries] = useState<DiaryMovie[]>([]);
   const [isDiaryLoaded, setIsDiaryLoaded] = useState(false);
-  const [listCount, setListCount] = useState(0);
   const [friendsActivity, setFriendsActivity] = useState<FriendsActivityEntry[]>([]);
   const [friendsHasFollows, setFriendsHasFollows] = useState<boolean | null>(null);
 
-  // SavedItem[] fed directly to PickCard — dual-source: localStorage + Supabase
   const [tonightPickItems, setTonightPickItems] = useState<SavedItem[]>([]);
 
-
-  // Seed from localStorage immediately; re-sync on local add/remove
   useEffect(() => {
     setDiaryEntries(getDiaryMovies());
     setIsDiaryLoaded(true);
@@ -723,8 +1032,7 @@ export default function HomeDashboardClient({
     return () => { unsubDiary(); unsubWatchlist(); };
   }, []);
 
-  // Authoritative watchlist fetch from Supabase — runs only after AuthProvider
-  // has fully settled (loading=false), so the session cookie is valid for RLS.
+  // Authoritative watchlist fetch from Supabase
   useEffect(() => {
     if (loading || !user?.id) return;
     let mounted = true;
@@ -759,22 +1067,6 @@ export default function HomeDashboardClient({
     return () => { mounted = false; };
   }, [loading, user]);
 
-  // List count for hero stat
-  useEffect(() => {
-    if (loading || !user?.id) return;
-    let mounted = true;
-    void (async () => {
-      const client = createSupabaseBrowserClient();
-      if (!client) return;
-      const { count } = await client
-        .from("user_lists")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-      if (mounted && count != null) setListCount(count);
-    })();
-    return () => { mounted = false; };
-  }, [loading, user]);
-
   // Friends activity
   useEffect(() => {
     let mounted = true;
@@ -797,7 +1089,23 @@ export default function HomeDashboardClient({
     return () => { mounted = false; };
   }, [user]);
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
+  // Fade-in sections on scroll
+  useEffect(() => {
+    const els = document.querySelectorAll('[data-fade-section]:not(.section-visible)')
+    if (!els.length) return
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('section-visible')
+          observer.unobserve(entry.target)
+        }
+      }
+    }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' })
+    els.forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [user?.id, isDiaryLoaded, friendsHasFollows])
+
+  // ── Derived ───────────────────────────────────────────────────────────────────
 
   const recentlyLogged = useMemo(() => diaryEntries.slice(0, 16), [diaryEntries]);
 
@@ -811,8 +1119,6 @@ export default function HomeDashboardClient({
       .slice(0, 14),
     [diaryEntries]
   );
-
-  // trendingAmongFriends is now handled inside CircleDiscovery (System 3)
 
   const continueWatching = useMemo(() => {
     if (!user) return [];
@@ -847,28 +1153,9 @@ export default function HomeDashboardClient({
     [luckyPools, router]
   );
 
-  // Fade-in sections as they scroll into the viewport.
-  // Re-runs when auth / diary / friends resolve so sections that mount after
-  // the initial render (all user-conditional sections) get observed too.
-  useEffect(() => {
-    const els = document.querySelectorAll('[data-fade-section]:not(.section-visible)')
-    if (!els.length) return
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('section-visible')
-          observer.unobserve(entry.target)
-        }
-      }
-    }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' })
-    els.forEach(el => observer.observe(el))
-    return () => observer.disconnect()
-  }, [user?.id, isDiaryLoaded, friendsHasFollows])
-
   const timeOfDay = getTimeOfDay();
-  const watchlistCount = tonightPickItems.filter(i => i.media_type === "movie" || i.media_type === "tv").length;
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <main style={{ padding: "0 0 80px" }}>
@@ -876,30 +1163,6 @@ export default function HomeDashboardClient({
         @keyframes skeleton-shimmer {
           0%   { background-position: 200% 0; }
           100% { background-position: -200% 0; }
-        }
-
-        /* ── Full-bleed hero (DailyPickCard) ── */
-        .home-full-bleed { /* desktop: card owns its margin */ }
-        @media (max-width: 760px) {
-          .home-full-bleed {
-            margin-inline: -14px;
-            margin-bottom: clamp(14px, 2.4vw, 20px);
-          }
-          .home-full-bleed .dp-card {
-            border-radius: 0 !important;
-            border-left: none !important;
-            border-right: none !important;
-            margin-bottom: 0 !important;
-          }
-          .home-full-bleed > div:not(.dp-card) {
-            border-radius: 0 !important;
-            border-left: none !important;
-            border-right: none !important;
-            margin-bottom: 0 !important;
-          }
-        }
-        @media (max-width: 390px) {
-          .home-full-bleed { margin-inline: -12px; }
         }
 
         /* ── Scroll rails ── */
@@ -969,11 +1232,10 @@ export default function HomeDashboardClient({
           .scroll-row-wrap::after { display: none; }
         }
 
-        /* ── Mobile: full-bleed carousels extend to screen edges ── */
+        /* ── Mobile: full-bleed carousels ── */
         @media (max-width: 760px) {
           .scroll-row-wrap { margin-inline: -14px; }
           .home-row { padding-inline: 14px 32px; gap: 9px; }
-          /* Inside panels: carousel stays within panel bounds */
           .section-panel .scroll-row-wrap { margin-inline: 0; }
           .section-panel .home-row { padding-inline: 2px 24px; }
         }
@@ -984,7 +1246,7 @@ export default function HomeDashboardClient({
           .section-panel .home-row { padding-inline: 2px 20px; }
         }
 
-        /* ── Poster tile hover lift ── */
+        /* ── Poster tile hover ── */
         .poster-tile { transition: transform 0.2s ease; }
         .poster-tile:hover { transform: translateY(-4px) scale(1.03); }
         .poster-tile:hover > div { border-color: var(--rs-border-strong); box-shadow: 0 12px 36px rgba(0,0,0,0.55); }
@@ -999,7 +1261,7 @@ export default function HomeDashboardClient({
           transform: translateY(-2px);
         }
 
-        /* ── Active / press states ── */
+        /* ── Active / press ── */
         @media (prefers-reduced-motion: no-preference) {
           .poster-tile:active { transform: translateY(-1px) scale(0.98); transition-duration: 0.05s; }
           .friend-card:active { transform: scale(0.99); transition-duration: 0.05s; }
@@ -1075,24 +1337,13 @@ export default function HomeDashboardClient({
           .friend-card:hover .rc-tray { opacity: 0; pointer-events: none; }
         }
 
-        /* ── Hero — flat, editorial, no card box ── */
-        .home-hero {
-          padding: clamp(4px, 0.8vw, 8px) 0;
-          margin-bottom: clamp(18px, 3vw, 26px);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-
         /* ── Mobile search ── */
-        .home-mobile-search { display: none; margin-bottom: 10px; }
+        .home-mobile-search { display: none; margin-bottom: 12px; }
         @media (max-width: 700px) {
           .home-mobile-search { display: flex; }
         }
 
-        /* ── Section panel — elevated surface for grouped personal sections ── */
+        /* ── Section panel ── */
         .section-panel {
           background: rgba(255,255,255,0.025);
           border-radius: 14px;
@@ -1103,27 +1354,31 @@ export default function HomeDashboardClient({
           background: linear-gradient(to left, rgba(14,14,14,0.9) 0%, transparent 100%);
         }
 
-        /* ── Continue Your Story: card press feedback ── */
+        /* ── Continue Your Story ── */
         @media (prefers-reduced-motion: no-preference) {
           .cys-card:active { transform: scale(0.99) !important; transition-duration: 0.05s !important; }
+          .cys-hero:active { opacity: 0.92; transition-duration: 0.05s !important; }
         }
-
-        /* ── Continue Your Story: mobile full-width resume button ── */
         @media (max-width: 700px) {
           .cys-resume { align-self: stretch !important; justify-content: center; display: flex !important; }
         }
 
-        /* ── Book of Month — mobile vertical stack ── */
+        /* ── Book of Month — mobile ── */
         @media (max-width: 440px) {
           .botm-card { flex-direction: column !important; }
           .botm-cover { width: 88px !important; }
         }
       `}</style>
 
-      {/* ── 0. DAILY PICK — full-bleed on mobile ────────────────────────────────── */}
-      <div className="home-full-bleed">
-        <DailyPickCard />
-      </div>
+      {/* ── 1. CONTINUE YOUR STORY — homepage hero ───────────────────────────────── */}
+      {user && (
+        <ContinueYourStoryHero
+          entries={continueWatching}
+          displayName={displayName ?? null}
+          timeOfDay={timeOfDay}
+          isLoading={!isDiaryLoaded}
+        />
+      )}
 
       {/* Mobile search */}
       <button
@@ -1143,82 +1398,7 @@ export default function HomeDashboardClient({
         <span>Search films, series, books…</span>
       </button>
 
-      {/* ── 1. HERO ──────────────────────────────────────────────────────────────── */}
-      <div className="home-hero">
-        {/* Left: greeting + stats */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: "clamp(13px, 2vw, 15px)",
-            fontWeight: 600,
-            letterSpacing: "-0.3px",
-            lineHeight: 1.1,
-            color: "rgba(255,255,255,0.88)",
-          }}>
-            {displayName ? `Good ${timeOfDay}, ${displayName}` : `Good ${timeOfDay}`}
-          </h1>
-          {/* Inline stats */}
-          <div style={{ display: "flex", gap: 14, marginTop: 5, flexWrap: "wrap" }}>
-            {[
-              { label: "Diary", value: diaryEntries.length, href: "/diary" },
-              { label: "Watchlist", value: watchlistCount, href: "/watchlist" },
-              ...(user ? [{ label: "Lists", value: listCount, href: "/lists" }] : []),
-            ].map((stat) => (
-              <Link
-                key={stat.label}
-                href={stat.href}
-                style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "baseline", gap: 4 }}
-              >
-                <span style={{ fontSize: "clamp(14px, 2vw, 16px)", fontWeight: 700, letterSpacing: "-0.6px", lineHeight: 1 }}>
-                  {stat.value}
-                </span>
-                <span style={{ fontSize: 9, color: "#484848", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: SANS }}>
-                  {stat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: quick actions */}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <Link
-            href="/diary/log"
-            style={{
-              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
-              borderRadius: 999, background: "white", color: "black",
-              textDecoration: "none", fontSize: 11, fontWeight: 600, fontFamily: SANS,
-              letterSpacing: "0.01em", whiteSpace: "nowrap",
-            }}
-          >
-            + Log
-          </Link>
-          <Link
-            href="/movies"
-            style={{
-              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
-              borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.65)",
-              textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap",
-            }}
-          >
-            Discover
-          </Link>
-          <Link
-            href="/lists/create"
-            style={{
-              display: "inline-flex", alignItems: "center", height: 28, padding: "0 11px",
-              borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.65)",
-              textDecoration: "none", fontSize: 11, fontFamily: SANS, whiteSpace: "nowrap",
-            }}
-          >
-            + List
-          </Link>
-        </div>
-      </div>
-
-      {/* ── 2. TONIGHT'S PICKS ───────────────────────────────────────────────────── */}
+      {/* ── 2. PICK SOMETHING FOR ME ──────────────────────────────────────────────── */}
       <Section
         eyebrow="Tonight"
         title="Pick something for me"
@@ -1272,56 +1452,6 @@ export default function HomeDashboardClient({
             <EmptyRail message="Follow people to see their activity here." href="/discover" cta="Discover people" />
           )}
         </Section>
-      )}
-
-      {/* ── 4. CONTINUE YOUR STORY ───────────────────────────────────────────────── */}
-      {/* State 0: 0 items → outer guard suppresses entirely — no container, no height */}
-      {user && (isDiaryLoaded ? continueWatching.length > 0 : true) && (
-        !isDiaryLoaded ? (
-          /* Loading — landscape skeleton tiles matching card proportions */
-          <section data-fade-section="true" style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}>
-            <div className="home-row">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rs-skeleton"
-                  style={{ width: "min(240px, 58vw)", height: 96, flexShrink: 0, borderRadius: "var(--rs-radius-card)" }}
-                />
-              ))}
-            </div>
-          </section>
-        ) : continueWatching.length === 1 ? (
-          /* State 1: single full-width landscape card */
-          <section data-fade-section="true" style={{ marginBottom: "clamp(16px, 2.8vw, 22px)" }}>
-            <p style={{ margin: "0 0 8px", fontSize: "var(--rs-text-micro)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--rs-text-muted)", fontFamily: SANS }}>
-              Continue Your Story
-            </p>
-            <ContinueYourStoryCard entry={continueWatching[0]} fullWidth />
-          </section>
-        ) : (
-          /* State 2: compact landscape carousel */
-          <Section
-            eyebrow="In Progress"
-            title="Continue Your Story"
-            serif
-            fadeIn
-            variant="medium"
-            action={
-              <Link href="/diary" style={{ color: "#3e3e3e", textDecoration: "none", fontSize: 10, fontFamily: SANS }}>
-                All diary
-              </Link>
-            }
-          >
-            <ScrollRow gap={10}>
-              {continueWatching.map((entry) => (
-                <ContinueYourStoryCard
-                  key={`tv-${entry.showId ?? entry.id}`}
-                  entry={entry}
-                />
-              ))}
-            </ScrollRow>
-          </Section>
-        )
       )}
 
       {/* ── 4. RECENT LISTS ──────────────────────────────────────────────────────── */}
@@ -1386,6 +1516,54 @@ export default function HomeDashboardClient({
               ))}
             </ScrollRow>
           )}
+        </Section>
+      )}
+
+      {/* ── 6. RECOMMENDED FOR YOU ───────────────────────────────────────────────── */}
+      {recommendations.length >= 3 && (
+        <Section
+          eyebrow="For You"
+          title="Recommended for you"
+          serif
+          fadeIn
+          variant="medium"
+        >
+          <ScrollRow>
+            {recommendations.map((item) => (
+              <RecommendationCard key={`rec-${item.mediaType}-${item.id}`} item={item} />
+            ))}
+          </ScrollRow>
+        </Section>
+      )}
+
+      {/* ── 7. FEELING LUCKY ─────────────────────────────────────────────────────── */}
+      {luckyPools && (
+        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(
+              [
+                { type: "movie", label: "Random Film" },
+                { type: "tv", label: "Random Series" },
+                { type: "book", label: "Random Book" },
+              ] as const
+            ).map(({ type, label }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleLucky(type)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
+                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
+                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
+                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
+                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </Section>
       )}
 
@@ -1504,42 +1682,10 @@ export default function HomeDashboardClient({
         </Section>
       )}
 
-      {/* ── FEELING LUCKY ────────────────────────────────────────────────────────── */}
-      {luckyPools && (
-        <Section eyebrow="Discover" title="Feeling lucky?" fadeIn variant="compact">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(
-              [
-                { type: "movie", label: "Random Film", emoji: "🎬" },
-                { type: "tv", label: "Random Series", emoji: "📺" },
-                { type: "book", label: "Random Book", emoji: "📚" },
-              ] as const
-            ).map(({ type, label, emoji }) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleLucky(type)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 16px",
-                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.62)", fontSize: 12, fontFamily: SANS, cursor: "pointer",
-                  transition: "background 0.16s ease, border-color 0.16s ease, color 0.16s ease", whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.08)"; el.style.borderColor = "rgba(255,255,255,0.2)"; el.style.color = "rgba(255,255,255,0.88)"; }}
-                onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.62)"; }}
-              >
-                <span style={{ fontSize: 14 }}>{emoji}</span>
-                {label}
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-
       {/* ── MOOD RECOMMENDATIONS ─────────────────────────────────────────────────── */}
       <MoodRecommendations />
 
-      {/* ── MORE FILMS / SERIES / BOOKS YOU'LL LOVE ─────────────────────────────── */}
+      {/* ── BECAUSE YOU LIKED ────────────────────────────────────────────────────── */}
       <BecauseYouLikedRow mediaType="movie" title="More films you'll love" />
       <BecauseYouLikedRow mediaType="tv" title="Series matched to your taste" />
       <BecauseYouLikedRow mediaType="book" title="Books picked for you" />
