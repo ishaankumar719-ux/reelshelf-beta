@@ -14,6 +14,8 @@ import {
   scoreCandidate,
   generateReasons,
 } from "@/lib/recommendation-engine"
+import { COLLECTION_DEFS } from "@/lib/discoverCollections"
+import SurpriseMe from "@/components/discover/SurpriseMe"
 
 export const metadata = {
   title: "Discover – ReelShelf",
@@ -28,6 +30,7 @@ interface TMDBMovieResult {
   poster_path: string | null
   release_date: string
   popularity: number
+  vote_average?: number
 }
 
 interface TMDBTvResult {
@@ -36,6 +39,18 @@ interface TMDBTvResult {
   poster_path: string | null
   first_air_date: string
   popularity: number
+  vote_average?: number
+}
+
+interface TMDBDiscoverResult {
+  id: number
+  title?: string
+  name?: string
+  poster_path: string | null
+  release_date?: string
+  first_air_date?: string
+  popularity: number
+  vote_average?: number
 }
 
 interface DiscoverItem {
@@ -48,7 +63,16 @@ interface DiscoverItem {
   subtitle?: string
   reason?: string
   releaseBadge?: string
+  badge?: string
   trendScore?: number
+}
+
+interface CollectionCard {
+  slug: string
+  name: string
+  description: string
+  posters: string[]
+  count: number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -59,13 +83,29 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_TMDB_AP
 const TMDB_BASE = "https://api.themoviedb.org/3"
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 
+const GENRE_CHIPS = [
+  { slug: "sci-fi", label: "Sci-Fi", emoji: "🚀" },
+  { slug: "thriller", label: "Thriller", emoji: "🔪" },
+  { slug: "comedy", label: "Comedy", emoji: "😂" },
+  { slug: "fantasy", label: "Fantasy", emoji: "🔮" },
+  { slug: "mystery", label: "Mystery", emoji: "🕵️" },
+  { slug: "drama", label: "Drama", emoji: "🎭" },
+  { slug: "animation", label: "Animation", emoji: "✏️" },
+  { slug: "romance", label: "Romance", emoji: "💕" },
+  { slug: "horror", label: "Horror", emoji: "👻" },
+  { slug: "crime", label: "Crime", emoji: "🚔" },
+  { slug: "documentary", label: "Documentary", emoji: "🎥" },
+  { slug: "adventure", label: "Adventure", emoji: "🗺️" },
+] as const
+
 // ─── Data helpers ─────────────────────────────────────────────────────────────
 
 async function tmdbGet<T>(path: string): Promise<T[]> {
   if (!TMDB_API_KEY) return []
   try {
+    const sep = path.includes("?") ? "&" : "?"
     const res = await fetch(
-      `${TMDB_BASE}${path}?api_key=${TMDB_API_KEY}&language=en-US`,
+      `${TMDB_BASE}${path}${sep}api_key=${TMDB_API_KEY}&language=en-US`,
       { next: { revalidate: 3600 } },
     )
     if (!res.ok) return []
@@ -102,7 +142,23 @@ function countOccurrences(rows: { media_id: string }[]): Map<string, number> {
   return m
 }
 
-// ─── Recommendations (identical pattern to homepage) ─────────────────────────
+function discoverResultToItem(
+  r: TMDBDiscoverResult,
+  mediaType: "movie" | "tv",
+  badge?: string,
+): DiscoverItem {
+  return {
+    id: String(r.id),
+    mediaType,
+    title: r.title ?? r.name ?? "Untitled",
+    year: yearOf(r.release_date ?? r.first_air_date),
+    poster: tmdbPoster(r.poster_path),
+    href: mediaType === "movie" ? `/films/${r.id}` : getSeriesHrefFromTmdbId(r.id),
+    badge,
+  }
+}
+
+// ─── Recommendations ──────────────────────────────────────────────────────────
 
 async function getRecommendations(
   supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
@@ -195,7 +251,6 @@ function MediaBadge({ mediaType }: { mediaType: DiscoverItem["mediaType"] }) {
 function DiscoverCard({ item }: { item: DiscoverItem }) {
   return (
     <Link href={item.href} className="disc-card" style={{ textDecoration: "none", color: "inherit" }}>
-      {/* Poster */}
       <div style={{
         position: "relative",
         aspectRatio: "2/3",
@@ -216,13 +271,9 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
         ) : (
           <div style={{
             position: "absolute", inset: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 10,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
           }}>
-            <span style={{
-              fontFamily: SERIF, fontStyle: "italic", fontSize: 11,
-              color: "rgba(255,255,255,0.2)", textAlign: "center",
-            }}>
+            <span style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 11, color: "rgba(255,255,255,0.2)", textAlign: "center" }}>
               {item.title}
             </span>
           </div>
@@ -236,19 +287,26 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
           <div style={{
             position: "absolute", bottom: 6, left: 7, right: 7,
             fontFamily: SANS, fontSize: 9, fontWeight: 700,
-            color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em",
-            lineHeight: 1.3,
+            color: "rgba(255,255,255,0.85)", letterSpacing: "0.03em", lineHeight: 1.3,
           }}>
             {item.releaseBadge}
           </div>
         )}
       </div>
 
-      {/* Text */}
       <div style={{ padding: "0 1px" }}>
         <div style={{ marginBottom: 4 }}>
           <MediaBadge mediaType={item.mediaType} />
         </div>
+        {item.badge && (
+          <p style={{
+            margin: "0 0 4px",
+            fontFamily: SANS, fontSize: 9, fontWeight: 700,
+            letterSpacing: "0.04em", color: "rgba(29,158,117,0.9)",
+          }}>
+            {item.badge}
+          </p>
+        )}
         <p style={{
           margin: 0,
           fontFamily: SANS, fontSize: 12, fontWeight: 600,
@@ -264,8 +322,7 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
             margin: "3px 0 0",
             fontFamily: SANS, fontSize: 10,
             color: "rgba(255,255,255,0.3)", lineHeight: 1.4,
-            overflow: "hidden", textOverflow: "ellipsis",
-            whiteSpace: "nowrap" as const,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const,
           }}>
             {[item.year, item.subtitle].filter(Boolean).join(" · ")}
           </p>
@@ -323,6 +380,67 @@ function ScrollRow({ items }: { items: DiscoverItem[] }) {
   )
 }
 
+function CollectionCardUI({ col }: { col: CollectionCard }) {
+  return (
+    <Link href={`/discover/collection/${col.slug}`} className="disc-coll-card" style={{ textDecoration: "none", color: "inherit" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        height: 120,
+        borderRadius: "10px 10px 0 0",
+        overflow: "hidden",
+      }}>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} style={{ overflow: "hidden", background: "#131320" }}>
+            {col.posters[i] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={col.posters[i]}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.72, display: "block" }}
+                loading="lazy"
+              />
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div style={{
+        padding: "10px 12px 12px",
+        background: "#0d0d14",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderTop: "none",
+        borderRadius: "0 0 10px 10px",
+      }}>
+        <p style={{
+          margin: "0 0 3px",
+          fontFamily: SANS, fontSize: 9, fontWeight: 700,
+          letterSpacing: "0.07em", textTransform: "uppercase" as const,
+          color: "rgba(255,255,255,0.28)",
+        }}>
+          {col.count} title{col.count !== 1 ? "s" : ""}
+        </p>
+        <p style={{
+          margin: "0 0 4px",
+          fontFamily: SANS, fontSize: 13, fontWeight: 700,
+          color: "rgba(255,255,255,0.88)", lineHeight: 1.3,
+        }}>
+          {col.name}
+        </p>
+        <p style={{
+          margin: 0,
+          fontFamily: SERIF, fontStyle: "italic", fontSize: 10,
+          color: "rgba(255,255,255,0.33)", lineHeight: 1.5,
+          display: "-webkit-box",
+          WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
+        }}>
+          {col.description}
+        </p>
+      </div>
+    </Link>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DiscoverPage() {
@@ -340,6 +458,10 @@ export default async function DiscoverPage() {
     trendingTvWeekRaw,
     userResult,
     bookLogsResult,
+    hiddenMoviesRaw,
+    hiddenTvRaw,
+    awardMoviesRaw,
+    awardTvRaw,
   ] = await Promise.all([
     tmdbGet<TMDBMovieResult>("/trending/movie/day"),
     tmdbGet<TMDBTvResult>("/trending/tv/day"),
@@ -354,6 +476,12 @@ export default async function DiscoverPage() {
           .gte("watched_date", thirtyDaysAgo)
           .not("media_id", "is", null)
       : Promise.resolve({ data: null }),
+    // Section 6 — Hidden Gems: high rating, low vote_count (not massively popular)
+    tmdbGet<TMDBDiscoverResult>("/discover/movie?vote_average.gte=7.5&vote_count.gte=100&vote_count.lte=5000&sort_by=vote_average.desc&include_adult=false"),
+    tmdbGet<TMDBDiscoverResult>("/discover/tv?vote_average.gte=7.5&vote_count.gte=50&vote_count.lte=2000&sort_by=vote_average.desc&include_adult=false"),
+    // Section 7 — Award Winners: very high rating, well-known
+    tmdbGet<TMDBDiscoverResult>("/discover/movie?vote_average.gte=8.0&vote_count.gte=1000&sort_by=popularity.desc&include_adult=false"),
+    tmdbGet<TMDBDiscoverResult>("/discover/tv?vote_average.gte=8.0&vote_count.gte=300&sort_by=popularity.desc&include_adult=false"),
   ])
 
   const user = userResult?.data?.user ?? null
@@ -364,7 +492,6 @@ export default async function DiscoverPage() {
   const bookCounts7d = countOccurrences(bookLogsAll.filter((r) => r.watched_date >= sevenDaysAgo))
 
   // ── Book cover resolution ───────────────────────────────────────────────────
-  // Prioritise trending books, supplement with first few localBooks for fallback
   const trendingBookIds = new Set([
     ...Array.from(bookCounts30d.keys()).slice(0, 10),
     ...Array.from(bookCounts7d.keys()).slice(0, 5),
@@ -376,7 +503,7 @@ export default async function DiscoverPage() {
   const resolvedBooks = booksForCover.length > 0 ? await resolveBooksWithCovers(booksForCover) : []
   const bookCoverMap = new Map(resolvedBooks.map((b) => [b.id, b.coverUrl ?? null]))
 
-  // ── Section 1: Trending Today (movies + TV + books merged by score) ─────────
+  // ── Section 1: Trending Today ───────────────────────────────────────────────
   const s1Movies: DiscoverItem[] = trendingMoviesRaw.slice(0, 6).map((m) => ({
     id: String(m.id), mediaType: "movie" as const,
     title: m.title, year: yearOf(m.release_date),
@@ -430,7 +557,7 @@ export default async function DiscoverPage() {
     poster: tmdbPoster(t.poster_path), href: getSeriesHrefFromTmdbId(t.id),
   }))
 
-  // ── Section 5: Trending Books (30d, supplement with localBooks if < 5) ──────
+  // ── Section 5: Trending Books ───────────────────────────────────────────────
   const trendingBooks30d: DiscoverItem[] = Array.from(bookCounts30d.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
@@ -457,12 +584,61 @@ export default async function DiscoverPage() {
             })),
         ]
 
+  // ── Section 6: Hidden Gems ──────────────────────────────────────────────────
+  const hiddenGems: DiscoverItem[] = [
+    ...hiddenMoviesRaw.slice(0, 6).map((r) => discoverResultToItem(r, "movie", "Hidden Gem 💎")),
+    ...hiddenTvRaw.slice(0, 6).map((r) => discoverResultToItem(r, "tv", "Hidden Gem 💎")),
+  ].slice(0, 10)
+
+  // ── Section 7: Award Winners ────────────────────────────────────────────────
+  const awardWinners: DiscoverItem[] = [
+    ...awardMoviesRaw.slice(0, 6).map((r) => discoverResultToItem(r, "movie", "Award Winner 🏆")),
+    ...awardTvRaw.slice(0, 6).map((r) => discoverResultToItem(r, "tv", "Award Winner 🏆")),
+  ].slice(0, 10)
+
+  // ── Section 10: Collections ─────────────────────────────────────────────────
+  const tmdbCollDefs = COLLECTION_DEFS.filter((c) => !!c.tmdbPath)
+  const localCollDefs = COLLECTION_DEFS.filter((c) => !!c.localFilter)
+
+  const collDataRaw = await Promise.all(
+    tmdbCollDefs.map((c) => tmdbGet<TMDBDiscoverResult>(c.tmdbPath!))
+  )
+
+  const tmdbCollections: CollectionCard[] = tmdbCollDefs
+    .map((def, i) => ({
+      slug: def.slug,
+      name: def.name,
+      description: def.description,
+      posters: collDataRaw[i]
+        .slice(0, 4)
+        .map((r) => tmdbPoster(r.poster_path))
+        .filter(Boolean) as string[],
+      count: collDataRaw[i].length,
+    }))
+    .filter((c) => c.count >= 3)
+
+  const classicBooks = localBooks.filter((b) => parseInt(b.year) < 1980)
+  const movieTitleSet = new Set(localMovies.map((m) => m.title.toLowerCase()))
+  const adaptationBooks = localBooks.filter((b) => movieTitleSet.has(b.title.toLowerCase()))
+
+  const localCollections: CollectionCard[] = localCollDefs
+    .map((def) => {
+      const books = def.localFilter === "classic-literature" ? classicBooks : adaptationBooks
+      const posters = books
+        .slice(0, 4)
+        .map((b) => bookCoverMap.get(b.id) ?? null)
+        .filter(Boolean) as string[]
+      return { slug: def.slug, name: def.name, description: def.description, posters, count: books.length }
+    })
+    .filter((c) => c.count >= 3)
+
+  const allCollections: CollectionCard[] = [...tmdbCollections, ...localCollections]
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
       <style>{`
-        /* ── Hero full-bleed (escapes app-shell padding) ─────────── */
         .disc-hero {
           margin-top: -28px;
           margin-inline: -20px;
@@ -482,12 +658,8 @@ export default async function DiscoverPage() {
           .disc-hero { margin-top: -12px; margin-inline: -12px; }
         }
 
-        /* ── Section layout ──────────────────────────────────────── */
-        .disc-section {
-          padding-top: clamp(28px,4vw,44px);
-        }
+        .disc-section { padding-top: clamp(28px,4vw,44px); }
 
-        /* ── Carousel ────────────────────────────────────────────── */
         .disc-row-wrap { overflow: hidden; }
         .disc-row {
           display: flex;
@@ -499,7 +671,6 @@ export default async function DiscoverPage() {
           padding-bottom: 4px;
         }
         .disc-row::-webkit-scrollbar { display: none; }
-
         @media (max-width: 760px) {
           .disc-row-wrap { margin-inline: -14px; }
           .disc-row { padding-inline: 14px 32px; }
@@ -509,7 +680,6 @@ export default async function DiscoverPage() {
           .disc-row { padding-inline: 12px 24px; }
         }
 
-        /* ── Cards ───────────────────────────────────────────────── */
         .disc-card {
           flex-shrink: 0;
           scroll-snap-align: start;
@@ -519,13 +689,55 @@ export default async function DiscoverPage() {
         .disc-card:hover { transform: translateY(-3px); }
         .disc-card:hover img { filter: brightness(1.05); }
         .disc-card img { transition: filter 0.18s ease; }
+        @media (max-width: 390px) { .disc-card { width: min(120px, 36vw); } }
 
-        @media (max-width: 390px) {
-          .disc-card { width: min(120px, 36vw); }
+        .disc-genre-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
         }
+        @media (max-width: 760px) { .disc-genre-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 480px) { .disc-genre-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+
+        .disc-genre-chip {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 11px 14px;
+          border-radius: 9999px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          text-decoration: none;
+          color: rgba(255,255,255,0.72);
+          font-family: "Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+          white-space: nowrap;
+        }
+        .disc-genre-chip:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.92);
+        }
+        @media (max-width: 480px) {
+          .disc-genre-chip { font-size: 12px; padding: 9px 12px; }
+        }
+
+        .disc-coll-card {
+          flex-shrink: 0;
+          scroll-snap-align: start;
+          width: min(240px, 62vw);
+          border-radius: 10px;
+          overflow: hidden;
+          transition: transform 0.18s ease;
+          display: block;
+        }
+        .disc-coll-card:hover { transform: translateY(-3px); }
+        @media (max-width: 390px) { .disc-coll-card { width: min(210px, 75vw); } }
       `}</style>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* Hero */}
       <div className="disc-hero">
         <div style={{ maxWidth: 700 }}>
           <p style={{
@@ -556,7 +768,7 @@ export default async function DiscoverPage() {
         </div>
       </div>
 
-      {/* ── Section 1: Trending Today ─────────────────────────────────────── */}
+      {/* Section 1: Trending Today */}
       {trendingToday.length > 0 && (
         <div className="disc-section">
           <SectionHead eyebrow="Right now" title="🔥 Trending Today" />
@@ -564,7 +776,7 @@ export default async function DiscoverPage() {
         </div>
       )}
 
-      {/* ── Section 2: Because You Loved ─────────────────────────────────── */}
+      {/* Section 2: Because You Loved */}
       {recommendations.length >= 3 && (
         <div className="disc-section">
           <SectionHead eyebrow="Personalised for you" title="❤️ Because You Loved…" />
@@ -572,7 +784,7 @@ export default async function DiscoverPage() {
         </div>
       )}
 
-      {/* ── Section 3: New Movies ─────────────────────────────────────────── */}
+      {/* Section 3: New Movies */}
       {newMovies.length > 0 && (
         <div className="disc-section">
           <SectionHead eyebrow="In cinemas soon" title="🎬 New Movies" />
@@ -580,7 +792,7 @@ export default async function DiscoverPage() {
         </div>
       )}
 
-      {/* ── Section 4: Trending TV ───────────────────────────────────────── */}
+      {/* Section 4: Trending TV */}
       {trendingTvWeek.length > 0 && (
         <div className="disc-section">
           <SectionHead eyebrow="This week" title="📺 Trending TV" />
@@ -588,7 +800,7 @@ export default async function DiscoverPage() {
         </div>
       )}
 
-      {/* ── Section 5: Trending Books ────────────────────────────────────── */}
+      {/* Section 5: Trending Books */}
       {trendingBooksDisplay.length > 0 && (
         <div className="disc-section">
           <SectionHead eyebrow="On shelves" title="📚 Trending Books" />
@@ -596,7 +808,55 @@ export default async function DiscoverPage() {
         </div>
       )}
 
-      {/* Bottom breathing room */}
+      {/* Section 6: Hidden Gems */}
+      {hiddenGems.length >= 3 && (
+        <div className="disc-section">
+          <SectionHead eyebrow="Critically acclaimed, rarely watched" title="💎 Hidden Gems" />
+          <ScrollRow items={hiddenGems} />
+        </div>
+      )}
+
+      {/* Section 7: Award Winners */}
+      {awardWinners.length >= 3 && (
+        <div className="disc-section">
+          <SectionHead eyebrow="The best of the best" title="🏆 Award Winners" />
+          <ScrollRow items={awardWinners} />
+        </div>
+      )}
+
+      {/* Section 8: Browse by Genre */}
+      <div className="disc-section">
+        <SectionHead eyebrow="Explore by mood" title="🎭 Browse by Genre" />
+        <div className="disc-genre-grid">
+          {GENRE_CHIPS.map(({ slug, label, emoji }) => (
+            <Link key={slug} href={`/discover/genre/${slug}`} className="disc-genre-chip">
+              <span style={{ fontSize: 16 }}>{emoji}</span>
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 9: Surprise Me */}
+      <div className="disc-section">
+        <SectionHead eyebrow="Not sure what to watch?" title="🎲 Surprise Me" />
+        <SurpriseMe />
+      </div>
+
+      {/* Section 10: Collections */}
+      {allCollections.length > 0 && (
+        <div className="disc-section">
+          <SectionHead eyebrow="Curated" title="🗂 Collections" />
+          <div className="disc-row-wrap">
+            <div className="disc-row">
+              {allCollections.map((col) => (
+                <CollectionCardUI key={col.slug} col={col} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ height: "clamp(24px,4vw,40px)" }} />
     </>
   )
