@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -73,8 +73,127 @@ export default function ListDetailPage() {
   // Add media
   const [searchOpen,        setSearchOpen]        = useState(false)
 
-  // Drag state
+  // Desktop HTML5 DnD state (unchanged)
   const [draggedIndex,      setDraggedIndex]      = useState<number | null>(null)
+
+  // Touch DnD state
+  const [touchDragIdx,      setTouchDragIdx]      = useState<number | null>(null)
+
+  // Mobile overflow menu state
+  const [overflowMenuIdx,   setOverflowMenuIdx]   = useState<number | null>(null)
+
+  // ── Refs for touch drag (avoid stale closures in document-level handlers) ──
+
+  // Mirrors items state — updated synchronously before setItems so onDocTouchEnd reads the final order
+  const itemsRef       = useRef<ListItem[]>([])
+  const isOwnerRef     = useRef(false)
+  const isDraggingTouch = useRef(false)
+  // Tracks which index is being dragged without going stale inside the document handler
+  const touchDragIdxRef = useRef<number | null>(null)
+  // DOM element refs for each list item (used to compute drag position)
+  const itemElsRef     = useRef<(HTMLElement | null)[]>([])
+
+  // Keep owner ref in sync
+  useEffect(() => { isOwnerRef.current = isOwner }, [isOwner])
+
+  // ── Helper: update items in both ref and state ────────────────────────────
+
+  function updateItems(next: ListItem[]) {
+    itemsRef.current = next
+    setItems(next)
+  }
+
+  // ── Document-level touch handlers (run once on mount) ─────────────────────
+
+  useEffect(() => {
+    function getTargetIndex(clientY: number): number {
+      const els = itemElsRef.current
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i]
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        if (clientY < rect.top + rect.height / 2) return i
+      }
+      return Math.max(0, els.filter(Boolean).length - 1)
+    }
+
+    function onDocTouchMove(e: TouchEvent) {
+      if (!isDraggingTouch.current) return
+      // Prevent page scroll while touch-dragging
+      e.preventDefault()
+
+      const touch = e.touches[0]
+      const clientY = touch.clientY
+
+      // Auto-scroll when near viewport edges
+      const EDGE = 80
+      const vh = window.innerHeight
+      if (clientY < EDGE) {
+        window.scrollBy(0, -Math.max(2, Math.round((EDGE - clientY) / 5)))
+      } else if (clientY > vh - EDGE) {
+        window.scrollBy(0, Math.max(2, Math.round((clientY - (vh - EDGE)) / 5)))
+      }
+
+      // Compute target index from touch position
+      const targetIdx = getTargetIndex(clientY)
+      const currentIdx = touchDragIdxRef.current
+
+      if (currentIdx !== null && targetIdx !== currentIdx) {
+        const reordered = [...itemsRef.current]
+        const [removed] = reordered.splice(currentIdx, 1)
+        reordered.splice(targetIdx, 0, removed)
+        const withRanks = reordered.map((it, i) => ({ ...it, rank_order: i + 1 }))
+        // Sync ref first so onDocTouchEnd always has the final order
+        itemsRef.current = withRanks
+        setItems(withRanks)
+        touchDragIdxRef.current = targetIdx
+        setTouchDragIdx(targetIdx)
+      }
+    }
+
+    function onDocTouchEnd() {
+      if (!isDraggingTouch.current) return
+      isDraggingTouch.current = false
+      touchDragIdxRef.current = null
+      setTouchDragIdx(null)
+
+      if (!isOwnerRef.current) return
+      const finalItems = itemsRef.current
+      if (finalItems.length === 0) return
+
+      void (async () => {
+        const supabase = createClient()
+        if (!supabase) return
+        await supabase.rpc("update_list_items_order", {
+          payload: finalItems.map((it) => ({ id: it.id, rank_order: it.rank_order })),
+        })
+      })()
+    }
+
+    document.addEventListener("touchmove", onDocTouchMove, { passive: false })
+    document.addEventListener("touchend", onDocTouchEnd, { passive: true })
+    return () => {
+      document.removeEventListener("touchmove", onDocTouchMove)
+      document.removeEventListener("touchend", onDocTouchEnd)
+    }
+  }, [])
+
+  // ── Close overflow menu on outside tap ────────────────────────────────────
+
+  useEffect(() => {
+    if (overflowMenuIdx === null) return
+    function onOutside(e: PointerEvent) {
+      const target = e.target as HTMLElement
+      if (
+        !target.closest("[data-overflow-menu]") &&
+        !target.closest("[data-overflow-trigger]")
+      ) {
+        setOverflowMenuIdx(null)
+      }
+    }
+    document.addEventListener("pointerdown", onOutside)
+    return () => document.removeEventListener("pointerdown", onOutside)
+  }, [overflowMenuIdx])
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -127,8 +246,10 @@ export default function ListDetailPage() {
         : Promise.resolve({ data: null }),
     ])
 
+    const fetchedItems = (itemsData ?? []) as ListItem[]
+    itemsRef.current = fetchedItems
     setList(listData)
-    setItems((itemsData ?? []) as ListItem[])
+    setItems(fetchedItems)
     setCreator(profileData as Creator | null)
     setIsOwner(owned)
     setCurrentUserId(user?.id ?? null)
@@ -182,7 +303,7 @@ export default function ListDetailPage() {
       const updated = items
         .filter((it) => it.id !== itemId)
         .map((it, idx) => ({ ...it, rank_order: idx + 1 }))
-      setItems(updated)
+      updateItems(updated)
       if (updated.length > 0) {
         await supabase.rpc("update_list_items_order", {
           payload: updated.map((it) => ({ id: it.id, rank_order: it.rank_order })),
@@ -191,7 +312,7 @@ export default function ListDetailPage() {
     }
   }
 
-  // ── Drag-and-drop (owner only, desktop) ───────────────────────────────────
+  // ── Desktop HTML5 Drag-and-drop (completely unchanged) ────────────────────
 
   function handleDragStart(index: number) {
     if (!isOwner) return
@@ -219,6 +340,34 @@ export default function ListDetailPage() {
     if (!supabase) return
     await supabase.rpc("update_list_items_order", {
       payload: items.map((it) => ({ id: it.id, rank_order: it.rank_order })),
+    })
+  }
+
+  // ── Touch grip handler (called from the 44×44 grip button on mobile) ──────
+
+  function handleGripTouchStart(e: React.TouchEvent, index: number) {
+    if (!isOwner) return
+    // Prevent the browser from starting a scroll gesture
+    e.preventDefault()
+    isDraggingTouch.current = true
+    touchDragIdxRef.current = index
+    setTouchDragIdx(index)
+  }
+
+  // ── Overflow menu: move item to a new position ────────────────────────────
+
+  async function moveItem(fromIdx: number, toIdx: number) {
+    if (toIdx < 0 || toIdx >= items.length || fromIdx === toIdx) return
+    const reordered = [...items]
+    const [removed] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, removed)
+    const withRanks = reordered.map((it, i) => ({ ...it, rank_order: i + 1 }))
+    updateItems(withRanks)
+    setOverflowMenuIdx(null)
+    const supabase = createClient()
+    if (!supabase) return
+    await supabase.rpc("update_list_items_order", {
+      payload: withRanks.map((it) => ({ id: it.id, rank_order: it.rank_order })),
     })
   }
 
@@ -444,37 +593,73 @@ export default function ListDetailPage() {
               <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold">
                 {list.is_ranked ? "Ranking" : "Custom Order"}
               </span>
-              <span className="text-[10px] text-zinc-600">Drag to reorder</span>
+              {/* Desktop hint */}
+              {list.is_ranked && (
+                <span className="text-[10px] text-zinc-600 hidden md:inline">Drag to reorder</span>
+              )}
+              {/* Mobile hint */}
+              {list.is_ranked && (
+                <span className="text-[10px] text-zinc-700 md:hidden">Hold ⠿ to drag · Tap ⋮ to rearrange</span>
+              )}
             </div>
           )}
           {items.map((item, index) => {
             const mediaHref = getMediaHref({ id: item.media_id, mediaType: item.media_type })
-            const isDragging = draggedIndex === index
+            const isHtml5Dragging = draggedIndex === index
+            const isTouchDragging = touchDragIdx === index
 
             return (
               <div
                 key={item.id}
+                ref={(el) => { itemElsRef.current[index] = el }}
                 draggable={isOwner}
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={() => void handleDragEnd()}
                 className={[
-                  "flex items-center gap-4 p-3 rounded-xl border transition-all duration-200 group",
-                  isDragging
-                    ? "opacity-40 border-zinc-700 bg-zinc-900 scale-[0.98]"
-                    : "border-zinc-900 bg-zinc-950/60 hover:border-zinc-800 hover:bg-zinc-950/90",
-                  isOwner ? "cursor-grab active:cursor-grabbing" : "",
+                  "flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 group",
+                  isTouchDragging
+                    ? "border-zinc-500 bg-zinc-900 shadow-2xl relative z-10"
+                    : isHtml5Dragging
+                      ? "opacity-40 border-zinc-700 bg-zinc-900 scale-[0.98]"
+                      : "border-zinc-900 bg-zinc-950/60 hover:border-zinc-800 hover:bg-zinc-950/90",
+                  isOwner && !isTouchDragging ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
+                style={isTouchDragging ? { transform: "scale(1.02)", boxShadow: "0 16px 40px rgba(0,0,0,0.7)" } : undefined}
               >
-                {/* Rank — only shown for ranked lists */}
+                {/* ── Mobile grip handle — 44×44 touch target, ranked lists only ── */}
+                {isOwner && list.is_ranked && (
+                  <div
+                    className="flex md:hidden items-center justify-center shrink-0 select-none"
+                    style={{ width: 44, height: 44, touchAction: "none", cursor: "grab" }}
+                    onTouchStart={(e) => handleGripTouchStart(e, index)}
+                    aria-label="Drag to reorder"
+                  >
+                    <span
+                      style={{
+                        fontSize: 20,
+                        lineHeight: 1,
+                        color: isTouchDragging
+                          ? "rgba(255,255,255,0.72)"
+                          : "rgba(255,255,255,0.25)",
+                        transition: "color 0.15s ease",
+                        userSelect: "none",
+                      }}
+                    >
+                      ⠿
+                    </span>
+                  </div>
+                )}
+
+                {/* ── Rank number — only for ranked lists ── */}
                 {list.is_ranked && (
                   <div className="w-8 text-center text-sm font-black text-zinc-700 group-hover:text-zinc-400 transition-colors shrink-0 select-none">
                     #{item.rank_order}
                   </div>
                 )}
 
-                {/* Drag handle — visible affordance for the owner on any list */}
-                {isOwner && (
+                {/* ── Desktop drag handle — only for ranked lists, hidden on mobile ── */}
+                {isOwner && list.is_ranked && (
                   <div className="hidden md:flex flex-col gap-0.5 shrink-0 opacity-40 group-hover:opacity-80 transition-opacity">
                     <span className="block w-3 h-px bg-zinc-400" />
                     <span className="block w-3 h-px bg-zinc-400" />
@@ -482,7 +667,7 @@ export default function ListDetailPage() {
                   </div>
                 )}
 
-                {/* Poster */}
+                {/* ── Poster ── */}
                 <button
                   type="button"
                   onClick={() => router.push(mediaHref)}
@@ -503,7 +688,7 @@ export default function ListDetailPage() {
                   )}
                 </button>
 
-                {/* Info */}
+                {/* ── Info ── */}
                 <div className="flex-1 min-w-0">
                   <button
                     type="button"
@@ -523,16 +708,65 @@ export default function ListDetailPage() {
                   )}
                 </div>
 
-                {/* Remove */}
+                {/* ── Desktop remove button — hidden on mobile ── */}
                 {isOwner && (
                   <button
                     type="button"
                     onClick={() => void removeItem(item.id)}
                     aria-label={`Remove ${item.title}`}
-                    className="p-2 text-zinc-700 hover:text-red-400 rounded-lg hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all shrink-0 md:block"
+                    className="p-2 text-zinc-700 hover:text-red-400 rounded-lg hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all shrink-0 hidden md:block"
                   >
                     ✕
                   </button>
+                )}
+
+                {/* ── Mobile overflow menu — ranked lists only, hidden on desktop ── */}
+                {isOwner && list.is_ranked && (
+                  <div className="relative md:hidden shrink-0" data-overflow-trigger="true">
+                    <button
+                      type="button"
+                      data-overflow-trigger="true"
+                      onClick={() => setOverflowMenuIdx(overflowMenuIdx === index ? null : index)}
+                      className="flex items-center justify-center text-zinc-500 active:text-zinc-200 transition-colors"
+                      style={{ width: 36, height: 44, fontSize: 20, lineHeight: 1 }}
+                      aria-label="More options"
+                      aria-expanded={overflowMenuIdx === index}
+                    >
+                      ⋮
+                    </button>
+
+                    {overflowMenuIdx === index && (
+                      <div
+                        data-overflow-menu="true"
+                        className="absolute right-0 top-full mt-1 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden"
+                        style={{ minWidth: 160, zIndex: 50 }}
+                      >
+                        {(
+                          [
+                            { label: "Move Up",       toIdx: index - 1,             disabled: index === 0 },
+                            { label: "Move Down",     toIdx: index + 1,             disabled: index === items.length - 1 },
+                            { label: "Move to Top",   toIdx: 0,                     disabled: index === 0 },
+                            { label: "Move to Bottom",toIdx: items.length - 1,      disabled: index === items.length - 1 },
+                          ] as const
+                        ).map(({ label, toIdx, disabled }) => (
+                          <button
+                            key={label}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => { if (!disabled) void moveItem(index, toIdx) }}
+                            className={[
+                              "w-full text-left px-4 py-3 text-sm border-b border-zinc-800/60 last:border-b-0 transition-colors",
+                              disabled
+                                ? "text-zinc-700 cursor-default"
+                                : "text-zinc-300 active:bg-zinc-700 hover:bg-zinc-800 hover:text-white",
+                            ].join(" ")}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )
