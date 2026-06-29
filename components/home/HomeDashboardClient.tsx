@@ -14,7 +14,6 @@ import TonightsPick from "./TonightsPick";
 import type { SavedItem } from "./PickCard";
 import WeeklyChallengesSection from "../WeeklyChallengesSection";
 import DailyReelCard from "./DailyReelCard";
-import DailyPickCard from "./DailyPickCard";
 import MoodRecommendations from "../MoodRecommendations/MoodRecommendations";
 import ReactionTray from "../ReactionTray/ReactionTray";
 import CommentDrawer from "../CommentDrawer/CommentDrawer";
@@ -1370,35 +1369,7 @@ export default function HomeDashboardClient({
           .botm-cover { width: 88px !important; }
         }
 
-        /* ── Daily Pick — full-bleed on mobile ── */
-        .home-full-bleed { }
-        @media (max-width: 760px) {
-          .home-full-bleed {
-            margin-inline: -14px;
-            margin-bottom: clamp(14px, 2.4vw, 20px);
-          }
-          .home-full-bleed .dp-card {
-            border-radius: 0 !important;
-            border-left: none !important;
-            border-right: none !important;
-            margin-bottom: 0 !important;
-          }
-          .home-full-bleed > div:not(.dp-card) {
-            border-radius: 0 !important;
-            border-left: none !important;
-            border-right: none !important;
-            margin-bottom: 0 !important;
-          }
-        }
-        @media (max-width: 390px) {
-          .home-full-bleed { margin-inline: -12px; }
-        }
       `}</style>
-
-      {/* ── 0. DAILY PICK — full-bleed on mobile ─────────────────────────────────── */}
-      <div className="home-full-bleed">
-        <DailyPickCard />
-      </div>
 
       {/* ── 1. CONTINUE YOUR STORY — homepage hero ───────────────────────────────── */}
       {user && (
