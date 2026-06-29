@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { DiscoverItem, CollectionCard, HeroCard } from "@/lib/discoverTypes"
 import SurpriseMe from "./SurpriseMe"
+import { getDiaryMovies, subscribeToDiary } from "../../lib/diary"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -210,8 +211,46 @@ export default function DiscoverClient({
   const [heroVisible, setHeroVisible] = useState(true)
   const [genresExpanded, setGenresExpanded] = useState(false)
   const [heroLoading, setHeroLoading] = useState(false)
+  const [continueItem, setContinueItem] = useState<{
+    title: string; subtitle: string; poster: string | null; href: string
+  } | null>(null)
 
   const show = (id: string) => SHOW_MAP[filter].has(id)
+
+  // Continue watching — in-progress TV shows for logged-in users
+  useEffect(() => {
+    if (!isLoggedIn) return
+    function compute() {
+      const entries = getDiaryMovies()
+      const tvEntries = entries.filter((e) => e.mediaType === "tv")
+      const completedIds = new Set(
+        tvEntries
+          .filter((e) => !e.reviewScope || e.reviewScope === "show" || e.reviewScope === "title")
+          .map((e) => e.showId ?? e.id)
+      )
+      const seen = new Set<string>()
+      const inProgress = tvEntries.filter((e) => {
+        const scope = e.reviewScope
+        if (scope !== "season" && scope !== "episode") return false
+        const key = e.showId ?? e.id
+        if (completedIds.has(key) || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      if (!inProgress.length) { setContinueItem(null); return }
+      const item = inProgress[0]
+      const showId = item.showId ?? item.id
+      let subtitle = "TV Series"
+      if (item.reviewScope === "season" && item.seasonNumber != null) subtitle = `Season ${item.seasonNumber}`
+      if (item.reviewScope === "episode" && item.seasonNumber != null && item.episodeNumber != null) {
+        subtitle = `S${item.seasonNumber} · E${item.episodeNumber}`
+      }
+      setContinueItem({ title: item.title, subtitle, poster: item.poster ?? null, href: `/series/${showId}` })
+    }
+    compute()
+    const unsub = subscribeToDiary(compute)
+    return unsub
+  }, [isLoggedIn])
 
   // Auto-rotate hero every 5 seconds
   useEffect(() => {
@@ -963,6 +1002,50 @@ export default function DiscoverClient({
           )}
         </div>
       </div>
+
+      {/* ── Continue Watching nudge (logged-in, in-progress TV only) ── */}
+      {continueItem && (
+        <div style={{
+          margin: "clamp(12px,1.8vw,18px) 0",
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "rgba(255,255,255,0.03)",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}>
+          {continueItem.poster ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={continueItem.poster}
+              alt={continueItem.title}
+              style={{ width: 34, height: 50, borderRadius: 5, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}
+            />
+          ) : (
+            <div style={{ width: 34, height: 50, borderRadius: 5, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px", fontFamily: SANS, fontSize: 9, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(255,255,255,0.26)" }}>
+              Continue Watching
+            </p>
+            <p style={{ margin: 0, fontFamily: SANS, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {continueItem.title}
+            </p>
+            <p style={{ margin: "1px 0 0", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.34)" }}>
+              {continueItem.subtitle}
+            </p>
+          </div>
+          <Link href={continueItem.href} style={{
+            flexShrink: 0, padding: "7px 13px", borderRadius: 7,
+            border: "1px solid rgba(255,255,255,0.13)", background: "rgba(255,255,255,0.05)",
+            fontFamily: SANS, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.78)",
+            textDecoration: "none", whiteSpace: "nowrap",
+          }}>
+            Resume →
+          </Link>
+        </div>
+      )}
 
       {/* ── Filter bar ────────────────────────────────────────────────── */}
       <div className="disc-filter-wrap">

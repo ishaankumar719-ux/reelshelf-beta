@@ -86,7 +86,6 @@ const mobileNavItems = [
   { href: "/", label: "Home", Icon: HomeIcon, exact: true },
   { href: "/diary", label: "Diary", Icon: DiaryIcon, exact: false },
   { href: "/watchlist", label: "Watchlist", Icon: WatchlistIcon, exact: false },
-  { href: "/discover", label: "Discover", Icon: DiscoverIcon, exact: false },
   { href: "/daily-reel", label: "Reel", Icon: DailyReelIcon, exact: false },
 ] as const
 

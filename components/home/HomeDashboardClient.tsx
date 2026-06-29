@@ -1,3 +1,4 @@
+// UNUSED - replaced by Sprint 20 homepage (app/page.tsx now renders DiscoverClient)
 "use client";
 
 import Link from "next/link";
