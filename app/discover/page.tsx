@@ -402,7 +402,7 @@ export default async function DiscoverPage() {
           year: localBooks[0].year,
           poster: bookCoverMap.get(localBooks[0].id) ?? null,
           href: getBookHrefFromRouteId(localBooks[0].id),
-          meta: localBooks[0].pages ? `${localBooks[0].pages} pages` : undefined,
+          meta: localBooks[0].pages ?? undefined,
         }
       : null,
   ].filter(Boolean) as HeroCard[]
