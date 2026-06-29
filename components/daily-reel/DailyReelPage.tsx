@@ -3,9 +3,11 @@
 import { useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import DailyPickCard from "@/components/home/DailyPickCard"
+import DiaryLogModal from "@/components/diary/DiaryLogModal"
 import { upsertSavedItemToBackend } from "@/lib/supabase/persistence"
 import type { TriviaQuestion, TriviaProgress, TriviaAnswerRecord, CommunityStat } from "@/components/trivia/TriviaHub"
 import type { ArticleData, StaffPickData } from "@/components/daily-reel/DailyReelEditorial"
+import type { DiaryEntry } from "@/types/diary"
 
 const SANS = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif'
 const SERIF = 'Georgia,"Times New Roman",Times,serif'
@@ -85,6 +87,21 @@ function formatDate(dateStr: string): string {
   })
 }
 
+function getTimeUntilMidnight(rotationDate: string): string {
+  const nextDay = new Date(rotationDate + "T00:00:00")
+  nextDay.setDate(nextDay.getDate() + 1)
+  const diff = nextDay.getTime() - Date.now()
+  if (diff <= 0) return "soon"
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function computeReadingTime(body: string): number {
+  const words = body.trim().split(/\s+/).length
+  return Math.max(1, Math.ceil(words / 200))
+}
+
 function initCatState(
   q: TriviaQuestion | null,
   ans: TriviaAnswerRecord | null,
@@ -160,6 +177,7 @@ function QotDSection({
   activeCategory,
   setActiveCategory,
   submitAnswer,
+  today,
 }: {
   rotation: RotationRow | null
   questions: Record<Category, TriviaQuestion | null>
@@ -167,10 +185,12 @@ function QotDSection({
   activeCategory: Category | null
   setActiveCategory: (cat: Category) => void
   submitAnswer: (cat: Category, idx: number) => Promise<void>
+  today: string
 }) {
   const cats: Category[] = ["film", "tv", "book"]
   const q = activeCategory ? questions[activeCategory] : null
   const cs = activeCategory ? catStates[activeCategory] : null
+  const timeLeft = getTimeUntilMidnight(today)
 
   return (
     <div style={{
@@ -309,10 +329,13 @@ function QotDSection({
                 </p>
               )}
               {cs.communityStats && (
-                <p style={{ margin: 0, fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.28)" }}>
+                <p style={{ margin: "0 0 8px", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.28)" }}>
                   {cs.communityStats.percentCorrect}% of {cs.communityStats.totalAnswers} players got this right
                 </p>
               )}
+              <p style={{ margin: 0, fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.02em" }}>
+                New question in {timeLeft}
+              </p>
             </div>
           )}
 
@@ -339,6 +362,7 @@ function ArticleSection({
 }) {
   const bodyLength = article.body.length
   const preview = article.body.slice(0, 240)
+  const readingTime = computeReadingTime(article.body)
 
   return (
     <div style={{
@@ -358,9 +382,15 @@ function ArticleSection({
         </div>
       )}
       <div style={{ padding: "clamp(16px,2.5vw,22px)" }}>
-        <p style={{ margin: "0 0 4px", fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.28)" }}>
-          By {article.author}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <p style={{ margin: 0, fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.28)" }}>
+            By {article.author}
+          </p>
+          <span style={{ color: "rgba(255,255,255,0.14)", fontSize: 10 }}>·</span>
+          <p style={{ margin: 0, fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>
+            {readingTime} min read
+          </p>
+        </div>
         <h3 style={{
           margin: "0 0 14px",
           fontFamily: SERIF,
@@ -413,6 +443,7 @@ function StaffPicksSection({ picks, onPickClick }: { picks: StaffPickData[]; onP
         {picks.map(pick => (
           <div key={pick.id} className="dr-pick-card" onClick={onPickClick}>
             <div style={{
+              position: "relative",
               aspectRatio: "2/3",
               borderRadius: 8,
               overflow: "hidden",
@@ -433,13 +464,48 @@ function StaffPicksSection({ picks, onPickClick }: { picks: StaffPickData[]; onP
                   </p>
                 </div>
               )}
+              {/* Staff Pick badge */}
+              <div style={{
+                position: "absolute",
+                top: 6,
+                left: 6,
+                padding: "2px 7px",
+                borderRadius: 999,
+                background: "rgba(0,0,0,0.72)",
+                backdropFilter: "blur(8px)",
+                border: "0.5px solid rgba(255,255,255,0.16)",
+                fontFamily: SANS,
+                fontSize: 8,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                color: "rgba(255,255,255,0.62)",
+                whiteSpace: "nowrap" as const,
+              }}>
+                Staff Pick ✨
+              </div>
             </div>
             <p style={{ margin: "0 0 2px", fontFamily: SANS, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.82)", lineHeight: 1.3 }}>
               {pick.title}
             </p>
-            <p style={{ margin: 0, fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+            <p style={{ margin: "0 0 5px", fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
               {[pick.year ? String(pick.year) : null, CAT_LABELS[pick.media_type]].filter(Boolean).join(" · ")}
             </p>
+            {pick.reason && (
+              <p style={{
+                margin: 0,
+                fontFamily: SERIF,
+                fontStyle: "italic",
+                fontSize: 11,
+                color: "rgba(255,255,255,0.38)",
+                lineHeight: 1.5,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical" as const,
+                overflow: "hidden",
+              }}>
+                {pick.reason}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -449,11 +515,12 @@ function StaffPicksSection({ picks, onPickClick }: { picks: StaffPickData[]; onP
 
 function HiddenGemSection({ gem }: { gem: HiddenGem }) {
   const [saved, setSaved] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
+  const mediaType: "movie" | "tv" = gem.media_type === "film" ? "movie" : "tv"
 
   const handleSave = useCallback(async () => {
     if (saved) return
     setSaved(true)
-    const mediaType = gem.media_type === "film" ? "movie" : "tv"
     await upsertSavedItemToBackend({
       id: gem.id,
       mediaType,
@@ -463,60 +530,135 @@ function HiddenGemSection({ gem }: { gem: HiddenGem }) {
       director: gem.creator || undefined,
       addedAt: new Date().toISOString(),
     })
-  }, [saved, gem])
+  }, [saved, gem, mediaType])
+
+  function handleLogSaved(_entry: DiaryEntry) {
+    setLogOpen(false)
+  }
 
   return (
-    <div className="dr-gem-card">
-      {gem.poster && (
-        <div style={{ flexShrink: 0, width: "clamp(90px,16vw,120px)", overflow: "hidden" }}>
-          <img
-            src={gem.poster}
-            alt={gem.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
+    <>
+      <div className="dr-gem-card">
+        {gem.poster && (
+          <div style={{ flexShrink: 0, width: "clamp(90px,16vw,120px)", overflow: "hidden" }}>
+            <img
+              src={gem.poster}
+              alt={gem.title}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0, padding: "clamp(14px,2vw,20px)" }}>
+          {/* Badges */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 8 }}>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "2px 8px",
+              borderRadius: 999,
+              background: "rgba(29,158,117,0.12)",
+              border: "0.5px solid rgba(29,158,117,0.28)",
+              fontFamily: SANS,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase" as const,
+              color: "#1d9e75",
+            }}>
+              Hidden Gem 💎
+            </span>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "2px 8px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.06)",
+              border: "0.5px solid rgba(255,255,255,0.12)",
+              fontFamily: SANS,
+              fontSize: 9,
+              letterSpacing: "0.04em",
+              color: "rgba(255,255,255,0.4)",
+            }}>
+              {gem.media_type === "film" ? "Film" : "TV Series"}
+            </span>
+          </div>
+          <h3 style={{
+            margin: "0 0 3px",
+            fontFamily: SERIF,
+            fontStyle: "italic",
+            fontSize: "clamp(16px,2.8vw,20px)",
+            fontWeight: 400,
+            color: "rgba(255,255,255,0.92)",
+            lineHeight: 1.25,
+          }}>
+            {gem.title}
+          </h3>
+          <p style={{ margin: "0 0 10px", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+            {[gem.year, gem.creator].filter(Boolean).join(" · ")}
+          </p>
+          <p style={{
+            margin: "0 0 14px",
+            fontFamily: SANS,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.52)",
+            lineHeight: 1.65,
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: "hidden",
+          }}>
+            {gem.overview}
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+            <button
+              type="button"
+              onClick={() => setLogOpen(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                height: 32,
+                padding: "0 14px",
+                borderRadius: 999,
+                border: "none",
+                background: "white",
+                color: "black",
+                fontFamily: SANS,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap" as const,
+              }}
+            >
+              Log It
+            </button>
+            <button
+              type="button"
+              className={`dr-gem-save${saved ? " done" : ""}`}
+              disabled={saved}
+              onClick={() => void handleSave()}
+            >
+              {saved ? "Saved ✓" : "Add to Watchlist"}
+            </button>
+          </div>
         </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0, padding: "clamp(14px,2vw,20px)" }}>
-        <p style={{ margin: "0 0 3px", fontFamily: SANS, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "#1d9e75" }}>
-          Overlooked
-        </p>
-        <h3 style={{
-          margin: "0 0 3px",
-          fontFamily: SERIF,
-          fontStyle: "italic",
-          fontSize: "clamp(16px,2.8vw,20px)",
-          fontWeight: 400,
-          color: "rgba(255,255,255,0.92)",
-          lineHeight: 1.25,
-        }}>
-          {gem.title}
-        </h3>
-        <p style={{ margin: "0 0 10px", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-          {[gem.year, gem.creator].filter(Boolean).join(" · ")}
-        </p>
-        <p style={{
-          margin: "0 0 14px",
-          fontFamily: SANS,
-          fontSize: 12,
-          color: "rgba(255,255,255,0.52)",
-          lineHeight: 1.65,
-          display: "-webkit-box",
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: "vertical" as const,
-          overflow: "hidden",
-        }}>
-          {gem.overview}
-        </p>
-        <button
-          type="button"
-          className={`dr-gem-save${saved ? " done" : ""}`}
-          disabled={saved}
-          onClick={() => void handleSave()}
-        >
-          {saved ? "Saved" : "Save for Later"}
-        </button>
       </div>
-    </div>
+
+      {logOpen && (
+        <DiaryLogModal
+          isOpen={logOpen}
+          onClose={() => setLogOpen(false)}
+          onSaved={handleLogSaved}
+          media={{
+            title: gem.title,
+            media_type: mediaType,
+            year: Number(gem.year) || 0,
+            poster: gem.poster ?? null,
+            creator: gem.creator || null,
+            media_id: gem.id,
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -555,7 +697,7 @@ function ProgressSection({
           textAlign: "center",
           lineHeight: 1.5,
         }}>
-          You've completed today's edition.
+          You've completed today's edition. 🎉
         </p>
       )}
 
@@ -645,6 +787,9 @@ export default function DailyReelPage({
     staff_picks_explored: initialDailyProgress?.staff_picks_explored ?? false,
   })
 
+  // Live-updated trivia progress (streaks update immediately after answering)
+  const [progress, setProgress] = useState<TriviaProgress | null>(initialProgress)
+
   const markProgress = useCallback((field: keyof DailyProgressState) => {
     setDp(prev => {
       if (prev[field]) return prev
@@ -715,6 +860,8 @@ export default function DailyReelPage({
         xpEarned: number
         explanation: string | null
         communityStats: { totalAnswers: number; percentCorrect: number }
+        updatedProgress: Partial<TriviaProgress>
+        newBadges: string[]
       }
 
       const data = (await res.json()) as AnswerResponse
@@ -732,6 +879,21 @@ export default function DailyReelPage({
           submitting: false,
         },
       }))
+
+      // Update displayed streaks immediately
+      if (data.updatedProgress) {
+        setProgress(prev => ({
+          filmStreak: prev?.filmStreak ?? 0,
+          tvStreak: prev?.tvStreak ?? 0,
+          bookStreak: prev?.bookStreak ?? 0,
+          filmCorrect: prev?.filmCorrect ?? 0,
+          tvCorrect: prev?.tvCorrect ?? 0,
+          bookCorrect: prev?.bookCorrect ?? 0,
+          totalCorrect: prev?.totalCorrect ?? 0,
+          longestStreak: prev?.longestStreak ?? 0,
+          ...data.updatedProgress,
+        }))
+      }
 
       markProgress("question_answered")
     } catch {
@@ -760,9 +922,10 @@ export default function DailyReelPage({
   const progressPct = (completed / 4) * 100
   const allDone = completed === 4
 
-  const filmStreak = initialProgress?.filmStreak ?? 0
-  const tvStreak = initialProgress?.tvStreak ?? 0
-  const bookStreak = initialProgress?.bookStreak ?? 0
+  // Derive streaks from live-updated state
+  const filmStreak = progress?.filmStreak ?? 0
+  const tvStreak = progress?.tvStreak ?? 0
+  const bookStreak = progress?.bookStreak ?? 0
   const hasAnyStreak = filmStreak > 0 || tvStreak > 0 || bookStreak > 0
 
   return (
@@ -964,6 +1127,7 @@ export default function DailyReelPage({
           activeCategory={activeCategory}
           setActiveCategory={setActiveCategory}
           submitAnswer={submitAnswer}
+          today={today}
         />
       </div>
 
@@ -982,7 +1146,7 @@ export default function DailyReelPage({
       {/* ── 5. STAFF PICKS ─────────────────────────────────────────────────────── */}
       {staffPicks.length > 0 && (
         <div className="dr-section" style={{ marginBottom: "clamp(20px,3vw,32px)" }}>
-          <SectionEyebrow text="Staff Picks" />
+          <SectionEyebrow text="Today's Staff Picks" />
           <StaffPicksSection picks={staffPicks} onPickClick={handleStaffPickClick} />
         </div>
       )}
