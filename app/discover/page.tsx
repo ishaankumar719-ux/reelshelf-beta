@@ -51,6 +51,22 @@ interface TMDBDiscoverResult {
   first_air_date?: string
   popularity: number
   vote_average?: number
+  adult?: boolean
+}
+
+// TMDB's include_adult=false only excludes content flagged adult=true in TMDB's DB.
+// Art/niche films with explicit content (e.g. "Nude" 2017) are marked adult=false by TMDB
+// because they're not pornographic by TMDB's definition. This blocklist catches them.
+const ADULT_TITLE_TOKENS = new Set([
+  "nude", "naked", "porn", "porno", "pornographic",
+  "xxx", "erotic", "erotica", "hentai", "softcore", "nsfw",
+])
+
+function isAdultContent(r: { title?: string; name?: string; adult?: boolean }): boolean {
+  if (r.adult === true) return true
+  const title = (r.title ?? r.name ?? "").toLowerCase()
+  const tokens = title.split(/[\s\-–—_:,!?.()[\]\/]+/).filter(Boolean)
+  return tokens.some((t) => ADULT_TITLE_TOKENS.has(t))
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -327,8 +343,8 @@ export default async function DiscoverPage() {
 
   // ── Hidden Gems ─────────────────────────────────────────────────────────────
   const hiddenGems: DiscoverItem[] = [
-    ...hiddenMoviesRaw.slice(0, 6).map((r) => discoverResultToItem(r, "movie", "Hidden Gem 💎")),
-    ...hiddenTvRaw.slice(0, 6).map((r) => discoverResultToItem(r, "tv", "Hidden Gem 💎")),
+    ...hiddenMoviesRaw.filter((r) => !isAdultContent(r)).slice(0, 6).map((r) => discoverResultToItem(r, "movie", "Hidden Gem 💎")),
+    ...hiddenTvRaw.filter((r) => !isAdultContent(r)).slice(0, 6).map((r) => discoverResultToItem(r, "tv", "Hidden Gem 💎")),
   ].slice(0, 10)
 
   // ── Award Winners ───────────────────────────────────────────────────────────

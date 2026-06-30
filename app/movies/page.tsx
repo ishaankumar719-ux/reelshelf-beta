@@ -37,6 +37,22 @@ interface TMDBDiscoverResult {
   first_air_date?: string
   popularity: number
   vote_average?: number
+  adult?: boolean
+}
+
+// Words that, when they appear as a standalone token in a title, signal adult content.
+// TMDB's include_adult=false only excludes content TMDB has explicitly categorised as adult;
+// art/niche films with explicit content (e.g. "Nude" 2017) slip through as adult=false.
+const ADULT_TITLE_TOKENS = new Set([
+  "nude", "naked", "porn", "porno", "pornographic",
+  "xxx", "erotic", "erotica", "hentai", "softcore", "nsfw",
+])
+
+function isAdultContent(r: { title?: string; name?: string; adult?: boolean }): boolean {
+  if (r.adult === true) return true
+  const title = (r.title ?? r.name ?? "").toLowerCase()
+  const tokens = title.split(/[\s\-–—_:,!?.()[\]\/]+/).filter(Boolean)
+  return tokens.some((t) => ADULT_TITLE_TOKENS.has(t))
 }
 
 async function tmdbGet<T>(path: string): Promise<T[]> {
@@ -223,6 +239,7 @@ export default async function MoviesPage() {
 
   // ── Hidden Gems ─────────────────────────────────────────────────────────────
   const hiddenGems: DiscoverItem[] = hiddenRaw
+    .filter((r) => !isAdultContent(r))
     .slice(0, 12)
     .map((r) => toDiscoverItem(r, "Hidden Gem 💎"))
 
