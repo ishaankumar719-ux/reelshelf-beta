@@ -772,57 +772,6 @@ function SeriesDetailContent({
         {/* Friends social layer */}
         <TVFriendsLayer mediaIds={socialMediaIds} title={title} />
 
-        {/* ── Appears in ─────────────────────────────────────────────── */}
-        {matchingCollections.length > 0 && (
-          <section style={{ marginTop: 32, marginBottom: 8 }}>
-            <h2 style={{
-              margin: "0 0 12px",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.3)",
-              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-            }}>
-              Appears in
-            </h2>
-            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
-              {matchingCollections.map((col) => (
-                <a
-                  key={col.slug}
-                  href={`/discover/collection/${col.slug}`}
-                  style={{
-                    flexShrink: 0,
-                    padding: "12px 16px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    textDecoration: "none",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    maxWidth: 220,
-                  }}
-                >
-                  <span style={{
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                    fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", lineHeight: 1.3,
-                  }}>
-                    {col.name}
-                  </span>
-                  <span style={{
-                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                    fontSize: 11, color: "rgba(255,255,255,0.3)", lineHeight: 1.45,
-                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                  }}>
-                    {col.description}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
-
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
           mediaType="tv"
@@ -841,6 +790,51 @@ function SeriesDetailContent({
           creator={creator}
           href={`/series/${actionSeries.id}`}
         />
+
+        {/* ── Appears in ─────────────────────────────────────────────── */}
+        {matchingCollections.length > 0 && (
+          <section style={{ marginTop: 40, marginBottom: 8 }}>
+            <h2 style={{
+              margin: "0 0 12px",
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+            }}>
+              Appears in
+            </h2>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+              {matchingCollections.map((col) => (
+                <a
+                  key={col.slug}
+                  href={`/discover/collection/${col.slug}`}
+                  style={{
+                    flexShrink: 0, padding: "14px 18px", borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                    textDecoration: "none", display: "flex", flexDirection: "column", gap: 5, maxWidth: 240, minWidth: 160,
+                  }}
+                >
+                  <span style={{
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", lineHeight: 1.3,
+                  }}>
+                    {col.name}
+                  </span>
+                  <span style={{
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    fontSize: 11, color: "rgba(255,255,255,0.3)", lineHeight: 1.5,
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {col.description}
+                  </span>
+                  <span style={{ fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif', fontSize: 10, color: "rgba(255,255,255,0.22)", letterSpacing: "0.04em", marginTop: 2 }}>
+                    View collection →
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

@@ -46,6 +46,7 @@ interface FilmRec {
   title: string;
   year: string;
   poster_path: string | null;
+  reason?: string;
 }
 
 interface FilmDetailClientProps {
@@ -725,9 +726,20 @@ export default function FilmDetailClient({
         {/* ── Cast ────────────────────────────────────────────────────── */}
         {topCast.length > 0 && <CastSection cast={topCast} />}
 
+        {/* ── Reviews ─────────────────────────────────────────────────── */}
+        <MediaReviewsSection
+          mediaIds={[`tmdb-${film.id}`, `${slugify(film.title)}-${year}`]}
+          mediaType="movie"
+          title={film.title}
+          year={parseInt(year || "0", 10)}
+          poster={posterUrl}
+          creator={null}
+          href={`/films/${film.id}`}
+        />
+
         {/* ── Appears in ──────────────────────────────────────────────── */}
         {matchingCollections.length > 0 && (
-          <section style={{ margin: "32px 0" }}>
+          <section style={{ margin: "40px 0 32px" }}>
             <h2
               style={{
                 fontSize: 11,
@@ -741,13 +753,15 @@ export default function FilmDetailClient({
             >
               Appears in
             </h2>
+            <style>{`.coll-card-film { scrollbar-width: none; }`}</style>
             <div
+              className="coll-card-film"
               style={{
                 display: "flex",
                 gap: 10,
                 overflowX: "auto",
                 paddingBottom: 4,
-                scrollbarWidth: "none",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {matchingCollections.map((col) => (
@@ -756,15 +770,16 @@ export default function FilmDetailClient({
                   href={`/discover/collection/${col.slug}`}
                   style={{
                     flexShrink: 0,
-                    padding: "12px 16px",
-                    borderRadius: 12,
+                    padding: "14px 18px",
+                    borderRadius: 14,
                     border: "1px solid rgba(255,255,255,0.08)",
                     background: "rgba(255,255,255,0.03)",
                     textDecoration: "none",
                     display: "flex",
                     flexDirection: "column",
-                    gap: 4,
-                    maxWidth: 220,
+                    gap: 5,
+                    maxWidth: 240,
+                    minWidth: 160,
                   }}
                 >
                   <span
@@ -783,7 +798,7 @@ export default function FilmDetailClient({
                       fontFamily: SANS,
                       fontSize: 11,
                       color: "rgba(255,255,255,0.3)",
-                      lineHeight: 1.45,
+                      lineHeight: 1.5,
                       display: "-webkit-box",
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: "vertical",
@@ -791,6 +806,17 @@ export default function FilmDetailClient({
                     }}
                   >
                     {col.description}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: SANS,
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.22)",
+                      letterSpacing: "0.04em",
+                      marginTop: 2,
+                    }}
+                  >
+                    View collection →
                   </span>
                 </a>
               ))}
@@ -800,8 +826,8 @@ export default function FilmDetailClient({
 
         {/* ── More Like This ───────────────────────────────────────────── */}
         {recommendations.length >= 3 && (
-          <section style={{ margin: "32px 0" }}>
-            <style>{`.film-rec-scroll { scrollbar-width: none; } .film-rec-card { transition: transform 0.15s ease; } .film-rec-card:hover { transform: translateY(-3px); }`}</style>
+          <section style={{ margin: "32px 0 48px" }}>
+            <style>{`.film-rec-scroll { scrollbar-width: none; } .film-rec-card { transition: transform 0.16s ease; } .film-rec-card:hover { transform: translateY(-4px); }`}</style>
             <h2
               style={{
                 fontSize: 11,
@@ -817,7 +843,7 @@ export default function FilmDetailClient({
             </h2>
             <p
               style={{
-                margin: "0 0 14px",
+                margin: "0 0 16px",
                 fontSize: 12,
                 color: "rgba(255,255,255,0.22)",
                 fontFamily: SANS,
@@ -829,9 +855,9 @@ export default function FilmDetailClient({
               className="film-rec-scroll"
               style={{
                 display: "flex",
-                gap: 10,
+                gap: 12,
                 overflowX: "auto",
-                paddingBottom: 6,
+                paddingBottom: 8,
                 WebkitOverflowScrolling: "touch",
               }}
             >
@@ -840,17 +866,18 @@ export default function FilmDetailClient({
                   key={rec.id}
                   href={`/films/${rec.id}`}
                   className="film-rec-card"
-                  style={{ flexShrink: 0, width: 100, textDecoration: "none", color: "inherit" }}
+                  style={{ flexShrink: 0, width: 108, textDecoration: "none", color: "inherit" }}
                 >
                   <div
                     style={{
-                      width: 100,
+                      width: 108,
                       aspectRatio: "2 / 3",
-                      borderRadius: 10,
+                      borderRadius: 12,
                       overflow: "hidden",
                       background: "#12121f",
                       border: "1px solid rgba(255,255,255,0.07)",
-                      marginBottom: 7,
+                      marginBottom: 8,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
                     }}
                   >
                     {rec.poster_path ? (
@@ -882,11 +909,11 @@ export default function FilmDetailClient({
                   </div>
                   <p
                     style={{
-                      margin: "0 0 2px",
+                      margin: "0 0 3px",
                       fontSize: 11,
                       fontWeight: 600,
-                      color: "rgba(255,255,255,0.78)",
-                      lineHeight: 1.3,
+                      color: "rgba(255,255,255,0.82)",
+                      lineHeight: 1.35,
                       overflow: "hidden",
                       display: "-webkit-box",
                       WebkitLineClamp: 2,
@@ -897,8 +924,13 @@ export default function FilmDetailClient({
                     {rec.title}
                   </p>
                   {rec.year && (
-                    <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.28)", fontFamily: SANS }}>
+                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "rgba(255,255,255,0.28)", fontFamily: SANS }}>
                       {rec.year}
+                    </p>
+                  )}
+                  {"reason" in rec && rec.reason && (
+                    <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.22)", fontStyle: "italic", fontFamily: SANS, lineHeight: 1.3 }}>
+                      {String(rec.reason)}
                     </p>
                   )}
                 </a>
@@ -906,17 +938,6 @@ export default function FilmDetailClient({
             </div>
           </section>
         )}
-
-        {/* ── Reviews ─────────────────────────────────────────────────── */}
-        <MediaReviewsSection
-          mediaIds={[`tmdb-${film.id}`, `${slugify(film.title)}-${year}`]}
-          mediaType="movie"
-          title={film.title}
-          year={parseInt(year || "0", 10)}
-          poster={posterUrl}
-          creator={null}
-          href={`/films/${film.id}`}
-        />
       </div>
     </main>
   );

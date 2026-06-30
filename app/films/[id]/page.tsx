@@ -1,7 +1,16 @@
 import { notFound } from "next/navigation";
-import { getLocalMovieByRouteId } from "../../../lib/localMovies";
+import { getLocalMovieByRouteId, localMovies } from "../../../lib/localMovies";
 import { COLLECTION_DEFS, type CollectionDef } from "../../../lib/discoverCollections";
+import { getMediaMeta } from "../../../lib/mediaMetadata";
 import FilmDetailClient from "./FilmDetailClient";
+
+// TMDB genre ID → name mapping (enough to cover all collection genres)
+const GENRE_ID_TO_NAME: Record<number, string> = {
+  28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
+  80: "Crime", 18: "Drama", 27: "Horror", 10402: "Music",
+  9648: "Mystery", 878: "Science Fiction", 53: "Thriller",
+  36: "History", 37: "Western", 10752: "War", 14: "Fantasy",
+};
 
 interface TMDBFilm {
   id: number;
@@ -27,11 +36,56 @@ interface TMDBCastMember {
   order?: number;
 }
 
+interface TMDBCrewMember {
+  id: number;
+  name: string;
+  job: string;
+}
+
 interface TMDBFilmRec {
   id: number;
   title: string;
   release_date?: string;
   poster_path: string | null;
+}
+
+// ─── Local catalog similarity ─────────────────────────────────────────────────
+// Reliable fallback: uses local genre metadata to score similar films.
+// Works for any film; TMDB recommendations may return 0 for less-popular titles.
+
+function getSimilarLocalFilms(
+  currentTmdbId: number,
+  filmGenres: { id: number; name: string }[],
+  director: string | null
+): Array<{ id: number; title: string; year: string; poster_path: string | null; reason: string }> {
+  const currentGenreNames = new Set(
+    filmGenres.map((g) => GENRE_ID_TO_NAME[g.id] ?? g.name)
+  );
+
+  return localMovies
+    .filter((m) => m.tmdbId !== currentTmdbId)
+    .map((m) => {
+      const meta = getMediaMeta("film", m.id);
+      const genreOverlap = meta.genres.filter((g) => currentGenreNames.has(g));
+      const isDirectorMatch = director && m.director === director;
+      const score = genreOverlap.length * 10 + (isDirectorMatch ? 25 : 0) + meta.voteAverage;
+
+      let reason = "";
+      if (isDirectorMatch) reason = `Directed by ${m.director}`;
+      else if (genreOverlap.length > 0) reason = `Similar ${genreOverlap[0]}`;
+
+      return { film: m, score, reason };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(({ film, reason }) => ({
+      id: film.tmdbId,
+      title: film.title,
+      year: film.year,
+      poster_path: film.poster.replace("https://image.tmdb.org/t/p/w500", "") || null,
+      reason,
+    }));
 }
 
 // ─── Collection membership ────────────────────────────────────────────────────
@@ -106,7 +160,7 @@ export default async function FilmDetailPage({
   ]);
 
   const film = (await filmRes.json()) as TMDBFilm & { success?: boolean };
-  const creditsData = (await creditsRes.json()) as { cast?: TMDBCastMember[] };
+  const creditsData = (await creditsRes.json()) as { cast?: TMDBCastMember[]; crew?: TMDBCrewMember[] };
   const providersData = (await providersRes.json()) as {
     results?: {
       GB?: {
@@ -139,7 +193,8 @@ export default async function FilmDetailPage({
         }))
     : [];
 
-  const filmRecs = (recsData.results ?? [])
+  // TMDB recommendations (primary source — rich catalog but can be empty)
+  const tmdbRecs = (recsData.results ?? [])
     .filter((r) => r.poster_path)
     .slice(0, 10)
     .map((r) => ({
@@ -147,7 +202,24 @@ export default async function FilmDetailPage({
       title: r.title,
       year: r.release_date?.slice(0, 4) ?? "",
       poster_path: r.poster_path,
+      reason: undefined as string | undefined,
     }));
+
+  // Local catalog similarity (always reliable fallback)
+  const directorName =
+    creditsData?.crew?.find((m) => m.job === "Director")?.name ?? null;
+  const localRecs = getSimilarLocalFilms(
+    Number(normalizedMovieId),
+    film.genres ?? [],
+    directorName
+  );
+
+  // Merge: TMDB first (varied), then local items not already in TMDB list
+  const tmdbIds = new Set(tmdbRecs.map((r) => r.id));
+  const merged = [
+    ...tmdbRecs,
+    ...localRecs.filter((r) => !tmdbIds.has(r.id)),
+  ].slice(0, 10);
 
   const matchingCollections = getFilmCollections(film);
 
@@ -156,7 +228,7 @@ export default async function FilmDetailPage({
       film={film}
       topCast={topCast}
       watchProviders={watchProviders}
-      recommendations={filmRecs}
+      recommendations={merged}
       matchingCollections={matchingCollections}
     />
   );

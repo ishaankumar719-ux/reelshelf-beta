@@ -759,8 +759,6 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
         </div>
       </section>
 
-      <AppearsInSection collections={getBookCollections(data.title, data.year)} />
-
       <MediaReviewsSection
         mediaIds={[workId]}
         mediaType="book"
@@ -770,6 +768,8 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
         creator={data.author}
         href={`/books/${workId}`}
       />
+
+      <AppearsInSection collections={getBookCollections(data.title, data.year)} />
     </main>
   );
 }
@@ -1077,7 +1077,6 @@ export default async function BookDetailPage({
         </div>
       </section>
 
-      <AppearsInSection collections={getBookCollections(book.title, book.year)} />
       <RelatedBooksSection books={relatedBooks} />
       <BecauseYouLikedRow
         mediaType="book"
@@ -1096,6 +1095,8 @@ export default async function BookDetailPage({
         creator={book.author}
         href={`/books/${book.id}`}
       />
+
+      <AppearsInSection collections={getBookCollections(book.title, book.year)} />
     </main>
   );
 }
