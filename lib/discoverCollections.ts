@@ -69,4 +69,26 @@ export const COLLECTION_DEFS: CollectionDef[] = [
     description: "Stories that leapt from page to cinema.",
     localFilter: "books-to-screen",
   },
+  // ── Movies-page collections ───────────────────────────────────────────────
+  {
+    slug: "one-night-thrillers",
+    name: "One Night Thrillers",
+    description: "Tight, tense, and over before midnight — thrillers under two hours.",
+    tmdbPath: "/discover/movie?with_genres=53&with_runtime.lte=120&vote_average.gte=7.0&vote_count.gte=200&sort_by=popularity.desc&include_adult=false",
+    tmdbMediaType: "movie" as const,
+  },
+  {
+    slug: "perfect-sunday-stories",
+    name: "Perfect Sunday Stories",
+    description: "Quietly devastating, beautifully told — dramas made for a slow afternoon.",
+    tmdbPath: "/discover/movie?with_genres=18&vote_average.gte=7.5&vote_count.gte=500&sort_by=popularity.desc&include_adult=false",
+    tmdbMediaType: "movie" as const,
+  },
+  {
+    slug: "neo-noir",
+    name: "Neo-Noir Essentials",
+    description: "Rain-slicked streets, moral ambiguity, and atmosphere you can taste.",
+    tmdbPath: "/discover/movie?with_genres=80&with_keywords=6564&vote_average.gte=7.0&vote_count.gte=100&sort_by=vote_average.desc&include_adult=false",
+    tmdbMediaType: "movie" as const,
+  },
 ]
