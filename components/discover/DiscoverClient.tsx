@@ -1,11 +1,18 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { DiscoverItem, CollectionCard, HeroCard } from "@/lib/discoverTypes"
 import SurpriseMe from "./SurpriseMe"
 import { getDiaryMovies, subscribeToDiary } from "../../lib/diary"
+import {
+  addToWatchlist,
+  removeFromWatchlistByMedia,
+  isInWatchlist,
+} from "../../lib/watchlist"
+import DiaryLogModal from "../diary/DiaryLogModal"
+import type { DiaryEntry } from "../../types/diary"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -97,8 +104,8 @@ function RowHead({ title, desc }: { title: string; desc?: string }) {
         <p style={{
           margin: 0,
           fontFamily: SANS,
-          fontSize: 11,
-          color: "rgba(255,255,255,0.32)",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.35)",
           lineHeight: 1.5,
         }}>
           {desc}
@@ -108,7 +115,39 @@ function RowHead({ title, desc }: { title: string; desc?: string }) {
   )
 }
 
-function PremiumCard({ item }: { item: DiscoverItem }) {
+function PremiumCard({
+  item,
+  onLog,
+}: {
+  item: DiscoverItem
+  onLog: (item: DiscoverItem) => void
+}) {
+  const [inWl, setInWl] = useState(() => isInWatchlist(item.id, item.mediaType))
+
+  function handleWatchlist(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (inWl) {
+      removeFromWatchlistByMedia(item.id, item.mediaType)
+    } else {
+      addToWatchlist({
+        id: item.id,
+        mediaType: item.mediaType,
+        title: item.title,
+        year: parseInt(item.year) || 0,
+        poster: item.poster ?? undefined,
+        director: item.subtitle,
+      })
+    }
+    setInWl(!inWl)
+  }
+
+  function handleLog(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    onLog(item)
+  }
+
   return (
     <Link href={item.href} className="p-card">
       <div className="p-card-poster">
@@ -147,42 +186,92 @@ function PremiumCard({ item }: { item: DiscoverItem }) {
             <p className="p-card-reason" style={{ fontFamily: SERIF }}>{item.reason}</p>
           )}
         </div>
+        {/* ── Hover quick-actions (desktop only) ── */}
+        <div className="p-card-actions" style={{ fontFamily: SANS }}>
+          <Link
+            href={item.href}
+            className="p-card-act-btn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Open
+          </Link>
+          <button
+            className="p-card-act-btn"
+            onClick={handleLog}
+            type="button"
+          >
+            Log
+          </button>
+          <button
+            className={`p-card-act-btn${inWl ? " wl-active" : ""}`}
+            onClick={handleWatchlist}
+            type="button"
+            aria-label={inWl ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            {inWl ? "✓" : "+"}
+          </button>
+        </div>
       </div>
     </Link>
   )
 }
 
-function CarouselRow({ items }: { items: DiscoverItem[] }) {
+function CarouselRow({
+  items,
+  onLog,
+}: {
+  items: DiscoverItem[]
+  onLog: (item: DiscoverItem) => void
+}) {
   if (items.length === 0) return null
   return (
     <div className="disc-p-row-wrap">
       <div className="disc-p-row">
         {items.map((item) => (
-          <PremiumCard key={`${item.mediaType}-${item.id}`} item={item} />
+          <PremiumCard key={`${item.mediaType}-${item.id}`} item={item} onLog={onLog} />
         ))}
       </div>
     </div>
   )
 }
 
+const FAN_ROTATIONS = [-9, -3, 3, 9]
+const FAN_X = [-26, -9, 9, 26]
+const FAN_Y = [4, 0, 0, 4]
+const FAN_Z = [1, 2, 3, 2]
+
 function CollectionCardV2({ col }: { col: CollectionCard }) {
+  const validPosters = col.posters.filter(Boolean).slice(0, 4)
   return (
     <Link href={`/discover/collection/${col.slug}`} className="disc-coll-v2">
-      <div className="disc-coll-collage">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="disc-coll-cell">
-            {col.posters[i] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={col.posters[i]} alt="" loading="lazy" />
-            )}
-          </div>
+      {/* Fanned poster stack */}
+      <div className="disc-coll-fan">
+        {validPosters.map((src, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={i}
+            src={src}
+            alt=""
+            loading="lazy"
+            className="disc-coll-fan-poster"
+            style={{
+              transform: `rotate(${FAN_ROTATIONS[i]}deg) translateX(${FAN_X[i]}px) translateY(${FAN_Y[i]}px)`,
+              zIndex: FAN_Z[i],
+            }}
+          />
         ))}
+        {validPosters.length === 0 && (
+          <div className="disc-coll-fan-empty" />
+        )}
       </div>
       <div className="disc-coll-overlay" />
       <div className="disc-coll-text">
         <p className="disc-coll-name" style={{ fontFamily: SANS }}>{col.name}</p>
+        {col.description && (
+          <p className="disc-coll-desc" style={{ fontFamily: SANS }}>{col.description}</p>
+        )}
         <p className="disc-coll-count" style={{ fontFamily: SANS }}>
-          {col.count} title{col.count !== 1 ? "s" : ""}
+          {col.count} {col.count !== 1 ? "stories" : "story"}
         </p>
       </div>
     </Link>
@@ -214,12 +303,18 @@ export default function DiscoverClient({
   const [continueItem, setContinueItem] = useState<{
     title: string; subtitle: string; poster: string | null; href: string
   } | null>(null)
+  const [continueLoaded, setContinueLoaded] = useState(false)
+  const [logTarget, setLogTarget] = useState<DiscoverItem | null>(null)
 
   const show = (id: string) => SHOW_MAP[filter].has(id)
 
+  const handleLog = useCallback((item: DiscoverItem) => {
+    setLogTarget(item)
+  }, [])
+
   // Continue watching — in-progress TV shows for logged-in users
   useEffect(() => {
-    if (!isLoggedIn) return
+    if (!isLoggedIn) { setContinueLoaded(true); return }
     function compute() {
       const entries = getDiaryMovies()
       const tvEntries = entries.filter((e) => e.mediaType === "tv")
@@ -237,6 +332,7 @@ export default function DiscoverClient({
         seen.add(key)
         return true
       })
+      setContinueLoaded(true)
       if (!inProgress.length) { setContinueItem(null); return }
       const item = inProgress[0]
       const showId = item.showId ?? item.id
@@ -251,6 +347,25 @@ export default function DiscoverClient({
     const unsub = subscribeToDiary(compute)
     return unsub
   }, [isLoggedIn])
+
+  // Scroll fade-in for sections below the fold
+  useEffect(() => {
+    const sections = document.querySelectorAll<HTMLElement>(".disc-section[data-fadein]")
+    if (!sections.length) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("disc-vis")
+            obs.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.06 }
+    )
+    sections.forEach((s) => obs.observe(s))
+    return () => obs.disconnect()
+  }, [])
 
   // Auto-rotate hero every 5 seconds
   useEffect(() => {
@@ -914,6 +1029,132 @@ export default function DiscoverClient({
           .disc-row-wrap { margin-inline: -12px; }
           .disc-row { padding-inline: 12px 24px; }
         }
+
+        /* ── Card hover glow + overlay ─────────────────────────────── */
+        .p-card-poster {
+          box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+          transition: box-shadow 0.2s ease;
+        }
+        .p-card:hover .p-card-poster {
+          box-shadow: 0 8px 28px rgba(0,0,0,0.6), 0 0 0 1px rgba(29,158,117,0.18);
+        }
+        .p-card-info { transition: opacity 0.18s ease; }
+        .p-card:hover .p-card-info { opacity: 0; pointer-events: none; }
+        .p-card-actions {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          padding: 10px 8px 10px;
+          display: flex;
+          gap: 5px;
+          opacity: 0;
+          transform: translateY(3px);
+          transition: opacity 0.18s ease, transform 0.18s ease;
+          z-index: 10;
+        }
+        .p-card:hover .p-card-actions { opacity: 1; transform: translateY(0); }
+        @media (hover: none) { .p-card-actions { display: none !important; } }
+        .p-card-act-btn {
+          flex: 1;
+          padding: 6px 4px;
+          border-radius: 5px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(10,10,15,0.78);
+          -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+          color: rgba(255,255,255,0.84);
+          font-size: 9px;
+          font-weight: 700;
+          cursor: pointer;
+          text-align: center;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          transition: background 0.14s ease, border-color 0.14s ease;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+        .p-card-act-btn:hover { background: rgba(40,40,50,0.9); border-color: rgba(255,255,255,0.24); }
+        .p-card-act-btn.wl-active { background: rgba(29,158,117,0.22); border-color: rgba(29,158,117,0.45); color: #1d9e75; }
+
+        /* ── Collection fan posters ─────────────────────────────────── */
+        .disc-coll-fan {
+          position: absolute;
+          inset: 0;
+          background: #0b0b14;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .disc-coll-fan-poster {
+          position: absolute;
+          width: 44%;
+          aspect-ratio: 2/3;
+          border-radius: 7px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+          transition: transform 0.22s ease;
+          object-fit: cover;
+        }
+        .disc-coll-v2:hover .disc-coll-fan-poster {
+          transform-origin: bottom center;
+        }
+        .disc-coll-fan-empty {
+          width: 52%;
+          aspect-ratio: 2/3;
+          border-radius: 7px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+        .disc-coll-desc {
+          margin: 2px 0 3px;
+          font-size: 9px;
+          color: rgba(255,255,255,0.32);
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        /* ── Section subtitle sizing ───────────────────────────────── */
+        /* RowHead desc is now 12px via inline style override */
+
+        /* ── Skeleton shimmer ──────────────────────────────────────── */
+        @keyframes disc-shimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .disc-skeleton {
+          background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+          background-size: 200% 100%;
+          animation: disc-shimmer 1.6s ease-in-out infinite;
+          border-radius: 8px;
+        }
+        .disc-cw-skeleton {
+          height: 70px;
+          margin: clamp(12px,1.8vw,18px) 0;
+          border-radius: 10px;
+        }
+        .disc-cw-enter {
+          animation: disc-cw-fadein 0.25s ease forwards;
+        }
+        @keyframes disc-cw-fadein {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Scroll fade-in ────────────────────────────────────────── */
+        @media (prefers-reduced-motion: no-preference) {
+          .disc-section[data-fadein] {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+          }
+          .disc-section[data-fadein].disc-vis { opacity: 1; }
+        }
       `}</style>
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
@@ -1004,43 +1245,59 @@ export default function DiscoverClient({
       </div>
 
       {/* ── Continue Watching nudge (logged-in, in-progress TV only) ── */}
-      {continueItem && (
-        <div style={{
+      {isLoggedIn && !continueLoaded && (
+        <div className="disc-skeleton disc-cw-skeleton" />
+      )}
+      {continueLoaded && continueItem && (
+        <div className="disc-cw-enter" style={{
           margin: "clamp(12px,1.8vw,18px) 0",
           padding: "10px 14px",
           borderRadius: 10,
-          border: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.025)",
           display: "flex",
           alignItems: "center",
           gap: 12,
         }}>
-          {continueItem.poster ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={continueItem.poster}
-              alt={continueItem.title}
-              style={{ width: 34, height: 50, borderRadius: 5, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-          ) : (
-            <div style={{ width: 34, height: 50, borderRadius: 5, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
-          )}
+          {/* Poster */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {continueItem.poster ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={continueItem.poster}
+                alt={continueItem.title}
+                style={{ width: 34, height: 50, borderRadius: 5, objectFit: "cover", display: "block", border: "1px solid rgba(255,255,255,0.1)" }}
+              />
+            ) : (
+              <div style={{ width: 34, height: 50, borderRadius: 5, background: "rgba(255,255,255,0.07)" }} />
+            )}
+            {/* TV badge */}
+            <span style={{
+              position: "absolute", bottom: -4, right: -4,
+              width: 14, height: 14, borderRadius: "50%",
+              background: "rgba(45,212,191,0.2)", border: "1px solid rgba(45,212,191,0.4)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 7, color: "rgba(45,212,191,0.9)",
+            }}>▶</span>
+          </div>
+          {/* Text */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: "0 0 2px", fontFamily: SANS, fontSize: 9, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(255,255,255,0.26)" }}>
+            <p style={{ margin: "0 0 1px", fontFamily: SANS, fontSize: 9, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(255,255,255,0.24)" }}>
               Continue Watching
             </p>
             <p style={{ margin: 0, fontFamily: SANS, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.88)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {continueItem.title}
             </p>
-            <p style={{ margin: "1px 0 0", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.34)" }}>
+            <p style={{ margin: "2px 0 0", fontFamily: SANS, fontSize: 11, color: "rgba(255,255,255,0.36)" }}>
               {continueItem.subtitle}
             </p>
           </div>
           <Link href={continueItem.href} style={{
-            flexShrink: 0, padding: "7px 13px", borderRadius: 7,
-            border: "1px solid rgba(255,255,255,0.13)", background: "rgba(255,255,255,0.05)",
-            fontFamily: SANS, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.78)",
+            flexShrink: 0, padding: "7px 14px", borderRadius: 7,
+            border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.05)",
+            fontFamily: SANS, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)",
             textDecoration: "none", whiteSpace: "nowrap",
+            transition: "background 0.14s ease, border-color 0.14s ease",
           }}>
             Resume →
           </Link>
@@ -1067,75 +1324,75 @@ export default function DiscoverClient({
         <div className="disc-section">
           <RowHead
             title="🔥 Trending Today"
-            desc="What everyone's watching right now."
+            desc="What the world is watching, reading, and talking about right now."
           />
-          <CarouselRow items={trendingToday} />
+          <CarouselRow items={trendingToday} onLog={handleLog} />
         </div>
       )}
 
       {/* ── Because You Loved ────────────────────────────────────────── */}
       {isLoggedIn && show("recs") && recommendations.length >= 3 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
             title="❤️ Because You Loved…"
-            desc="Personalised picks based on your taste."
+            desc="Titles matched to your taste — the more you log, the sharper this gets."
           />
-          <CarouselRow items={recommendations} />
+          <CarouselRow items={recommendations} onLog={handleLog} />
         </div>
       )}
 
       {/* ── New Movies ───────────────────────────────────────────────── */}
       {show("new-movies") && newMovies.length > 0 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
-            title="🎬 New Movies"
-            desc="Coming soon and just released in cinemas."
+            title="🎬 New in Cinemas"
+            desc="Coming soon and just released — plan your next cinema trip."
           />
-          <CarouselRow items={newMovies} />
+          <CarouselRow items={newMovies} onLog={handleLog} />
         </div>
       )}
 
       {/* ── Trending TV ──────────────────────────────────────────────── */}
       {show("trending-tv") && trendingTvWeek.length > 0 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
             title="📺 Trending TV"
-            desc="The shows everyone's talking about this week."
+            desc="The shows dominating conversation this week."
           />
-          <CarouselRow items={trendingTvWeek} />
+          <CarouselRow items={trendingTvWeek} onLog={handleLog} />
         </div>
       )}
 
       {/* ── Trending Books ───────────────────────────────────────────── */}
       {show("trending-books") && trendingBooksDisplay.length > 0 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
             title="📚 Trending Books"
-            desc="On shelves and in everyone's hands right now."
+            desc="On shelves and on bedside tables across the ReelShelf community."
           />
-          <CarouselRow items={trendingBooksDisplay} />
+          <CarouselRow items={trendingBooksDisplay} onLog={handleLog} />
         </div>
       )}
 
       {/* ── Hidden Gems ──────────────────────────────────────────────── */}
       {show("hidden-gems") && hiddenGems.length >= 3 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
             title="💎 Hidden Gems"
-            desc="Critically acclaimed and criminally underrated."
+            desc="Critically acclaimed and criminally underrated — find something the algorithm missed."
           />
-          <CarouselRow items={hiddenGems} />
+          <CarouselRow items={hiddenGems} onLog={handleLog} />
         </div>
       )}
 
       {/* ── Award Winners ────────────────────────────────────────────── */}
       {show("award-winners") && awardWinners.length >= 3 && (
-        <div className="disc-section">
+        <div className="disc-section" data-fadein>
           <RowHead
             title="🏆 Award Winners"
-            desc="The best of the best — acclaimed and beloved."
+            desc="The best of cinema, television and literature — as recognised by the world."
           />
-          <CarouselRow items={awardWinners} />
+          <CarouselRow items={awardWinners} onLog={handleLog} />
         </div>
       )}
 
@@ -1198,6 +1455,23 @@ export default function DiscoverClient({
       )}
 
       <div style={{ height: "clamp(24px,4vw,40px)" }} />
+
+      {/* ── Quick Log modal ──────────────────────────────────────────── */}
+      {logTarget && (
+        <DiaryLogModal
+          isOpen
+          onClose={() => setLogTarget(null)}
+          onSaved={(_entry: DiaryEntry) => setLogTarget(null)}
+          media={{
+            title: logTarget.title,
+            media_type: logTarget.mediaType === "movie" ? "movie" : logTarget.mediaType === "tv" ? "tv" : "book",
+            year: parseInt(logTarget.year) || 0,
+            poster: logTarget.poster,
+            creator: logTarget.subtitle ?? null,
+            media_id: logTarget.id,
+          }}
+        />
+      )}
     </>
   )
 }
