@@ -35,10 +35,25 @@ interface DiaryEntry {
   media_id: string;
 }
 
+interface CollectionSummary {
+  slug: string;
+  name: string;
+  description: string;
+}
+
+interface FilmRec {
+  id: number;
+  title: string;
+  year: string;
+  poster_path: string | null;
+}
+
 interface FilmDetailClientProps {
   film: TMDBFilm;
   topCast: CastMember[];
   watchProviders: { flatrate: WatchProvider[] };
+  recommendations?: FilmRec[];
+  matchingCollections?: CollectionSummary[];
 }
 
 const SANS = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif';
@@ -99,6 +114,8 @@ export default function FilmDetailClient({
   film,
   topCast,
   watchProviders,
+  recommendations = [],
+  matchingCollections = [],
 }: FilmDetailClientProps) {
   const { openLog } = useDiaryLog();
   const [diaryEntry, setDiaryEntry] = useState<DiaryEntry | null>(null);
@@ -707,6 +724,188 @@ export default function FilmDetailClient({
 
         {/* ── Cast ────────────────────────────────────────────────────── */}
         {topCast.length > 0 && <CastSection cast={topCast} />}
+
+        {/* ── Appears in ──────────────────────────────────────────────── */}
+        {matchingCollections.length > 0 && (
+          <section style={{ margin: "32px 0" }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 14,
+                fontFamily: SANS,
+              }}
+            >
+              Appears in
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                overflowX: "auto",
+                paddingBottom: 4,
+                scrollbarWidth: "none",
+              }}
+            >
+              {matchingCollections.map((col) => (
+                <a
+                  key={col.slug}
+                  href={`/discover/collection/${col.slug}`}
+                  style={{
+                    flexShrink: 0,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                    textDecoration: "none",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    maxWidth: 220,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: SANS,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.85)",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {col.name}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: SANS,
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.3)",
+                      lineHeight: 1.45,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {col.description}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── More Like This ───────────────────────────────────────────── */}
+        {recommendations.length >= 3 && (
+          <section style={{ margin: "32px 0" }}>
+            <style>{`.film-rec-scroll { scrollbar-width: none; } .film-rec-card { transition: transform 0.15s ease; } .film-rec-card:hover { transform: translateY(-3px); }`}</style>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 4,
+                fontFamily: SANS,
+              }}
+            >
+              More Like This
+            </h2>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.22)",
+                fontFamily: SANS,
+              }}
+            >
+              Because you&apos;re viewing <em style={{ fontStyle: "italic" }}>{film.title}</em>
+            </p>
+            <div
+              className="film-rec-scroll"
+              style={{
+                display: "flex",
+                gap: 10,
+                overflowX: "auto",
+                paddingBottom: 6,
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {recommendations.map((rec) => (
+                <a
+                  key={rec.id}
+                  href={`/films/${rec.id}`}
+                  className="film-rec-card"
+                  style={{ flexShrink: 0, width: 100, textDecoration: "none", color: "inherit" }}
+                >
+                  <div
+                    style={{
+                      width: 100,
+                      aspectRatio: "2 / 3",
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      background: "#12121f",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      marginBottom: 7,
+                    }}
+                  >
+                    {rec.poster_path ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`https://image.tmdb.org/t/p/w342${rec.poster_path}`}
+                        alt={rec.title}
+                        loading="lazy"
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "rgba(255,255,255,0.14)",
+                          fontSize: 11,
+                          fontFamily: SERIF,
+                          padding: 8,
+                          textAlign: "center",
+                        }}
+                      >
+                        {rec.title}
+                      </div>
+                    )}
+                  </div>
+                  <p
+                    style={{
+                      margin: "0 0 2px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.78)",
+                      lineHeight: 1.3,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      fontFamily: SANS,
+                    }}
+                  >
+                    {rec.title}
+                  </p>
+                  {rec.year && (
+                    <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.28)", fontFamily: SANS }}>
+                      {rec.year}
+                    </p>
+                  )}
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Reviews ─────────────────────────────────────────────────── */}
         <MediaReviewsSection

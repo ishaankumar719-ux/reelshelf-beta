@@ -11,9 +11,69 @@ import {
   localBooks,
   type LocalBook,
 } from "../../../lib/localBooks";
+import { localMovies } from "../../../lib/localMovies";
+import { COLLECTION_DEFS, type CollectionDef } from "../../../lib/discoverCollections";
 import { getBookHrefFromRouteId, normalizeBookRouteId, isOpenLibraryId } from "../../../lib/bookRoutes";
 import { resolveBookCover, resolveBooksWithCovers } from "../../../lib/bookCovers";
 import BookDescription from "../../../components/BookDescription";
+
+const SANS_FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif';
+
+function getBookCollections(title: string, year: string | number): CollectionDef[] {
+  const yr = parseInt(String(year));
+  const lower = title.toLowerCase();
+  return COLLECTION_DEFS.filter((def) => {
+    if (!def.localFilter) return false;
+    switch (def.localFilter) {
+      case "classic-literature":
+        return !isNaN(yr) && yr < 1980;
+      case "books-to-screen":
+        return localMovies.some((m) => m.title.toLowerCase() === lower);
+      default:
+        return false;
+    }
+  });
+}
+
+function AppearsInSection({ collections }: { collections: CollectionDef[] }) {
+  if (!collections.length) return null;
+  return (
+    <section style={{ margin: "32px 0 16px" }}>
+      <h2 style={{
+        margin: "0 0 12px",
+        fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+        textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
+        fontFamily: SANS_FONT,
+      }}>
+        Appears in
+      </h2>
+      <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+        {collections.map((col) => (
+          <a
+            key={col.slug}
+            href={`/discover/collection/${col.slug}`}
+            style={{
+              flexShrink: 0, padding: "12px 16px", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              textDecoration: "none", display: "flex", flexDirection: "column", gap: 4, maxWidth: 220,
+            }}
+          >
+            <span style={{ fontFamily: SANS_FONT, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", lineHeight: 1.3 }}>
+              {col.name}
+            </span>
+            <span style={{
+              fontFamily: SANS_FONT, fontSize: 11, color: "rgba(255,255,255,0.3)", lineHeight: 1.45,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {col.description}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function BackButton() {
   return (
@@ -699,6 +759,8 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
         </div>
       </section>
 
+      <AppearsInSection collections={getBookCollections(data.title, data.year)} />
+
       <MediaReviewsSection
         mediaIds={[workId]}
         mediaType="book"
@@ -1015,6 +1077,7 @@ export default async function BookDetailPage({
         </div>
       </section>
 
+      <AppearsInSection collections={getBookCollections(book.title, book.year)} />
       <RelatedBooksSection books={relatedBooks} />
       <BecauseYouLikedRow
         mediaType="book"

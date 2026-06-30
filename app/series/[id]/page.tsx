@@ -29,6 +29,7 @@ import {
   type TMDBTVRecommendation,
   type TMDBTVSeasonDetails,
 } from "../../../lib/tmdb";
+import { COLLECTION_DEFS, type CollectionDef } from "../../../lib/discoverCollections";
 
 type Provider = {
   provider_id: number;
@@ -581,6 +582,25 @@ function SeriesHero({
   );
 }
 
+function getTVCollections(details: TMDBTVDetails | null): CollectionDef[] {
+  if (!details) return [];
+  const hasGenre = (id: number) => details.genres?.some((g) => g.id === id) ?? false;
+  const va = details.vote_average ?? 0;
+  return COLLECTION_DEFS.filter((def) => {
+    if (def.tmdbMediaType !== "tv") return false;
+    switch (def.slug) {
+      case "one-season-wonders":
+        return va >= 8.0;
+      case "mind-bending-tv":
+        return (hasGenre(10765) || hasGenre(9648)) && va >= 7.5;
+      case "crime-drama-tv":
+        return (hasGenre(80) || hasGenre(18)) && va >= 7.5;
+      default:
+        return false;
+    }
+  });
+}
+
 function SeriesDetailContent({
   title,
   year,
@@ -600,6 +620,7 @@ function SeriesDetailContent({
   initialSeason,
   flatrate,
   recommendations,
+  matchingCollections = [],
 }: {
   title: string;
   year: string;
@@ -629,6 +650,7 @@ function SeriesDetailContent({
   initialSeason: InitialSeason | null;
   flatrate: Provider[];
   recommendations: TMDBTVRecommendation[];
+  matchingCollections?: CollectionDef[];
 }) {
   const totalEpisodes = basicSeasons.reduce((sum, s) => sum + s.episodeCount, 0);
   const socialMediaIds = Array.from(new Set([String(tmdbId), actionSeries.id, `tmdb-${tmdbId}`]));
@@ -749,6 +771,57 @@ function SeriesDetailContent({
 
         {/* Friends social layer */}
         <TVFriendsLayer mediaIds={socialMediaIds} title={title} />
+
+        {/* ── Appears in ─────────────────────────────────────────────── */}
+        {matchingCollections.length > 0 && (
+          <section style={{ marginTop: 32, marginBottom: 8 }}>
+            <h2 style={{
+              margin: "0 0 12px",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.3)",
+              fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+            }}>
+              Appears in
+            </h2>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+              {matchingCollections.map((col) => (
+                <a
+                  key={col.slug}
+                  href={`/discover/collection/${col.slug}`}
+                  style={{
+                    flexShrink: 0,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.03)",
+                    textDecoration: "none",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    maxWidth: 220,
+                  }}
+                >
+                  <span style={{
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", lineHeight: 1.3,
+                  }}>
+                    {col.name}
+                  </span>
+                  <span style={{
+                    fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    fontSize: 11, color: "rgba(255,255,255,0.3)", lineHeight: 1.45,
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {col.description}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <RecommendationsSection recommendations={recommendations} />
         <BecauseYouLikedRow
@@ -975,6 +1048,7 @@ export default async function SeriesDetailPage({
         initialSeason={initialSeason}
         flatrate={flatrate}
         recommendations={recommendations}
+        matchingCollections={getTVCollections(details)}
       />
     );
   }
@@ -1041,6 +1115,7 @@ export default async function SeriesDetailPage({
       initialSeason={initialSeason}
       flatrate={flatrate}
       recommendations={recommendations}
+      matchingCollections={getTVCollections(show)}
     />
   );
 }
