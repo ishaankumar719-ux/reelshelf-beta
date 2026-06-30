@@ -13,6 +13,8 @@ interface TMDBFilm {
   runtime: number | null;
   vote_average: number;
   genres: { id: number; name: string }[];
+  original_language?: string;
+  production_companies?: Array<{ id: number; name: string; logo_path?: string | null }>;
 }
 
 interface TMDBCastMember {

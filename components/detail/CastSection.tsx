@@ -26,36 +26,32 @@ function getInitials(name: string) {
 
 function CastCard({ member }: { member: CastMember }) {
   const [imgError, setImgError] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const showImage = Boolean(member.profile_path) && !imgError;
 
   return (
     <Link
       href={`/people/${member.id}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       style={{
-        width: 88,
+        width: 108,
         flexShrink: 0,
-        cursor: "pointer",
-        transform: "scale(1)",
-        transition: "transform 0.15s ease, opacity 0.12s ease",
-        opacity: isHovered ? 0.85 : 1,
         textDecoration: "none",
+        color: "inherit",
         display: "block",
       }}
-      className="group"
     >
       <div
         style={{
-          width: 88,
-          height: 88,
-          borderRadius: "50%",
+          width: 108,
+          aspectRatio: "2 / 3",
+          borderRadius: 12,
           overflow: "hidden",
-          background: "#111122",
+          background: "linear-gradient(135deg, #1e1e35, #2a2a45)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
           marginBottom: 8,
+          transition: "transform 0.18s ease, box-shadow 0.18s ease",
         }}
-        className="transition duration-150 ease-out group-hover:scale-[1.05]"
+        className="cast-card-img"
       >
         {showImage ? (
           <img
@@ -76,13 +72,13 @@ function CastCard({ member }: { member: CastMember }) {
             style={{
               width: "100%",
               height: "100%",
-              background: "linear-gradient(135deg, #1e1e35, #2a2a45)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "rgba(255,255,255,0.4)",
-              fontSize: 20,
+              color: "rgba(255,255,255,0.3)",
+              fontSize: 22,
               fontWeight: 500,
+              letterSpacing: "-0.5px",
             }}
           >
             {getInitials(member.name)}
@@ -93,32 +89,33 @@ function CastCard({ member }: { member: CastMember }) {
       <p
         style={{
           fontSize: 11,
-          fontWeight: 500,
-          color: "rgba(255,255,255,0.78)",
-          textAlign: "center",
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.82)",
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical",
           margin: "0 0 3px",
+          lineHeight: 1.35,
         }}
       >
         {member.name}
       </p>
-      <p
-        style={{
-          fontSize: 10,
-          color: "rgba(255,255,255,0.35)",
-          textAlign: "center",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontStyle: "italic",
-          margin: 0,
-        }}
-      >
-        {member.character}
-      </p>
+      {member.character && (
+        <p
+          style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.35)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontStyle: "italic",
+            margin: 0,
+          }}
+        >
+          {member.character}
+        </p>
+      )}
     </Link>
   );
 }
@@ -129,16 +126,22 @@ export default function CastSection({ cast }: CastSectionProps) {
   }
 
   return (
-    <section style={{ marginTop: 32, marginBottom: 40 }}>
-      <style>{`.cast-scroll::-webkit-scrollbar { display: none; }`}</style>
+    <section style={{ marginTop: 32, marginBottom: 36 }}>
+      <style>{`
+        .cast-scroll::-webkit-scrollbar { display: none; }
+        .cast-card-img:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+        }
+      `}</style>
       <h2
         style={{
           fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.08em",
+          fontWeight: 700,
+          letterSpacing: "0.1em",
           textTransform: "uppercase",
           color: "rgba(255,255,255,0.3)",
-          margin: "0 0 16px",
+          margin: "0 0 14px",
         }}
       >
         Cast
@@ -147,7 +150,7 @@ export default function CastSection({ cast }: CastSectionProps) {
         className="cast-scroll"
         style={{
           display: "flex",
-          gap: 12,
+          gap: 10,
           overflowX: "auto",
           paddingBottom: 8,
           scrollbarWidth: "none",

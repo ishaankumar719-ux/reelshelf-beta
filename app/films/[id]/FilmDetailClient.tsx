@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
+import ShareButton from "../../../components/detail/ShareButton";
 import { createClient as createSupabaseClient } from "../../../lib/supabase/client";
 import { useDiaryLog } from "../../../hooks/useDiaryLog";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
@@ -19,6 +20,8 @@ interface TMDBFilm {
   runtime: number | null;
   vote_average: number;
   genres: { id: number; name: string }[];
+  original_language?: string;
+  production_companies?: Array<{ id: number; name: string }>;
 }
 
 interface DiaryEntry {
@@ -28,6 +31,7 @@ interface DiaryEntry {
   review: string;
   watched_date: string;
   favourite: boolean;
+  rewatch: boolean;
   media_id: string;
 }
 
@@ -36,6 +40,9 @@ interface FilmDetailClientProps {
   topCast: CastMember[];
   watchProviders: { flatrate: WatchProvider[] };
 }
+
+const SANS = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif';
+const SERIF = 'Georgia,"Times New Roman",Times,serif';
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -49,37 +56,42 @@ function formatLoggedDate(value: string) {
   });
 }
 
-function ActionButton({
-  children,
-  onClick,
-  style,
-  disabled = false,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  style: React.CSSProperties;
-  disabled?: boolean;
-}) {
+function formatLanguage(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="rs-btn-press"
-      style={{
-        padding: "10px 20px",
-        borderRadius: 10,
-        fontSize: 13,
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        border: "none",
-        cursor: disabled ? "default" : "pointer",
-        ...style,
-      }}
-    >
-      {children}
-    </button>
+    <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+      <span
+        style={{
+          fontFamily: SANS,
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.28)",
+          flexShrink: 0,
+          width: 88,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: SANS,
+          fontSize: 13,
+          color: "rgba(255,255,255,0.72)",
+          lineHeight: 1.5,
+        }}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -92,6 +104,7 @@ export default function FilmDetailClient({
   const [diaryEntry, setDiaryEntry] = useState<DiaryEntry | null>(null);
   const [isWatchlisted, setIsWatchlisted] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState<string | null>(null);
+  const [isFavourited, setIsFavourited] = useState(false);
   const [personalLoaded, setPersonalLoaded] = useState(false);
 
   useEffect(() => {
@@ -99,61 +112,45 @@ export default function FilmDetailClient({
 
     async function loadPersonalData() {
       const supabase = createSupabaseClient();
+      if (!supabase) { if (!cancelled) setPersonalLoaded(true); return; }
 
-      if (!supabase) {
-        if (!cancelled) {
-          setPersonalLoaded(true);
-        }
-        return;
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        if (!cancelled) {
-          setPersonalLoaded(true);
-        }
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { if (!cancelled) setPersonalLoaded(true); return; }
 
       const userId = session.user.id;
       const tmdbMediaId = `tmdb-${film.id}`;
       const titleYearSlug = `${slugify(film.title)}-${film.release_date?.slice(0, 4)}`;
       const bareSlug = slugify(film.title);
 
-      const { data: diaryEntries } = await supabase
-        .from("diary_entries")
-        .select("id, rating, review, watched_date, favourite, media_id, reelshelf_score")
-        .eq("user_id", userId)
-        .eq("review_scope", "show")
-        .or(`media_id.eq.${tmdbMediaId},media_id.eq.${titleYearSlug}`)
-        .order("watched_date", { ascending: false })
-        .limit(1);
+      const [{ data: diaryEntries }, { data: watchlistItems }] = await Promise.all([
+        supabase
+          .from("diary_entries")
+          .select("id, rating, review, watched_date, favourite, rewatch, media_id, reelshelf_score")
+          .eq("user_id", userId)
+          .eq("review_scope", "show")
+          .or(`media_id.eq.${tmdbMediaId},media_id.eq.${titleYearSlug}`)
+          .order("watched_date", { ascending: false })
+          .limit(1),
+        supabase
+          .from("saved_items")
+          .select("id, media_id")
+          .eq("user_id", userId)
+          .eq("list_type", "watchlist")
+          .or(`media_id.eq.${tmdbMediaId},media_id.eq.${bareSlug}`),
+      ]);
 
-      const { data: watchlistItems } = await supabase
-        .from("saved_items")
-        .select("id, media_id")
-        .eq("user_id", userId)
-        .eq("list_type", "watchlist")
-        .or(`media_id.eq.${tmdbMediaId},media_id.eq.${bareSlug}`);
+      if (cancelled) return;
 
-      if (cancelled) {
-        return;
-      }
-
-      setDiaryEntry((((diaryEntries ?? [])[0] as unknown) as DiaryEntry) ?? null);
+      const entry = ((diaryEntries ?? [])[0] as unknown as DiaryEntry) ?? null;
+      setDiaryEntry(entry);
+      setIsFavourited(entry?.favourite ?? false);
       setIsWatchlisted((watchlistItems?.length ?? 0) > 0);
       setWatchlistItemId(watchlistItems?.[0]?.id ?? null);
       setPersonalLoaded(true);
     }
 
     void loadPersonalData();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [film.id, film.release_date, film.title]);
 
   const heroBackdrop = film.backdrop_path
@@ -163,48 +160,36 @@ export default function FilmDetailClient({
     ? `https://image.tmdb.org/t/p/w500${film.poster_path}`
     : null;
   const year = film.release_date?.slice(0, 4) ?? "";
-  const metaLine = [year, film.runtime ? `${film.runtime}m` : null, film.genres?.slice(0, 2).map((genre) => genre.name).join(" · ")]
-    .filter(Boolean)
-    .join(" · ");
 
   const coercedRating =
-    diaryEntry && diaryEntry.rating !== null
+    diaryEntry?.rating !== null && diaryEntry?.rating !== undefined
       ? typeof diaryEntry.rating === "string"
         ? parseFloat(diaryEntry.rating)
         : diaryEntry.rating
       : null;
 
-  const toggleWatchlist = async () => {
+  const contentWrapperStyle: React.CSSProperties = useMemo(
+    () => ({
+      maxWidth: "1020px",
+      margin: "0 auto",
+      padding: "0 20px",
+    }),
+    []
+  );
+
+  async function toggleWatchlist() {
     const supabase = createSupabaseClient();
-
-    if (!supabase) {
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return;
-    }
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
     if (isWatchlisted && watchlistItemId) {
       setIsWatchlisted(false);
       setWatchlistItemId(null);
-
-      const { error } = await supabase
-        .from("saved_items")
-        .delete()
-        .eq("id", watchlistItemId);
-
-      if (error) {
-        console.error("[FILM DETAIL] watchlist remove error:", error.message);
-        setIsWatchlisted(true);
-      }
+      const { error } = await supabase.from("saved_items").delete().eq("id", watchlistItemId);
+      if (error) setIsWatchlisted(true);
     } else {
       setIsWatchlisted(true);
-
       const mediaId = `tmdb-${film.id}`;
       const { data, error } = await supabase
         .from("saved_items")
@@ -217,382 +202,513 @@ export default function FilmDetailClient({
           poster: posterUrl,
           year: parseInt(film.release_date?.slice(0, 4) ?? "0", 10),
           creator: null,
-          genres: film.genres?.map((genre) => genre.name) ?? [],
+          genres: film.genres?.map((g) => g.name) ?? [],
           runtime: film.runtime ?? null,
           vote_average: film.vote_average ?? null,
         })
         .select("id")
         .single();
-
-      if (error) {
-        console.error("[FILM DETAIL] watchlist add error:", error.message);
-        setIsWatchlisted(false);
-      } else {
-        setWatchlistItemId(data.id);
-      }
+      if (error) { setIsWatchlisted(false); } else { setWatchlistItemId(data.id); }
     }
-  };
+  }
 
-  const contentWrapperStyle: React.CSSProperties = useMemo(
-    () => ({
-      maxWidth: "1020px",
-      margin: "0 auto",
-      padding: "0 20px 56px",
-    }),
-    []
-  );
+  async function toggleFavourite() {
+    if (!diaryEntry) return;
+    const supabase = createSupabaseClient();
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const next = !isFavourited;
+    setIsFavourited(next);
+    const { error } = await supabase
+      .from("diary_entries")
+      .update({ favourite: next })
+      .eq("id", diaryEntry.id);
+    if (error) setIsFavourited(!next);
+  }
+
+  // About metadata — only non-empty fields
+  const aboutRows: Array<{ label: string; value: string }> = [
+    film.runtime ? { label: "Runtime", value: `${film.runtime} min` } : null,
+    film.genres?.length ? { label: "Genre", value: film.genres.map((g) => g.name).join(", ") } : null,
+    film.release_date ? { label: "Released", value: new Date(film.release_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) } : null,
+    film.original_language ? { label: "Language", value: formatLanguage(film.original_language) } : null,
+    film.production_companies?.[0]?.name ? { label: "Studio", value: film.production_companies[0].name } : null,
+  ].filter((r): r is { label: string; value: string } => r !== null);
 
   return (
     <main style={{ background: "#08080f", minHeight: "100vh", color: "white" }}>
-      <section
-        style={{
-          position: "relative",
-          minHeight: "70vh",
-          display: "flex",
-          alignItems: "flex-end",
-          overflow: "hidden",
-          background: heroBackdrop
-            ? "#08080f"
-            : "linear-gradient(180deg, #0a0a18 0%, #12122a 100%)",
-        }}
-      >
-        {heroBackdrop ? (
-          <img
-            src={heroBackdrop}
-            alt={film.title}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center top",
-            }}
-          />
-        ) : null}
-
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom, rgba(8,8,20,0.3) 0%, rgba(8,8,20,0.1) 30%, rgba(8,8,20,0.6) 65%, rgba(8,8,20,1.0) 100%)",
-          }}
-        />
-
-        <div
-          style={{
-            ...contentWrapperStyle,
-            position: "relative",
-            zIndex: 10,
-            width: "100%",
-            paddingBottom: 40,
-          }}
-        >
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <div style={{ position: "relative" }}>
+        {/* Backdrop — contained within its own overflow:hidden wrapper */}
+        {heroBackdrop && (
           <div
             style={{
-              display: "flex",
-              gap: 20,
-              alignItems: "flex-end",
-              flexWrap: "wrap",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "84vh",
+              overflow: "hidden",
+              zIndex: 0,
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroBackdrop}
+              alt=""
+              aria-hidden="true"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center 20%",
+                display: "block",
+                opacity: 0.52,
+                filter: "saturate(1.08)",
+              }}
+            />
+            {/* Rich gradient: dark at top for nav, clear in middle, dark at bottom for text */}
             <div
               style={{
-                width: 130,
-                aspectRatio: "2 / 3",
-                borderRadius: 16,
-                overflow: "hidden",
-                boxShadow: "0 28px 60px rgba(0,0,0,0.38)",
-                background: "#111122",
-                flexShrink: 0,
+                position: "absolute",
+                inset: 0,
+                background: [
+                  "linear-gradient(to bottom,",
+                  "  rgba(8,8,15,0.72) 0%,",
+                  "  rgba(8,8,15,0.10) 22%,",
+                  "  rgba(8,8,15,0.04) 44%,",
+                  "  rgba(8,8,15,0.48) 70%,",
+                  "  rgba(8,8,15,0.92) 88%,",
+                  "  rgba(8,8,15,1.00) 100%",
+                  ")",
+                ].join(""),
               }}
-            >
-              {posterUrl ? (
-                <img
-                  src={posterUrl}
-                  alt={film.title}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "rgba(255,255,255,0.18)",
-                    fontSize: 40,
-                    fontWeight: 700,
-                  }}
-                >
-                  {film.title.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
+            />
+          </div>
+        )}
+        {!heroBackdrop && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0,
+              height: "84vh",
+              background: "linear-gradient(180deg, #0a0a18 0%, #12122a 100%)",
+              zIndex: 0,
+            }}
+          />
+        )}
 
-            <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
+        {/* Hero text content — sits above backdrop, aligned to bottom */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 5,
+            height: "calc(84vh - 120px)",
+            display: "flex",
+            alignItems: "flex-end",
+          }}
+        >
+          <div style={{ ...contentWrapperStyle, paddingBottom: 0, width: "100%" }}>
+            <div style={{ paddingBottom: 20 }}>
               <h1
                 style={{
                   margin: 0,
-                  fontSize: "clamp(26px, 5vw, 36px)",
-                  lineHeight: 1.1,
+                  fontSize: "clamp(30px, 5.5vw, 52px)",
+                  lineHeight: 1.06,
                   fontWeight: 700,
-                  color: "rgba(255,255,255,0.95)",
+                  color: "rgba(255,255,255,0.97)",
+                  fontFamily: SERIF,
+                  letterSpacing: "-0.8px",
                 }}
               >
                 {film.title}
               </h1>
 
-              {film.tagline ? (
+              {film.tagline && (
                 <p
                   style={{
-                    margin: "10px 0 0",
-                    fontSize: 15,
+                    margin: "12px 0 0",
+                    fontSize: "clamp(13px, 1.8vw, 16px)",
                     fontStyle: "italic",
-                    color: "rgba(255,255,255,0.5)",
+                    color: "rgba(255,255,255,0.46)",
+                    fontFamily: SERIF,
+                    lineHeight: 1.5,
                   }}
                 >
                   {film.tagline}
                 </p>
-              ) : null}
+              )}
 
               <p
                 style={{
                   margin: "14px 0 0",
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.55)",
+                  color: "rgba(255,255,255,0.48)",
+                  fontFamily: SANS,
+                  letterSpacing: "0.01em",
                 }}
               >
-                {metaLine}
+                {[
+                  year,
+                  film.runtime ? `${film.runtime}m` : null,
+                  film.genres?.slice(0, 2).map((g) => g.name).join(" · "),
+                ]
+                  .filter(Boolean)
+                  .join("  ·  ")}
               </p>
             </div>
           </div>
         </div>
-      </section>
 
-      <div style={contentWrapperStyle}>
+        {/* Poster + actions row — pulls up into hero with negative margin */}
         <div
           style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            marginTop: -18,
-            marginBottom: 24,
             position: "relative",
-            zIndex: 2,
+            zIndex: 20,
+            marginTop: -96,
           }}
         >
-          <ActionButton
-            onClick={() =>
-              openLog({
-                title: film.title,
-                media_type: "movie",
-                year: parseInt(year || "0", 10),
-                poster: posterUrl,
-                tmdb_id: film.id,
-              })
-            }
-            style={{
-              background: "#1D9E75",
-              color: "white",
-              fontWeight: 600,
-            }}
-          >
-            <span>＋</span>
-            <span>Log this</span>
-          </ActionButton>
-
-          <ActionButton
-            onClick={() => void toggleWatchlist()}
-            style={
-              isWatchlisted
-                ? {
-                    background: "rgba(255,255,255,0.15)",
-                    border: "0.5px solid rgba(255,255,255,0.4)",
-                    color: "rgba(255,255,255,0.9)",
-                  }
-                : {
-                    background: "rgba(255,255,255,0.08)",
-                    border: "0.5px solid rgba(255,255,255,0.2)",
-                    color: "rgba(255,255,255,0.82)",
-                  }
-            }
-          >
-            <span>{isWatchlisted ? "🔖" : "⌑"}</span>
-            <span>{isWatchlisted ? "Watchlisted" : "Watchlist"}</span>
-          </ActionButton>
-
-          <ActionButton
-            disabled
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.75)",
-              opacity: 0.5,
-            }}
-          >
-            <span>♡</span>
-            <span>Favourite</span>
-          </ActionButton>
-        </div>
-
-        <WhereToWatch providers={watchProviders.flatrate} title={film.title} />
-
-        {personalLoaded ? (
-          diaryEntry ? (
+          <div style={{ ...contentWrapperStyle, paddingTop: 0, paddingBottom: 24 }}>
             <div
               style={{
-                borderLeft: "2px solid #1D9E75",
-                paddingLeft: 16,
-                margin: "24px 0",
+                display: "flex",
+                gap: 24,
+                alignItems: "flex-start",
               }}
             >
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
-                <div>
-                  <p
-                    style={{
-                      margin: "0 0 4px",
-                      fontSize: 10,
-                      letterSpacing: "0.03em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.3)",
-                    }}
-                  >
-                    Your Rating
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    <span
-                      style={{
-                        color: "rgba(255,255,255,0.9)",
-                        fontSize: 20,
-                        fontWeight: 300,
-                        letterSpacing: "-0.5px",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {(coercedRating ?? 0).toFixed(1)}
-                    </span>
-                    <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
-                  </p>
-                </div>
-
-                {typeof diaryEntry.reelshelf_score === "number" &&
-                diaryEntry.reelshelf_score !== coercedRating ? (
-                  <div>
-                    <p
-                      style={{
-                        margin: "0 0 4px",
-                        fontSize: 10,
-                        letterSpacing: "0.03em",
-                        textTransform: "uppercase",
-                        color: "rgba(255,255,255,0.3)",
-                      }}
-                    >
-                      ReelShelf Score
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      <span
-                        style={{
-                          color: "#EF9F27",
-                          fontSize: 20,
-                          fontWeight: 300,
-                          letterSpacing: "-0.5px",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {diaryEntry.reelshelf_score.toFixed(1)}
-                      </span>
-                      <span style={{ color: "rgba(239,159,39,0.45)", fontSize: 14, fontWeight: 400, marginLeft: 4 }}>/ 10</span>
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              <p
+              {/* Poster — overlaps hero */}
+              <div
                 style={{
-                  margin: "8px 0 0",
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.4)",
+                  flexShrink: 0,
+                  width: 145,
+                  aspectRatio: "2 / 3",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08)",
+                  background: "#111122",
                 }}
               >
-                Logged {formatLoggedDate(diaryEntry.watched_date)}
-              </p>
+                {posterUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={posterUrl}
+                    alt={film.title}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "rgba(255,255,255,0.18)",
+                      fontSize: 40,
+                      fontWeight: 700,
+                      fontFamily: SERIF,
+                    }}
+                  >
+                    {film.title.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
 
-              {diaryEntry.review && diaryEntry.review.trim() !== "" ? (
-                <div style={{ marginTop: 10 }}>
-                  <p
+              {/* Actions — aligned 96px below the hero's visual bottom (below poster top) */}
+              <div style={{ paddingTop: 112, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {/* Log */}
+                  <button
+                    type="button"
+                    className="rs-btn-press"
+                    onClick={() =>
+                      openLog({
+                        title: film.title,
+                        media_type: "movie",
+                        year: parseInt(year || "0", 10),
+                        poster: posterUrl,
+                        tmdb_id: film.id,
+                      })
+                    }
                     style={{
-                      margin: 0,
-                      fontSize: 10,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.35)",
+                      padding: "10px 20px",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      border: "none",
+                      cursor: "pointer",
+                      background: "#1D9E75",
+                      color: "white",
+                      fontWeight: 600,
+                      fontFamily: SANS,
                     }}
                   >
-                    Your thoughts
-                  </p>
-                  <p
+                    <span>＋</span>
+                    <span>Log this</span>
+                  </button>
+
+                  {/* Watchlist */}
+                  <button
+                    type="button"
+                    className="rs-btn-press"
+                    onClick={() => void toggleWatchlist()}
                     style={{
-                      margin: "4px 0 0",
-                      fontSize: 14,
-                      color: "rgba(255,255,255,0.7)",
-                      fontStyle: "italic",
-                      lineHeight: 1.6,
+                      padding: "10px 20px",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      fontFamily: SANS,
+                      ...(isWatchlisted
+                        ? { background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.4)", color: "rgba(255,255,255,0.9)" }
+                        : { background: "rgba(255,255,255,0.08)", border: "0.5px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.82)" }),
                     }}
                   >
-                    {diaryEntry.review}
-                  </p>
+                    <span>{isWatchlisted ? "🔖" : "⌑"}</span>
+                    <span>{isWatchlisted ? "Watchlisted" : "Watchlist"}</span>
+                  </button>
+
+                  {/* Favourite — active only if diary entry exists */}
+                  <button
+                    type="button"
+                    className="rs-btn-press"
+                    onClick={() => void toggleFavourite()}
+                    disabled={!diaryEntry}
+                    title={diaryEntry ? undefined : "Log this film first to favourite it"}
+                    style={{
+                      padding: "10px 20px",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: diaryEntry ? "pointer" : "default",
+                      fontWeight: 600,
+                      fontFamily: SANS,
+                      opacity: diaryEntry ? 1 : 0.45,
+                      ...(isFavourited
+                        ? { background: "rgba(239,68,68,0.14)", border: "0.5px solid rgba(239,68,68,0.4)", color: "rgba(239,159,159,0.9)" }
+                        : { background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.7)" }),
+                    }}
+                  >
+                    <span>{isFavourited ? "♥" : "♡"}</span>
+                    <span>{isFavourited ? "Favourited" : "Favourite"}</span>
+                  </button>
+
+                  {/* Share */}
+                  <ShareButton style={{ borderRadius: 10, fontFamily: SANS }} />
                 </div>
-              ) : null}
+              </div>
             </div>
-          ) : (
-            <p
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main content ────────────────────────────────────────────── */}
+      <div style={{ ...contentWrapperStyle, paddingBottom: 56 }}>
+        <WhereToWatch providers={watchProviders.flatrate} title={film.title} />
+
+        {/* ── Your Journey ────────────────────────────────────────────── */}
+        {personalLoaded && diaryEntry && (
+          <section
+            style={{
+              margin: "28px 0",
+              padding: "20px 22px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+            }}
+          >
+            <h2
               style={{
-                fontSize: 13,
+                margin: "0 0 16px",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
                 color: "rgba(255,255,255,0.3)",
-                fontStyle: "italic",
-                margin: "20px 0",
+                fontFamily: SANS,
               }}
             >
-              You haven't logged this yet
+              Your Journey
+            </h2>
+
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
+              {/* Rating */}
+              {coercedRating !== null && (
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: SANS }}>
+                    Your Rating
+                  </p>
+                  <p style={{ margin: 0, display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span style={{ color: "rgba(255,255,255,0.92)", fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
+                      {coercedRating.toFixed(1)}
+                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, fontWeight: 400 }}>/ 10</span>
+                  </p>
+                </div>
+              )}
+
+              {/* ReelShelf score */}
+              {typeof diaryEntry.reelshelf_score === "number" && diaryEntry.reelshelf_score !== coercedRating && (
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: SANS }}>
+                    ReelShelf Score
+                  </p>
+                  <p style={{ margin: 0, display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span style={{ color: "#EF9F27", fontSize: 22, fontWeight: 300, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
+                      {diaryEntry.reelshelf_score.toFixed(1)}
+                    </span>
+                    <span style={{ color: "rgba(239,159,39,0.45)", fontSize: 13, fontWeight: 400 }}>/ 10</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Logged date */}
+              <div>
+                <p style={{ margin: "0 0 4px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: SANS }}>
+                  Logged
+                </p>
+                <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.72)", fontFamily: SANS }}>
+                  {formatLoggedDate(diaryEntry.watched_date)}
+                </p>
+              </div>
+
+              {/* Badges */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 18 }}>
+                {diaryEntry.favourite && (
+                  <span style={{ fontSize: 11, color: "rgba(239,100,100,0.9)", background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", padding: "3px 9px", borderRadius: 6, fontFamily: SANS, fontWeight: 600 }}>
+                    ♥ Favourite
+                  </span>
+                )}
+                {diaryEntry.rewatch && (
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", padding: "3px 9px", borderRadius: 6, fontFamily: SANS, fontWeight: 600 }}>
+                    ↺ Rewatch
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Review */}
+            {diaryEntry.review && diaryEntry.review.trim() !== "" && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ margin: "0 0 6px", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: SANS }}>
+                  Your thoughts
+                </p>
+                <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.72)", fontStyle: "italic", lineHeight: 1.65, fontFamily: SERIF }}>
+                  &ldquo;{diaryEntry.review}&rdquo;
+                </p>
+              </div>
+            )}
+
+            {/* Log again CTA */}
+            <div style={{ marginTop: 16 }}>
+              <button
+                type="button"
+                className="rs-btn-press"
+                onClick={() =>
+                  openLog({
+                    title: film.title,
+                    media_type: "movie",
+                    year: parseInt(year || "0", 10),
+                    poster: posterUrl,
+                    tmdb_id: film.id,
+                  })
+                }
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "0.5px solid rgba(29,158,117,0.35)",
+                  background: "rgba(29,158,117,0.1)",
+                  color: "#1D9E75",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: SANS,
+                }}
+              >
+                ↺ Log again
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* ── Overview ────────────────────────────────────────────────── */}
+        {film.overview && (
+          <section style={{ maxWidth: 680, margin: "32px 0" }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 12,
+                fontFamily: SANS,
+              }}
+            >
+              Overview
+            </h2>
+            <p
+              style={{
+                fontSize: 15,
+                lineHeight: 1.75,
+                color: "rgba(255,255,255,0.72)",
+                margin: 0,
+                fontFamily: SANS,
+              }}
+            >
+              {film.overview}
             </p>
-          )
-        ) : null}
+          </section>
+        )}
 
-        <section style={{ maxWidth: 680, margin: "28px 0" }}>
-          <h2
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.35)",
-              marginBottom: 12,
-            }}
-          >
-            Overview
-          </h2>
-          <p
-            style={{
-              fontSize: 15,
-              lineHeight: 1.7,
-              color: "rgba(255,255,255,0.72)",
-              margin: 0,
-            }}
-          >
-            {film.overview}
-          </p>
-        </section>
+        {/* ── About ───────────────────────────────────────────────────── */}
+        {aboutRows.length > 0 && (
+          <section style={{ margin: "32px 0" }}>
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.3)",
+                marginBottom: 14,
+                fontFamily: SANS,
+              }}
+            >
+              About
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                padding: "18px 20px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.07)",
+                background: "rgba(255,255,255,0.02)",
+                maxWidth: 480,
+              }}
+            >
+              {aboutRows.map(({ label, value }) => (
+                <MetaRow key={label} label={label} value={value} />
+              ))}
+            </div>
+          </section>
+        )}
 
-        {topCast.length > 0 ? <CastSection cast={topCast} /> : null}
+        {/* ── Cast ────────────────────────────────────────────────────── */}
+        {topCast.length > 0 && <CastSection cast={topCast} />}
 
+        {/* ── Reviews ─────────────────────────────────────────────────── */}
         <MediaReviewsSection
           mediaIds={[`tmdb-${film.id}`, `${slugify(film.title)}-${year}`]}
           mediaType="movie"

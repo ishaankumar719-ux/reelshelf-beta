@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
+import ShareButton from "../../../components/detail/ShareButton";
 import { MediaCard } from "../../../src/components/ui/MediaCard";
 import { getPosterUrl, getBackdropUrl } from "../../../src/lib/tmdb-image";
 import { WhereToWatch } from "../../../components/WhereToWatch";
@@ -200,6 +201,7 @@ function ActionButtons({
     >
       <AddToDiaryButton movie={series} />
       <AddToWatchlistButton movie={series} />
+      <ShareButton style={{ borderRadius: 10 }} />
     </div>
   );
 }
@@ -328,7 +330,7 @@ function SeriesHero({
 
   return (
     <div style={{ position: "relative", marginBottom: 4 }}>
-      {/* Backdrop image — decorative, very subtle */}
+      {/* Backdrop image */}
       {backdropUrl && (
         <>
           <div style={{
@@ -338,12 +340,18 @@ function SeriesHero({
               src={backdropUrl}
               alt=""
               aria-hidden="true"
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%", opacity: 0.38, filter: "saturate(0.85)" }}
             />
           </div>
           <div style={{
             position: "absolute", inset: 0, borderRadius: 28, zIndex: 0,
-            background: "linear-gradient(to right, rgba(6,6,12,0.92) 0%, rgba(6,6,12,0.82) 40%, rgba(6,6,12,0.75) 100%)",
+            background: [
+              "linear-gradient(to right,",
+              "  rgba(6,6,12,0.97) 0%,",
+              "  rgba(6,6,12,0.88) 38%,",
+              "  rgba(6,6,12,0.60) 100%",
+              ")",
+            ].join(""),
           }} />
         </>
       )}

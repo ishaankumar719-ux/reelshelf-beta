@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
+import ShareButton from "../../../components/detail/ShareButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
 import TrackRecentView from "../../../components/TrackRecentView";
@@ -135,6 +136,7 @@ function ActionButtons({
     >
       <AddToDiaryButton movie={book} />
       <AddToWatchlistButton movie={book} />
+      <ShareButton style={{ borderRadius: 10 }} />
     </div>
   );
 }
@@ -602,6 +604,13 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
               </div>
             )}
 
+            {/* Reading time estimate: ~1 min/page (250 words/page ÷ 250 wpm) */}
+            {data.year && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+                <DetailPill label={`Published ${data.year}`} />
+              </div>
+            )}
+
             <ActionButtons book={book} />
 
             <section
@@ -625,6 +634,66 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
                 Overview
               </p>
               <BookDescription text={data.description} />
+            </section>
+
+            {/* Author card — visual only, no profile page for book authors */}
+            <section style={{ marginTop: 24 }}>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Author
+              </p>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #2a1f3a, #1a2a3a)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    color: "rgba(255,255,255,0.35)",
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  {data.author.trim()[0]?.toUpperCase() ?? "A"}
+                </div>
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.88)",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    }}
+                  >
+                    {data.author}
+                  </p>
+                  <p
+                    style={{
+                      margin: "2px 0 0",
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.35)",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    }}
+                  >
+                    Author
+                  </p>
+                </div>
+              </div>
             </section>
           </div>
         </div>
@@ -830,6 +899,19 @@ export default async function BookDetailPage({
               <DetailPill label={book.genre} />
               <DetailPill label={book.pages} />
               <DetailPill label={book.author} />
+              {(() => {
+                const pageCount = parseInt(book.pages);
+                if (!isNaN(pageCount) && pageCount > 0) {
+                  const mins = pageCount; // ~1 min/page (250 words/page ÷ 250 wpm)
+                  const hrs = Math.floor(mins / 60);
+                  const rem = mins % 60;
+                  const label = hrs > 0
+                    ? `~${hrs}h ${rem > 0 ? `${rem}m` : ""} read`.trim()
+                    : `~${mins}m read`;
+                  return <DetailPill key="rt" label={label} />;
+                }
+                return null;
+              })()}
             </div>
 
             <ActionButtons
@@ -868,6 +950,66 @@ export default async function BookDetailPage({
               </p>
 
               <BookDescription text={book.overview} />
+            </section>
+
+            {/* Author card — visual only, no profile page for book authors */}
+            <section style={{ marginTop: 24 }}>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)",
+                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                }}
+              >
+                Author
+              </p>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #2a1f3a, #1a2a3a)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    color: "rgba(255,255,255,0.35)",
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  {book.author.trim()[0]?.toUpperCase() ?? "A"}
+                </div>
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.88)",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    }}
+                  >
+                    {book.author}
+                  </p>
+                  <p
+                    style={{
+                      margin: "2px 0 0",
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.35)",
+                      fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
+                    }}
+                  >
+                    Author
+                  </p>
+                </div>
+              </div>
             </section>
           </div>
         </div>
