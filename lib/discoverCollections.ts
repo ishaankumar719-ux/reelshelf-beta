@@ -91,4 +91,19 @@ export const COLLECTION_DEFS: CollectionDef[] = [
     tmdbPath: "/discover/movie?with_genres=80&with_keywords=6564&vote_average.gte=7.0&vote_count.gte=100&sort_by=vote_average.desc&include_adult=false",
     tmdbMediaType: "movie" as const,
   },
+  // ── TV-page collections ───────────────────────────────────────────────────
+  {
+    slug: "mind-bending-tv",
+    name: "Mind-Bending Television",
+    description: "Shows that warp reality, bend perception, and refuse to let you go.",
+    tmdbPath: "/discover/tv?with_genres=10765%7C9648&vote_average.gte=7.5&vote_count.gte=200&sort_by=vote_average.desc&include_adult=false",
+    tmdbMediaType: "tv" as const,
+  },
+  {
+    slug: "crime-drama-tv",
+    name: "Crime Drama Essentials",
+    description: "Morally complex, brilliantly written crime television at its finest.",
+    tmdbPath: "/discover/tv?with_genres=80%7C18&vote_average.gte=7.5&vote_count.gte=300&sort_by=vote_average.desc&include_adult=false",
+    tmdbMediaType: "tv" as const,
+  },
 ]
