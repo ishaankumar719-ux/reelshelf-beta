@@ -721,6 +721,22 @@ export default function DiscoverClient({
           color: #1d9e75;
         }
 
+        /* ── Quick nav chips ───────────────────────────────────────── */
+        .disc-nav-wrap { overflow: hidden; padding-top: 14px; }
+        @media (max-width: 760px) { .disc-nav-wrap { margin-inline: -14px; } }
+        @media (max-width: 390px) { .disc-nav-wrap { margin-inline: -12px; } }
+        .disc-nav-bar {
+          display: flex;
+          gap: 7px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 2px;
+        }
+        .disc-nav-bar::-webkit-scrollbar { display: none; }
+        @media (max-width: 760px) { .disc-nav-bar { padding-inline: 14px 32px; } }
+        @media (max-width: 390px) { .disc-nav-bar { padding-inline: 12px 24px; } }
+
         /* ── Sections ──────────────────────────────────────────────── */
         .disc-section { padding-top: clamp(28px,4vw,44px); }
 
@@ -1256,6 +1272,15 @@ export default function DiscoverClient({
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Quick nav chips ─────────────────────────────────────────── */}
+      <div className="disc-nav-wrap">
+        <div className="disc-nav-bar">
+          <Link href="/movies" className="disc-filter-pill" style={{ textDecoration: "none" }}>Films</Link>
+          <Link href="/series" className="disc-filter-pill" style={{ textDecoration: "none" }}>TV</Link>
+          <Link href="/books" className="disc-filter-pill" style={{ textDecoration: "none" }}>Books</Link>
         </div>
       </div>
 
