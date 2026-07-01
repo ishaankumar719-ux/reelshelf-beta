@@ -186,6 +186,7 @@ function ActionButtons({
 }) {
   return (
     <div
+      className="book-action-buttons"
       style={{
         display: "flex",
         gap: 14,
@@ -548,6 +549,12 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
           .book-detail-grid { grid-template-columns: 1fr !important; }
           .book-detail-cover { max-width: 320px; }
         }
+        @media (max-width: 640px) {
+          .book-detail-cover { max-width: 180px !important; }
+          .book-detail-grid { gap: 20px !important; }
+          .book-action-buttons button,
+          .book-action-buttons a { min-height: 44px !important; }
+        }
       `}</style>
 
       <BackButton />
@@ -836,6 +843,12 @@ export default async function BookDetailPage({
           .book-detail-cover {
             max-width: 320px;
           }
+        }
+        @media (max-width: 640px) {
+          .book-detail-cover { max-width: 180px !important; }
+          .book-detail-grid { gap: 20px !important; }
+          .book-action-buttons button,
+          .book-action-buttons a { min-height: 44px !important; }
         }
       `}</style>
 

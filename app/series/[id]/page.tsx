@@ -192,6 +192,7 @@ function ActionButtons({
 }) {
   return (
     <div
+      className="series-action-buttons"
       style={{
         display: "flex",
         gap: 14,
@@ -701,6 +702,12 @@ function SeriesDetailContent({
         /* Compact hero poster on narrow viewports */
         @media (max-width: 480px) {
           .series-detail-poster { max-width: 160px !important; }
+        }
+        /* Touch targets and layout for narrow phones */
+        @media (max-width: 640px) {
+          .series-action-buttons button,
+          .series-action-buttons a { min-height: 44px !important; }
+          .series-detail-grid { gap: 20px !important; }
         }
       `}</style>
 

@@ -257,11 +257,23 @@ export default function FilmDetailClient({
 
   return (
     <main style={{ background: "#08080f", minHeight: "100vh", color: "white" }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .film-backdrop-wrap { height: 40vh !important; }
+          .film-hero-text-wrap { height: calc(40vh - 48px) !important; }
+          .film-poster-row { margin-top: 0 !important; }
+          .film-poster-wrap { width: 110px !important; }
+          .film-actions-col { padding-top: 0 !important; }
+          .film-actions-col button,
+          .film-actions-col a { min-height: 44px !important; }
+        }
+      `}</style>
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div style={{ position: "relative" }}>
         {/* Backdrop — contained within its own overflow:hidden wrapper */}
         {heroBackdrop && (
           <div
+            className="film-backdrop-wrap"
             style={{
               position: "absolute",
               top: 0,
@@ -308,6 +320,7 @@ export default function FilmDetailClient({
         )}
         {!heroBackdrop && (
           <div
+            className="film-backdrop-wrap"
             style={{
               position: "absolute",
               top: 0, left: 0, right: 0,
@@ -320,6 +333,7 @@ export default function FilmDetailClient({
 
         {/* Hero text content — sits above backdrop, aligned to bottom */}
         <div
+          className="film-hero-text-wrap"
           style={{
             position: "relative",
             zIndex: 5,
@@ -382,6 +396,7 @@ export default function FilmDetailClient({
 
         {/* Poster + actions row — pulls up into hero with negative margin */}
         <div
+          className="film-poster-row"
           style={{
             position: "relative",
             zIndex: 20,
@@ -398,6 +413,7 @@ export default function FilmDetailClient({
             >
               {/* Poster — overlaps hero */}
               <div
+                className="film-poster-wrap"
                 style={{
                   flexShrink: 0,
                   width: 145,
@@ -435,7 +451,7 @@ export default function FilmDetailClient({
               </div>
 
               {/* Actions — aligned 96px below the hero's visual bottom (below poster top) */}
-              <div style={{ paddingTop: 112, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="film-actions-col" style={{ paddingTop: 112, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {/* Log */}
                   <button
