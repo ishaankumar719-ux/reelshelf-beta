@@ -2,6 +2,26 @@
 
 import WatchlistCard from "./WatchlistCard";
 
+const GRID_STYLE = `
+  .wl-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  @media (max-width: 640px) {
+    .wl-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+  }
+  @media (min-width: 641px) and (max-width: 900px) {
+    .wl-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+  }
+`;
+
 export interface SavedItem {
   id: string;
   user_id: string;
@@ -33,40 +53,20 @@ export default function WatchlistGrid({
   onRemoved,
   onRestored,
 }: WatchlistGridProps) {
-  if (items.length === 1) {
-    const [singleItem] = items;
-
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-start" }}>
-        <div style={{ width: "180px" }}>
+  return (
+    <>
+      <style>{GRID_STYLE}</style>
+      <div className="wl-grid">
+        {items.map((item) => (
           <WatchlistCard
-            item={singleItem}
+            key={item.id}
+            item={item}
             userId={userId}
             onRemoved={onRemoved}
             onRestored={onRestored}
           />
-        </div>
+        ))}
       </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-        gap: "20px",
-      }}
-    >
-      {items.map((item) => (
-        <WatchlistCard
-          key={item.id}
-          item={item}
-          userId={userId}
-          onRemoved={onRemoved}
-          onRestored={onRestored}
-        />
-      ))}
-    </div>
+    </>
   );
 }

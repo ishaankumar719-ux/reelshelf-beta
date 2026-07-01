@@ -272,9 +272,16 @@ function mapSavedItemToRow(userId: string, entry: PersistedSavedItem): SavedItem
   };
 }
 
+function normalizeSavedItemId(mediaType: MediaType, mediaId: string): string {
+  if (mediaType === "movie" && mediaId.startsWith("tmdb-") && /^\d+$/.test(mediaId.slice(5))) {
+    return mediaId.slice(5);
+  }
+  return mediaId;
+}
+
 function mapRowToSavedItem(row: SavedItemRow): PersistedSavedItem {
   return {
-    id: row.media_id,
+    id: normalizeSavedItemId(row.media_type, row.media_id),
     mediaType: row.media_type,
     title: row.title,
     poster: row.poster || undefined,
