@@ -459,7 +459,7 @@ export default function DiscoverClient({
           width: 100%;
         }
         @media (max-width: 700px) {
-          .disc-hero-inner { flex-direction: column; gap: 28px; }
+          .disc-hero-inner { flex-direction: column; gap: 20px; }
         }
         .disc-hero-left { flex: 1; min-width: 0; }
         .disc-hero-right {
@@ -467,7 +467,12 @@ export default function DiscoverClient({
           width: clamp(160px,25vw,260px);
         }
         @media (max-width: 700px) {
-          .disc-hero-right { width: 100%; max-width: 220px; align-self: center; }
+          .disc-hero-right { width: 100%; max-width: 140px; align-self: center; }
+        }
+        @media (max-width: 430px) {
+          .disc-hero-right { max-width: 116px; }
+          .disc-hero-btns { flex-direction: column; align-items: stretch; }
+          .disc-btn-primary, .disc-btn-ghost { text-align: center; justify-content: center; }
         }
         .disc-hero-eyebrow {
           margin: 0 0 10px;
@@ -648,6 +653,16 @@ export default function DiscoverClient({
         .disc-hero-arrow:hover {
           background: rgba(255,255,255,0.12);
           color: rgba(255,255,255,0.88);
+        }
+        @media (max-width: 700px) {
+          .disc-hero-dot {
+            min-width: 32px;
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .disc-hero-arrow { width: 36px; height: 36px; }
         }
         .disc-hero-feat-no-img {
           position: absolute;

@@ -1367,15 +1367,29 @@ export default function ProfileShowcase({
             -webkit-line-clamp: 5 !important;
           }
 
-          /* Stats: force 2-column on mobile, tighter cards */
+          /* Stats: horizontal scroll row on mobile — no more chunky 2-col grid */
           .pf-stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            display: flex !important;
+            overflow-x: auto !important;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
             gap: 8px !important;
             margin-top: 18px !important;
+            padding-bottom: 4px;
+            /* Bleed to card edges; trailing space hints there are more items */
+            margin-inline: -18px !important;
+            padding-inline: 18px 36px !important;
           }
-          .pf-stat-card { padding: 10px 12px !important; }
-          .pf-stat-value { font-size: 15px !important; }
-          .pf-stat-link:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.16) !important; transform: translateY(-1px); }
+          .pf-stats-grid::-webkit-scrollbar { display: none; }
+          .pf-stat-card {
+            flex-shrink: 0 !important;
+            min-width: 76px !important;
+            max-width: 96px !important;
+            padding: 10px 12px !important;
+            border-radius: 12px !important;
+          }
+          .pf-stat-value { font-size: 16px !important; }
+          .pf-stat-link:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.16) !important; }
 
           /* Mount Rushmore: 2×2 grid — eliminates orphan tile at 3-col */
           .pf-rushmore-grid {

@@ -263,6 +263,18 @@ export default function DiaryPage() {
             gap: 16px;
           }
         }
+
+        .diary-filter-row {
+          display: flex;
+          gap: 8px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          margin-bottom: 10px;
+          padding-bottom: 2px;
+        }
+        .diary-filter-row::-webkit-scrollbar { display: none; }
       `}</style>
 
       <section
@@ -351,53 +363,20 @@ export default function DiaryPage() {
         </div>
       </section>
 
-      <section
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "none",
-          marginBottom: 10,
-          paddingBottom: 2,
-        }}
-      >
+      <section className="diary-filter-row">
         <FilterButton active={mediaFilter === "all"} label="All" onClick={() => setMediaFilter("all")} />
         <FilterButton active={mediaFilter === "movie"} label="Films" onClick={() => setMediaFilter("movie")} />
         <FilterButton active={mediaFilter === "tv"} label="Series" onClick={() => setMediaFilter("tv")} />
         <FilterButton active={mediaFilter === "book"} label="Books" onClick={() => setMediaFilter("book")} />
       </section>
 
-      <section
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "none",
-          marginBottom: 10,
-          paddingBottom: 2,
-        }}
-      >
+      <section className="diary-filter-row">
         <FilterButton active={venueFilter === "all"} label="All" onClick={() => setVenueFilter("all")} />
         <FilterButton active={venueFilter === "cinema"} label="Cinema" onClick={() => setVenueFilter("cinema")} />
         <FilterButton active={venueFilter === "home"} label="Home" onClick={() => setVenueFilter("home")} />
       </section>
 
-      <section
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "none",
-          marginBottom: 20,
-          paddingBottom: 2,
-        }}
-      >
+      <section className="diary-filter-row" style={{ marginBottom: 20 }}>
         <FilterButton active={filter === "recent" || filter === "all"} label="Recent" onClick={() => setFilter("recent")} />
         <FilterButton active={filter === "favourites"} label="Favourites" onClick={() => setFilter("favourites")} />
         <FilterButton active={filter === "highest-rated"} label="Highest Rated" onClick={() => setFilter("highest-rated")} />
