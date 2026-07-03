@@ -722,20 +722,45 @@ export default function DiscoverClient({
         }
 
         /* ── Quick nav chips ───────────────────────────────────────── */
-        .disc-nav-wrap { overflow: hidden; padding-top: 14px; }
+        .disc-nav-wrap { overflow: hidden; padding-top: 16px; }
         @media (max-width: 760px) { .disc-nav-wrap { margin-inline: -14px; } }
         @media (max-width: 390px) { .disc-nav-wrap { margin-inline: -12px; } }
         .disc-nav-bar {
           display: flex;
-          gap: 7px;
+          gap: 8px;
           overflow-x: auto;
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
-          padding-bottom: 2px;
+          padding-bottom: 4px;
+          padding-inline: 0 8px;
         }
         .disc-nav-bar::-webkit-scrollbar { display: none; }
-        @media (max-width: 760px) { .disc-nav-bar { padding-inline: 14px 32px; } }
-        @media (max-width: 390px) { .disc-nav-bar { padding-inline: 12px 24px; } }
+        @media (max-width: 760px) { .disc-nav-bar { padding-inline: 14px 40px; } }
+        @media (max-width: 390px) { .disc-nav-bar { padding-inline: 12px 28px; } }
+        .disc-nav-chip {
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          padding: 0 18px;
+          border-radius: 9999px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.07);
+          font-family: "Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.78);
+          cursor: pointer;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+        }
+        .disc-nav-chip:hover {
+          background: rgba(255,255,255,0.12);
+          border-color: rgba(255,255,255,0.26);
+          color: rgba(255,255,255,0.96);
+        }
+        .disc-nav-chip:active { background: rgba(255,255,255,0.16); }
 
         /* ── Sections ──────────────────────────────────────────────── */
         .disc-section { padding-top: clamp(28px,4vw,44px); }
@@ -1278,9 +1303,9 @@ export default function DiscoverClient({
       {/* ── Quick nav chips ─────────────────────────────────────────── */}
       <div className="disc-nav-wrap">
         <div className="disc-nav-bar">
-          <Link href="/movies" className="disc-filter-pill" style={{ textDecoration: "none" }}>Films</Link>
-          <Link href="/series" className="disc-filter-pill" style={{ textDecoration: "none" }}>TV</Link>
-          <Link href="/books" className="disc-filter-pill" style={{ textDecoration: "none" }}>Books</Link>
+          <Link href="/movies" className="disc-nav-chip">Films</Link>
+          <Link href="/series" className="disc-nav-chip">TV</Link>
+          <Link href="/books" className="disc-nav-chip">Books</Link>
         </div>
       </div>
 
