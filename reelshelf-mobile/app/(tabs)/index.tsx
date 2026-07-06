@@ -1,46 +1,49 @@
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BecauseYouLovedCarousel } from '@/components/BecauseYouLovedCarousel';
 import { ContinueWatchingCard } from '@/components/continue-watching-card';
-import { PosterCard } from '@/components/poster-card';
+import { FeaturedCarousel } from '@/components/FeaturedCarousel';
+import { Header } from '@/components/Header';
+import { Hero } from '@/components/Hero';
 import { SectionHeader } from '@/components/section-header';
+import { TrendingCarousel } from '@/components/TrendingCarousel';
 import { RS } from '@/constants/theme';
-
-// static placeholder list — no data source yet
-const POSTER_PLACEHOLDERS = Array.from({ length: 7 }, (_, i) => ({ id: String(i) }));
+import { continueWatching } from '@/data/mockHomeContent';
 
 export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ── Wordmark header ── */}
-        <View style={styles.header}>
-          <Text style={styles.wordmark}>ReelShelf</Text>
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        {/* 1 ── Header: wordmark, BETA badge, bell, avatar */}
+        <Header />
 
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          <Text style={styles.heroHeading}>Discover your next story</Text>
-          <Text style={styles.heroSub}>Track films, series and books you love.</Text>
-        </View>
+        {/* 2 ── Hero: heading, subtitle, Surprise Me + Browse CTAs */}
+        <Hero />
 
-        {/* ── Trending poster row ── */}
-        <SectionHeader title="Trending Now" />
-        <FlatList
-          data={POSTER_PLACEHOLDERS}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          ItemSeparatorComponent={() => <View style={{ width: RS.spacing.sm }} />}
-          contentContainerStyle={styles.posterList}
-          renderItem={() => <PosterCard />}
+        {/* 3 ── Featured Carousel (3 items — film / TV / book) */}
+        <SectionHeader title="Featured" />
+        <FeaturedCarousel />
+
+        {/* 4 ── Trending Today */}
+        <SectionHeader title="Trending Today" />
+        <TrendingCarousel />
+
+        {/* 5 ── Continue Your Story */}
+        <SectionHeader title="Continue Your Story" />
+        <ContinueWatchingCard
+          title={continueWatching.title}
+          subtitle={continueWatching.subtitle}
+          progress={continueWatching.progress}
+          colorSeed={continueWatching.colorSeed}
         />
 
-        {/* ── Continue Watching ── */}
-        <SectionHeader title="Continue Watching" />
-        <ContinueWatchingCard />
-
-        <View style={{ height: RS.spacing.xl }} />
+        {/* 6 ── Because You Loved */}
+        <SectionHeader title="Because You Loved..." />
+        <BecauseYouLovedCarousel />
       </ScrollView>
     </SafeAreaView>
   );
@@ -51,35 +54,7 @@ const styles = StyleSheet.create({
     flex:            1,
     backgroundColor: RS.colors.base,
   },
-  header: {
-    paddingHorizontal: RS.spacing.md,
-    paddingTop:        RS.spacing.sm,
-    paddingBottom:     RS.spacing.xs,
-  },
-  wordmark: {
-    fontSize:      RS.typography.display,
-    fontWeight:    '800',
-    color:         RS.colors.textPrimary,
-    letterSpacing: -1,
-  },
-  hero: {
-    paddingHorizontal: RS.spacing.md,
-    paddingTop:        RS.spacing.sm,
-    paddingBottom:     RS.spacing.md,
-    gap:               RS.spacing.xs,
-  },
-  heroHeading: {
-    fontSize:      RS.typography.heading,
-    fontWeight:    '700',
-    color:         RS.colors.textPrimary,
-    letterSpacing: -0.3,
-    lineHeight:    28,
-  },
-  heroSub: {
-    fontSize: RS.typography.body,
-    color:    RS.colors.textSecondary,
-  },
-  posterList: {
-    paddingHorizontal: RS.spacing.md,
+  content: {
+    paddingBottom: RS.spacing.xl,
   },
 });

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Exclude the React Native/Expo app — it has its own tsconfig and eslint config
+    "reelshelf-mobile/**",
   ]),
 ]);
 

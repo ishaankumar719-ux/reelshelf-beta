@@ -12,6 +12,11 @@ export const RS = {
     textPrimary:   'rgba(255,255,255,0.92)',
     textSecondary: 'rgba(255,255,255,0.55)',
     textMuted:     'rgba(255,255,255,0.32)',
+    // ── Phase 2 additions ──────────────────────────────────────────────────────
+    // Gold sourced from web app's ranked-badge rgba(251,191,36,...) — Tailwind amber-400.
+    gold:          '#fbbf24',
+    goldMuted:     'rgba(251,191,36,0.15)',
+    accentGlow:    'rgba(29,158,117,0.10)',
   },
   typography: {
     display:  32,
@@ -32,6 +37,34 @@ export const RS = {
     radius:          8,
     cwHeight:       96,
     cwThumbWidth:  128,
+    // Phase 2: featured carousel cards
+    featWidth:     200,
+    featHeight:    280,
+  },
+  // ── Badge pill tokens (media-type + BETA) ──────────────────────────────────
+  badge: {
+    pillRadius: 100,
+    film: { bg: 'rgba(29,78,216,0.30)',  text: '#93c5fd', label: 'FILM'  },
+    tv:   { bg: 'rgba(109,40,217,0.30)', text: '#c4b5fd', label: 'TV'    },
+    book: { bg: 'rgba(217,119,6,0.30)',  text: '#fcd34d', label: 'BOOK'  },
+    beta: { bg: '#1d9e75',               text: '#ffffff', label: 'BETA'  },
+  },
+  // ── Card elevation (iOS shadow / Android elevation) ────────────────────────
+  shadow: {
+    color:   '#000000',
+    offsetY: 4,
+    opacity: 0.40,
+    radius:  8,
+    android: 8,
+  },
+  // ── Gradient color stops — reserved for expo-linear-gradient (Phase 3) ─────
+  // expo-linear-gradient is NOT installed in Phase 2. Solid-color fallbacks used instead.
+  gradient: {
+    heroFrom:  '#0d0d14',   // card — top of hero
+    heroTo:    '#07070b',   // base — bottom of hero
+    featFilm:  '#0f1628',   // dark-blue bg for film featured cards
+    featTv:    '#1a0f28',   // dark-purple bg for TV featured cards
+    featBook:  '#1a1008',   // dark-amber bg for book featured cards
   },
 } as const;
 
