@@ -192,6 +192,128 @@ export const becauseYouLoved: SeedCardItem[] = [
   }
 ];
 
+// ── Sprint 3: additional interfaces and section data ─────────────────────────
+// Manually curated. Run generate-seed-data.ts (with Google Books extension for
+// bookOfTheWeek) to refresh poster/cover URLs from live APIs.
+
+/** Daily Reel pick — the signature recommendation; supersedes FeaturedToday. */
+export interface SeedDailyReelItem extends SeedCardItem {
+  /** Editorial body copy about the pick (1–2 sentences). */
+  description: string;
+  /** One-line "why ReelShelf picked this" tagline. */
+  reason: string;
+}
+
+/** Book of the Week — book card with author and editorial description. */
+export interface SeedBookItem extends SeedCardItem {
+  author: string;
+  /** Editorial body copy about the book (1–2 sentences). */
+  description: string;
+}
+
+export const dailyReelPick: SeedDailyReelItem = {
+  id:          'film-872585',
+  title:       'Oppenheimer',
+  year:         2023,
+  mediaType:   'film',
+  posterUrl:   'https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+  description: 'Christopher Nolan reconstructs the invention of the atomic bomb with three-hour precision — intercutting past, present, and moral reckoning in a way only cinema can.',
+  reason:      'A film that gets heavier the longer you sit with it.',
+};
+
+// ── Because You Loved: Babylon (naming alias for existing BYL group) ──────────
+export const bylBabylon: SeedCardItem[] = becauseYouLoved;
+
+// ── Because You Loved: Dune (epic worlds, slow-burn world-building) ───────────
+export const bylDune: SeedCardItem[] = [
+  {
+    id:        'film-693134',
+    title:     'Dune: Part Two',
+    year:       2024,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/heM4XKC0jA8fTSNe8F7oUkcJV7Z.jpg',
+  },
+  {
+    id:        'film-329865',
+    title:     'Arrival',
+    year:       2016,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg',
+  },
+  {
+    id:        'film-335984',
+    title:     'Blade Runner 2049',
+    year:       2017,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg',
+  },
+  {
+    id:        'film-27205',
+    title:     'Inception',
+    year:       2010,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg',
+  },
+  {
+    id:        'film-62',
+    title:     '2001: A Space Odyssey',
+    year:       1968,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/re3DNYMBpH9kf0blNJqgb3CpaqE.jpg',
+  },
+];
+
+// ── Because You Loved: The Bear (pressure, precision, people who care too much) ─
+export const bylTheBear: SeedCardItem[] = [
+  {
+    id:        'tv-136315',
+    title:     'The Bear',
+    year:       2022,
+    mediaType: 'tv',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg',
+  },
+  {
+    id:        'tv-76331',
+    title:     'Succession',
+    year:       2018,
+    mediaType: 'tv',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg',
+  },
+  {
+    id:        'film-244786',
+    title:     'Whiplash',
+    year:       2014,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg',
+  },
+  {
+    id:        'film-194662',
+    title:     'Birdman',
+    year:       2014,
+    mediaType: 'film',
+    posterUrl: 'https://image.tmdb.org/t/p/w342/rHUg2AuIuLSIYMYFgavVwqt1jtc.jpg',
+  },
+  {
+    id:        'film-593643',
+    title:     'The Menu',
+    year:       2022,
+    mediaType: 'film',
+    posterUrl: null,
+  },
+];
+
+// ── Book of the Week ──────────────────────────────────────────────────────────
+// posterUrl: run generate-seed-data.ts (extend with Google Books fetch) to populate.
+export const bookOfTheWeek: SeedBookItem = {
+  id:          'book-tomorrow-and-tomorrow',
+  title:       'Tomorrow, and Tomorrow, and Tomorrow',
+  year:         2022,
+  mediaType:   'book',
+  posterUrl:   null,
+  author:      'Gabrielle Zevin',
+  description: 'Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration.',
+};
+
 // ── Collections ───────────────────────────────────────────────────────────────
 export const collections: SeedCollectionItem[] = [
   {

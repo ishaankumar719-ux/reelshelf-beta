@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { RS, Fonts } from '@/constants/theme';
+import { RS } from '@/constants/theme';
 import { Motion } from '@/constants/motion';
 import type { MediaType } from '@/data/seedHomeContent';
 
@@ -168,10 +168,9 @@ const styles = StyleSheet.create({
     color:      RS.colors.textPrimary,
     lineHeight: 14,
   },
-  // Featured / large card: serif title, larger size
+  // Featured / large card: larger text, sans-serif (serif reserved for editorial moments)
   titleLg: {
     fontSize:   RS.typography.body,
-    fontFamily: Fonts?.serif,
     fontWeight: '600',
     lineHeight: 20,
   },

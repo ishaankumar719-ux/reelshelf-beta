@@ -1,20 +1,24 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { RS } from '@/constants/theme';
+import { RS, Fonts } from '@/constants/theme';
 
 interface SectionHeaderProps {
-  eyebrow?: string;   // tiny uppercase label above the title
+  eyebrow?: string;
   title:    string;
   subtitle?: string;
+  /** When true, renders the title in the editorial serif typeface (ui-serif / New York on iOS). */
+  titleSerif?: boolean;
 }
 
-export function SectionHeader({ eyebrow, title, subtitle }: SectionHeaderProps) {
+export function SectionHeader({ eyebrow, title, subtitle, titleSerif }: SectionHeaderProps) {
   return (
     <View style={styles.row}>
       {eyebrow ? (
         <Text style={styles.eyebrow}>{eyebrow.toUpperCase()}</Text>
       ) : null}
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, titleSerif ? { fontFamily: Fonts?.serif } : undefined]}>
+        {title}
+      </Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );

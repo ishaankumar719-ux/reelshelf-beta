@@ -3,28 +3,30 @@ import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-nativ
 import { PosterCard } from '@/components/poster-card';
 import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
-import { type SeedCardItem, becauseYouLoved } from '@/data/seedHomeContent';
+import { type SeedCardItem } from '@/data/seedHomeContent';
 
 const ITEM_SEP = RS.spacing.sm;
 
 interface BecauseYouLovedSectionProps {
-  /** The title the rec is based on — becomes the section heading */
+  /** The title the rec is based on — becomes the section heading (serif) */
   title:    string;
   /** Editorial subtitle below the heading */
   subtitle: string;
+  /** Poster cards for this mood group */
+  items:    SeedCardItem[];
 }
 
-export function BecauseYouLovedSection({ title, subtitle }: BecauseYouLovedSectionProps) {
+export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLovedSectionProps) {
   return (
     <View style={styles.section}>
-      {/* "BECAUSE YOU LOVED" eyebrow + title as heading */}
       <SectionHeader
         eyebrow="BECAUSE YOU LOVED"
         title={title}
         subtitle={subtitle}
+        titleSerif
       />
       <FlatList<SeedCardItem>
-        data={becauseYouLoved}
+        data={items}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
