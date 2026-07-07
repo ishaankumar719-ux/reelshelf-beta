@@ -17,12 +17,17 @@ export const RS = {
     gold:          '#fbbf24',
     goldMuted:     'rgba(251,191,36,0.15)',
     accentGlow:    'rgba(29,158,117,0.10)',
+    // Phase 3: matches --rs-border-strong in web globals.css
+    borderStrong:  'rgba(255,255,255,0.18)',
   },
   typography: {
-    display:  32,
-    heading:  20,
-    body:     14,
-    caption:  11,
+    // ── Editorial display scale ────────────────────────────────────────────
+    display:    32,   // hero heading — use Fonts.serif, weight 800
+    heading:    20,   // section headers — sans, weight 700
+    subheading: 15,   // editorial deck / section subtitle — sans, weight 500
+    body:       14,   // standard body copy — sans, weight 400
+    caption:    11,   // metadata, badges, chips — sans, weight 600
+    overline:   10,   // uppercase label above headings — sans, weight 700, tracked
   },
   spacing: {
     xs:  4,
@@ -30,14 +35,15 @@ export const RS = {
     md:  16,
     lg:  24,
     xl:  40,
+    xxl: 56,   // between major Home screen sections (editorial breathing room)
   },
   card: {
     posterWidth:   100,
     posterHeight:  150,   // ~2:3 poster aspect ratio
-    radius:          8,
+    radius:         10,   // matches --rs-radius-card: 10px in web globals.css
     cwHeight:       96,
     cwThumbWidth:  128,
-    // Phase 2: featured carousel cards
+    // Phase 2+: featured carousel cards
     featWidth:     200,
     featHeight:    280,
   },

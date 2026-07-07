@@ -1,26 +1,26 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 
-import { PosterCard } from '@/components/poster-card';
+import { AnimatedPosterCard } from '@/components/AnimatedPosterCard';
 import { RS } from '@/constants/theme';
-import { type MockCardItem, trendingToday } from '@/data/mockHomeContent';
+import { type SeedCardItem, trendingToday } from '@/data/seedHomeContent';
 
 const ITEM_SEP = RS.spacing.sm;
 
 export function TrendingCarousel() {
   return (
-    <FlatList<MockCardItem>
+    <FlatList<SeedCardItem>
       data={trendingToday}
       horizontal
       showsHorizontalScrollIndicator={false}
       keyExtractor={(item) => item.id}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
-      renderItem={({ item }: ListRenderItemInfo<MockCardItem>) => (
-        <PosterCard
+      renderItem={({ item }: ListRenderItemInfo<SeedCardItem>) => (
+        <AnimatedPosterCard
           title={item.title}
           year={item.year}
           mediaType={item.mediaType}
-          colorSeed={item.colorSeed}
+          posterUrl={item.posterUrl}
         />
       )}
       getItemLayout={(_, index) => ({

@@ -14,11 +14,17 @@ export function Header() {
         </View>
       </View>
 
-      {/* Right: notification bell + avatar */}
+      {/* Right: search icon, notification bell, avatar */}
       <View style={styles.right}>
         <Pressable
           hitSlop={10}
-          onPress={() => console.log('[Phase 2] Notifications pressed — no-op')}
+          onPress={() => console.log('[Phase 3] Search pressed — no-op')}
+        >
+          <MaterialIcons name="search" size={24} color={RS.colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          hitSlop={10}
+          onPress={() => console.log('[Phase 3] Notifications pressed — no-op')}
         >
           <MaterialIcons name="notifications-none" size={24} color={RS.colors.textSecondary} />
         </Pressable>
