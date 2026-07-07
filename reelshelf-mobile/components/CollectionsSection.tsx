@@ -11,7 +11,10 @@ const ITEM_SEP = RS.spacing.sm;
 export function CollectionsSection() {
   return (
     <View style={styles.section}>
-      <SectionHeader title="Collections" />
+      <SectionHeader
+        title="Collection of the Week"
+        subtitle="Hand-picked by ReelShelf."
+      />
       <FlatList<SeedCollectionItem>
         data={collections}
         horizontal

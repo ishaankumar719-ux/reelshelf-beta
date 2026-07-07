@@ -40,4 +40,14 @@ export const Motion = {
     translateY: 14,   // initial downward offset before reveal
     duration:   380,
   },
+
+  /** Hero backdrop parallax collapse — backdrop slides at a slower rate than scroll */
+  hero: {
+    /** Fraction of heroHeight: how far the backdrop translates as hero scrolls off */
+    parallaxFactor:  0.30 as number,
+    /** Fraction of heroHeight: scroll offset by which hero text content is fully faded */
+    contentFadeAt:   0.45 as number,
+    /** Subtle upward drift (px) in text content as it fades */
+    contentDriftY:  -20  as number,
+  },
 } as const;

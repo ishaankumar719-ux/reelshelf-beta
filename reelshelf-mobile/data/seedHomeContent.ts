@@ -18,6 +18,12 @@ export interface SeedCardItem {
   posterUrl: string | null;
 }
 
+/** Single dominant featured recommendation — extends SeedCardItem with editorial reason copy. */
+export interface SeedFeaturedItem extends SeedCardItem {
+  /** One editorial sentence explaining why this is recommended right now. Static for Phase 5. */
+  reason: string;
+}
+
 export interface SeedContinueItem extends SeedCardItem {
   /** 0–1 viewing/reading progress */
   progress: number;
@@ -31,7 +37,19 @@ export interface SeedCollectionItem {
   coverUrl: string | null;
 }
 
-// ── Featured (one per media type) ────────────────────────────────────────────
+// ── Featured Today — single dominant recommendation ────────────────────────
+// The ONE film/TV/book the app surfaces as today's confident pick.
+// `reason` is the only field added this sprint (Phase 5 constraint).
+export const featuredItem: SeedFeaturedItem = {
+  id:        'film-872585',
+  title:     'Oppenheimer',
+  year:       2023,
+  mediaType: 'film',
+  posterUrl: 'https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+  reason:    "Nolan's three-hour reckoning with conscience and consequence — the kind of film that leaves you sitting in silence after the credits roll.",
+};
+
+// ── Featured (kept for backward-compat — no longer rendered as a 3-card carousel) ──
 export const featuredCards: SeedCardItem[] = [
   {
     "id": "film-872585",

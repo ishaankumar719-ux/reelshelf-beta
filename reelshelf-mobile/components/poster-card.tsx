@@ -79,11 +79,11 @@ export function PosterCard({
             </LinearGradient>
           )}
 
-          {/* Gradient overlay for text legibility over real poster art */}
+          {/* Gradient overlay — bottom-heavy for natural title legibility */}
           {posterUrl && (
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.82)']}
-              start={{ x: 0, y: 0.40 }}
+              colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
+              start={{ x: 0, y: 0.25 }}
               end={{ x: 0, y: 1 }}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
@@ -119,12 +119,12 @@ export function PosterCard({
 
 const styles = StyleSheet.create({
   outer: {
-    // Shadow (iOS/Android) — must be on the outer non-clipped view
+    // Premium shadow — on outer non-clipped view (overflow: hidden kills shadow on iOS)
     shadowColor:   '#000000',
-    shadowOffset:  { width: 0, height: 6 },
-    shadowOpacity: 0.42,
-    shadowRadius:  12,
-    elevation:     10,
+    shadowOffset:  { width: 0, height: 8 },
+    shadowOpacity: 0.52,
+    shadowRadius:  16,
+    elevation:     14,
   },
   inner: {
     flex:            1,

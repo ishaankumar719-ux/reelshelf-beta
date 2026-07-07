@@ -32,12 +32,13 @@ export const RS = {
     overline:   10,   // eyebrow / section label — sans, weight 700, uppercase, tracked
   },
   spacing: {
-    xs:  4,
-    sm:  8,
-    md:  16,
-    lg:  24,
-    xl:  40,
-    xxl: 56,   // section-to-section breathing room on Home
+    xs:   4,
+    sm:   8,
+    md:   16,
+    lg:   24,
+    xl:   40,
+    xxl:  56,   // section-to-section breathing room (Phase 5)
+    xxxl: 72,   // "reading chapters" gap — used in Home screen contentContainerStyle (Phase 6)
   },
   // ── Letter-spacing tokens (in React Native pt, not em) ───────────────────
   letterSpacing: {
@@ -47,13 +48,19 @@ export const RS = {
     widest:   1.4,   // eyebrow uppercase labels
   },
   // ── Button design tokens ─────────────────────────────────────────────────
-  // Primary: understated outlined-with-accent-fill.
+  // filledBg/filledText: the ONE solid filled button on any screen (e.g. "Log" on FeaturedToday).
+  // Primary: understated outlined-with-accent-fill (chip-style actions).
   // Secondary: near-invisible ghost (matching web's text-only style).
   button: {
     radius:          100,                      // pill shape — matches web border-radius: 9999px
+    // ── Filled — used for the ONE high-weight action per screen ─────────
+    filledBg:        '#1d9e75',               // solid accent — high visual weight
+    filledText:      '#ffffff',               // white label on accent
+    // ── Primary outlined ──────────────────────────────────────────────────
     primaryFill:     'rgba(29,158,117,0.10)',  // subtle accent tint
     primaryBorder:   'rgba(29,158,117,0.55)',  // soft accent border
     primaryText:     '#1d9e75',                // accent text
+    // ── Secondary ghost ───────────────────────────────────────────────────
     secondaryBorder: 'rgba(255,255,255,0.14)',
     secondaryText:   'rgba(255,255,255,0.55)',
     paddingV:         10,
@@ -70,14 +77,19 @@ export const RS = {
     cardLight: 18,  // CollectionCard footer glass
   },
   card: {
-    posterWidth:   100,
-    posterHeight:  150,   // ~2:3 poster aspect ratio
-    radius:         10,   // matches --rs-radius-card: 10px in web globals.css
-    cwHeight:       96,
-    cwThumbWidth:  128,
-    // Phase 2+: featured carousel cards
-    featWidth:     220,   // Phase 5: enlarged for cinematic prominence
-    featHeight:    300,
+    posterWidth:        100,
+    posterHeight:       150,   // ~2:3 poster aspect ratio
+    // Phase 6: Trending carousel uses slightly larger posters for depth/presence
+    trendingWidth:      120,
+    trendingHeight:     178,
+    radius:              14,   // Phase 6: increased from 10 for premium rounded feel
+    cwHeight:            96,
+    cwThumbWidth:       128,
+    // Phase 5+: featured carousel cards
+    featWidth:          220,
+    featHeight:         300,
+    // Phase 6: FeaturedToday single dominant artwork
+    featuredArtHeight:  300,
   },
   // ── Badge pill tokens (media-type + BETA) ──────────────────────────────────
   badge: {

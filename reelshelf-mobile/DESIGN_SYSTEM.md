@@ -1,21 +1,23 @@
 # ReelShelf Mobile — Design System
 
-> Phase 5 reference. All token values live in `constants/theme.ts` and `constants/motion.ts`.
+> Phase 6 reference. All token values live in `constants/theme.ts` and `constants/motion.ts`.
 > Update this file whenever tokens change — do not let it drift from the code.
 
 ---
 
 ## Principles
 
-**Editorial, not algorithmic.** Every section feels curated by a thoughtful editor. Headings are declarative ("Trending Today — what's resonating right now") rather than imperative ("You should watch…"). Eyebrow labels ("IN PROGRESS", "BECAUSE YOU LOVED") provide editorial hierarchy without cluttering the primary heading.
+**Editorial, not algorithmic.** Every section feels curated by a thoughtful editor. Headings are declarative ("Trending Today — what's resonating right now") rather than imperative ("You should watch…"). Eyebrow labels ("IN PROGRESS", "BECAUSE YOU LOVED", "FEATURED TODAY") provide editorial hierarchy without cluttering the primary heading.
 
-**Breathing room as a design element.** Major sections are separated by `RS.spacing.xxl` (56 px). This is intentional editorial whitespace, not default padding.
+**Breathing room as a design element.** Major sections are separated by `RS.spacing.xxxl` (72 px) — a "reading chapters" cadence that makes scrolling feel like turning pages. This was increased from `xxl` (56 px) in Phase 6 for a more editorial rhythm.
 
-**Quiet confidence.** Motion is present but never draws attention to itself. Poster lift is 4% compression. Header fade reaches 82% opacity — still readable, just retreating gracefully. Buttons whisper instead of shout.
+**Quiet confidence.** Motion is present but never draws attention to itself. Poster lift is 4% compression. Hero collapse is a gentle parallax — the backdrop slides at 30% of scroll speed. Nothing is aggressive.
 
-**Glass, not plastic.** Non-poster card surfaces use `expo-blur` (`BlurView`) to create dark glass surfaces that borrow depth from the content behind them. Solid opaque fills are the Android fallback, not the design intent.
+**One filled button per screen.** The Home screen has exactly one solid-filled primary button visible at any scroll position: "Log" on the FeaturedToday section. Every other action (Save, More Info, Resume →, chips) is outlined or text-only. This enforces clear visual hierarchy and prevents button competition.
 
-**UI thread first.** All scroll-linked effects (`FadingHeader`) and press animations (`PosterCard`, `CollectionCard`) run on the UI thread via Reanimated shared values. Mount-only effects (`RevealOnMount`) may run on the JS thread since frame-drop risk at mount is zero.
+**Glass, not plastic.** Non-poster card surfaces use `expo-blur` (`BlurView`) for dark glass treatment. Solid fills are Android fallbacks, not the design intent.
+
+**UI thread first.** All scroll-linked effects (header fade, hero collapse parallax) and press animations (PosterCard, CollectionCard) run on the UI thread via Reanimated shared values.
 
 ---
 
@@ -25,30 +27,26 @@ All tokens in `RS.colors` (`constants/theme.ts`).
 
 | Token           | Hex / RGBA                 | Usage                                                        |
 |-----------------|----------------------------|--------------------------------------------------------------|
-| `base`          | `#07070b`                  | Screen backgrounds, `SafeAreaView` fill                      |
+| `base`          | `#07070b`                  | Screen backgrounds                                           |
 | `card`          | `#0d0d14`                  | Card surfaces, tab bar solid fallback                        |
-| `elevated`      | `#131320`                  | Elevated surfaces, skeleton fills, collection card fallback  |
-| `accent`        | `#1d9e75`                  | Primary CTA buttons, active chips, progress bar, tab dot     |
-| `border`        | `rgba(255,255,255,0.08)`   | Default card borders, chip borders                           |
-| `borderStrong`  | `rgba(255,255,255,0.18)`   | Hovered/active borders (mirrors `--rs-border-strong`)        |
-| `textPrimary`   | `rgba(255,255,255,0.92)`   | All primary heading and body text                            |
-| `textSecondary` | `rgba(255,255,255,0.55)`   | Subtitles, metadata, icon fills                              |
-| `textMuted`     | `rgba(255,255,255,0.32)`   | Eyebrow labels, timestamps, placeholder text                 |
-| `gold`          | `#fbbf24`                  | Ranked badges (Tailwind amber-400)                           |
-| `goldMuted`     | `rgba(251,191,36,0.15)`    | Gold badge backgrounds                                       |
-| `accentGlow`    | `rgba(29,158,117,0.10)`    | Subtle green tint overlay (reserved)                         |
+| `elevated`      | `#131320`                  | Elevated surfaces, skeleton fills                            |
+| `accent`        | `#1d9e75`                  | Filled button bg, progress bar, tab dot, eyebrow accent text |
+| `border`        | `rgba(255,255,255,0.08)`   | Default card borders                                         |
+| `borderStrong`  | `rgba(255,255,255,0.18)`   | Active borders                                               |
+| `textPrimary`   | `rgba(255,255,255,0.92)`   | All primary headings and body text                           |
+| `textSecondary` | `rgba(255,255,255,0.55)`   | Subtitles, reason copy, button labels (secondary)            |
+| `textMuted`     | `rgba(255,255,255,0.32)`   | Eyebrow labels, timestamps                                   |
+| `gold`          | `#fbbf24`                  | Ranked badges                                                |
 
 ### Gradient Surfaces
 
-Poster cards use `expo-linear-gradient` overlays, not solid fills:
-
-- **Poster overlay** (text legibility): `['transparent', 'rgba(0,0,0,0.82)']`, `y: 0.40 → 1`
-- **Collection card overlay**: `['transparent', 'rgba(0,0,0,0.85)']`, `y: 0.35 → 1`
-- **Poster fallback bg**: `['#1a1a2a', '#0c0c14']`, diagonal `(0,0) → (1,1)`
-
-### Glass Surface Fallback
-
-On Android (or if `BlurView` is unavailable), use `RS.glass.surface` (`rgba(13,13,20,0.88)`) as the card info background. `RS.glass.border` (`rgba(255,255,255,0.10)`) is the card border color for glass panels.
+- **Hero backdrop overlay (top):** `['rgba(7,7,11,0.55)', 'transparent']`, top 25% — darkens status bar area
+- **Hero backdrop overlay (bottom):** `['transparent', 'rgba(7,7,11,0.80)', 'rgba(7,7,11,0.97)']`, 30%→100% — deep editorial text area
+- **FeaturedToday card:** `['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.94)']`, 30%→100%
+- **Poster overlay:** `['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']`, 25%→100% — darker and heavier than Phase 5
+- **Collection card:** `['transparent', 'rgba(0,0,0,0.85)']`, 35%→100%
+- **Poster fallback bg:** `['#1a1a2a', '#0c0c14']`, diagonal
+- **Trending reflection:** `['rgba(255,255,255,0.055)', 'transparent']`, 16 px — floor sheen
 
 ---
 
@@ -56,227 +54,205 @@ On Android (or if `BlurView` is unavailable), use `RS.glass.surface` (`rgba(13,1
 
 Font families in `Fonts` (`constants/theme.ts`, via `Platform.select`):
 
-| Family  | iOS value   | Android/default | Web                             |
-|---------|-------------|-----------------|----------------------------------|
-| `sans`  | `system-ui` | `normal`        | SF Pro / system-ui stack         |
-| `serif` | `ui-serif`  | `serif`         | Georgia (web fallback)           |
-| `mono`  | `ui-monospace` | `monospace`  | Menlo / Consolas stack           |
+| Family  | iOS         | Android     | Web               |
+|---------|-------------|-------------|-------------------|
+| `sans`  | `system-ui` | `normal`    | SF Pro stack      |
+| `serif` | `ui-serif`  | `serif`     | Georgia fallback  |
 
-**Web vs. Mobile typographic distinction:** The web app uses Helvetica Now Display (licensed sans-serif) exclusively. Mobile introduces `Fonts.serif` (`ui-serif` = New York on iOS) for the `display` heading only. This is an intentional mobile-original editorial premium treatment — not a mismatch.
+**Mobile-web distinction:** Web uses Helvetica Now Display (sans only). Mobile introduces `ui-serif` (New York on iOS) for `display` headings only — intentional mobile-original editorial premium.
 
-All tokens in `RS.typography`.
+All tokens in `RS.typography`:
 
-| Token        | Size | Weight | Family      | Line-height | Usage                                           |
-|--------------|------|--------|-------------|-------------|--------------------------------------------------|
-| `display`    | 36   | 800    | **serif**   | 44          | Hero heading ("Discover your next story.")       |
-| `heading`    | 20   | 700    | sans        | auto        | Section headers (Trending Today, Collections)    |
-| `subheading` | 15   | 400    | sans        | 20–22       | Section subtitles, hero sub-copy                 |
-| `body`       | 14   | 400–600 | sans       | 20          | Card titles (lg), button labels                  |
-| `caption`    | 11   | 600    | sans        | 14          | Badge labels, chips, year metadata, resume link  |
-| `overline`   | 10   | 700    | sans        | —           | Eyebrow uppercase labels (IN PROGRESS, etc.)     |
+| Token        | Size | Weight   | Family | Line-height | Usage                                   |
+|--------------|------|----------|--------|-------------|-----------------------------------------|
+| `display`    | 36   | 800      | serif  | 44          | Hero heading                            |
+| `heading`    | 20   | 700      | sans   | auto        | FeaturedToday card title, section headers |
+| `subheading` | 15   | 400      | sans   | 20–22       | Section subtitles, hero sub-copy        |
+| `body`       | 14   | 400–700  | sans   | 20          | Reason copy, button labels              |
+| `caption`    | 11   | 500–600  | sans   | 14          | Badge labels, chips, year metadata      |
+| `overline`   | 10   | 700      | sans   | —           | Eyebrow labels (TODAY, FEATURED TODAY, IN PROGRESS, BECAUSE YOU LOVED) |
 
-### Letter-spacing Tokens (`RS.letterSpacing`)
+Letter-spacing tokens in `RS.letterSpacing`:
 
-| Token    | Value (pt) | Usage                                       |
-|----------|-----------|----------------------------------------------|
-| `tight`  | −0.4      | `display` heading, section heading           |
-| `normal` | 0         | Body text                                    |
-| `wide`   | 0.8       | `caption`, button labels, subtitle tracking  |
-| `widest` | 1.4       | `overline` eyebrow labels (uppercase)        |
+| Token    | Value  | Usage                               |
+|----------|--------|-------------------------------------|
+| `tight`  | −0.4   | `display`, section headings         |
+| `normal` | 0      | Body text                           |
+| `wide`   | 0.8    | `caption`, button labels            |
+| `widest` | 1.4    | `overline` eyebrow uppercase        |
 
 ---
 
 ## 3 — Spacing
 
-All tokens in `RS.spacing`.
+All tokens in `RS.spacing`:
 
-| Token | Value | Usage                                                    |
-|-------|-------|----------------------------------------------------------|
-| `xs`  | 4     | Badge padding, tight internal gaps, between footer lines |
-| `sm`  | 8     | Between carousel chips, card padding, section gap inner  |
-| `md`  | 16    | Standard horizontal screen padding                       |
-| `lg`  | 24    | Section internal gap (header to carousel)                |
-| `xl`  | 40    | Screen bottom `paddingBottom`                            |
-| `xxl` | 56    | Gap between major Home screen sections (editorial air)   |
+| Token  | Value | Usage                                                           |
+|--------|-------|-----------------------------------------------------------------|
+| `xs`   | 4     | Badge padding, tight internal gaps                              |
+| `sm`   | 8     | Between carousel items, card internals                          |
+| `md`   | 16    | Standard horizontal screen padding                              |
+| `lg`   | 24    | Section internal gap                                            |
+| `xl`   | 40    | (reserved)                                                      |
+| `xxl`  | 56    | ScrollView `paddingBottom`                                      |
+| `xxxl` | 72    | **Gap between all major Home screen sections** ("reading chapters") |
 
-**Section rhythm on Home:** `contentContainerStyle` uses `gap: RS.spacing.xxl`. Every major section (Hero, FilterChips, Trending, BecauseYouLoved, Collections, ContinueYourStory) is separated by 56 px. Internal spacing within a section uses `gap: RS.spacing.xs` or `RS.spacing.sm`.
-
----
-
-## 4 — Poster Card
-
-**File:** `components/poster-card.tsx`  
-**Re-export:** `components/AnimatedPosterCard.tsx` (backward-compat only — no logic)
-
-### Design
-
-- Rounded corners: `RS.card.radius` (10 px, mirrors `--rs-radius-card`)
-- Background fill visible during image load: `RS.colors.card`
-- Fallback (no `posterUrl`): `LinearGradient` + initial-letter monogram
-- Overlay gradient for text legibility over real poster art
-- Media-type badge: absolute top-left, pill-shaped
-
-### Animation
-
-Built-in press-lift animation runs on the UI thread via `useSharedValue` + `useAnimatedStyle`:
-
-```
-press-in:  withSpring(0.96, { damping: 18, stiffness: 240, mass: 0.8 })
-press-out: withSpring(1.0,  { damping: 14, stiffness: 180, mass: 0.8 })
-```
-
-### Shadow Pattern (iOS/Android)
-
-Shadow must be on the **outer** `Animated.View` (no `overflow: 'hidden'`). Clipping lives on the **inner** `View` (`overflow: 'hidden'`, `borderRadius`). This two-layer pattern is required — `overflow: 'hidden'` eliminates shadow on iOS.
-
-```
-outer: shadowColor '#000', offsetY 6, opacity 0.42, radius 12, elevation 10
-```
-
-### Props
-
-| Prop        | Default               | Notes                                          |
-|-------------|-----------------------|------------------------------------------------|
-| `width`     | `RS.card.posterWidth` | 100 px standard, 220 px featured               |
-| `height`    | `RS.card.posterHeight`| 150 px standard, 300 px featured               |
-| `size`      | `'sm'`                | `'lg'` renders serif title for featured cards  |
-| `posterUrl` | `null`                | Image URL; `null` renders gradient fallback    |
-
-### Card Size Tokens (`RS.card`)
-
-| Token          | Value   | Usage                                          |
-|----------------|---------|------------------------------------------------|
-| `posterWidth`  | 100 px  | Standard carousel card                         |
-| `posterHeight` | 150 px  | Standard carousel card (2:3 ratio)             |
-| `featWidth`    | 220 px  | Featured hero carousel card                    |
-| `featHeight`   | 300 px  | Featured hero carousel card                    |
-| `cwThumbWidth` | 128 px  | Continue-watching thumbnail width              |
-| `cwHeight`     | 96 px   | Continue-watching card min-height              |
-| `radius`       | 10 px   | All card border-radius                         |
+**Phase 6 change:** Home screen `contentContainerStyle.gap` increased from `xxl` (56) to `xxxl` (72).
 
 ---
 
-## 5 — Buttons
+## 4 — Hero (Phase 6 rebuild)
 
-**Philosophy:** Whisper instead of shout. Primary button provides just enough visual signal to identify it as actionable without screaming. Secondary (ghost) barely exists until pressed.
+**File:** `components/Hero.tsx`
 
-All tokens in `RS.button`.
+### Structure
 
-| Token             | Value                      | Usage                                  |
-|-------------------|----------------------------|----------------------------------------|
-| `radius`          | 100                        | Pill shape (mirrors web `9999px`)      |
-| `primaryFill`     | `rgba(29,158,117,0.10)`    | Subtle accent tint background          |
-| `primaryBorder`   | `rgba(29,158,117,0.55)`    | Soft accent border                     |
-| `primaryText`     | `#1d9e75`                  | Accent-colored label                   |
-| `secondaryBorder` | `rgba(255,255,255,0.14)`   | Near-invisible border                  |
-| `secondaryText`   | `rgba(255,255,255,0.55)`   | Muted label                            |
-| `paddingV`        | 10 px                      | Vertical padding for full-width pills  |
-| `paddingH`        | 20 px                      | Horizontal padding for inline pills    |
-
-### Primary Button
+Full-bleed cinematic backdrop occupying ~40% of screen height (`Dimensions.get('window').height * 0.40`). No buttons — editorial copy only.
 
 ```
-borderWidth: 1, borderColor: RS.button.primaryBorder
-backgroundColor: RS.button.primaryFill
-borderRadius: RS.button.radius (100 — pill)
+View (height: HERO_H, overflow: 'hidden')
+  Animated.View (backdrop, height: HERO_H × 1.35, parallax translateY)
+    Image (absoluteFill, contentFit: 'cover')
+  LinearGradient (top darkening — status bar area)
+  LinearGradient (bottom heavy — text legibility)
+  Animated.View (content, fades + drifts up on scroll)
+    "TODAY" eyebrow
+    "Monday Morning" / "Tuesday Evening" etc.  ← device Date
+    Serif display heading
+    Subtitle
 ```
 
-Pressed state: `backgroundColor: 'rgba(29,158,117,0.18)'`
+### Time-of-Day Logic
 
-### Secondary (Ghost) Button
-
-```
-borderWidth: 1, borderColor: RS.button.secondaryBorder
-backgroundColor: 'transparent'
-borderRadius: 100
+```ts
+const h = new Date().getHours();
+timeOfDay = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+dayName   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 ```
 
-Pressed state: `backgroundColor: 'rgba(255,255,255,0.05)'`
+No network call, no stored state. Pure `Date` presentation logic.
 
-### Filter Chips
+### Hero Collapse (scroll-linked, UI thread)
 
-Same token set as buttons. Use `RS.button.radius` for pill shape, `RS.button.primaryFill` / `RS.button.primaryBorder` / `RS.button.primaryText` for active state.
+| Effect          | Animated value  | Range                                      |
+|-----------------|-----------------|---------------------------------------------|
+| Backdrop parallax | `translateY`  | `0 → -(HERO_H × 0.30)` over scroll `0 → HERO_H` |
+| Text fade        | `opacity`      | `1 → 0` over scroll `0 → HERO_H × 0.45`   |
+| Text drift       | `translateY`   | `0 → -20 px` over same range               |
+
+All via `interpolate` with `Extrapolation.CLAMP` — no animation beyond the clamped range.
+
+### Full-Bleed Layout
+
+`index.tsx` does **not** use `SafeAreaView edges={['top']}`. The Hero handles its own top offset using `useSafeAreaInsets().top + 52` (header clearance). The `FadingHeader` floats as an absolute overlay (`zIndex: 10`) above the ScrollView.
 
 ---
 
-## 6 — Glass Cards (Non-Poster)
+## 5 — Featured Today (Phase 6 new)
 
-### ContinueWatchingCard (`components/continue-watching-card.tsx`)
+**File:** `components/FeaturedToday.tsx`
 
-Horizontal split: **thumbnail left** (no blur) + **info panel right** (BlurView glass).
+Replaces the old 3-card `FeaturedCarousel`. ONE confident film/TV/book recommendation per day.
 
-```
-outer card: overflow 'hidden', flexDirection 'row', borderColor RS.glass.border
-infoWrap:   overflow 'hidden' (required to clip BlurView)
-  BlurView: tint="dark", intensity={RS.blur.cardInfo (25)}, absoluteFill
-  content:  rendered above BlurView
-```
-
-Android fallback: wrap info content in a `View` with `backgroundColor: RS.glass.surface`.
-
-Progress bar: 2 px height, `RS.colors.accent` fill on `rgba(255,255,255,0.08)` track.
-
-Resume action: text-only `Pressable` ("Resume →"), `RS.colors.accent`, `RS.typography.caption` — no filled button box.
-
-### CollectionCard (`components/CollectionCard.tsx`)
-
-Full-art card with glass footer. Same two-layer shadow pattern as `PosterCard`:
+### Layout
 
 ```
-outer Animated.View: shadow only, no overflow
-inner View:          overflow 'hidden', borderRadius
+"FEATURED TODAY" eyebrow
+Large artwork card (SCREEN_W - 32px wide × 300px tall)
   Image (absoluteFill)
-  LinearGradient overlay
-  footer View:       overflow 'hidden' (clips BlurView)
-    BlurView:        tint="dark", intensity={RS.blur.cardLight (18)}, absoluteFill
-    footerContent:   rendered above blur
+  LinearGradient (bottom-heavy for in-card title)
+  Media-type badge (top left)
+  In-card serif title + year (bottom)
+Editorial reason sentence
+Action row: Log | Save | More Info
 ```
 
-Built-in press-lift animation (same spring config as PosterCard).
+### Action Button Hierarchy
 
-### Blur Intensity Tokens (`RS.blur`)
+| Button    | Style               | Weight rule                           |
+|-----------|---------------------|---------------------------------------|
+| Log       | Solid filled green  | **THE ONE** high-weight button on screen |
+| Save      | Outlined accent     | Secondary — outlined, no fill         |
+| More Info | Text-only           | Tertiary — no border, barely visible  |
 
-| Token       | Value | Usage                               |
-|-------------|-------|--------------------------------------|
-| `tabBar`    | 55    | Bottom tab bar glass background      |
-| `cardInfo`  | 25    | ContinueWatchingCard info panel      |
-| `cardLight` | 18    | CollectionCard footer glass          |
+The "Log" button uses `RS.button.filledBg` (`#1d9e75`) and `RS.button.filledText` (`#ffffff`). This is the only button using these tokens on the Home screen.
+
+### `reason` Field
+
+`SeedFeaturedItem` extends `SeedCardItem` with `reason: string`. One editorial sentence explaining why this is today's pick. The field is static for Phase 6. If/when backend personalization lands, it can be sourced from a Supabase row or AI-generated copy — the component is ready.
 
 ---
 
-## 7 — Navigation (Tab Bar)
+## 6 — One Filled Button Per Screen
 
-**File:** `app/(tabs)/_layout.tsx`
+**Rule:** At any given scroll position, exactly one solid-filled/primary button is visible on the Home screen.
 
-### Glass Background
+**Rationale:** Multiple high-weight buttons compete for attention. A single filled button creates an unambiguous primary action — the screen "knows what it wants" editorially.
 
-```tsx
-tabBarBackground: () => (
-  <BlurView tint="dark" intensity={RS.blur.tabBar} style={absoluteFill} />
-)
-tabBarStyle: { backgroundColor: 'transparent', borderTopColor: RS.glass.border }
-```
+**Implementation:**
+- `RS.button.filledBg: '#1d9e75'` — solid accent, used only for the Log button on FeaturedToday
+- `RS.button.filledText: '#ffffff'` — white label on accent
+- All other buttons: outlined (`primaryBorder + primaryFill` tint) or text-only
+- Filter chips: outlined pills — do not violate the rule (they're interactive labels, not CTAs)
 
-The `BlurView` needs `backgroundColor: 'transparent'` on the surrounding tab bar so it renders through rather than behind.
-
-### Dot Indicator
-
-Custom `TabIcon` component renders a 3×3 px `View` with `backgroundColor: RS.colors.accent` and `borderRadius: 1.5` below the icon when `focused`. The gap between icon and dot is 3 px.
-
-```
-icon size: 22 (was 26 in Phase 4)
-label fontSize: 9 (was 10)
-```
-
-### Screen Order
-
-Home → Daily Reel → Discover → Diary → Lists → Profile
+**Decision record:** "Log" was chosen over "Surprise Me" as the filled button because:
+1. Log is a primary user action (recording a watch) — higher intent signal
+2. "Surprise Me" was removed from the Hero redesign (Hero has no buttons in Phase 6)
+3. The FeaturedToday section's editorial recommendation naturally leads to a Log action
 
 ---
 
-## 8 — Motion
+## 7 — Poster Card
 
-All tokens in `constants/motion.ts`.
+**File:** `components/poster-card.tsx`
+
+### Phase 6 Changes
+
+- **Corner radius:** `RS.card.radius` increased from 10 → 14 for premium rounded feel. Applies to all cards.
+- **Gradient overlay:** Heavier, multi-stop: `['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']` starting at y=0.25 (was single-stop 0.82 from y=0.40). Title area is now distinctly dark.
+- **Shadow:** Bumped from `offsetY:6/opacity:0.42/radius:12/elevation:10` to `offsetY:8/opacity:0.52/radius:16/elevation:14`.
+
+### Two-Layer Shadow Pattern
+
+Shadow must live on the **outer** `Animated.View` (no `overflow: hidden`). Clipping lives on the **inner** `View`. `overflow: 'hidden'` on iOS eliminates shadow — hence the two-layer separation.
+
+---
+
+## 8 — Trending Carousel Upgrades
+
+**File:** `components/TrendingCarousel.tsx`
+
+| Property        | Phase 5   | Phase 6   |
+|-----------------|-----------|-----------|
+| Poster width    | 100 px    | **120 px** |
+| Poster height   | 150 px    | **178 px** |
+| Item separator  | 8 px      | **12 px** |
+| Snap interval   | 108 px    | **132 px** |
+| Floor reflection| none      | **16 px LinearGradient** |
+
+### Floor Reflection
+
+A `LinearGradient` rendered immediately below each poster (inside the item wrapper `View`):
+
+```
+colors: ['rgba(255,255,255,0.055)', 'transparent']
+height: 16 px, width: POSTER_W
+borderBottomRadius: RS.card.radius
+```
+
+Tasteful and subtle — suggests depth, not a literal mirror. `paddingBottom: 18` added to the FlatList content style to prevent clipping.
+
+---
+
+## 9 — Navigation (Tab Bar)
+
+Unchanged from Phase 5. `BlurView` glass background, custom dot indicator, icon size 22, label fontSize 9.
+
+---
+
+## 10 — Motion Tokens
+
+All tokens in `constants/motion.ts`:
 
 ### Durations
 
@@ -286,32 +262,32 @@ All tokens in `constants/motion.ts`.
 | `medium` | 220 | Image cross-fade (expo-image)          |
 | `slow`   | 380 | Section entrance, RevealOnMount        |
 
-### Easing
+### Hero Collapse (`Motion.hero`)
 
-| Name    | Bezier                      | Usage                                   |
-|---------|-----------------------------|-----------------------------------------|
-| `enter` | `cubic-bezier(0.16,1,0.3,1)` | All entrance animations (soft ease-out) |
+| Token            | Value  | Meaning                                          |
+|------------------|--------|--------------------------------------------------|
+| `parallaxFactor` | 0.30   | Backdrop moves at 30% of scroll speed            |
+| `contentFadeAt`  | 0.45   | Text fully faded by scroll = HERO_H × 0.45       |
+| `contentDriftY`  | −20 px | Text drifts upward as it fades                   |
 
-`RevealOnMount` uses `Easing.out(Easing.ease)` from Reanimated (cross-platform equivalent).
-
-### Press Lift
-
-```
-scaleActive: 0.96   (4% compression — mirrors web scale(0.99), amplified for touch)
-spring in:  { damping: 18, stiffness: 240, mass: 0.8 }
-spring out: { damping: 14, stiffness: 180, mass: 0.8 }
-```
-
-Applied to: `PosterCard`, `CollectionCard`.
-
-### Header Fade
+### Header Fade (`Motion.header`)
 
 | Token              | Value  | Usage                                     |
 |--------------------|--------|-------------------------------------------|
 | `fadeScrollStart`  | 0 px   | Full opacity at rest                      |
 | `fadeScrollEnd`    | 70 px  | Minimum opacity reached                   |
-| `minOpacity`       | 0.82   | Header stays glanceable, never invisible  |
-| `translateYOffset` | −4 px  | Subtle upward drift as header recedes     |
+| `minOpacity`       | 0.82   | Header stays glanceable                   |
+| `translateYOffset` | −4 px  | Subtle upward drift                       |
+
+### Press Lift
+
+```
+scaleActive: 0.96
+spring in:  { damping: 18, stiffness: 240, mass: 0.8 }
+spring out: { damping: 14, stiffness: 180, mass: 0.8 }
+```
+
+Applied to: `PosterCard`, `CollectionCard`.
 
 ### Section Entrance (RevealOnMount)
 
@@ -320,55 +296,58 @@ opacity:   0 → 1  (withTiming 380ms, Easing.out(Easing.ease))
 translateY: 14 → 0
 ```
 
-Home screen stagger delays (ms): 0 · 80 · 160 · 240 · 320 · 400
-
-### Carousel Snap
-
-All horizontal `FlatList` carousels use:
-
-```
-snapToInterval={itemWidth + separatorWidth}
-decelerationRate="fast"
-```
-
-| Carousel              | itemWidth            | separatorWidth  |
-|-----------------------|----------------------|-----------------|
-| FeaturedCarousel      | `RS.card.featWidth` (220) | `RS.spacing.md` (16) |
-| TrendingCarousel      | `RS.card.posterWidth` (100) | `RS.spacing.sm` (8) |
-| BecauseYouLoved       | `RS.card.posterWidth` (100) | `RS.spacing.sm` (8) |
-| CollectionsSection    | 160                  | `RS.spacing.sm` (8) |
+Home screen stagger delays (ms): 0 · 60 · 120 · 180 · 240 · 300
 
 ---
 
-## 9 — Section Anatomy
+## 11 — Section Header Copy
 
-Every Home section follows the same layered structure:
+All sections follow the `SectionHeader` anatomy (eyebrow? / title / subtitle?):
 
-```
-RevealOnMount (entrance animation, stagger delay)
-  View (gap: RS.spacing.xs or sm)
-    SectionHeader (eyebrow? / title / subtitle?)
-    FlatList or single card
-```
-
-`SectionHeader` accepts an optional `eyebrow` prop (overline style: 10 px, weight 700, `textMuted`, `letterSpacing.widest`). Current usage:
-
-| Section              | Eyebrow         | Title                  |
-|----------------------|-----------------|------------------------|
-| Trending Today       | —               | Trending Today         |
-| Because You Loved    | BECAUSE YOU LOVED | Babylon               |
-| Collections          | —               | Collections            |
-| Continue Your Story  | IN PROGRESS     | Continue Your Story    |
+| Section               | Eyebrow          | Title                   | Subtitle                                          |
+|-----------------------|------------------|-------------------------|---------------------------------------------------|
+| Featured Today        | FEATURED TODAY   | _(in-card title)_       | _(reason sentence below card)_                    |
+| Trending Today        | —                | Trending Today          | "What's resonating right now."                    |
+| Because You Loved     | BECAUSE YOU LOVED | Babylon                | "Stories about obsession, ambition and sacrifice." |
+| Collection of the Week| —                | Collection of the Week  | "Hand-picked by ReelShelf."                       |
+| Continue Your Story   | IN PROGRESS      | Continue Your Story     | "Pick up where you left off."                     |
 
 ---
 
-## 10 — Adding New Sections (Future Phases)
+## 12 — Home Screen Composition
 
-1. Add seed data to `data/seedHomeContent.ts` (no API calls at runtime).
-2. Create a section component in `components/`.
-3. Add `SectionHeader` with optional eyebrow.
-4. Wrap list in `FlatList` with `snapToInterval` + `decelerationRate="fast"`.
-5. Wrap section in `RevealOnMount` with incremental delay in `index.tsx`.
-6. Update this document.
+```
+View (root, no SafeAreaView top — full-bleed hero)
+  View (headerOverlay, position:absolute, top:0, zIndex:10)
+    FadingHeader(scrollY)           ← fades on scroll independently
+  
+  Animated.ScrollView (gap: RS.spacing.xxxl = 72)
+    Hero(scrollY)                   ← full-bleed, ~40% screen height, no buttons
+    RevealOnMount → FeaturedToday   ← ONE dominant rec, ONE filled Log button
+    RevealOnMount → FilterChips
+    RevealOnMount → TrendingSection (SectionHeader + TrendingCarousel)
+    RevealOnMount → BecauseYouLovedSection
+    RevealOnMount → CollectionsSection
+    RevealOnMount → ContinueYourStorySection
+```
 
-When Supabase personalization lands, `BecauseYouLovedSection`'s `title` prop changes from `"Babylon"` to the user's most-recently-loved title — the component architecture is already ready.
+**No `edges={['top']}` on SafeAreaView** — Hero handles safe area internally via `useSafeAreaInsets().top + 52`.
+
+---
+
+## 13 — Adding New Sections (Future Phases)
+
+1. Add seed data to `data/seedHomeContent.ts` (no API calls at runtime)
+2. Create section component in `components/`
+3. Add `SectionHeader` with optional eyebrow + editorial subtitle
+4. Wrap list in `FlatList` with `snapToInterval` + `decelerationRate="fast"`
+5. Wrap in `RevealOnMount` with incremental delay in `index.tsx`
+6. Audit button hierarchy — no new filled buttons without demoting another
+
+---
+
+## Open Questions for Next Phase
+
+- **"Collection of the Week" vs. "Collections":** Heading renamed to "Collection of the Week" in Phase 6. Underlying variable name (`collections`) and component (`CollectionsSection`) kept as-is to avoid a refactor that touches data shape. If the variable/component are renamed in a future phase, update all import sites.
+- **Log/Save actions:** Currently no-op. When wired to real user state (Supabase `user_media_logs` table), "Log" should open a modal asking for rating/review, "Save" should add to a watchlist. The button hierarchy will remain the same — no visual change needed.
+- **Featured item personalization:** `featuredItem` is currently static. When personalization lands (user profile + Supabase query), `featuredItem` becomes a runtime value. `FeaturedToday` is already ready — it just needs the prop source to change.

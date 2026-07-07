@@ -3,12 +3,12 @@ import Animated, {
   useScrollViewOffset,
 } from 'react-native-reanimated';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BecauseYouLovedSection } from '@/components/BecauseYouLovedCarousel';
 import { CollectionsSection } from '@/components/CollectionsSection';
 import { ContinueWatchingCard } from '@/components/continue-watching-card';
 import { FadingHeader } from '@/components/FadingHeader';
+import { FeaturedToday } from '@/components/FeaturedToday';
 import { FilterChips } from '@/components/FilterChips';
 import { Hero } from '@/components/Hero';
 import { RevealOnMount } from '@/components/RevealOnMount';
@@ -22,28 +22,38 @@ export default function HomeScreen() {
   const scrollY   = useScrollViewOffset(scrollRef);
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    // Root has no SafeAreaView top edge — Hero is full-bleed from screen top.
+    // Bottom safe area is handled by the tab bar.
+    <View style={styles.root}>
+      {/* ── Header: floats as absolute overlay above the hero backdrop ────── */}
+      {/* Fades independently of the hero collapse motion. */}
+      <View style={styles.headerOverlay} pointerEvents="box-none">
+        <FadingHeader scrollY={scrollY} />
+      </View>
+
       <Animated.ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         contentContainerStyle={styles.content}
       >
-        {/* 1 ── Header — fades gracefully on scroll */}
-        <FadingHeader scrollY={scrollY} />
+        {/* 1 ── Hero: full-bleed cinematic backdrop, ~40% screen height.
+                    Parallax collapse + text fade on scroll. No buttons. */}
+        <Hero scrollY={scrollY} />
 
-        {/* 2 ── Hero: serif heading + Featured Carousel + CTAs */}
+        {/* 2 ── Featured Today: ONE dominant recommendation.
+                    Contains the only filled button on the screen ("Log"). */}
         <RevealOnMount delay={0}>
-          <Hero />
+          <FeaturedToday />
         </RevealOnMount>
 
         {/* 3 ── Filter Chips */}
-        <RevealOnMount delay={80}>
+        <RevealOnMount delay={60}>
           <FilterChips />
         </RevealOnMount>
 
         {/* 4 ── Trending Today */}
-        <RevealOnMount delay={160}>
+        <RevealOnMount delay={120}>
           <View style={styles.section}>
             <SectionHeader
               title="Trending Today"
@@ -53,21 +63,21 @@ export default function HomeScreen() {
           </View>
         </RevealOnMount>
 
-        {/* 5 ── Because You Loved */}
-        <RevealOnMount delay={240}>
+        {/* 5 ── Because You Loved Babylon */}
+        <RevealOnMount delay={180}>
           <BecauseYouLovedSection
             title="Babylon"
-            subtitle="Epic stories driven by ambition."
+            subtitle="Stories about obsession, ambition and sacrifice."
           />
         </RevealOnMount>
 
-        {/* 6 ── Collections */}
-        <RevealOnMount delay={320}>
+        {/* 6 ── Collection of the Week (heading set inside CollectionsSection) */}
+        <RevealOnMount delay={240}>
           <CollectionsSection />
         </RevealOnMount>
 
         {/* 7 ── Continue Your Story */}
-        <RevealOnMount delay={400}>
+        <RevealOnMount delay={300}>
           <View style={styles.section}>
             <SectionHeader
               eyebrow="IN PROGRESS"
@@ -83,7 +93,7 @@ export default function HomeScreen() {
           </View>
         </RevealOnMount>
       </Animated.ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -92,9 +102,18 @@ const styles = StyleSheet.create({
     flex:            1,
     backgroundColor: RS.colors.base,
   },
+  // FadingHeader floats above everything — Hero backdrop shows through
+  headerOverlay: {
+    position: 'absolute',
+    top:      0,
+    left:     0,
+    right:    0,
+    zIndex:   10,
+  },
   content: {
-    paddingBottom: RS.spacing.xl,
-    gap:           RS.spacing.xxl,
+    // "reading chapters" gap between major sections
+    gap:           RS.spacing.xxxl,
+    paddingBottom: RS.spacing.xxl,
   },
   section: {
     gap: RS.spacing.sm,
