@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { RS, Fonts } from '@/constants/theme';
+import { RS } from '@/constants/theme';
 
 export default function ProfileScreen() {
   return (
@@ -28,7 +28,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize:      RS.typography.heading,
     fontWeight:    '700',
-    fontFamily:    Fonts?.serif,
     color:         RS.colors.textPrimary,
     letterSpacing: -0.3,
   },

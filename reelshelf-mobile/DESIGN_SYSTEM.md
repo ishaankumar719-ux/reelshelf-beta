@@ -1,5 +1,8 @@
 # ReelShelf Mobile — Design System
 
+> **Governing philosophy: [PRODUCT_BIBLE.md](PRODUCT_BIBLE.md)**
+> The Bible is the *why* — mission, north star, four pillars, voice, and design principles. This document is the *how* — exact token values, component specs, and implementation patterns. When they appear to conflict, the Bible wins.
+
 > Sprint 4 reference. All token values live in `constants/theme.ts` and `constants/motion.ts`.
 > Update this file whenever tokens change — do not let it drift from the code.
 

@@ -13,7 +13,9 @@ export const RS = {
     textPrimary:   'rgba(255,255,255,0.92)',
     textSecondary: 'rgba(255,255,255,0.55)',
     textMuted:     'rgba(255,255,255,0.32)',
-    // Gold sourced from web app's ranked-badge rgba(251,191,36,...) — Tailwind amber-400.
+    // Gold — EDITORIAL MOMENTS ONLY per PRODUCT_BIBLE.md ("Gold only appears for editorial moments").
+    // Not yet used on mobile — define usage (e.g. ranked badges, editorial callouts) before introducing.
+    // Sourced from web app's ranked-badge rgba(251,191,36,...) — Tailwind amber-400.
     gold:          '#fbbf24',
     goldMuted:     'rgba(251,191,36,0.15)',
     accentGlow:    'rgba(29,158,117,0.10)',

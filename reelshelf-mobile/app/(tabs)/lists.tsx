@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { RS, Fonts } from '@/constants/theme';
+import { RS } from '@/constants/theme';
 
 export default function ListsScreen() {
   return (
@@ -26,7 +26,6 @@ const styles = StyleSheet.create({
     fontSize:      RS.typography.heading,
     fontWeight:    '700',
     color:         RS.colors.textPrimary,
-    fontFamily:    Fonts?.serif,
     letterSpacing: -0.3,
   },
   sub: {
