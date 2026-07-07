@@ -1,15 +1,17 @@
-import { FlatList, type ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
+import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 
 import { CollectionCard } from '@/components/CollectionCard';
+import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
 import { type SeedCollectionItem, collections } from '@/data/seedHomeContent';
 
+const CARD_W   = 160;
 const ITEM_SEP = RS.spacing.sm;
 
 export function CollectionsSection() {
   return (
     <View style={styles.section}>
-      <Text style={styles.heading}>Collections</Text>
+      <SectionHeader title="Collections" />
       <FlatList<SeedCollectionItem>
         data={collections}
         horizontal
@@ -17,9 +19,16 @@ export function CollectionsSection() {
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
         contentContainerStyle={styles.list}
+        snapToInterval={CARD_W + ITEM_SEP}
+        decelerationRate="fast"
         renderItem={({ item }: ListRenderItemInfo<SeedCollectionItem>) => (
           <CollectionCard item={item} />
         )}
+        getItemLayout={(_, index) => ({
+          length: CARD_W,
+          offset: (CARD_W + ITEM_SEP) * index,
+          index,
+        })}
       />
     </View>
   );
@@ -27,14 +36,7 @@ export function CollectionsSection() {
 
 const styles = StyleSheet.create({
   section: {
-    gap: RS.spacing.sm,
-  },
-  heading: {
-    paddingHorizontal: RS.spacing.md,
-    fontSize:          RS.typography.heading,
-    fontWeight:        '700',
-    color:             RS.colors.textPrimary,
-    letterSpacing:     -0.3,
+    gap: RS.spacing.xs,
   },
   list: {
     paddingHorizontal: RS.spacing.md,

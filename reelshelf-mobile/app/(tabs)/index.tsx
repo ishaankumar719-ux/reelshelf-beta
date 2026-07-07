@@ -70,6 +70,7 @@ export default function HomeScreen() {
         <RevealOnMount delay={400}>
           <View style={styles.section}>
             <SectionHeader
+              eyebrow="IN PROGRESS"
               title="Continue Your Story"
               subtitle="Pick up where you left off."
             />

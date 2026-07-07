@@ -1,8 +1,14 @@
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { RS } from '@/constants/theme';
+import { RS, Fonts } from '@/constants/theme';
+import { Motion } from '@/constants/motion';
 import type { MediaType } from '@/data/seedHomeContent';
 
 export interface PosterCardProps {
@@ -12,8 +18,13 @@ export interface PosterCardProps {
   posterUrl?: string | null;
   width?:     number;
   height?:    number;
+  /** 'sm' = standard 100px card; 'lg' = featured 220px card with serif title */
+  size?:      'sm' | 'lg';
+  onPress?:   () => void;
 }
 
+// Single definitive poster card — includes press-lift animation (UI thread).
+// Replaces the former PosterCard + AnimatedPosterCard split from Phase 4.
 export function PosterCard({
   title,
   year,
@@ -21,73 +32,119 @@ export function PosterCard({
   posterUrl,
   width  = RS.card.posterWidth,
   height = RS.card.posterHeight,
+  size   = 'sm',
+  onPress,
 }: PosterCardProps = {}) {
   const badge   = mediaType ? RS.badge[mediaType] : null;
   const initial = title ? title[0].toUpperCase() : '';
 
+  const scale = useSharedValue<number>(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View style={[styles.card, { width, height }]}>
-      {posterUrl ? (
-        <Image
-          source={{ uri: posterUrl }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : (
-        <LinearGradient
-          colors={['#1a1a2a', '#0c0c14']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFill, styles.fallback]}
-        >
-          {initial ? <Text style={styles.initial}>{initial}</Text> : null}
-        </LinearGradient>
-      )}
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => {
+        scale.value = withSpring(Motion.lift.scaleActive, {
+          damping: 18, stiffness: 240, mass: 0.8,
+        });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, {
+          damping: 14, stiffness: 180, mass: 0.8,
+        });
+      }}
+    >
+      {/* Outer: shadow + scale animation */}
+      <Animated.View style={[styles.outer, { width, height, borderRadius: RS.card.radius }, animStyle]}>
+        {/* Inner: clipping + overflow hidden */}
+        <View style={styles.inner}>
+          {posterUrl ? (
+            <Image
+              source={{ uri: posterUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <LinearGradient
+              colors={['#1a1a2a', '#0c0c14']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[StyleSheet.absoluteFill, styles.fallback]}
+            >
+              {initial ? <Text style={styles.initial}>{initial}</Text> : null}
+            </LinearGradient>
+          )}
 
-      {/* Gradient overlay — only needed when real poster is shown */}
-      {posterUrl && (
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.82)']}
-          start={{ x: 0, y: 0.45 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-      )}
+          {/* Gradient overlay for text legibility over real poster art */}
+          {posterUrl && (
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.82)']}
+              start={{ x: 0, y: 0.40 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+          )}
 
-      {badge && (
-        <View style={[styles.badgePill, { backgroundColor: badge.bg }]}>
-          <Text style={[styles.badgeLabel, { color: badge.text }]}>{badge.label}</Text>
+          {/* Media-type badge — top left */}
+          {badge && (
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.badgeLabel, { color: badge.text }]}>{badge.label}</Text>
+            </View>
+          )}
+
+          {/* Footer: title + year */}
+          <View style={styles.footer}>
+            {title ? (
+              <Text
+                style={[styles.title, size === 'lg' && styles.titleLg]}
+                numberOfLines={2}
+              >
+                {title}
+              </Text>
+            ) : null}
+            {year ? (
+              <Text style={[styles.year, size === 'lg' && styles.yearLg]}>{year}</Text>
+            ) : null}
+          </View>
         </View>
-      )}
-
-      <View style={styles.footer}>
-        {title ? <Text style={styles.title} numberOfLines={2}>{title}</Text> : null}
-        {year  ? <Text style={styles.year}>{year}</Text> : null}
-      </View>
-    </View>
+      </Animated.View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius:   RS.card.radius,
-    overflow:       'hidden',
-    borderWidth:    0.5,
-    borderColor:    RS.colors.border,
-    justifyContent: 'flex-end',
+  outer: {
+    // Shadow (iOS/Android) — must be on the outer non-clipped view
+    shadowColor:   '#000000',
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.42,
+    shadowRadius:  12,
+    elevation:     10,
+  },
+  inner: {
+    flex:            1,
+    borderRadius:    RS.card.radius,
+    overflow:        'hidden',
+    borderWidth:     0.5,
+    borderColor:     RS.colors.border,
+    justifyContent:  'flex-end',
+    backgroundColor: RS.colors.card,   // visible during image load
   },
   fallback: {
     alignItems:     'center',
     justifyContent: 'center',
   },
   initial: {
-    fontSize:   36,
+    fontSize:   38,
     fontWeight: '700',
     color:      RS.colors.textMuted,
   },
-  badgePill: {
+  badge: {
     position:          'absolute',
     top:               RS.spacing.xs,
     left:              RS.spacing.xs,
@@ -101,8 +158,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   footer: {
-    paddingHorizontal: RS.spacing.xs,
-    paddingBottom:     RS.spacing.xs,
+    paddingHorizontal: RS.spacing.xs + 2,
+    paddingBottom:     RS.spacing.sm,
     gap:               2,
   },
   title: {
@@ -111,8 +168,19 @@ const styles = StyleSheet.create({
     color:      RS.colors.textPrimary,
     lineHeight: 14,
   },
+  // Featured / large card: serif title, larger size
+  titleLg: {
+    fontSize:   RS.typography.body,
+    fontFamily: Fonts?.serif,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   year: {
     fontSize: 10,
     color:    RS.colors.textMuted,
+  },
+  yearLg: {
+    fontSize: RS.typography.caption,
+    color:    RS.colors.textSecondary,
   },
 });

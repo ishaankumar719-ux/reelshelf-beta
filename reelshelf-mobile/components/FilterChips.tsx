@@ -20,7 +20,10 @@ export function FilterChips() {
         return (
           <Pressable
             key={chip}
-            style={[styles.chip, active && styles.chipActive]}
+            style={({ pressed }) => [
+              styles.chip,
+              active ? styles.chipActive : pressed && styles.chipPressed,
+            ]}
             onPress={() => setSelected(chip)}
           >
             <Text style={[styles.label, active && styles.labelActive]}>{chip}</Text>
@@ -34,28 +37,33 @@ export function FilterChips() {
 const styles = StyleSheet.create({
   row: {
     paddingHorizontal: RS.spacing.md,
-    gap:               RS.spacing.xs,
+    gap:               RS.spacing.xs + 2,
     flexDirection:     'row',
     alignItems:        'center',
   },
+  // Pill chips — refined, restrained
   chip: {
-    borderRadius:      RS.badge.pillRadius,
+    borderRadius:      RS.button.radius,
     borderWidth:       1,
     borderColor:       RS.colors.border,
     paddingHorizontal: 14,
     paddingVertical:   6,
-    backgroundColor:   RS.colors.card,
+    backgroundColor:   'transparent',
   },
   chipActive: {
-    backgroundColor: RS.colors.accent,
-    borderColor:     RS.colors.accent,
+    borderColor:     RS.button.primaryBorder,
+    backgroundColor: RS.button.primaryFill,
+  },
+  chipPressed: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   label: {
-    fontSize:   RS.typography.caption,
-    fontWeight: '600',
-    color:      RS.colors.textSecondary,
+    fontSize:      RS.typography.caption,
+    fontWeight:    '600',
+    color:         RS.colors.textSecondary,
+    letterSpacing: RS.letterSpacing.wide,
   },
   labelActive: {
-    color: '#ffffff',
+    color: RS.button.primaryText,
   },
 });

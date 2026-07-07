@@ -1,23 +1,28 @@
-import { FlatList, type ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
+import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 
-import { AnimatedPosterCard } from '@/components/AnimatedPosterCard';
+import { PosterCard } from '@/components/poster-card';
+import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem, becauseYouLoved } from '@/data/seedHomeContent';
 
 const ITEM_SEP = RS.spacing.sm;
 
 interface BecauseYouLovedSectionProps {
+  /** The title the rec is based on — becomes the section heading */
   title:    string;
+  /** Editorial subtitle below the heading */
   subtitle: string;
 }
 
 export function BecauseYouLovedSection({ title, subtitle }: BecauseYouLovedSectionProps) {
   return (
     <View style={styles.section}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>Because You Loved {title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      </View>
+      {/* "BECAUSE YOU LOVED" eyebrow + title as heading */}
+      <SectionHeader
+        eyebrow="BECAUSE YOU LOVED"
+        title={title}
+        subtitle={subtitle}
+      />
       <FlatList<SeedCardItem>
         data={becauseYouLoved}
         horizontal
@@ -25,8 +30,10 @@ export function BecauseYouLovedSection({ title, subtitle }: BecauseYouLovedSecti
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
         contentContainerStyle={styles.list}
+        snapToInterval={RS.card.posterWidth + ITEM_SEP}
+        decelerationRate="fast"
         renderItem={({ item }: ListRenderItemInfo<SeedCardItem>) => (
-          <AnimatedPosterCard
+          <PosterCard
             title={item.title}
             year={item.year}
             mediaType={item.mediaType}
@@ -45,23 +52,7 @@ export function BecauseYouLovedSection({ title, subtitle }: BecauseYouLovedSecti
 
 const styles = StyleSheet.create({
   section: {
-    gap: RS.spacing.sm,
-  },
-  header: {
-    paddingHorizontal: RS.spacing.md,
-    gap:               2,
-  },
-  heading: {
-    fontSize:      RS.typography.heading,
-    fontWeight:    '700',
-    color:         RS.colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize:   RS.typography.subheading,
-    fontWeight: '400',
-    color:      RS.colors.textSecondary,
-    lineHeight: 20,
+    gap: RS.spacing.xs,
   },
   list: {
     paddingHorizontal: RS.spacing.md,

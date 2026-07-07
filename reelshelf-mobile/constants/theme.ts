@@ -22,12 +22,14 @@ export const RS = {
   },
   typography: {
     // ── Editorial display scale ────────────────────────────────────────────
-    display:    32,   // hero heading — use Fonts.serif, weight 800
+    // Mobile uses system serif (New York/iOS) for display — premium mobile-native
+    // treatment absent from web (which uses Helvetica Now Display sans-serif only).
+    display:    36,   // hero heading — Fonts.serif, weight 800, letterSpacing -1
     heading:    20,   // section headers — sans, weight 700
-    subheading: 15,   // editorial deck / section subtitle — sans, weight 500
+    subheading: 15,   // editorial deck / section subtitle — sans, weight 400
     body:       14,   // standard body copy — sans, weight 400
     caption:    11,   // metadata, badges, chips — sans, weight 600
-    overline:   10,   // uppercase label above headings — sans, weight 700, tracked
+    overline:   10,   // eyebrow / section label — sans, weight 700, uppercase, tracked
   },
   spacing: {
     xs:  4,
@@ -35,7 +37,37 @@ export const RS = {
     md:  16,
     lg:  24,
     xl:  40,
-    xxl: 56,   // between major Home screen sections (editorial breathing room)
+    xxl: 56,   // section-to-section breathing room on Home
+  },
+  // ── Letter-spacing tokens (in React Native pt, not em) ───────────────────
+  letterSpacing: {
+    tight:   -0.4,   // display/heading compression
+    normal:   0,
+    wide:     0.8,   // caption/overline
+    widest:   1.4,   // eyebrow uppercase labels
+  },
+  // ── Button design tokens ─────────────────────────────────────────────────
+  // Primary: understated outlined-with-accent-fill.
+  // Secondary: near-invisible ghost (matching web's text-only style).
+  button: {
+    radius:          100,                      // pill shape — matches web border-radius: 9999px
+    primaryFill:     'rgba(29,158,117,0.10)',  // subtle accent tint
+    primaryBorder:   'rgba(29,158,117,0.55)',  // soft accent border
+    primaryText:     '#1d9e75',                // accent text
+    secondaryBorder: 'rgba(255,255,255,0.14)',
+    secondaryText:   'rgba(255,255,255,0.55)',
+    paddingV:         10,
+    paddingH:         20,
+  },
+  // ── Glass surface + blur tokens ──────────────────────────────────────────
+  glass: {
+    surface: 'rgba(13,13,20,0.88)',       // Android fallback when BlurView unavailable
+    border:  'rgba(255,255,255,0.10)',    // soft glass border
+  },
+  blur: {
+    tabBar:   55,   // expo-blur intensity for tab bar glass
+    cardInfo:  25,  // ContinueWatchingCard info-panel glass
+    cardLight: 18,  // CollectionCard footer glass
   },
   card: {
     posterWidth:   100,
@@ -44,8 +76,8 @@ export const RS = {
     cwHeight:       96,
     cwThumbWidth:  128,
     // Phase 2+: featured carousel cards
-    featWidth:     200,
-    featHeight:    280,
+    featWidth:     220,   // Phase 5: enlarged for cinematic prominence
+    featHeight:    300,
   },
   // ── Badge pill tokens (media-type + BETA) ──────────────────────────────────
   badge: {

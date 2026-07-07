@@ -1,6 +1,6 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 
-import { AnimatedPosterCard } from '@/components/AnimatedPosterCard';
+import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem, featuredCards } from '@/data/seedHomeContent';
 
@@ -15,14 +15,17 @@ export function FeaturedCarousel() {
       keyExtractor={(item) => item.id}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
+      snapToInterval={RS.card.featWidth + ITEM_SEP}
+      decelerationRate="fast"
       renderItem={({ item }: ListRenderItemInfo<SeedCardItem>) => (
-        <AnimatedPosterCard
+        <PosterCard
           title={item.title}
           year={item.year}
           mediaType={item.mediaType}
           posterUrl={item.posterUrl}
           width={RS.card.featWidth}
           height={RS.card.featHeight}
+          size="lg"
         />
       )}
       getItemLayout={(_, index) => ({
