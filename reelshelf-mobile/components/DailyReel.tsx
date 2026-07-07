@@ -1,8 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { RS, Fonts } from '@/constants/theme';
+import { Motion } from '@/constants/motion';
 import { dailyReelPick } from '@/data/seedHomeContent';
 
 const SCREEN_W  = Dimensions.get('window').width;
@@ -12,13 +18,29 @@ const ARTWORK_H = RS.card.featuredArtHeight;
 export function DailyReel() {
   const badge = RS.badge[dailyReelPick.mediaType];
 
+  const cardScale = useSharedValue<number>(1);
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>DAILY REEL</Text>
 
-      {/* ── Artwork card — two-layer shadow pattern ────────────────────────── */}
-      <View style={[styles.artworkOuter, { width: ARTWORK_W, height: ARTWORK_H }]}>
-        <View style={styles.artworkInner}>
+      {/* ── Artwork card — outer holds shadow + depress animation ──────────── */}
+      <Animated.View
+        style={[styles.artworkOuter, { width: ARTWORK_W, height: ARTWORK_H }, cardAnimStyle]}
+      >
+        <Pressable
+          style={styles.artworkInner}
+          onPressIn={() => {
+            cardScale.value = withSpring(Motion.lift.depressScale, { damping: 18, stiffness: 260, mass: 0.8 });
+          }}
+          onPressOut={() => {
+            cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
+          }}
+          onPress={() => console.log('[Sprint 4] Daily Reel card pressed — no-op')}
+        >
           <Image
             source={{ uri: dailyReelPick.posterUrl ?? undefined }}
             style={StyleSheet.absoluteFill}
@@ -42,8 +64,8 @@ export function DailyReel() {
             <Text style={styles.title} numberOfLines={2}>{dailyReelPick.title}</Text>
             <Text style={styles.year}>{dailyReelPick.year}</Text>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Animated.View>
 
       {/* ── Editorial description ─────────────────────────────────────────── */}
       <Text style={styles.description}>{dailyReelPick.description}</Text>
@@ -54,7 +76,7 @@ export function DailyReel() {
       {/* ── THE one filled button on the Home screen ─────────────────────── */}
       <Pressable
         style={({ pressed }) => [styles.btnPick, pressed && styles.btnPickPressed]}
-        onPress={() => console.log("[Sprint 3] View Today's Pick — no-op")}
+        onPress={() => console.log("[Sprint 4] View Today's Pick — no-op")}
         android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
       >
         <Text style={styles.btnPickLabel}>View Today's Pick</Text>
@@ -74,15 +96,14 @@ const styles = StyleSheet.create({
     color:         RS.colors.textMuted,
     letterSpacing: RS.letterSpacing.widest,
   },
-
-  // Two-layer shadow: outer holds shadow (no clip), inner clips overflow
+  // Outer holds shadow and depress scale (no overflow — iOS shadow requires no clip)
   artworkOuter: {
     borderRadius:  RS.card.radius,
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.55,
-    shadowRadius:  18,
-    elevation:     14,
+    shadowColor:   RS.shadow.color,
+    shadowOffset:  { width: 0, height: RS.shadow.offsetY },
+    shadowOpacity: RS.shadow.opacity,
+    shadowRadius:  RS.shadow.radius,
+    elevation:     RS.shadow.android,
     alignSelf:     'flex-start',
   },
   artworkInner: {
@@ -133,11 +154,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   reason: {
-    fontSize:      RS.typography.caption,
-    fontWeight:    '500',
-    fontStyle:     'italic',
-    color:         RS.colors.textMuted,
-    lineHeight:    18,
+    fontSize:   RS.typography.caption,
+    fontWeight: '500',
+    fontStyle:  'italic',
+    color:      RS.colors.textMuted,
+    lineHeight: 18,
   },
   btnPick: {
     backgroundColor:   RS.button.filledBg,
@@ -148,6 +169,7 @@ const styles = StyleSheet.create({
   },
   btnPickPressed: {
     backgroundColor: '#179866',
+    transform: [{ scale: 0.97 }],
   },
   btnPickLabel: {
     fontSize:      RS.typography.body,

@@ -82,7 +82,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <SectionHeader
               title="Trending Today"
-              subtitle="What's resonating right now."
+              subtitle="Stories everyone is talking about."
             />
             <TrendingCarousel />
           </View>
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   content: {
     gap:           RS.spacing.xxxl,
-    paddingBottom: RS.spacing.xxl,
+    paddingBottom: RS.tabBar.contentBottomPad,  // floating tab bar is position:absolute — must pad manually
   },
   section: {
     gap: RS.spacing.sm,

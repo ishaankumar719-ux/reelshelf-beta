@@ -18,13 +18,11 @@ export interface PosterCardProps {
   posterUrl?: string | null;
   width?:     number;
   height?:    number;
-  /** 'sm' = standard 100px card; 'lg' = featured 220px card with serif title */
+  /** 'sm' = standard carousel card; 'lg' = large featured card */
   size?:      'sm' | 'lg';
   onPress?:   () => void;
 }
 
-// Single definitive poster card — includes press-lift animation (UI thread).
-// Replaces the former PosterCard + AnimatedPosterCard split from Phase 4.
 export function PosterCard({
   title,
   year,
@@ -47,19 +45,20 @@ export function PosterCard({
     <Pressable
       onPress={onPress}
       onPressIn={() => {
+        // Sprint 4: collectible lift — scale UP on touch (was 0.96 depress)
         scale.value = withSpring(Motion.lift.scaleActive, {
-          damping: 18, stiffness: 240, mass: 0.8,
+          damping: 16, stiffness: 260, mass: 0.7,
         });
       }}
       onPressOut={() => {
         scale.value = withSpring(1, {
-          damping: 14, stiffness: 180, mass: 0.8,
+          damping: 12, stiffness: 200, mass: 0.7,
         });
       }}
     >
-      {/* Outer: shadow + scale animation */}
+      {/* Outer: float shadow + scale transform (no overflow:hidden — iOS shadow requires this) */}
       <Animated.View style={[styles.outer, { width, height, borderRadius: RS.card.radius }, animStyle]}>
-        {/* Inner: clipping + overflow hidden */}
+        {/* Inner: overflow:hidden clips image + gradient to rounded rect */}
         <View style={styles.inner}>
           {posterUrl ? (
             <Image
@@ -79,7 +78,6 @@ export function PosterCard({
             </LinearGradient>
           )}
 
-          {/* Gradient overlay — bottom-heavy for natural title legibility */}
           {posterUrl && (
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
@@ -90,14 +88,12 @@ export function PosterCard({
             />
           )}
 
-          {/* Media-type badge — top left */}
           {badge && (
             <View style={[styles.badge, { backgroundColor: badge.bg }]}>
               <Text style={[styles.badgeLabel, { color: badge.text }]}>{badge.label}</Text>
             </View>
           )}
 
-          {/* Footer: title + year */}
           <View style={styles.footer}>
             {title ? (
               <Text
@@ -119,12 +115,12 @@ export function PosterCard({
 
 const styles = StyleSheet.create({
   outer: {
-    // Premium shadow — on outer non-clipped view (overflow: hidden kills shadow on iOS)
-    shadowColor:   '#000000',
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.52,
-    shadowRadius:  16,
-    elevation:     14,
+    // Sprint 4: float shadow — soft, near-invisible, high blur
+    shadowColor:   RS.shadow.color,
+    shadowOffset:  { width: 0, height: RS.shadow.offsetY },
+    shadowOpacity: RS.shadow.opacity,
+    shadowRadius:  RS.shadow.radius,
+    elevation:     RS.shadow.android,
   },
   inner: {
     flex:            1,
@@ -133,7 +129,7 @@ const styles = StyleSheet.create({
     borderWidth:     0.5,
     borderColor:     RS.colors.border,
     justifyContent:  'flex-end',
-    backgroundColor: RS.colors.card,   // visible during image load
+    backgroundColor: RS.colors.card,
   },
   fallback: {
     alignItems:     'center',
@@ -168,7 +164,6 @@ const styles = StyleSheet.create({
     color:      RS.colors.textPrimary,
     lineHeight: 14,
   },
-  // Featured / large card: larger text, sans-serif (serif reserved for editorial moments)
   titleLg: {
     fontSize:   RS.typography.body,
     fontWeight: '600',

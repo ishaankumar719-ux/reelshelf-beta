@@ -19,7 +19,8 @@ function TabIcon({
 }) {
   return (
     <View style={iconStyles.wrap}>
-      <IconSymbol size={22} name={name} color={color} />
+      {/* Sprint 4: reduced icon size (20 → lighter, more refined) */}
+      <IconSymbol size={20} name={name} color={color} />
       {focused && <View style={iconStyles.dot} />}
     </View>
   );
@@ -27,47 +28,71 @@ function TabIcon({
 
 const iconStyles = StyleSheet.create({
   wrap: {
-    alignItems:  'center',
-    gap:          3,
+    alignItems: 'center',
+    gap:         4,
   },
   dot: {
     width:           3,
     height:          3,
     borderRadius:    1.5,
+    // action — active state indicator for navigation
     backgroundColor: RS.colors.accent,
   },
 });
 
-// ── Glass tab bar background ───────────────────────────────────────────────
+// ── Floating glass background — clips to pill shape via container borderRadius ─
 function TabBarBackground() {
   return (
     <BlurView
       tint="dark"
       intensity={RS.blur.tabBar}
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, tabBgStyles.blur]}
     />
   );
 }
+
+const tabBgStyles = StyleSheet.create({
+  blur: {
+    // BorderRadius on BlurView matches the container — clips the blur to pill shape on iOS
+    borderRadius: RS.tabBar.floatingRadius,
+  },
+});
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor:   RS.colors.accent,
+        tabBarActiveTintColor:   RS.colors.accent,   // action — active tab state
         tabBarInactiveTintColor: RS.colors.textMuted,
         headerShown:             false,
         tabBarButton:            HapticTab,
         tabBarBackground:        TabBarBackground,
         tabBarStyle: {
-          // Glass: transparent so BlurView shows through
+          // Sprint 4: floating pill — detached from screen edges
+          position:        'absolute',
+          bottom:           RS.tabBar.floatingMarginB,
+          left:             RS.tabBar.floatingMarginH,
+          right:            RS.tabBar.floatingMarginH,
+          height:           RS.tabBar.floatingHeight,
+          borderRadius:     RS.tabBar.floatingRadius,
+          // Transparent — BlurView provides the surface
           backgroundColor: 'transparent',
-          borderTopColor:  RS.glass.border,
-          borderTopWidth:  0.5,
+          // No top border — tonal glass separation does the work
+          borderTopWidth:   0,
+          // Shadow for depth (no overflow:hidden so shadow renders on iOS)
+          shadowColor:      '#000',
+          shadowOffset:     { width: 0, height: 8 },
+          shadowOpacity:    0.28,
+          shadowRadius:     20,
+          elevation:        16,
         },
         tabBarLabelStyle: {
           fontSize:   9,
           fontWeight: '600',
           marginTop:  -2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
       }}
     >

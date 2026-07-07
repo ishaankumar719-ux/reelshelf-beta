@@ -1,8 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { RS, Fonts } from '@/constants/theme';
+import { Motion } from '@/constants/motion';
 import { SectionHeader } from '@/components/section-header';
 import { bookOfTheWeek } from '@/data/seedHomeContent';
 
@@ -10,18 +16,35 @@ const COVER_W = Dimensions.get('window').width - 2 * RS.spacing.md;
 const COVER_H = 240;
 
 export function BookOfTheWeek() {
+  const cardScale = useSharedValue<number>(1);
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+
   return (
     <View style={styles.section}>
+      {/* Sprint 4: updated subtitle copy */}
       <SectionHeader
         title="Book of the Week"
-        subtitle="One essential read."
+        subtitle="Our favourite read right now."
         titleSerif
       />
 
       <View style={styles.inner}>
-        {/* ── Book cover card — two-layer shadow pattern ──────────────────── */}
-        <View style={[styles.coverOuter, { width: COVER_W, height: COVER_H }]}>
-          <View style={styles.coverInner}>
+        {/* ── Book cover card — outer holds shadow + depress animation ────── */}
+        <Animated.View
+          style={[styles.coverOuter, { width: COVER_W, height: COVER_H }, cardAnimStyle]}
+        >
+          <Pressable
+            style={styles.coverInner}
+            onPressIn={() => {
+              cardScale.value = withSpring(Motion.lift.depressScale, { damping: 18, stiffness: 260, mass: 0.8 });
+            }}
+            onPressOut={() => {
+              cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
+            }}
+            onPress={() => console.log('[Sprint 4] Book of the Week pressed — no-op')}
+          >
             {bookOfTheWeek.posterUrl ? (
               <Image
                 source={{ uri: bookOfTheWeek.posterUrl }}
@@ -56,8 +79,8 @@ export function BookOfTheWeek() {
               <Text style={styles.title} numberOfLines={3}>{bookOfTheWeek.title}</Text>
               <Text style={styles.author}>{bookOfTheWeek.author}</Text>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Animated.View>
 
         {/* ── Editorial description ────────────────────────────────────────── */}
         <Text style={styles.description}>{bookOfTheWeek.description}</Text>
@@ -76,11 +99,11 @@ const styles = StyleSheet.create({
   },
   coverOuter: {
     borderRadius:  RS.card.radius,
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.50,
-    shadowRadius:  16,
-    elevation:     12,
+    shadowColor:   RS.shadow.color,
+    shadowOffset:  { width: 0, height: RS.shadow.offsetY },
+    shadowOpacity: RS.shadow.opacity,
+    shadowRadius:  RS.shadow.radius,
+    elevation:     RS.shadow.android,
     alignSelf:     'flex-start',
   },
   coverInner: {
