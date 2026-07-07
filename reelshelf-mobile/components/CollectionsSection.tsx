@@ -1,12 +1,11 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 
-import { CollectionCard } from '@/components/CollectionCard';
+import { CollectionCard, COLLECTION_CARD_W } from '@/components/CollectionCard';
 import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
 import { type SeedCollectionItem, collections } from '@/data/seedHomeContent';
 
-const CARD_W   = 160;
-const ITEM_SEP = RS.spacing.sm;
+const ITEM_SEP = RS.spacing.md;  // 16px between cards for editorial breathing room
 
 export function CollectionsSection() {
   return (
@@ -22,14 +21,15 @@ export function CollectionsSection() {
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
         contentContainerStyle={styles.list}
-        snapToInterval={CARD_W + ITEM_SEP}
+        snapToInterval={COLLECTION_CARD_W + ITEM_SEP}
+        snapToAlignment="start"
         decelerationRate="fast"
         renderItem={({ item }: ListRenderItemInfo<SeedCollectionItem>) => (
           <CollectionCard item={item} />
         )}
         getItemLayout={(_, index) => ({
-          length: CARD_W,
-          offset: (CARD_W + ITEM_SEP) * index,
+          length: COLLECTION_CARD_W,
+          offset: (COLLECTION_CARD_W + ITEM_SEP) * index,
           index,
         })}
       />

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BecauseYouLovedSection } from '@/components/BecauseYouLovedCarousel';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
+import { CollectionsSection } from '@/components/CollectionsSection';
 import { ContinueWatchingCard } from '@/components/continue-watching-card';
 import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
@@ -115,8 +116,13 @@ export default function HomeScreen() {
           />
         </RevealOnMount>
 
-        {/* 10 ── Book of the Week */}
-        <RevealOnMount delay={340}>
+        {/* 10 ── Collections — hand-picked editorial carousel */}
+        <RevealOnMount delay={320}>
+          <CollectionsSection />
+        </RevealOnMount>
+
+        {/* 11 ── Book of the Week */}
+        <RevealOnMount delay={360}>
           <BookOfTheWeek />
         </RevealOnMount>
       </Animated.ScrollView>

@@ -37,19 +37,34 @@ interface SeedCardItem {
   posterUrl: string | null;
 }
 
+interface SeedFeaturedItem extends SeedCardItem {
+  reason: string;
+}
+
 interface SeedContinueItem extends SeedCardItem {
   progress: number;
   subtitle: string;
 }
 
-interface SeedCollectionItem {
-  id:       string;
-  title:    string;
-  subtitle: string;
-  coverUrl: string | null;
+interface SeedDailyReelItem extends SeedCardItem {
+  description: string;
+  reason: string;
 }
 
-// ── Fetchers ─────────────────────────────────────────────────────────────────
+interface SeedBookItem extends SeedCardItem {
+  author: string;
+  description: string;
+}
+
+interface SeedCollectionItem {
+  id:          string;
+  title:       string;
+  description: string;
+  storyCount:  number;
+  posterUrls:  (string | null)[];
+}
+
+// ── Fetchers ──────────────────────────────────────────────────────────────────
 
 async function movie(tmdbId: number): Promise<SeedCardItem> {
   const r = await fetch(`${TMDB_BASE}/movie/${tmdbId}?api_key=${TMDB_KEY}`);
@@ -103,10 +118,8 @@ async function book(
   const volId = item.id as string;
   const info  = (item.volumeInfo as Record<string, unknown>) ?? {};
   const links = info.imageLinks as Record<string, string> | undefined;
-  // Prefer thumbnail; upgrade zoom for a larger image
   let cover   = links?.thumbnail ?? links?.smallThumbnail ?? null;
   if (cover) cover = cover.replace('http:', 'https:').replace('zoom=1', 'zoom=2');
-
   return {
     id:        `book-${volId}`,
     title:     (info.title as string | undefined) ?? titleQuery,
@@ -116,12 +129,14 @@ async function book(
   };
 }
 
-// ── Curated titles — non-adult, well-known, with real TMDB IDs ───────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('Fetching from TMDB…');
+  console.log('Fetching from TMDB & Google Books…');
 
+  // ── Batch-fetch everything in parallel ──────────────────────────────────────
   const [
+    // Core items (existing)
     oppenheimer,
     theBear,
     dune_book,
@@ -139,22 +154,47 @@ async function main() {
     fabelmans,
     pachinko_book,
     mulholland,
+    // BYL: Dune extras
+    arrival,
+    bladeRunner2049,
+    odyssey2001,
+    // BYL: The Bear extras
+    theMenu,
+    // Collections: Best A24 Films
+    hereditary,
+    midsommar,
+    // Collections: Under 90 Minutes
+    runLolaRun,
+    moonlight,
+    getOut,
+    // Collections: Mind-Bending Stories
+    fightClub,
+    // Collections: True Crime Essentials
+    zodiac,
+    prisoners,
+    spotlight,
+    knivesOut,
+    // Collections: Space Adventures
+    interstellar,
+    theMartian,
+    gravity,
+    contact,
+    // Collections: Perfect Sunday Stories
+    marriageStory,
+    her,
+    nomadland,
   ] = await Promise.all([
-    // Featured (3 — one per type)
+    // ── Core (17 existing) ────────────────────────────────────────────────────
     movie(872585),                               // Oppenheimer (2023)
     show(136315),                                // The Bear
     book('Dune', 'Frank Herbert', 1965),
-
-    // Trending Today (7)
     movie(27205),                                // Inception
     movie(693134),                               // Dune: Part Two
     show(126308),                                // Shōgun (FX 2024)
     movie(496243),                               // Parasite
-    movie(792307),                               // Poor Things
-    movie(545611),                               // Everything Everywhere All at Once
+    movie(792307),                               // Poor Things (A24)
+    movie(545611),                               // Everything Everywhere All at Once (A24)
     show(76331),                                 // Succession
-
-    // Because You Loved Babylon (epic ambition / Hollywood stories)
     movie(313369),                               // La La Land
     movie(244786),                               // Whiplash
     movie(466272),                               // Once Upon a Time... in Hollywood
@@ -162,16 +202,51 @@ async function main() {
     movie(804095),                               // The Fabelmans
     book('Pachinko', 'Min Jin Lee', 2017),
     movie(1018),                                 // Mulholland Drive
+    // ── BYL: Dune extras (3) ─────────────────────────────────────────────────
+    movie(329865),                               // Arrival
+    movie(335984),                               // Blade Runner 2049
+    movie(62),                                   // 2001: A Space Odyssey
+    // ── BYL: The Bear extras (1) ─────────────────────────────────────────────
+    movie(593643),                               // The Menu
+    // ── Collections: Best A24 Films (2 new — poorThings + eeaao reused) ──────
+    movie(493922),                               // Hereditary (A24)
+    movie(530385),                               // Midsommar (A24)
+    // ── Collections: Under 90 Minutes (3 new — whiplash reused) ─────────────
+    movie(5765),                                 // Run Lola Run
+    movie(376867),                               // Moonlight (A24)
+    movie(419430),                               // Get Out
+    // ── Collections: Mind-Bending (1 new — inception + arrival + BR2049 reused)
+    movie(550),                                  // Fight Club
+    // ── Collections: True Crime Essentials (4 new) ───────────────────────────
+    movie(929),                                  // Zodiac
+    movie(146233),                               // Prisoners
+    movie(314365),                               // Spotlight
+    movie(546554),                               // Knives Out
+    // ── Collections: Space Adventures (4 new) ────────────────────────────────
+    movie(157336),                               // Interstellar
+    movie(286217),                               // The Martian
+    movie(80537),                                // Gravity
+    movie(36557),                                // Contact
+    // ── Collections: Perfect Sunday Stories (3 new — moonlight reused) ───────
+    movie(492188),                               // Marriage Story
+    movie(152601),                               // Her
+    movie(752623),                               // Nomadland
   ]);
 
-  // Featured: pick one of each type
+  // ── Build all exports ──────────────────────────────────────────────────────
+
+  // Featured Today (backward-compat)
+  const featuredItem: SeedFeaturedItem = {
+    ...oppenheimer,
+    reason: "Nolan's three-hour reckoning with conscience and consequence — the kind of film that leaves you sitting in silence after the credits roll.",
+  };
+
   const featuredCards: SeedCardItem[] = [oppenheimer, theBear, dune_book];
 
   const trendingToday: SeedCardItem[] = [
     inception, dunePt2, shogun, parasite, poorThings, eeaao, succession,
   ];
 
-  // Continue Watching — static example; The Bear season 3
   const continueWatching: SeedContinueItem = {
     ...theBear,
     id:       'continue-the-bear-s3',
@@ -183,30 +258,87 @@ async function main() {
     laLaLand, whiplash, ouatih, birdman, fabelmans, pachinko_book, mulholland,
   ];
 
-  // Collections — use real posters from titles already fetched
+  // Daily Reel pick (editorial copy hardcoded — not from API)
+  const dailyReelPick: SeedDailyReelItem = {
+    ...oppenheimer,
+    id: 'film-872585',
+    description: 'Christopher Nolan reconstructs the invention of the atomic bomb with three-hour precision — intercutting past, present, and moral reckoning in a way only cinema can.',
+    reason:      'A film that gets heavier the longer you sit with it.',
+  };
+
+  // BYL: Babylon (alias)
+  const bylBabylon: SeedCardItem[] = becauseYouLoved;
+
+  // BYL: Dune
+  const bylDune: SeedCardItem[] = [
+    dunePt2, arrival, bladeRunner2049, inception, odyssey2001,
+  ];
+
+  // BYL: The Bear
+  const bylTheBear: SeedCardItem[] = [
+    theBear, succession, whiplash, birdman, theMenu,
+  ];
+
+  // Book of the Week (editorial copy hardcoded — not from Google Books)
+  const bookOfTheWeek: SeedBookItem = {
+    id:          'book-tomorrow-and-tomorrow',
+    title:       'Tomorrow, and Tomorrow, and Tomorrow',
+    year:         2022,
+    mediaType:   'book',
+    posterUrl:   null,
+    author:      'Gabrielle Zevin',
+    description: 'Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration.',
+  };
+
+  // 6 Collections with poster collage arrays
   const collections: SeedCollectionItem[] = [
     {
-      id:       'c-a24',
-      title:    'Best A24 Films',
-      subtitle: 'Fearless cinema from A24.',
-      coverUrl: poorThings.posterUrl,     // Poor Things is A24
+      id:          'c-a24',
+      title:       'Best A24 Films',
+      description: 'Fearless cinema from A24.',
+      storyCount:  24,
+      posterUrls:  [poorThings.posterUrl, eeaao.posterUrl, hereditary.posterUrl, midsommar.posterUrl],
     },
     {
-      id:       'c-mindbend',
-      title:    'Mind-Bending Stories',
-      subtitle: 'Reality is just a suggestion.',
-      coverUrl: inception.posterUrl,
+      id:          'c-under90',
+      title:       'Under 90 Minutes',
+      description: 'Great stories that don\'t overstay their welcome.',
+      storyCount:  36,
+      posterUrls:  [runLolaRun.posterUrl, whiplash.posterUrl, moonlight.posterUrl, getOut.posterUrl],
     },
     {
-      id:       'c-sunday',
-      title:    'Perfect Sunday Stories',
-      subtitle: 'Slow, warm, unmissable.',
-      coverUrl: eeaao.posterUrl,
+      id:          'c-mindbend',
+      title:       'Mind-Bending Stories',
+      description: 'Films that warp reality and linger long after the credits.',
+      storyCount:  20,
+      posterUrls:  [inception.posterUrl, arrival.posterUrl, bladeRunner2049.posterUrl, fightClub.posterUrl],
+    },
+    {
+      id:          'c-truecrime',
+      title:       'True Crime Essentials',
+      description: 'Investigations that won\'t let you go.',
+      storyCount:  18,
+      posterUrls:  [zodiac.posterUrl, prisoners.posterUrl, spotlight.posterUrl, knivesOut.posterUrl],
+    },
+    {
+      id:          'c-space',
+      title:       'Space Adventures',
+      description: 'Odysseys beyond the known — wormholes, alien worlds, the deep unknown.',
+      storyCount:  15,
+      posterUrls:  [interstellar.posterUrl, theMartian.posterUrl, gravity.posterUrl, contact.posterUrl],
+    },
+    {
+      id:          'c-sunday',
+      title:       'Perfect Sunday Stories',
+      description: 'Slow, warm, unmissable.',
+      storyCount:  29,
+      posterUrls:  [marriageStory.posterUrl, moonlight.posterUrl, her.posterUrl, nomadland.posterUrl],
     },
   ];
 
   // ── Write output ───────────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
+
   const out = `// SEED DATA — generated by scripts/generate-seed-data.ts on ${today}.
 // Real titles sourced from TMDB (image.tmdb.org) and Google Books APIs.
 // Replace with live Supabase/TMDB/Google Books calls in Phase 4.
@@ -227,20 +359,48 @@ export interface SeedCardItem {
   posterUrl: string | null;
 }
 
+/** Single dominant featured recommendation — extends SeedCardItem with editorial reason copy. */
+export interface SeedFeaturedItem extends SeedCardItem {
+  /** One editorial sentence explaining why this is recommended right now. Static for Phase 5. */
+  reason: string;
+}
+
 export interface SeedContinueItem extends SeedCardItem {
   /** 0–1 viewing/reading progress */
   progress: number;
   subtitle: string;
 }
 
-export interface SeedCollectionItem {
-  id:       string;
-  title:    string;
-  subtitle: string;
-  coverUrl: string | null;
+/** Daily Reel pick — the signature recommendation; supersedes FeaturedToday. */
+export interface SeedDailyReelItem extends SeedCardItem {
+  /** Editorial body copy about the pick (1–2 sentences). */
+  description: string;
+  /** One-line "why ReelShelf picked this" tagline. */
+  reason: string;
 }
 
-// ── Featured (one per media type) ────────────────────────────────────────────
+/** Book of the Week — book card with author and editorial description. */
+export interface SeedBookItem extends SeedCardItem {
+  author: string;
+  /** Editorial body copy about the book (1–2 sentences). */
+  description: string;
+}
+
+export interface SeedCollectionItem {
+  id:          string;
+  title:       string;
+  /** Short editorial description (one line). */
+  description: string;
+  /** Representative story count for the full collection — editorial, not an exact count. */
+  storyCount:  number;
+  /** 3–4 TMDB poster URLs for the collage. null entries show a fallback tile. */
+  posterUrls:  (string | null)[];
+}
+
+// ── Featured Today (backward-compat) ─────────────────────────────────────────
+export const featuredItem: SeedFeaturedItem = ${JSON.stringify(featuredItem, null, 2)};
+
+// ── Featured (kept for backward-compat — no longer rendered as a 3-card carousel) ──
 export const featuredCards: SeedCardItem[] = ${JSON.stringify(featuredCards, null, 2)};
 
 // ── Trending Today ────────────────────────────────────────────────────────────
@@ -253,6 +413,23 @@ export const continueWatching: SeedContinueItem = ${JSON.stringify(continueWatch
 // Anchor title and list become personalized in Phase 4.
 export const becauseYouLoved: SeedCardItem[] = ${JSON.stringify(becauseYouLoved, null, 2)};
 
+// ── Sprint 3: additional interfaces and section data ─────────────────────────
+
+export const dailyReelPick: SeedDailyReelItem = ${JSON.stringify(dailyReelPick, null, 2)};
+
+// ── Because You Loved: Babylon (naming alias for existing BYL group) ──────────
+export const bylBabylon: SeedCardItem[] = becauseYouLoved;
+
+// ── Because You Loved: Dune (epic worlds, slow-burn world-building) ───────────
+export const bylDune: SeedCardItem[] = ${JSON.stringify(bylDune, null, 2)};
+
+// ── Because You Loved: The Bear (pressure, precision, people who care too much) ─
+export const bylTheBear: SeedCardItem[] = ${JSON.stringify(bylTheBear, null, 2)};
+
+// ── Book of the Week ──────────────────────────────────────────────────────────
+// posterUrl: null — extend with Google Books cover fetch in Phase 4.
+export const bookOfTheWeek: SeedBookItem = ${JSON.stringify(bookOfTheWeek, null, 2)};
+
 // ── Collections ───────────────────────────────────────────────────────────────
 export const collections: SeedCollectionItem[] = ${JSON.stringify(collections, null, 2)};
 `;
@@ -260,9 +437,20 @@ export const collections: SeedCollectionItem[] = ${JSON.stringify(collections, n
   const outPath = path.join(__dirname, '..', 'data', 'seedHomeContent.ts');
   fs.writeFileSync(outPath, out, 'utf8');
   console.log(`✅  Written → ${path.relative(process.cwd(), outPath)}`);
-  console.log('Titles fetched:');
-  [...featuredCards, ...trendingToday, ...becauseYouLoved]
-    .forEach(c => console.log(`  ${c.mediaType.padEnd(4)} ${c.year}  ${c.title}`));
+  console.log('\nFilms fetched:');
+  const allItems = [...featuredCards, ...trendingToday, ...becauseYouLoved, ...bylDune, ...bylTheBear];
+  const seen = new Set<string>();
+  allItems.forEach(c => {
+    if (!seen.has(c.id)) {
+      seen.add(c.id);
+      console.log(`  ${c.mediaType.padEnd(4)} ${c.year}  ${c.title}`);
+    }
+  });
+  console.log('\nCollections:');
+  collections.forEach(col => {
+    const filled = col.posterUrls.filter(Boolean).length;
+    console.log(`  ${col.title} — ${filled}/${col.posterUrls.length} posters, ${col.storyCount} stories`);
+  });
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
