@@ -35,8 +35,9 @@ const INNER_POSTER_W   = Math.floor(COLLECTION_CARD_W * 0.42);
 const INNER_POSTER_H   = Math.floor(INNER_POSTER_W * 1.5);
 const INNER_ITEM_SEP   = 6;
 const SNAP_INTERVAL    = INNER_POSTER_W + INNER_ITEM_SEP;
-// Vertical centering of poster strip within the card bounds
-const INNER_V_PAD      = Math.max(0, Math.floor((CARD_H - INNER_POSTER_H) / 2));
+// Trailing padding extends the scrollable range so snap points 0, 1, and 2 are all reachable.
+// Without this, max scroll < snap[2] and the FlatList can't cleanly land on posters 2 or 3.
+const TRAILING_PAD     = SNAP_INTERVAL;
 
 // Subtle static rotation per index — gives "physical card stack" quality
 const ITEM_ROTATIONS = ['-1deg', '0.5deg', '-0.5deg', '1deg'] as const;
@@ -211,7 +212,10 @@ const styles = StyleSheet.create({
     height: CARD_H,
   },
   innerListContent: {
-    paddingVertical: INNER_V_PAD,
+    // Small top breathing room only — was paddingVertical:19-22px which caused large top gap
+    paddingTop:   RS.spacing.xs,
+    // Trailing pad extends scroll range so all 3 useful snap points are reachable
+    paddingRight: TRAILING_PAD,
   },
   posterSlot: {
     width:         INNER_POSTER_W,
