@@ -12,6 +12,7 @@ import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
+import { Vibrant } from 'node-vibrant/node';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.join(__dirname, '..', '.env') });
@@ -30,11 +31,12 @@ const GBOOKS    = 'https://www.googleapis.com/books/v1/volumes';
 type MediaType = 'film' | 'tv' | 'book';
 
 interface SeedCardItem {
-  id:        string;
-  title:     string;
-  year:      number;
-  mediaType: MediaType;
-  posterUrl: string | null;
+  id:              string;
+  title:           string;
+  year:            number;
+  mediaType:       MediaType;
+  posterUrl:       string | null;
+  dominantColors?: string[];
 }
 
 interface SeedFeaturedItem extends SeedCardItem {
@@ -62,6 +64,40 @@ interface SeedCollectionItem {
   description: string;
   storyCount:  number;
   items:       SeedCardItem[];
+}
+
+// ── Color extraction (atmosphere only — never bundled into the app) ───────────
+
+function darkenHex(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  if (luminance > 0.25) {
+    const f = 0.55;
+    const nr = Math.floor(r * f);
+    const ng = Math.floor(g * f);
+    const nb = Math.floor(b * f);
+    return `#${nr.toString(16).padStart(2,'0')}${ng.toString(16).padStart(2,'0')}${nb.toString(16).padStart(2,'0')}`;
+  }
+  return hex;
+}
+
+async function extractDominantColors(posterUrl: string | null): Promise<string[]> {
+  if (!posterUrl) return [];
+  try {
+    const palette = await new Vibrant(posterUrl, { colorCount: 64 }).getPalette();
+    const swatches = [
+      palette.DarkVibrant,
+      palette.DarkMuted,
+      palette.Muted,
+      palette.Vibrant,
+    ].filter((s): s is NonNullable<typeof s> => s !== null && s !== undefined);
+    return swatches.slice(0, 3).map(s => darkenHex(s.hex));
+  } catch {
+    console.warn(`  ⚠ Color extraction failed for ${posterUrl}`);
+    return [];
+  }
 }
 
 // ── Fetchers ──────────────────────────────────────────────────────────────────
@@ -233,6 +269,28 @@ async function main() {
     movie(752623),                               // Nomadland
   ]);
 
+  // ── Extract dominant colors for atmosphere items ───────────────────────────
+  console.log('Extracting dominant colors for atmosphere (Daily Reel + Collection of Week)…');
+  const [
+    oppenheimerColors,
+    poorThingsColors,
+    eeaaoColors,
+    hereditaryColors,
+    midsommarColors,
+  ] = await Promise.all([
+    extractDominantColors(oppenheimer.posterUrl),
+    extractDominantColors(poorThings.posterUrl),
+    extractDominantColors(eeaao.posterUrl),
+    extractDominantColors(hereditary.posterUrl),
+    extractDominantColors(midsommar.posterUrl),
+  ]);
+
+  // Attach colors to the items that need them
+  const poorThingsC  = { ...poorThings,  dominantColors: poorThingsColors  };
+  const eeaaoC       = { ...eeaao,       dominantColors: eeaaoColors       };
+  const hereditaryC  = { ...hereditary,  dominantColors: hereditaryColors  };
+  const midsommarC   = { ...midsommar,   dominantColors: midsommarColors   };
+
   // ── Build all exports ──────────────────────────────────────────────────────
 
   // Featured Today (backward-compat)
@@ -261,9 +319,10 @@ async function main() {
   // Daily Reel pick (editorial copy hardcoded — not from API)
   const dailyReelPick: SeedDailyReelItem = {
     ...oppenheimer,
-    id: 'film-872585',
-    description: 'Christopher Nolan reconstructs the invention of the atomic bomb with three-hour precision — intercutting past, present, and moral reckoning in a way only cinema can.',
-    reason:      'A film that gets heavier the longer you sit with it.',
+    id:             'film-872585',
+    description:    'Christopher Nolan reconstructs the invention of the atomic bomb with three-hour precision — intercutting past, present, and moral reckoning in a way only cinema can.',
+    reason:         'A film that gets heavier the longer you sit with it.',
+    dominantColors: oppenheimerColors,
   };
 
   // BYL: Babylon (alias)
@@ -297,7 +356,7 @@ async function main() {
       title:       'Best A24 Films',
       description: 'Fearless cinema from A24.',
       storyCount:  24,
-      items:       [poorThings, eeaao, hereditary, midsommar],
+      items:       [poorThingsC, eeaaoC, hereditaryC, midsommarC],
     },
     {
       id:          'c-under90',
@@ -357,6 +416,10 @@ export interface SeedCardItem {
   mediaType: MediaType;
   /** TMDB CDN URL (image.tmdb.org/t/p/w342) or Google Books thumbnail. null = show fallback. */
   posterUrl: string | null;
+  /** 2-3 dominant dark hex colors extracted from posterUrl by generate-seed-data.ts.
+   *  Set only for atmosphere-relevant items (Daily Reel + Collection of the Week deck).
+   *  Never computed at runtime — always static. */
+  dominantColors?: string[];
 }
 
 /** Single dominant featured recommendation — extends SeedCardItem with editorial reason copy. */

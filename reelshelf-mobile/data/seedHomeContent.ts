@@ -16,6 +16,10 @@ export interface SeedCardItem {
   mediaType: MediaType;
   /** TMDB CDN URL (image.tmdb.org/t/p/w342) or Google Books thumbnail. null = show fallback. */
   posterUrl: string | null;
+  /** 2-3 dominant dark hex colors extracted from posterUrl by generate-seed-data.ts.
+   *  Set only for atmosphere-relevant items (Daily Reel + Collection of the Week deck).
+   *  Never computed at runtime — always static. */
+  dominantColors?: string[];
 }
 
 /** Single dominant featured recommendation — extends SeedCardItem with editorial reason copy. */
@@ -218,7 +222,8 @@ export const dailyReelPick: SeedDailyReelItem = {
   "mediaType": "film",
   "posterUrl": "https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
   "description": "Christopher Nolan reconstructs the invention of the atomic bomb with three-hour precision — intercutting past, present, and moral reckoning in a way only cinema can.",
-  "reason": "A film that gets heavier the longer you sit with it."
+  "reason": "A film that gets heavier the longer you sit with it.",
+  "dominantColors": ["#261408", "#0c0c1e", "#1a1006"]
 };
 
 // ── Because You Loved: Babylon (naming alias for existing BYL group) ──────────
@@ -331,10 +336,10 @@ export const collections: SeedCollectionItem[] = [
     description: "Fearless cinema from A24.",
     storyCount:  24,
     items: [
-      { id: "film-792307", title: "Poor Things",                       year: 2023, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg" },
-      { id: "film-545611", title: "Everything Everywhere All at Once", year: 2022, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg" },
-      { id: "film-493922", title: "Hereditary",                        year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg" },
-      { id: "film-530385", title: "Midsommar",                         year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg" },
+      { id: "film-792307", title: "Poor Things",                       year: 2023, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg", dominantColors: ["#141a10", "#0c0e1a"] },
+      { id: "film-545611", title: "Everything Everywhere All at Once", year: 2022, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg", dominantColors: ["#1a0808", "#08081a"] },
+      { id: "film-493922", title: "Hereditary",                        year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg", dominantColors: ["#0c100c", "#14080e"] },
+      { id: "film-530385", title: "Midsommar",                         year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg", dominantColors: ["#1a1606", "#120e06"] },
     ],
   },
   {

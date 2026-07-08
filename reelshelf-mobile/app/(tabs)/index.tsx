@@ -5,6 +5,7 @@ import Animated, {
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { BecauseYouLovedSection } from '@/components/BecauseYouLovedCarousel';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
 import { CollectionsSection } from '@/components/CollectionsSection';
@@ -17,6 +18,7 @@ import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
 import { TrendingCarousel } from '@/components/TrendingCarousel';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
+import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { RS } from '@/constants/theme';
 import {
   bylBabylon,
@@ -30,110 +32,122 @@ export default function HomeScreen() {
   const scrollY   = useScrollViewOffset(scrollRef);
 
   return (
-    // SafeAreaView with top edge — calm, in-flow header (no full-bleed hero).
-    // Bottom safe area handled by the tab navigator.
-    <SafeAreaView style={styles.root} edges={['top']}>
-      {/* Header: fixed above scroll, fades gently on scroll (opacity only) */}
-      <FadingHeader scrollY={scrollY} />
+    <AtmosphereProvider>
+      {/* Outer wrapper provides dark base background + absolute atmosphere layer */}
+      <View style={styles.screen}>
 
-      <Animated.ScrollView
-        ref={scrollRef}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        contentContainerStyle={styles.content}
-      >
-        {/* 1 ── Welcome greeting + date */}
-        <RevealOnMount delay={0}>
-          <WelcomeBlock />
-        </RevealOnMount>
+        {/* Cinematic atmosphere — absolute, behind all content, top 38% of screen */}
+        <AmbientAtmosphere scrollY={scrollY} />
 
-        {/* 2 ── Editorial feature headline (serif) */}
-        <RevealOnMount delay={60}>
-          <EditorialHeadline />
-        </RevealOnMount>
+        {/* SafeAreaView: transparent bg so atmosphere shows through top content */}
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          {/* Header: fixed above scroll, fades gently on scroll (opacity only) */}
+          <FadingHeader scrollY={scrollY} />
 
-        {/* 3 ── Floating search bar — visual centerpiece, no-op this sprint */}
-        <RevealOnMount delay={80}>
-          <FloatingSearchBar />
-        </RevealOnMount>
+          <Animated.ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.content}
+          >
+            {/* 1 ── Welcome greeting + date */}
+            <RevealOnMount delay={0}>
+              <WelcomeBlock />
+            </RevealOnMount>
 
-        {/* 4 ── Continue Watching */}
-        <RevealOnMount delay={100}>
-          <View style={styles.section}>
-            <SectionHeader
-              title="Continue Watching"
-              subtitle="Pick up where you left off."
-            />
-            <ContinueWatchingCard
-              title={continueWatching.title}
-              subtitle={continueWatching.subtitle}
-              progress={continueWatching.progress}
-              posterUrl={continueWatching.posterUrl}
-            />
-          </View>
-        </RevealOnMount>
+            {/* 2 ── Editorial feature headline (serif) */}
+            <RevealOnMount delay={60}>
+              <EditorialHeadline />
+            </RevealOnMount>
 
-        {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
-        <RevealOnMount delay={140}>
-          <DailyReel />
-        </RevealOnMount>
+            {/* 3 ── Floating search bar — visual centerpiece, no-op this sprint */}
+            <RevealOnMount delay={80}>
+              <FloatingSearchBar />
+            </RevealOnMount>
 
-        {/* 6 ── Trending Today */}
-        <RevealOnMount delay={180}>
-          <View style={styles.section}>
-            <SectionHeader
-              title="Trending Today"
-              subtitle="Stories everyone is talking about."
-            />
-            <TrendingCarousel />
-          </View>
-        </RevealOnMount>
+            {/* 4 ── Continue Watching */}
+            <RevealOnMount delay={100}>
+              <View style={styles.section}>
+                <SectionHeader
+                  title="Continue Watching"
+                  subtitle="Pick up where you left off."
+                />
+                <ContinueWatchingCard
+                  title={continueWatching.title}
+                  subtitle={continueWatching.subtitle}
+                  progress={continueWatching.progress}
+                  posterUrl={continueWatching.posterUrl}
+                />
+              </View>
+            </RevealOnMount>
 
-        {/* 7 ── Because You Loved: Babylon */}
-        <RevealOnMount delay={220}>
-          <BecauseYouLovedSection
-            title="Babylon"
-            subtitle="Stories about obsession, ambition and sacrifice."
-            items={bylBabylon}
-          />
-        </RevealOnMount>
+            {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
+            <RevealOnMount delay={140}>
+              <DailyReel />
+            </RevealOnMount>
 
-        {/* 8 ── Because You Loved: Dune */}
-        <RevealOnMount delay={260}>
-          <BecauseYouLovedSection
-            title="Dune"
-            subtitle="Epic worlds built with painstaking detail."
-            items={bylDune}
-          />
-        </RevealOnMount>
+            {/* 6 ── Trending Today */}
+            <RevealOnMount delay={180}>
+              <View style={styles.section}>
+                <SectionHeader
+                  title="Trending Today"
+                  subtitle="Stories everyone is talking about."
+                />
+                <TrendingCarousel />
+              </View>
+            </RevealOnMount>
 
-        {/* 9 ── Because You Loved: The Bear */}
-        <RevealOnMount delay={300}>
-          <BecauseYouLovedSection
-            title="The Bear"
-            subtitle="Pressure, precision, and people who care too much."
-            items={bylTheBear}
-          />
-        </RevealOnMount>
+            {/* 7 ── Because You Loved: Babylon */}
+            <RevealOnMount delay={220}>
+              <BecauseYouLovedSection
+                title="Babylon"
+                subtitle="Stories about obsession, ambition and sacrifice."
+                items={bylBabylon}
+              />
+            </RevealOnMount>
 
-        {/* 10 ── Collections — hand-picked editorial carousel */}
-        <RevealOnMount delay={320}>
-          <CollectionsSection />
-        </RevealOnMount>
+            {/* 8 ── Because You Loved: Dune */}
+            <RevealOnMount delay={260}>
+              <BecauseYouLovedSection
+                title="Dune"
+                subtitle="Epic worlds built with painstaking detail."
+                items={bylDune}
+              />
+            </RevealOnMount>
 
-        {/* 11 ── Book of the Week */}
-        <RevealOnMount delay={360}>
-          <BookOfTheWeek />
-        </RevealOnMount>
-      </Animated.ScrollView>
-    </SafeAreaView>
+            {/* 9 ── Because You Loved: The Bear */}
+            <RevealOnMount delay={300}>
+              <BecauseYouLovedSection
+                title="The Bear"
+                subtitle="Pressure, precision, and people who care too much."
+                items={bylTheBear}
+              />
+            </RevealOnMount>
+
+            {/* 10 ── Collections — hand-picked editorial carousel */}
+            <RevealOnMount delay={320}>
+              <CollectionsSection />
+            </RevealOnMount>
+
+            {/* 11 ── Book of the Week */}
+            <RevealOnMount delay={360}>
+              <BookOfTheWeek />
+            </RevealOnMount>
+          </Animated.ScrollView>
+        </SafeAreaView>
+      </View>
+    </AtmosphereProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  screen: {
     flex:            1,
-    backgroundColor: RS.colors.base,
+    backgroundColor: RS.colors.base,  // dark base for area below atmosphere
+  },
+  safeArea: {
+    flex:            1,
+    backgroundColor: 'transparent',   // let atmosphere gradient show through top content
   },
   content: {
     gap:           RS.spacing.xxxl,

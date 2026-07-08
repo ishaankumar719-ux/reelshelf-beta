@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { CollectionCard } from '@/components/CollectionCard';
 import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
+import { useAtmosphere } from '@/contexts/AtmosphereContext';
 import { collections, COLLECTION_OF_THE_WEEK_ID } from '@/data/seedHomeContent';
 
 // One featured collection — no outer carousel, no card-to-card swipe.
@@ -11,11 +12,13 @@ import { collections, COLLECTION_OF_THE_WEEK_ID } from '@/data/seedHomeContent';
 const featuredCollection = collections.find(c => c.id === COLLECTION_OF_THE_WEEK_ID) ?? collections[0];
 
 export function CollectionsSection() {
+  const { setOverrideColor } = useAtmosphere();
+
   return (
     <View style={styles.section}>
       <SectionHeader title="Collection of the Week" subtitle="Hand-picked by ReelShelf." />
       <View style={styles.cardWrapper}>
-        <CollectionCard item={featuredCollection} />
+        <CollectionCard item={featuredCollection} onActiveColorChange={setOverrideColor} />
       </View>
     </View>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -208,16 +208,34 @@ function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
 }
 
 // ── Collection card ────────────────────────────────────────────────────────────
-export function CollectionCard({ item }: { item: SeedCollectionItem }) {
+interface CollectionCardProps {
+  item:                 SeedCollectionItem;
+  onActiveColorChange?: (color: string | null) => void;
+}
+
+export function CollectionCard({ item, onActiveColorChange }: CollectionCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Notify atmosphere of the initial front poster's color on mount, clear on unmount
+  useEffect(() => {
+    const firstColor = item.items[0]?.dominantColors?.[0] ?? null;
+    onActiveColorChange?.(firstColor);
+    return () => { onActiveColorChange?.(null); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const navigateToCollection = useCallback(() => {
     router.push(`/collection/${item.id}`);
   }, [item.id]);
 
   const handleAdvance = useCallback((dir: 1 | -1) => {
-    setActiveIndex(prev => (prev + dir + item.items.length) % item.items.length);
-  }, [item.items.length]);
+    setActiveIndex(prev => {
+      const next = (prev + dir + item.items.length) % item.items.length;
+      const nextColor = item.items[next]?.dominantColors?.[0] ?? null;
+      onActiveColorChange?.(nextColor);
+      return next;
+    });
+  }, [item.items, onActiveColorChange]);
 
   return (
     // Outer: carries shadow — no overflow:hidden so iOS shadow renders correctly.
