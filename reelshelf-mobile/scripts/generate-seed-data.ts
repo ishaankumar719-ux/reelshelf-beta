@@ -61,7 +61,7 @@ interface SeedCollectionItem {
   title:       string;
   description: string;
   storyCount:  number;
-  posterUrls:  (string | null)[];
+  items:       SeedCardItem[];
 }
 
 // ── Fetchers ──────────────────────────────────────────────────────────────────
@@ -290,49 +290,49 @@ async function main() {
     description: 'Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration.',
   };
 
-  // 6 Collections with poster collage arrays
+  // 6 Collections — items[] carries full navigation metadata per poster
   const collections: SeedCollectionItem[] = [
     {
       id:          'c-a24',
       title:       'Best A24 Films',
       description: 'Fearless cinema from A24.',
       storyCount:  24,
-      posterUrls:  [poorThings.posterUrl, eeaao.posterUrl, hereditary.posterUrl, midsommar.posterUrl],
+      items:       [poorThings, eeaao, hereditary, midsommar],
     },
     {
       id:          'c-under90',
       title:       'Under 90 Minutes',
       description: 'Great stories that don\'t overstay their welcome.',
       storyCount:  36,
-      posterUrls:  [runLolaRun.posterUrl, whiplash.posterUrl, moonlight.posterUrl, getOut.posterUrl],
+      items:       [runLolaRun, whiplash, moonlight, getOut],
     },
     {
       id:          'c-mindbend',
       title:       'Mind-Bending Stories',
       description: 'Films that warp reality and linger long after the credits.',
       storyCount:  20,
-      posterUrls:  [inception.posterUrl, arrival.posterUrl, bladeRunner2049.posterUrl, fightClub.posterUrl],
+      items:       [inception, arrival, bladeRunner2049, fightClub],
     },
     {
       id:          'c-truecrime',
       title:       'True Crime Essentials',
       description: 'Investigations that won\'t let you go.',
       storyCount:  18,
-      posterUrls:  [zodiac.posterUrl, prisoners.posterUrl, spotlight.posterUrl, knivesOut.posterUrl],
+      items:       [zodiac, prisoners, spotlight, knivesOut],
     },
     {
       id:          'c-space',
       title:       'Space Adventures',
       description: 'Odysseys beyond the known — wormholes, alien worlds, the deep unknown.',
       storyCount:  15,
-      posterUrls:  [interstellar.posterUrl, theMartian.posterUrl, gravity.posterUrl, contact.posterUrl],
+      items:       [interstellar, theMartian, gravity, contact],
     },
     {
       id:          'c-sunday',
       title:       'Perfect Sunday Stories',
       description: 'Slow, warm, unmissable.',
       storyCount:  29,
-      posterUrls:  [marriageStory.posterUrl, moonlight.posterUrl, her.posterUrl, nomadland.posterUrl],
+      items:       [marriageStory, moonlight, her, nomadland],
     },
   ];
 
@@ -393,8 +393,8 @@ export interface SeedCollectionItem {
   description: string;
   /** Representative story count for the full collection — editorial, not an exact count. */
   storyCount:  number;
-  /** 3–4 TMDB poster URLs for the collage. null entries show a fallback tile. */
-  posterUrls:  (string | null)[];
+  /** 3-4 preview items with poster + navigation metadata. null posterUrl shows a fallback tile. */
+  items:       SeedCardItem[];
 }
 
 // ── Featured Today (backward-compat) ─────────────────────────────────────────
@@ -448,8 +448,8 @@ export const collections: SeedCollectionItem[] = ${JSON.stringify(collections, n
   });
   console.log('\nCollections:');
   collections.forEach(col => {
-    const filled = col.posterUrls.filter(Boolean).length;
-    console.log(`  ${col.title} — ${filled}/${col.posterUrls.length} posters, ${col.storyCount} stories`);
+    const filled = col.items.filter(i => i.posterUrl !== null).length;
+    console.log(`  ${col.title} — ${filled}/${col.items.length} posters, ${col.storyCount} stories`);
   });
 }
 

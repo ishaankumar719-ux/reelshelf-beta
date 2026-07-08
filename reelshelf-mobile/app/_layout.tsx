@@ -25,9 +25,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={RSTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login"  options={{ headerShown: false }} />
-        <Stack.Screen name="modal"  options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
+        <Stack.Screen name="login"           options={{ headerShown: false }} />
+        <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
+        {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
+        <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
+        <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="light" />
     </ThemeProvider>

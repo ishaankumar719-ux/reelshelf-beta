@@ -52,8 +52,8 @@ export interface SeedCollectionItem {
   description: string;
   /** Representative story count for the full collection — editorial, not an exact count. */
   storyCount:  number;
-  /** 3–4 TMDB poster URLs for the collage. null entries show a fallback tile. */
-  posterUrls:  (string | null)[];
+  /** 3-4 preview items with poster + navigation metadata. null posterUrl shows a fallback tile. */
+  items:       SeedCardItem[];
 }
 
 // ── Featured Today (backward-compat) ─────────────────────────────────────────
@@ -315,77 +315,79 @@ export const bookOfTheWeek: SeedBookItem = {
 };
 
 // ── Collections ───────────────────────────────────────────────────────────────
+// items[] carries full navigation metadata per poster (title, year, mediaType, id).
+// storyCount = editorial full-collection size; items.length = swipeable preview count (3-4).
 export const collections: SeedCollectionItem[] = [
   {
-    "id": "c-a24",
-    "title": "Best A24 Films",
-    "description": "Fearless cinema from A24.",
-    "storyCount": 24,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg",
-      "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
-      "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
-      "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg"
-    ]
+    id:          "c-a24",
+    title:       "Best A24 Films",
+    description: "Fearless cinema from A24.",
+    storyCount:  24,
+    items: [
+      { id: "film-792307", title: "Poor Things",                       year: 2023, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg" },
+      { id: "film-545611", title: "Everything Everywhere All at Once", year: 2022, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg" },
+      { id: "film-493922", title: "Hereditary",                        year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg" },
+      { id: "film-530385", title: "Midsommar",                         year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg" },
+    ],
   },
   {
-    "id": "c-under90",
-    "title": "Under 90 Minutes",
-    "description": "Great stories that don't overstay their welcome.",
-    "storyCount": 36,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/6TbMfJueFlfwdn8pURQdcugjUFC.jpg",
-      "https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
-      "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
-      "https://image.tmdb.org/t/p/w342/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg"
-    ]
+    id:          "c-under90",
+    title:       "Under 90 Minutes",
+    description: "Great stories that don't overstay their welcome.",
+    storyCount:  36,
+    items: [
+      { id: "film-5765",   title: "Run Lola Run", year: 1998, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/6TbMfJueFlfwdn8pURQdcugjUFC.jpg" },
+      { id: "film-244786", title: "Whiplash",     year: 2014, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg" },
+      { id: "film-376867", title: "Moonlight",    year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+      { id: "film-419430", title: "Get Out",      year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg" },
+    ],
   },
   {
-    "id": "c-mindbend",
-    "title": "Mind-Bending Stories",
-    "description": "Films that warp reality and linger long after the credits.",
-    "storyCount": 20,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
-      "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
-      "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
-      "https://image.tmdb.org/t/p/w342/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg"
-    ]
+    id:          "c-mindbend",
+    title:       "Mind-Bending Stories",
+    description: "Films that warp reality and linger long after the credits.",
+    storyCount:  20,
+    items: [
+      { id: "film-27205",  title: "Inception",        year: 2010, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg" },
+      { id: "film-329865", title: "Arrival",           year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg" },
+      { id: "film-335984", title: "Blade Runner 2049", year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg" },
+      { id: "film-550",    title: "Fight Club",        year: 1999, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg" },
+    ],
   },
   {
-    "id": "c-truecrime",
-    "title": "True Crime Essentials",
-    "description": "Investigations that won't let you go.",
-    "storyCount": 18,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/xJVl1I95StraYAwaNbBkVoWE2qA.jpg",
-      "https://image.tmdb.org/t/p/w342/jsS3a3ep2KyBVmmiwaz3LvK49b1.jpg",
-      "https://image.tmdb.org/t/p/w342/8DPGG400FgaFWaqcv11n8mRd2NG.jpg",
-      "https://image.tmdb.org/t/p/w342/pThyQovXQrw2m0s9x82twj48Jq4.jpg"
-    ]
+    id:          "c-truecrime",
+    title:       "True Crime Essentials",
+    description: "Investigations that won't let you go.",
+    storyCount:  18,
+    items: [
+      { id: "film-929",    title: "Zodiac",     year: 2007, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xJVl1I95StraYAwaNbBkVoWE2qA.jpg" },
+      { id: "film-146233", title: "Prisoners",  year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/jsS3a3ep2KyBVmmiwaz3LvK49b1.jpg" },
+      { id: "film-314365", title: "Spotlight",  year: 2015, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/8DPGG400FgaFWaqcv11n8mRd2NG.jpg" },
+      { id: "film-546554", title: "Knives Out", year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/pThyQovXQrw2m0s9x82twj48Jq4.jpg" },
+    ],
   },
   {
-    "id": "c-space",
-    "title": "Space Adventures",
-    "description": "Odysseys beyond the known — wormholes, alien worlds, the deep unknown.",
-    "storyCount": 15,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
-      "https://image.tmdb.org/t/p/w342/fASz8A0yFE3QB6LgGoOfwvFSseV.jpg",
-      null,
-      "https://image.tmdb.org/t/p/w342/lMrxYKKhd4lqRzwUHAy5gcx9PSO.jpg"
-    ]
+    id:          "c-space",
+    title:       "Space Adventures",
+    description: "Odysseys beyond the known — wormholes, alien worlds, the deep unknown.",
+    storyCount:  15,
+    items: [
+      { id: "film-157336", title: "Interstellar", year: 2014, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg" },
+      { id: "film-286217", title: "The Martian",  year: 2015, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/fASz8A0yFE3QB6LgGoOfwvFSseV.jpg" },
+      { id: "film-80537",  title: "Gravity",      year: 2013, mediaType: "film", posterUrl: null },
+      { id: "film-36557",  title: "Contact",      year: 1997, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/lMrxYKKhd4lqRzwUHAy5gcx9PSO.jpg" },
+    ],
   },
   {
-    "id": "c-sunday",
-    "title": "Perfect Sunday Stories",
-    "description": "Slow, warm, unmissable.",
-    "storyCount": 29,
-    "posterUrls": [
-      "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg",
-      "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
-      "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg",
-      "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg"
-    ]
-  }
+    id:          "c-sunday",
+    title:       "Perfect Sunday Stories",
+    description: "Slow, warm, unmissable.",
+    storyCount:  29,
+    items: [
+      { id: "film-492188", title: "Marriage Story", year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg" },
+      { id: "film-376867", title: "Moonlight",      year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+      { id: "film-152601", title: "Her",             year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg" },
+      { id: "film-752623", title: "Nomadland",       year: 2020, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg" },
+    ],
+  },
 ];
