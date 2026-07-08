@@ -26,12 +26,13 @@ import type { SeedCardItem, SeedCollectionItem } from '@/data/seedHomeContent';
 // ── Card geometry ─────────────────────────────────────────────────────────────
 const SCREEN_W = Dimensions.get('window').width;
 
-// Card is 82% of viewport — next card peeks ~18% in the outer carousel
-export const COLLECTION_CARD_W = Math.floor(SCREEN_W * 0.82);
-const CARD_H = Math.floor(COLLECTION_CARD_W * 0.75);  // 4:3 ratio
+// Card spans full content column (screen minus standard horizontal padding on both sides).
+// Previously 82 % for a peek carousel; now full-width as the sole featured card.
+export const COLLECTION_CARD_W = SCREEN_W - 2 * RS.spacing.md;
+const CARD_H = Math.floor(COLLECTION_CARD_W * 0.85);  // slightly taller than 4:3 for more poster height
 
-// Inner poster slot: 42% of card width, 2:3 ratio, ~2 posters + 16% right peek visible
-const INNER_POSTER_W   = Math.floor(COLLECTION_CARD_W * 0.42);
+// Inner poster slot: 46% of card width, 2:3 ratio, ~2 posters visible + right-edge peek
+const INNER_POSTER_W   = Math.floor(COLLECTION_CARD_W * 0.46);
 const INNER_POSTER_H   = Math.floor(INNER_POSTER_W * 1.5);
 const INNER_ITEM_SEP   = 6;
 const SNAP_INTERVAL    = INNER_POSTER_W + INNER_ITEM_SEP;
@@ -143,8 +144,6 @@ export function CollectionCard({ item }: { item: SeedCollectionItem }) {
           snapToAlignment="start"
           decelerationRate="fast"
           scrollEventThrottle={16}
-          // Android: allow nested horizontal scroll inside outer horizontal FlatList
-          nestedScrollEnabled
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
           getItemLayout={(_, index) => ({
@@ -152,15 +151,12 @@ export function CollectionCard({ item }: { item: SeedCollectionItem }) {
             offset: SNAP_INTERVAL * index,
             index,
           })}
-          // Prevent inner scroll from propagating upward on iOS when user is
-          // intentionally swiping a poster. UIScrollView handles disambiguation
-          // natively on iOS; nestedScrollEnabled covers Android.
           style={styles.innerList}
         />
 
         {/* ── Gradient scrim — bottom-to-top, over posters ─────────── */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.22)', 'rgba(0,0,0,0.90)']}
+          colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.94)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -169,9 +165,9 @@ export function CollectionCard({ item }: { item: SeedCollectionItem }) {
 
         {/* ── Text area — tapping navigates to full collection screen ── */}
         <Pressable style={styles.textArea} onPress={navigateToCollection}>
-          <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           {item.description ? (
-            <Text style={styles.description} numberOfLines={1}>{item.description}</Text>
+            <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
           ) : null}
           <View style={styles.footer}>
             <PagingDots count={item.items.length} active={posterIndex} />
@@ -247,18 +243,18 @@ const styles = StyleSheet.create({
     gap:                4,
   },
   title: {
-    fontSize:      RS.typography.body,
+    fontSize:      RS.typography.subheading,
     fontWeight:    '700',
     fontFamily:    Fonts?.serif,
     color:         RS.colors.textPrimary,
-    lineHeight:    22,
+    lineHeight:    24,
     letterSpacing: RS.letterSpacing.tight,
   },
   description: {
-    fontSize:   RS.typography.caption,
+    fontSize:   RS.typography.caption + 1,
     fontWeight: '400',
-    color:      'rgba(255,255,255,0.32)',
-    lineHeight: 15,
+    color:      'rgba(255,255,255,0.48)',
+    lineHeight: 17,
   },
   footer: {
     flexDirection:  'row',

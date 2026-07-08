@@ -317,6 +317,13 @@ export const bookOfTheWeek: SeedBookItem = {
 // ── Collections ───────────────────────────────────────────────────────────────
 // items[] carries full navigation metadata per poster (title, year, mediaType, id).
 // storyCount = editorial full-collection size; items.length = swipeable preview count (3-4).
+
+/**
+ * ID of the collection shown in the "Collection of the Week" spotlight section.
+ * Change this to feature a different collection — any id from the `collections` array below.
+ * Default: "Best A24 Films" (c-a24). Flag for user confirmation before going live.
+ */
+export const COLLECTION_OF_THE_WEEK_ID = 'c-a24';
 export const collections: SeedCollectionItem[] = [
   {
     id:          "c-a24",
