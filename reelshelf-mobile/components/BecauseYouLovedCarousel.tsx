@@ -1,4 +1,5 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { PosterCard } from '@/components/poster-card';
 import { SectionHeader } from '@/components/section-header';
@@ -40,6 +41,11 @@ export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLov
             year={item.year}
             mediaType={item.mediaType}
             posterUrl={item.posterUrl}
+            onPress={() =>
+              router.push(
+                `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
+              )
+            }
           />
         )}
         getItemLayout={(_, index) => ({

@@ -2,6 +2,7 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,18 +11,23 @@ import Animated, {
 
 import { RS } from '@/constants/theme';
 import { Motion } from '@/constants/motion';
+import type { MediaType } from '@/data/seedHomeContent';
 
 interface ContinueWatchingCardProps {
+  id?:        string;
   title?:     string;
   subtitle?:  string;
+  mediaType?: MediaType;
   /** 0–1 viewing/reading progress */
   progress?:  number;
   posterUrl?: string | null;
 }
 
 export function ContinueWatchingCard({
+  id,
   title,
   subtitle,
+  mediaType,
   progress = 0.4,
   posterUrl,
 }: ContinueWatchingCardProps = {}) {
@@ -40,7 +46,12 @@ export function ContinueWatchingCard({
       onPressOut={() => {
         cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
       }}
-      onPress={() => console.log('[Sprint 4] Continue watching — no-op')}
+      onPress={() => {
+        if (!id || !title || !mediaType) return;
+        router.push(
+          `/media/${id}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`
+        );
+      }}
     >
       <Animated.View style={[styles.card, cardAnimStyle]}>
         {/* Thumbnail — larger artwork area */}

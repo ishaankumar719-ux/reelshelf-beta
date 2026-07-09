@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +12,12 @@ import { RS, Fonts } from '@/constants/theme';
 import { Motion } from '@/constants/motion';
 import { SectionHeader } from '@/components/section-header';
 import { bookOfTheWeek } from '@/data/seedHomeContent';
+
+function navigateToBookOfTheWeek() {
+  router.push(
+    `/media/${bookOfTheWeek.id}?title=${encodeURIComponent(bookOfTheWeek.title)}&posterUrl=${encodeURIComponent(bookOfTheWeek.posterUrl ?? '')}&mediaType=${bookOfTheWeek.mediaType}`
+  );
+}
 
 const COVER_W = Dimensions.get('window').width - 2 * RS.spacing.md;
 const COVER_H = 240;
@@ -43,7 +50,7 @@ export function BookOfTheWeek() {
             onPressOut={() => {
               cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
             }}
-            onPress={() => console.log('[Sprint 4] Book of the Week pressed — no-op')}
+            onPress={navigateToBookOfTheWeek}
           >
             {bookOfTheWeek.posterUrl ? (
               <Image

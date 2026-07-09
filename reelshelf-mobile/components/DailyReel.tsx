@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +15,12 @@ import { dailyReelPick } from '@/data/seedHomeContent';
 const SCREEN_W  = Dimensions.get('window').width;
 const ARTWORK_W = SCREEN_W - 2 * RS.spacing.md;
 const ARTWORK_H = RS.card.featuredArtHeight;
+
+function navigateToDailyReelPick() {
+  router.push(
+    `/media/${dailyReelPick.id}?title=${encodeURIComponent(dailyReelPick.title)}&posterUrl=${encodeURIComponent(dailyReelPick.posterUrl ?? '')}&mediaType=${dailyReelPick.mediaType}`
+  );
+}
 
 export function DailyReel() {
   const badge = RS.badge[dailyReelPick.mediaType];
@@ -39,7 +46,7 @@ export function DailyReel() {
           onPressOut={() => {
             cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
           }}
-          onPress={() => console.log('[Sprint 4] Daily Reel card pressed — no-op')}
+          onPress={navigateToDailyReelPick}
         >
           <Image
             source={{ uri: dailyReelPick.posterUrl ?? undefined }}
@@ -76,7 +83,7 @@ export function DailyReel() {
       {/* ── THE one filled button on the Home screen ─────────────────────── */}
       <Pressable
         style={({ pressed }) => [styles.btnPick, pressed && styles.btnPickPressed]}
-        onPress={() => console.log("[Sprint 4] View Today's Pick — no-op")}
+        onPress={navigateToDailyReelPick}
         android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
       >
         <Text style={styles.btnPickLabel}>View Today's Pick</Text>

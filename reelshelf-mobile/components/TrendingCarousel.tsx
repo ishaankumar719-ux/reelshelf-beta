@@ -1,5 +1,6 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
@@ -31,6 +32,11 @@ export function TrendingCarousel() {
             posterUrl={item.posterUrl}
             width={POSTER_W}
             height={POSTER_H}
+            onPress={() =>
+              router.push(
+                `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
+              )
+            }
           />
           {/* Floor reflection: faint upward-fading sheen beneath each card */}
           <LinearGradient

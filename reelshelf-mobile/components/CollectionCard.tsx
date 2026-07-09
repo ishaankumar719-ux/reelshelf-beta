@@ -216,10 +216,20 @@ interface CollectionCardProps {
 export function CollectionCard({ item, onActiveColorChange }: CollectionCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Notify atmosphere of the initial front poster's color on mount, clear on unmount
+  // Notify atmosphere of the front-facing poster's color whenever it changes
+  // (mount + every swipe advance). Runs as an effect — NOT inside the
+  // setActiveIndex updater — because calling another component's setState
+  // (AtmosphereProvider's setOverrideColor) from inside a updater function is
+  // executed as part of this component's own render phase, which trips
+  // React's "Cannot update a component while rendering a different
+  // component" guard.
   useEffect(() => {
-    const firstColor = item.items[0]?.dominantColors?.[0] ?? null;
-    onActiveColorChange?.(firstColor);
+    const color = item.items[activeIndex]?.dominantColors?.[0] ?? null;
+    onActiveColorChange?.(color);
+  }, [activeIndex, item.items, onActiveColorChange]);
+
+  // Clear the override on unmount only.
+  useEffect(() => {
     return () => { onActiveColorChange?.(null); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -229,13 +239,8 @@ export function CollectionCard({ item, onActiveColorChange }: CollectionCardProp
   }, [item.id]);
 
   const handleAdvance = useCallback((dir: 1 | -1) => {
-    setActiveIndex(prev => {
-      const next = (prev + dir + item.items.length) % item.items.length;
-      const nextColor = item.items[next]?.dominantColors?.[0] ?? null;
-      onActiveColorChange?.(nextColor);
-      return next;
-    });
-  }, [item.items, onActiveColorChange]);
+    setActiveIndex(prev => (prev + dir + item.items.length) % item.items.length);
+  }, [item.items.length]);
 
   return (
     // Outer: carries shadow — no overflow:hidden so iOS shadow renders correctly.

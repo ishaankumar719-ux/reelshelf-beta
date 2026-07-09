@@ -73,8 +73,10 @@ export default function HomeScreen() {
                   subtitle="Pick up where you left off."
                 />
                 <ContinueWatchingCard
+                  id={continueWatching.id}
                   title={continueWatching.title}
                   subtitle={continueWatching.subtitle}
+                  mediaType={continueWatching.mediaType}
                   progress={continueWatching.progress}
                   posterUrl={continueWatching.posterUrl}
                 />
