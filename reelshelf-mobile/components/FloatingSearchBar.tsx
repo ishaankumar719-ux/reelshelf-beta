@@ -1,4 +1,5 @@
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -10,7 +11,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
+import { Motion } from '@/constants/motion';
 import { RS } from '@/constants/theme';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 
 const PLACEHOLDERS = [
   'Search films…',
@@ -24,6 +27,7 @@ const PLACEHOLDERS = [
 const ROTATE_INTERVAL_MS = 2800;
 
 export function FloatingSearchBar() {
+  const reduceMotion = useReduceMotion();
   const [phraseIdx, setPhraseIdx]   = useState(0);
   const textOpacity  = useSharedValue<number>(1);
   const barScale     = useSharedValue<number>(1);
@@ -58,12 +62,17 @@ export function FloatingSearchBar() {
         <Pressable
           style={styles.bar}
           onPressIn={() => {
-            barScale.value = withSpring(1.015, { damping: 20, stiffness: 300, mass: 0.6 });
+            if (reduceMotion) return;
+            barScale.value = withSpring(1.015, Motion.spring.searchIn);
           }}
           onPressOut={() => {
-            barScale.value = withSpring(1, { damping: 16, stiffness: 220, mass: 0.6 });
+            if (reduceMotion) return;
+            barScale.value = withSpring(1, Motion.spring.searchOut);
           }}
-          onPress={() => console.log('[Sprint 4] Search pressed — no-op')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            console.log('[Sprint 4] Search pressed — no-op');
+          }}
           android_ripple={{ color: 'rgba(255,255,255,0.06)' }}
         >
           {/* Glass background */}

@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
+import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { RS } from '@/constants/theme';
+import { usePressLift } from '@/hooks/usePressLift';
 import { awardWinners, type SeedAwardItem } from '@/data/seedHomeContent';
 
 // Landscape card geometry
@@ -14,6 +16,8 @@ const THUMB_W = 88;   // portrait poster occupies left column
 const ITEM_SEP = 12;
 
 function AwardCard({ item }: { item: SeedAwardItem }) {
+  const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     router.push(
@@ -24,8 +28,9 @@ function AwardCard({ item }: { item: SeedAwardItem }) {
   const initial = item.title[0]?.toUpperCase() ?? '';
 
   return (
-    <Pressable onPress={handlePress}>
-      <View style={styles.outer}>
+    <Pressable onPress={handlePress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      {/* Outer: float shadow + scale transform (no overflow:hidden — iOS shadow requires this) */}
+      <Animated.View style={[styles.outer, animStyle]}>
         {/* Inner: overflow:hidden clips everything to card shape */}
         <View style={styles.inner}>
 
@@ -64,7 +69,7 @@ function AwardCard({ item }: { item: SeedAwardItem }) {
           </View>
 
         </View>
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }

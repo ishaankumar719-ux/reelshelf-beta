@@ -1,9 +1,14 @@
+import * as Haptics from 'expo-haptics';
+import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { SectionHeader } from '@/components/section-header';
 import { RS, Fonts } from '@/constants/theme';
+import { usePressLift } from '@/hooks/usePressLift';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import {
   bookOfTheMonth,
   trendingBooks,
@@ -11,15 +16,28 @@ import {
   type SeedBookItem,
 } from '@/data/seedHomeContent';
 
+function bookHref(item: SeedBookItem, expand?: boolean): `/media/${string}` {
+  const base = `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=book`;
+  return (expand ? `${base}&expand=1` : base) as `/media/${string}`;
+}
+
 // ── Book cover card (reusable for Trending + Award Winners FlatLists) ─────────
 const BOOK_W  = 140;
 const BOOK_H  = 210;    // generous — books should not feel secondary
 const ITEM_SEP = 14;
 
-function BookCoverCard({ item, onPress }: { item: SeedBookItem; onPress?: () => void }) {
+function BookCoverCard({ item }: { item: SeedBookItem }) {
   const initial = item.title[0]?.toUpperCase() ?? '';
+  const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    router.push(bookHref(item));
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.bookOuter}>
+    <Pressable onPress={handlePress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.bookOuter, animStyle]}>
       <View style={[styles.bookInner, { width: BOOK_W, height: BOOK_H }]}>
         {item.posterUrl ? (
           <Image
@@ -60,6 +78,7 @@ function BookCoverCard({ item, onPress }: { item: SeedBookItem; onPress?: () => 
           <Text style={styles.bookAuthor} numberOfLines={1}>{item.author}</Text>
         </View>
       </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -70,43 +89,57 @@ const FEATURED_H = 220;
 
 function BookOfTheMonthPanel() {
   const initial = bookOfTheMonth.title[0]?.toUpperCase() ?? '';
+  const { style: liftStyle, onPressIn, onPressOut } = usePressLift('depress');
+
+  const navigate = () => router.push(bookHref(bookOfTheMonth, true));
+  const { style: expandStyle, trigger } = useExpandOnPress(navigate);
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    trigger();
+  };
+
   return (
-    <View style={styles.featuredOuter}>
-      <View style={[styles.featuredInner, { width: FEATURED_W, height: FEATURED_H }]}>
-        {bookOfTheMonth.posterUrl ? (
-          <Image
-            source={{ uri: bookOfTheMonth.posterUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <LinearGradient
-            colors={['#1e1408', '#0e0e1a']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[StyleSheet.absoluteFill, styles.bookFallback]}
-          >
-            <Text style={styles.featuredInitial}>{initial}</Text>
-          </LinearGradient>
-        )}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.95)']}
-          start={{ x: 0, y: 0.25 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        <View style={[styles.bookBadge, { backgroundColor: RS.badge.book.bg }]}>
-          <Text style={[styles.bookBadgeLabel, { color: RS.badge.book.text }]}>BOOK</Text>
-        </View>
-        <View style={styles.featuredTextArea}>
-          <Text style={styles.featuredTitle} numberOfLines={2}>{bookOfTheMonth.title}</Text>
-          <Text style={styles.featuredAuthor}>{bookOfTheMonth.author}</Text>
-        </View>
-      </View>
-      <Text style={styles.featuredDesc}>{bookOfTheMonth.description}</Text>
-    </View>
+    <Pressable onPress={handlePress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.featuredOuter, expandStyle]}>
+        <Animated.View style={[styles.featuredShadow, { width: FEATURED_W, height: FEATURED_H }, liftStyle]}>
+          <View style={[styles.featuredInner, StyleSheet.absoluteFill]}>
+            {bookOfTheMonth.posterUrl ? (
+              <Image
+                source={{ uri: bookOfTheMonth.posterUrl }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : (
+              <LinearGradient
+                colors={['#1e1408', '#0e0e1a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFill, styles.bookFallback]}
+              >
+                <Text style={styles.featuredInitial}>{initial}</Text>
+              </LinearGradient>
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.95)']}
+              start={{ x: 0, y: 0.25 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <View style={[styles.bookBadge, { backgroundColor: RS.badge.book.bg }]}>
+              <Text style={[styles.bookBadgeLabel, { color: RS.badge.book.text }]}>BOOK</Text>
+            </View>
+            <View style={styles.featuredTextArea}>
+              <Text style={styles.featuredTitle} numberOfLines={2}>{bookOfTheMonth.title}</Text>
+              <Text style={styles.featuredAuthor}>{bookOfTheMonth.author}</Text>
+            </View>
+          </View>
+        </Animated.View>
+        <Text style={styles.featuredDesc}>{bookOfTheMonth.description}</Text>
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -197,17 +230,21 @@ const styles = StyleSheet.create({
   featuredOuter: {
     gap: RS.spacing.md,
   },
+  // Shadow lives on the press-lift wrapper (no overflow:hidden — iOS shadow requires this).
+  featuredShadow: {
+    borderRadius:  RS.card.radius,
+    shadowColor:   RS.shadow.color,
+    shadowOffset:  { width: 0, height: RS.shadow.offsetY },
+    shadowOpacity: RS.shadow.opacity,
+    shadowRadius:  RS.shadow.radius,
+    elevation:     RS.shadow.android,
+  },
   featuredInner: {
     borderRadius:    RS.card.radius,
     overflow:        'hidden',
     borderWidth:     0.5,
     borderColor:     RS.colors.border,
     backgroundColor: RS.colors.card,
-    shadowColor:     RS.shadow.color,
-    shadowOffset:    { width: 0, height: RS.shadow.offsetY },
-    shadowOpacity:   RS.shadow.opacity,
-    shadowRadius:    RS.shadow.radius,
-    elevation:       RS.shadow.android,
     justifyContent:  'flex-end',
   },
   featuredTextArea: {

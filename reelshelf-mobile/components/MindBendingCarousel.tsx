@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -54,12 +53,11 @@ function StackedPosterItem({ item }: { item: SeedCardItem }) {
           width={POSTER_W}
           height={POSTER_H}
           size="lg"
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          onPress={() =>
             router.push(
               `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
-            );
-          }}
+            )
+          }
         />
       </View>
     </View>

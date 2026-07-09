@@ -12,13 +12,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { PosterCard } from '@/components/poster-card';
+import { Motion } from '@/constants/motion';
 import { RS } from '@/constants/theme';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { randomDiscoveryPool, type SeedCardItem } from '@/data/seedHomeContent';
 
 const PICKED_W = 120;
 const PICKED_H = 178;
 
 export function RandomDiscoveryCard() {
+  const reduceMotion = useReduceMotion();
   const [picked, setPicked] = useState<SeedCardItem | null>(null);
 
   // Entrance animation shared values for the picked poster
@@ -33,9 +36,14 @@ export function RandomDiscoveryCard() {
   // Animate in whenever a new pick arrives
   useEffect(() => {
     if (!picked) return;
+    if (reduceMotion) {
+      pickedOpacity.value = 1;
+      pickedScale.value   = 1;
+      return;
+    }
     pickedOpacity.value = withTiming(1, { duration: 300 });
-    pickedScale.value   = withSpring(1, { damping: 14, stiffness: 180 });
-  }, [picked?.id]);
+    pickedScale.value   = withSpring(1, Motion.spring.shuffleReveal);
+  }, [picked?.id, reduceMotion]);
 
   const handleShuffle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -43,6 +51,10 @@ export function RandomDiscoveryCard() {
     const next = randomDiscoveryPool[Math.floor(Math.random() * randomDiscoveryPool.length)];
 
     if (picked) {
+      if (reduceMotion) {
+        setPicked(next);
+        return;
+      }
       // Fade out current pick → then set new one (useEffect handles fade-in)
       pickedOpacity.value = withTiming(0, { duration: 180 }, () => {
         pickedScale.value = 0.88;

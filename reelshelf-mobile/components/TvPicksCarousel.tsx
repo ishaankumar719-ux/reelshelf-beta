@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
+import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { RS } from '@/constants/theme';
+import { usePressLift } from '@/hooks/usePressLift';
 import { tvPicks, type SeedCardItem } from '@/data/seedHomeContent';
 
 // Landscape card — portrait poster fills the frame via contentFit="cover"
@@ -14,6 +16,7 @@ const ITEM_SEP = 12;
 
 function TvPickCard({ item }: { item: SeedCardItem }) {
   const initial = item.title[0]?.toUpperCase() ?? '';
+  const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -23,8 +26,8 @@ function TvPickCard({ item }: { item: SeedCardItem }) {
   };
 
   return (
-    <Pressable onPress={handlePress}>
-      <View style={styles.outer}>
+    <Pressable onPress={handlePress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.outer, animStyle]}>
         <View style={styles.inner}>
 
           {/* Full-bleed artwork — portrait poster zoomed/cropped to fill landscape card */}
@@ -65,7 +68,7 @@ function TvPickCard({ item }: { item: SeedCardItem }) {
           </View>
 
         </View>
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }

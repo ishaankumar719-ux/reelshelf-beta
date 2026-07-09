@@ -1,14 +1,11 @@
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { RS } from '@/constants/theme';
-import { Motion } from '@/constants/motion';
+import { usePressLift } from '@/hooks/usePressLift';
 import type { MediaType } from '@/data/seedHomeContent';
 
 export interface PosterCardProps {
@@ -36,25 +33,18 @@ export function PosterCard({
   const badge   = mediaType ? RS.badge[mediaType] : null;
   const initial = title ? title[0].toUpperCase() : '';
 
-  const scale = useSharedValue<number>(1);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress?.();
+  };
 
   return (
     <Pressable
-      onPress={onPress}
-      onPressIn={() => {
-        // Sprint 4: collectible lift — scale UP on touch (was 0.96 depress)
-        scale.value = withSpring(Motion.lift.scaleActive, {
-          damping: 16, stiffness: 260, mass: 0.7,
-        });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, {
-          damping: 12, stiffness: 200, mass: 0.7,
-        });
-      }}
+      onPress={handlePress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
     >
       {/* Outer: float shadow + scale transform (no overflow:hidden — iOS shadow requires this) */}
       <Animated.View style={[styles.outer, { width, height, borderRadius: RS.card.radius }, animStyle]}>

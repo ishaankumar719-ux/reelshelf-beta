@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { RS, Fonts } from '@/constants/theme';
 import { collections, type SeedCardItem } from '@/data/seedHomeContent';
 
@@ -57,8 +58,9 @@ function CollectionItem({ item }: { item: SeedCardItem }) {
 }
 
 export default function CollectionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, expand } = useLocalSearchParams<{ id: string; expand?: string }>();
   const collection = collections.find(c => c.id === id);
+  const isExpandEntry = expand === '1';
 
   if (!collection) {
     return (
@@ -80,29 +82,31 @@ export default function CollectionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      {/* Back navigation */}
-      <Pressable style={styles.backRow} onPress={() => router.back()}>
-        <Text style={styles.backChevron}>‹</Text>
-        <Text style={styles.backLabel}>Back</Text>
-      </Pressable>
+      <ExpandEntrance active={isExpandEntry}>
+        {/* Back navigation */}
+        <Pressable style={styles.backRow} onPress={() => router.back()}>
+          <Text style={styles.backChevron}>‹</Text>
+          <Text style={styles.backLabel}>Back</Text>
+        </Pressable>
 
-      <FlatList<SeedCardItem>
-        data={collection.items}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.collectionTitle}>{collection.title}</Text>
-            <Text style={styles.collectionDesc}>{collection.description}</Text>
-            <Text style={styles.collectionCount}>
-              {collection.storyCount} stories — showing {collection.items.length} previews
-            </Text>
-          </View>
-        }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+        <FlatList<SeedCardItem>
+          data={collection.items}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={styles.collectionTitle}>{collection.title}</Text>
+              <Text style={styles.collectionDesc}>{collection.description}</Text>
+              <Text style={styles.collectionCount}>
+                {collection.storyCount} stories — showing {collection.items.length} previews
+              </Text>
+            </View>
+          }
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      </ExpandEntrance>
     </SafeAreaView>
   );
 }

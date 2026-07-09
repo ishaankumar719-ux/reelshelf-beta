@@ -17,17 +17,29 @@ const AtmosphereContext = createContext<AtmosphereValue>({
   setOverrideColor: () => {},
 });
 
-export function AtmosphereProvider({ children }: { children: React.ReactNode }) {
+interface AtmosphereProviderProps {
+  children: React.ReactNode;
+  /** Per-screen override for the base ambient palette (e.g. a Movie Detail item's
+   *  own extracted dominant colors). Defaults to the Daily Reel pick, unchanged
+   *  from the existing Home/Discover behaviour when omitted. */
+  initialBaseColors?: string[];
+}
+
+export function AtmosphereProvider({ children, initialBaseColors }: AtmosphereProviderProps) {
   const [overrideColor, setOverrideColorState] = useState<string | null>(null);
 
   const setOverrideColor = useCallback((color: string | null) => {
     setOverrideColorState(color);
   }, []);
 
+  const baseColors = (initialBaseColors && initialBaseColors.length > 0)
+    ? initialBaseColors
+    : (dailyReelPick.dominantColors ?? FALLBACK_BASE);
+
   return (
     <AtmosphereContext.Provider
       value={{
-        baseColors:    dailyReelPick.dominantColors ?? FALLBACK_BASE,
+        baseColors,
         overrideColor,
         setOverrideColor,
       }}

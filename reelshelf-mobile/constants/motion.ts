@@ -20,6 +20,23 @@ export const Motion = {
     depressScale: 0.97 as number,
   },
 
+  // Discover Phase 3: calm, near-zero-overshoot spring configs.
+  // Every damping value below was raised until damping ratio ≈ 0.93–0.97
+  // (critically damped is 1.0) — stiffness/mass kept close to Sprint 4 values
+  // so the *timing* feel is unchanged, only the bounce is removed.
+  // Used by `usePressLift` (hooks/usePressLift.ts) — the single press/lift
+  // primitive shared by every card type on Discover.
+  spring: {
+    liftIn:     { damping: 26, stiffness: 260, mass: 0.7 } as const,
+    liftOut:    { damping: 22, stiffness: 200, mass: 0.7 } as const,
+    depressIn:  { damping: 28, stiffness: 260, mass: 0.8 } as const,
+    depressOut: { damping: 24, stiffness: 200, mass: 0.8 } as const,
+    searchIn:   { damping: 26, stiffness: 300, mass: 0.6 } as const,
+    searchOut:  { damping: 22, stiffness: 220, mass: 0.6 } as const,
+    // RandomDiscoveryCard shuffle-result reveal (scale 0.88 → 1)
+    shuffleReveal: { damping: 26, stiffness: 180, mass: 1 } as const,
+  },
+
   header: {
     fadeScrollStart:  0,
     fadeScrollEnd:    70,

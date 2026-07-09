@@ -1,14 +1,13 @@
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Fonts, RS } from '@/constants/theme';
+import { usePressLift } from '@/hooks/usePressLift';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { collections, COLLECTION_OF_THE_WEEK_ID } from '@/data/seedHomeContent';
 
 const ARTWORK_H = 220;
@@ -17,12 +16,17 @@ const collection = collections.find(c => c.id === COLLECTION_OF_THE_WEEK_ID)!;
 const artworkItem = collection?.items[0];
 
 export function FeaturedCollectionSpotlight() {
-  const scale = useSharedValue(1);
-  const scaleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { style: liftStyle, onPressIn, onPressOut } = usePressLift('depress');
+
+  const navigate = () => router.push(`/collection/${collection?.id}?expand=1`);
+  const { style: expandStyle, trigger } = useExpandOnPress(navigate);
 
   if (!collection) return null;
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    trigger();
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -30,47 +34,47 @@ export function FeaturedCollectionSpotlight() {
 
       {/* Outer: scale animation + shadow — no overflow:hidden so iOS shadow renders */}
       <Pressable
-        onPressIn={() => {
-          scale.value = withSpring(0.98, { damping: 18, stiffness: 300, mass: 0.7 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.7 });
-        }}
-        onPress={() => router.push(`/collection/${collection.id}`)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        onPress={handlePress}
       >
-        <Animated.View style={[styles.outer, scaleStyle]}>
-          {/* Inner: overflow:hidden clips artwork + gradient to card shape */}
-          <View style={styles.inner}>
+        {/* Expand wrapper: opacity + scale on tap, ahead of navigation */}
+        <Animated.View style={expandStyle}>
+          {/* Lift wrapper: press-in/out depress + shadow (no overflow:hidden so iOS shadow renders) */}
+          <Animated.View style={[styles.outer, liftStyle]}>
+            {/* Inner: overflow:hidden clips artwork + gradient to card shape */}
+            <View style={styles.inner}>
 
-            {/* Artwork panel */}
-            <View style={styles.artwork}>
-              {artworkItem?.posterUrl ? (
-                <Image
-                  source={{ uri: artworkItem.posterUrl }}
+              {/* Artwork panel */}
+              <View style={styles.artwork}>
+                {artworkItem?.posterUrl ? (
+                  <Image
+                    source={{ uri: artworkItem.posterUrl }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                ) : null}
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.68)', 'rgba(0,0,0,0.96)']}
+                  start={{ x: 0, y: 0.28 }}
+                  end={{ x: 0, y: 1 }}
                   style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  transition={200}
+                  pointerEvents="none"
                 />
-              ) : null}
-              <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.68)', 'rgba(0,0,0,0.96)']}
-                start={{ x: 0, y: 0.28 }}
-                end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-              />
-            </View>
+              </View>
 
-            {/* Text area */}
-            <View style={styles.textArea}>
-              <Text style={styles.title} numberOfLines={2}>{collection.title}</Text>
-              {collection.description ? (
-                <Text style={styles.description} numberOfLines={2}>{collection.description}</Text>
-              ) : null}
-              <Text style={styles.cta}>Explore →</Text>
-            </View>
+              {/* Text area */}
+              <View style={styles.textArea}>
+                <Text style={styles.title} numberOfLines={2}>{collection.title}</Text>
+                {collection.description ? (
+                  <Text style={styles.description} numberOfLines={2}>{collection.description}</Text>
+                ) : null}
+                <Text style={styles.cta}>Explore →</Text>
+              </View>
 
-          </View>
+            </View>
+          </Animated.View>
         </Animated.View>
       </Pressable>
     </View>

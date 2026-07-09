@@ -1,144 +1,158 @@
-/**
- * PLACEHOLDER — minimal media detail screen.
- * Receives: id, title, posterUrl, mediaType via route params.
- * Phase 5 will replace with full detail: cast, synopsis, reviews, ratings.
- */
-import { Image } from 'expo-image';
+import { BlurView } from 'expo-blur';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useAnimatedRef,
+  useScrollViewOffset,
+} from 'react-native-reanimated';
 
-import { RS, Fonts } from '@/constants/theme';
-
-const POSTER_W = 180;
-const POSTER_H = POSTER_W * 1.5;
+import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
+import { CollectionPreviewCard } from '@/components/CollectionPreviewCard';
+import { ExpandEntrance } from '@/components/ExpandEntrance';
+import { MediaCastCrew } from '@/components/MediaCastCrew';
+import { MediaHero } from '@/components/MediaHero';
+import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
+import { MediaSynopsis } from '@/components/MediaSynopsis';
+import { RevealOnMount } from '@/components/RevealOnMount';
+import { SectionHeader } from '@/components/section-header';
+import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
+import { RS } from '@/constants/theme';
+import { collections, type MediaType } from '@/data/seedHomeContent';
+import { mediaDetails } from '@/data/mediaDetails';
 
 export default function MediaDetailScreen() {
-  const { title, posterUrl, mediaType } = useLocalSearchParams<{
+  const { id, title, posterUrl, mediaType } = useLocalSearchParams<{
     id:        string;
     title:     string;
     posterUrl: string;
     mediaType: string;
+    expand?:   string;
   }>();
 
-  const badgeMap = { film: RS.badge.film, tv: RS.badge.tv, book: RS.badge.book } as const;
-  const badge    = badgeMap[(mediaType as keyof typeof badgeMap)] ?? RS.badge.film;
+  const detail = mediaDetails[id];
+  const memberCollections = collections.filter(c => c.items.some(i => i.id === id));
+
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY   = useScrollViewOffset(scrollRef);
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      {/* Back navigation */}
-      <Pressable style={styles.backRow} onPress={() => router.back()}>
-        <Text style={styles.backChevron}>‹</Text>
-        <Text style={styles.backLabel}>Back</Text>
-      </Pressable>
+    <AtmosphereProvider initialBaseColors={detail?.dominantColors}>
+      <View style={styles.screen}>
+        <AmbientAtmosphere scrollY={scrollY} />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Poster */}
-        <View style={styles.posterOuter}>
-          {posterUrl ? (
-            <Image
-              source={{ uri: posterUrl }}
-              style={styles.poster}
-              contentFit="cover"
-              transition={250}
-            />
-          ) : (
-            <View style={[styles.poster, styles.posterFallback]} />
-          )}
-        </View>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+            <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
+            <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
+          </Pressable>
 
-        {/* Media type badge */}
-        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-          <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-        </View>
+          <Animated.ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.content}
+          >
+            <ExpandEntrance active>
+              <View style={styles.sections}>
+                <MediaHero
+                  title={title ?? '—'}
+                  year={detail?.year}
+                  mediaType={(mediaType as MediaType) ?? 'film'}
+                  posterUrl={posterUrl || null}
+                  detail={detail}
+                />
 
-        {/* Title */}
-        <Text style={styles.title}>{title ?? '—'}</Text>
+                <RevealOnMount delay={60}>
+                  <MediaPrimaryActions title={title ?? ''} synopsis={detail?.synopsis} />
+                </RevealOnMount>
 
-        {/* Placeholder note */}
-        <Text style={styles.placeholder}>
-          Full detail page — cast, synopsis, and reviews coming in a future sprint.
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+                {detail?.synopsis ? (
+                  <RevealOnMount delay={100}>
+                    <MediaSynopsis synopsis={detail.synopsis} />
+                  </RevealOnMount>
+                ) : null}
+
+                {detail && (detail.cast.length > 0 || detail.director || detail.creator || detail.writer || detail.composer) ? (
+                  <RevealOnMount delay={140}>
+                    <View style={styles.section}>
+                      <SectionHeader title="Cast & Crew" />
+                      <MediaCastCrew
+                        cast={detail.cast}
+                        director={detail.director}
+                        creator={detail.creator}
+                        writer={detail.writer}
+                        composer={detail.composer}
+                      />
+                    </View>
+                  </RevealOnMount>
+                ) : null}
+
+                {memberCollections.length > 0 ? (
+                  <RevealOnMount delay={180}>
+                    <View style={styles.section}>
+                      <SectionHeader
+                        eyebrow="Collections"
+                        title="Belongs To"
+                        subtitle="Part of these curated shelves."
+                      />
+                      <Animated.ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.collectionsList}
+                      >
+                        {memberCollections.map((c, i) => (
+                          <View key={c.id} style={i > 0 ? { marginLeft: 12 } : undefined}>
+                            <CollectionPreviewCard item={c} />
+                          </View>
+                        ))}
+                      </Animated.ScrollView>
+                    </View>
+                  </RevealOnMount>
+                ) : null}
+              </View>
+            </ExpandEntrance>
+          </Animated.ScrollView>
+        </SafeAreaView>
+      </View>
+    </AtmosphereProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  screen: {
     flex:            1,
     backgroundColor: RS.colors.base,
   },
-  backRow: {
-    flexDirection:  'row',
+  safeArea: {
+    flex:            1,
+    backgroundColor: 'transparent',
+  },
+  backButton: {
+    position:       'absolute',
+    top:            RS.spacing.sm,
+    left:           RS.spacing.md,
+    zIndex:         10,
+    width:          36,
+    height:         36,
+    borderRadius:   18,
+    overflow:       'hidden',
     alignItems:     'center',
-    paddingHorizontal: RS.spacing.md,
-    paddingVertical:   RS.spacing.sm,
-    gap:             4,
-  },
-  backChevron: {
-    fontSize:  26,
-    color:     RS.colors.textPrimary,
-    lineHeight: 30,
-    marginTop: -2,
-  },
-  backLabel: {
-    fontSize:   RS.typography.body,
-    fontWeight: '500',
-    color:      RS.colors.textPrimary,
+    justifyContent: 'center',
+    borderWidth:    0.5,
+    borderColor:    'rgba(255,255,255,0.14)',
   },
   content: {
-    alignItems:     'center',
-    paddingHorizontal: RS.spacing.lg,
-    paddingTop:        RS.spacing.lg,
-    paddingBottom:     RS.spacing.xxxl,
-    gap:               RS.spacing.md,
+    paddingBottom: RS.tabBar.contentBottomPad,
   },
-  posterOuter: {
-    borderRadius:  12,
-    overflow:      'hidden',
-    shadowColor:   RS.shadow.color,
-    shadowOffset:  { width: 0, height: RS.shadow.offsetY },
-    shadowOpacity: RS.shadow.opacity * 2,
-    shadowRadius:  RS.shadow.radius,
-    elevation:     RS.shadow.android,
+  sections: {
+    gap: RS.spacing.xxl,
   },
-  poster: {
-    width:        POSTER_W,
-    height:       POSTER_H,
-    borderRadius: 12,
+  section: {
+    gap: RS.spacing.sm,
   },
-  posterFallback: {
-    backgroundColor: RS.colors.card,
-  },
-  badge: {
-    paddingHorizontal: RS.spacing.sm,
-    paddingVertical:    RS.spacing.xs - 1,
-    borderRadius:       RS.badge.pillRadius,
-  },
-  badgeText: {
-    fontSize:      RS.typography.overline,
-    fontWeight:    '700',
-    letterSpacing: RS.letterSpacing.widest,
-  },
-  title: {
-    fontSize:      RS.typography.heading,
-    fontWeight:    '700',
-    fontFamily:    Fonts?.serif,
-    color:         RS.colors.textPrimary,
-    textAlign:     'center',
-    lineHeight:    28,
-    letterSpacing: RS.letterSpacing.tight,
-  },
-  placeholder: {
-    fontSize:   RS.typography.caption,
-    fontWeight: '400',
-    color:      RS.colors.textMuted,
-    textAlign:  'center',
-    lineHeight: 18,
-    marginTop:  RS.spacing.sm,
+  collectionsList: {
+    paddingHorizontal: RS.spacing.md,
   },
 });

@@ -136,37 +136,54 @@ iOS shadows require no `overflow: 'hidden'` on the same view. All card component
 
 ---
 
-## 5 — Micro-Interactions (Sprint 4)
+## 5 — Micro-Interactions (Sprint 4 / Discover Phase 3)
 
 All micro-interactions run on the UI thread via Reanimated. The guiding principle: **alive without being obvious** — each interaction should be felt before it's noticed.
 
+### `usePressLift` — the one press/lift primitive (Discover Phase 3)
+
+**File:** `hooks/usePressLift.ts`
+
+Every card type on Discover (portrait poster, landscape Award Winners card, TV Picks landscape card, book cover, collection preview card) had drifted into one-off Pressable + inline `useSharedValue`/`withSpring` implementations — some with no press feedback at all (Award Winners, TV Picks, Collections Row, book covers were dead taps or unanimated before this pass). Phase 3 consolidated all of them onto a single hook with two variants:
+
+```typescript
+usePressLift('lift')     // small/medium cards — scale UP, "collectible" feel
+usePressLift('depress')  // hero-weight cards  — scale DOWN, "physical button" feel
+```
+
+Returns `{ style, onPressIn, onPressOut }` — wire directly to a `Pressable` + `Animated.View`. Reduce Motion is handled inside the hook: press feedback is skipped entirely (not instantly snapped) when enabled, since a snap-without-animation on a press-in/out pair reads as a flicker.
+
+`'lift'` is used by: PosterCard (and everything built on it — Hidden Gems, Mind-Bending, Trending, Random Discovery), AwardWinnersCarousel, TvPicksCarousel, CollectionsRow, BookSection's `BookCoverCard`.
+
+`'depress'` is used by the two hero-weight cards only: FeaturedCollectionSpotlight, BookSection's `BookOfTheMonthPanel` (matching the existing Home convention for ContinueWatchingCard/DailyReel/BookOfTheWeek).
+
+### Calm spring tokens (Discover Phase 3 — `Motion.spring`)
+
+Every spring config in the app pre-Phase-3 had a damping ratio well under 1.0 (critically damped) — most in the 0.5–0.75 range — which produces visible overshoot/ringing on a discrete press snap. Phase 3 raised every `damping` value until the ratio landed at ~0.93–0.97 (stiffness/mass left alone so the *timing* feel is unchanged, only the bounce is removed):
+
+```typescript
+Motion.spring.liftIn      = { damping: 26, stiffness: 260, mass: 0.7 }  // was damping: 16
+Motion.spring.liftOut     = { damping: 22, stiffness: 200, mass: 0.7 }  // was damping: 12
+Motion.spring.depressIn   = { damping: 28, stiffness: 260, mass: 0.8 }  // was damping: 18
+Motion.spring.depressOut  = { damping: 24, stiffness: 200, mass: 0.8 }  // was damping: 14
+Motion.spring.searchIn    = { damping: 26, stiffness: 300, mass: 0.6 }  // was damping: 20
+Motion.spring.searchOut   = { damping: 22, stiffness: 220, mass: 0.6 }  // was damping: 16
+Motion.spring.shuffleReveal = { damping: 26, stiffness: 180, mass: 1 } // was damping: 14
+```
+
+`usePressLift` and FloatingSearchBar read these tokens directly — do not hand-roll a new spring config for a card press; add a token here if a new interaction genuinely needs one, and keep its damping ratio ≥ 0.93.
+
 ### Search Bar Expand (FloatingSearchBar)
 
-On press-in, the bar scales up slightly (`1.0 → 1.015`) with a snappy spring. Communicates that the input is receptive. Scale is minimal — more of a shimmer than a physical lift.
+On press-in, the bar scales up slightly (`1.0 → 1.015`) using `Motion.spring.searchIn`/`searchOut`. Communicates that the input is receptive. Scale is minimal — more of a shimmer than a physical lift. Now fires a light haptic on press (Discover Phase 3) and skips the scale animation under Reduce Motion.
 
-```typescript
-spring: { damping: 20, stiffness: 300, mass: 0.6 }
-```
+### Card Depress (ContinueWatchingCard, DailyReel, BookOfTheWeek, Featured Collection, Book of the Month)
 
-### Card Depress (ContinueWatchingCard, DailyReel, BookOfTheWeek)
+Large interactive cards depress on press-in (`1.0 → 0.97`) via `usePressLift('depress')`. Feels tactile — like pressing a physical button.
 
-Large interactive cards depress on press-in (`1.0 → 0.97`). Feels tactile — like pressing a physical button.
+### Poster Lift (PosterCard and all cards built on the `'lift'` variant)
 
-```typescript
-Motion.lift.depressScale = 0.97
-spring in:  { damping: 18, stiffness: 260, mass: 0.8 }
-spring out: { damping: 14, stiffness: 200, mass: 0.8 }
-```
-
-### Poster Lift (PosterCard)
-
-Sprint 4 reversed the poster animation direction: was a depress (`0.96`), now a **collectible lift** (`1.03`). Feels like picking up a physical card.
-
-```typescript
-Motion.lift.scaleActive = 1.03
-spring in:  { damping: 16, stiffness: 260, mass: 0.7 }
-spring out: { damping: 12, stiffness: 200, mass: 0.7 }
-```
+Scale up (`1.03`) via `usePressLift('lift')`. Feels like picking up a physical card. PosterCard now fires a light haptic centrally on every press — carousels built on PosterCard (Hidden Gems, Mind-Bending, Trending, Random Discovery) get it for free and must not add their own duplicate haptic call.
 
 ### Button Scale (DailyReel "View Today's Pick")
 
@@ -175,6 +192,14 @@ The filled button applies a `transform: [{ scale: 0.97 }]` via Pressable `style`
 ### Navigation Tab Fade
 
 React Navigation handles tab switch transitions. `BlurView` intensity and floating pill shadow create ambient depth. The active dot + tint change is the primary feedback.
+
+### Expand Transition — Featured Collection & Book of the Month (Discover Phase 3)
+
+**Files:** `hooks/useExpandOnPress.ts` (source card), `components/ExpandEntrance.tsx` (destination screen)
+
+Scoped to exactly two "hero-weight" cards — not a blanket treatment for every card. A real shared-element morph (card physically becoming the next screen) was evaluated and rejected: expo-router's `<Stack>` wraps React Navigation's native-stack, which uses platform-native screen transitions. Achieving a true shared-element transition would require `react-native-shared-element`, which needs native module linking and is unavailable in Expo Go SDK 54 without a custom dev client — out of scope (no new native dependencies).
+
+Fallback implemented instead: on tap, the card scales up slightly (`1.0 → 1.02`) and fades (`1.0 → 0.88`) over 140ms, then navigates with an `expand=1` query param. The destination screen (`app/collection/[id].tsx`, `app/media/[id].tsx`) reads that param via `ExpandEntrance` and, only when present, mounts with a matching fade+scale-in (`opacity 0→1`, `scale 0.96→1`, 220ms ease-out). Every other navigation into these screens (Hidden Gems, Award Winners, TV Picks, etc.) is completely unaffected — no param, no entrance animation, same instant push as before. Under Reduce Motion, both halves skip straight to the end state (no animation, no delay before navigating).
 
 ---
 
@@ -254,12 +279,13 @@ Sprint 3 established the section copy — unchanged in Sprint 4. Sprint 4 adds:
 
 ---
 
-## 10 — PosterCard (Sprint 4)
+## 10 — PosterCard (Sprint 4 / Discover Phase 3)
 
 **File:** `components/poster-card.tsx`
 
 - **Lift direction reversed:** `Motion.lift.scaleActive` changed from `0.96` (depress) to `1.03` (lift). Feels collectible — like picking up a physical card.
 - **Float shadow** via `RS.shadow.*` tokens (was hardcoded heavier values).
+- **Discover Phase 3:** press feedback now comes from the shared `usePressLift('lift')` hook (see Section 5) instead of an inline spring — same feel, calmer damping, Reduce Motion aware. A light haptic now fires centrally inside PosterCard's `onPress` — carousels built on it get haptics for free and should not add their own.
 
 ---
 
@@ -353,25 +379,80 @@ All in `constants/motion.ts`:
 
 | Token                     | Value   | Usage |
 |---------------------------|---------|-------|
-| `lift.scaleActive`        | `1.03`  | Poster lift on touch (Sprint 4: was 0.96 depress) |
-| `lift.depressScale`       | `0.97`  | Large card depress on press-in (Sprint 4: new) |
+| `lift.scaleActive`        | `1.03`  | Poster lift target scale (Sprint 4: was 0.96 depress) |
+| `lift.depressScale`       | `0.97`  | Large card depress target scale (Sprint 4: new) |
+| `spring.liftIn/liftOut`   | damping 26/22, stiffness 260/200, mass 0.7 | `usePressLift('lift')` (Discover Phase 3 — tuned to ~0.93–0.96 damping ratio, no overshoot) |
+| `spring.depressIn/depressOut` | damping 28/24, stiffness 260/200, mass 0.8 | `usePressLift('depress')` (Discover Phase 3) |
+| `spring.searchIn/searchOut` | damping 26/22, stiffness 300/220, mass 0.6 | FloatingSearchBar press expand (Discover Phase 3) |
+| `spring.shuffleReveal`    | damping 26, stiffness 180, mass 1 | RandomDiscoveryCard result reveal (Discover Phase 3) |
 | `header.minOpacity`       | `0.82`  | Header fade on scroll |
 | `header.fadeScrollEnd`    | `70px`  | Header reaches minOpacity at 70px scroll |
 | `section.translateY`      | `14`    | RevealOnMount entrance offset |
 | `section.duration`        | `380ms` | RevealOnMount fade duration |
 
+Every `spring.*` token is tuned so its damping ratio (`damping / (2·√(stiffness·mass))`) lands at ~0.93–0.97 — near-critically-damped, per the Product Bible's "nothing bounces" rule. When adding a new spring, compute the ratio and keep it in that range rather than reusing a looser feel from memory.
+
 ---
 
-## 15 — Adding New Sections
+## 15 — Discover Screen Composition (Phase 1–3)
+
+```
+AtmosphereProvider
+  AmbientAtmosphere (dimmed — darker cinematic atmosphere)
+  SafeAreaView (edges: ['top'])
+    Animated.ScrollView (gap: 72, paddingBottom: 96)
+      RevealOnMount → DiscoverHero (serif)
+      RevealOnMount → FloatingSearchBar
+      RevealOnMount → FilterChips
+      RevealOnMount → FeaturedCollectionSpotlight (depress + expand transition)
+      RevealOnMount → Hidden Gems (PosterCard, lift)
+      RevealOnMount → Editorial Card 1
+      RevealOnMount → Award Winners (landscape card, lift)
+      RevealOnMount → Mind-Bending (stacked-shadow PosterCard, lift)
+      RevealOnMount → Trending Today (PosterCard, lift)
+      RevealOnMount → Editorial Card 2
+      RevealOnMount → TV Picks (landscape card, lift)
+      RevealOnMount → Collections Row (preview card, lift)
+      RevealOnMount → Editorial Card 3
+      RevealOnMount → Book Section
+        Book of the Month (depress + expand transition)
+        Trending Books (book cover, lift)
+        Award Winners Books (book cover, lift)
+      RevealOnMount → Random Discovery (shuffle button + PosterCard, lift)
+```
+
+Every section uses the identical `RevealOnMount` stagger — this was already true going into Phase 3 (confirmed during the audit, no changes needed). What Phase 3 fixed was underneath: every card type above now shares the same `usePressLift` primitive, and `RevealOnMount` itself now respects Reduce Motion (it previously didn't — see Section 16).
+
+---
+
+## 16 — Reduce Motion (Discover Phase 3)
+
+**Hook:** `hooks/useReduceMotion.ts` — thin wrapper over `AccessibilityInfo.isReduceMotionEnabled()` / `reduceMotionChanged`.
+
+Every animation introduced or touched in Phase 3 checks this and provides a non-animated fallback:
+
+| Animation | Reduce Motion behaviour |
+|---|---|
+| `usePressLift` (all card presses) | Press feedback skipped entirely — no scale change, no flicker |
+| `RevealOnMount` (all section entrances) | Renders fully visible immediately, no fade/translate (previously animated unconditionally — fixed in this pass) |
+| `useExpandOnPress` / `ExpandEntrance` (hero card → detail) | Navigates immediately, no scale/fade delay on either screen |
+| FloatingSearchBar press expand | Scale animation skipped |
+| RandomDiscoveryCard shuffle reveal | New pick appears instantly, no fade/scale-in |
+| AmbientAtmosphere (Phase 1, unchanged) | Grain/breathing loops disabled, static opacity |
+
+---
+
+## 17 — Adding New Sections
 
 1. Add seed data to `data/seedHomeContent.ts`
 2. Create section component in `components/`
 3. Add `SectionHeader` with editorial subtitle
 4. Wrap list in `FlatList` with `snapToInterval` + `decelerationRate="fast"`
 5. Wrap in `RevealOnMount` with incremental delay
-6. Apply float shadow (`RS.shadow.*`) to any card surfaces
-7. Apply depress (`Motion.lift.depressScale`) to any large interactive cards
-8. Audit button hierarchy — no new filled buttons
+6. Apply float shadow (`RS.shadow.*`) to any card surfaces, using the two-layer pattern (outer: shadow, no overflow; inner: overflow hidden + clip)
+7. Apply `usePressLift('lift')` to small/medium cards, `usePressLift('depress')` to hero-weight cards — do not hand-roll a new press animation
+8. Add a light haptic (`Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)`) on press if the card doesn't already get one for free (PosterCard-based cards do)
+9. Audit button hierarchy — no new filled buttons
 
 ---
 
