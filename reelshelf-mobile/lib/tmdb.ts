@@ -100,10 +100,12 @@ export interface TmdbCastMember {
 }
 
 export interface TmdbCredits {
-  cast:     TmdbCastMember[];
-  director: string | null;
-  writer:   string | null;
-  composer: string | null;
+  cast:       TmdbCastMember[];
+  director:   string | null;
+  /** TMDB person id for `director` — needed for the "More from this Director" discover query. Movie-only (TV series don't carry a series-level director credit). */
+  directorId: number | null;
+  writer:     string | null;
+  composer:   string | null;
 }
 
 const CAST_CAP = 12;
@@ -113,8 +115,8 @@ export async function fetchTmdbCredits(kind: TmdbKind, tmdbId: string): Promise<
   const castRaw = Array.isArray(raw.cast) ? raw.cast.slice(0, CAST_CAP) : [];
   const crew    = Array.isArray(raw.crew) ? raw.crew : [];
 
+  const directorEntry = crew.find((c: any) => c.job === 'Director') ?? null;
   const findJob = (job: string) => crew.find((c: any) => c.job === job)?.name ?? null;
-  const director = findJob('Director');
   const writer    = findJob('Screenplay') ?? findJob('Writer');
   const composer  = findJob('Original Music Composer');
 
@@ -124,10 +126,35 @@ export async function fetchTmdbCredits(kind: TmdbKind, tmdbId: string): Promise<
       character: c.character ?? '',
       photoUrl:  c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
     })),
-    director,
+    director:   directorEntry?.name ?? null,
+    directorId: directorEntry?.id ?? null,
     writer,
     composer,
   };
+}
+
+// ── More from this Director ──────────────────────────────────────────────────
+// TMDB's /discover/movie supports with_crew filtering; /discover/tv does not,
+// so this row is movie-only (TV's `directorId` is always null already, since
+// series don't carry a series-level director credit — see fetchTmdbCredits).
+export async function fetchTmdbMoreFromDirector(
+  directorId: number,
+  excludeTmdbId: string,
+): Promise<TmdbRecommendation[]> {
+  const raw = await tmdbGet<any>('/discover/movie', {
+    with_crew:  String(directorId),
+    sort_by:    'popularity.desc',
+  });
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  return results
+    .filter((r: any) => String(r.id) !== excludeTmdbId)
+    .map((r: any) => ({
+      id:        `film-${r.id}`,
+      title:     r.title,
+      year:      r.release_date ? Number(String(r.release_date).slice(0, 4)) : undefined,
+      posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+      mediaType: 'film' as const,
+    }));
 }
 
 // ── Videos — fetched per spec, held but not yet rendered anywhere: the

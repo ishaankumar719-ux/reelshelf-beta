@@ -4,6 +4,7 @@ import {
   fetchTmdbCredits,
   fetchTmdbDetails,
   fetchTmdbFallbackBackdrop,
+  fetchTmdbMoreFromDirector,
   fetchTmdbRecommendations,
   fetchTmdbVideos,
   fetchTmdbWatchProviders,
@@ -68,6 +69,8 @@ export interface UseMediaDetailResult {
   videos:          Resource<TmdbVideo[]>;
   /** Only populated when the primary details backdrop is missing. */
   fallbackBackdrop: Resource<string | null>;
+  /** "More from this Director" — movie-only, only fires once credits resolve with a director id. */
+  moreFromDirector: Resource<TmdbRecommendation[]>;
 }
 
 /** Orchestrates every live TMDB call the Movie Detail screen needs, one independent
@@ -108,5 +111,11 @@ export function useMediaDetail(routeId: string): UseMediaDetailResult {
     [kind, tmdbId],
   );
 
-  return { kind, details, credits, recommendations, watchProviders, videos, fallbackBackdrop };
+  const directorId = kind === 'movie' && credits.status === 'success' ? credits.data?.directorId ?? null : null;
+  const moreFromDirector = useTmdbResource<TmdbRecommendation[]>(
+    directorId && tmdbId ? () => fetchTmdbMoreFromDirector(directorId, tmdbId) : null,
+    [directorId, tmdbId],
+  );
+
+  return { kind, details, credits, recommendations, watchProviders, videos, fallbackBackdrop, moreFromDirector };
 }

@@ -1,7 +1,9 @@
-import { FlatList, type ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
+import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import Animated from 'react-native-reanimated';
 
 import { RS } from '@/constants/theme';
+import { usePressLift } from '@/hooks/usePressLift';
 import type { CastMember } from '@/data/mediaDetails';
 
 const PHOTO_W = 84;
@@ -17,29 +19,35 @@ interface MediaCastCrewProps {
   composer?: string | null;
 }
 
+// Reuses the shared press-lift primitive from Discover Phase 3 — no person
+// detail screen exists yet, so this is press feedback only, no navigation.
 function CastCard({ member }: { member: CastMember }) {
   const initial = member.name[0]?.toUpperCase() ?? '';
+  const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
+
   return (
-    <View style={styles.castItem}>
-      <View style={styles.photoOuter}>
-        {member.photoUrl ? (
-          <Image
-            source={{ uri: member.photoUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.photoFallback]}>
-            <Text style={styles.photoFallbackLetter}>{initial}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.castName} numberOfLines={2}>{member.name}</Text>
-      {member.character ? (
-        <Text style={styles.castCharacter} numberOfLines={2}>{member.character}</Text>
-      ) : null}
-    </View>
+    <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.castItem, animStyle]}>
+        <View style={styles.photoOuter}>
+          {member.photoUrl ? (
+            <Image
+              source={{ uri: member.photoUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.photoFallback]}>
+              <Text style={styles.photoFallbackLetter}>{initial}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.castName} numberOfLines={2}>{member.name}</Text>
+        {member.character ? (
+          <Text style={styles.castCharacter} numberOfLines={2}>{member.character}</Text>
+        ) : null}
+      </Animated.View>
+    </Pressable>
   );
 }
 

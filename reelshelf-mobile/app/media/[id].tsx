@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedRef,
@@ -11,11 +11,16 @@ import Animated, {
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { CollectionPreviewCard } from '@/components/CollectionPreviewCard';
 import { ExpandEntrance } from '@/components/ExpandEntrance';
+import { FriendActivity } from '@/components/FriendActivity';
+import { MediaAwards } from '@/components/MediaAwards';
 import { MediaCastCrew } from '@/components/MediaCastCrew';
+import { MediaCrossMediaRow } from '@/components/MediaCrossMediaRow';
 import { MediaHero } from '@/components/MediaHero';
+import { MediaPosterRow } from '@/components/MediaPosterRow';
 import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
-import { MediaRecommendations } from '@/components/MediaRecommendations';
+import { MediaReviews } from '@/components/MediaReviews';
 import { MediaSynopsis } from '@/components/MediaSynopsis';
+import { MediaTrivia } from '@/components/MediaTrivia';
 import { MediaWatchProviders } from '@/components/MediaWatchProviders';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
@@ -28,9 +33,10 @@ import {
 } from '@/components/Skeleton';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { RS } from '@/constants/theme';
-import { collections, type MediaType } from '@/data/seedHomeContent';
+import { collections, type MediaType, type SeedCollectionItem } from '@/data/seedHomeContent';
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
+import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 
 export default function MediaDetailScreen() {
   const { id, title, posterUrl, mediaType } = useLocalSearchParams<{
@@ -42,6 +48,7 @@ export default function MediaDetailScreen() {
   }>();
 
   const live = useMediaDetail(id);
+  const persistence = useMediaPersistence(id);
   const isBook = live.kind === null;
 
   // Books have no TMDB equivalent — they keep using the local enrichment seed
@@ -81,12 +88,30 @@ export default function MediaDetailScreen() {
         composer:       live.credits.data?.composer ?? null,
         author:         null,
         dominantColors: seedDetail?.dominantColors ?? [],
+        trivia:         seedDetail?.trivia ?? [],
+        awards:         seedDetail?.awards ?? [],
       };
 
   const recommendationItems = live.recommendations.data ?? [];
   const watchProvidersData  = live.watchProviders.data ?? { stream: [], rent: [], buy: [] };
 
+  // "More from this Director" — movie-only; only meaningful once credits has
+  // actually resolved with a real director id (TV series never have one).
+  const directorId = live.kind === 'movie' ? live.credits.data?.directorId ?? null : null;
+  const showDirectorRow = !isBook && live.credits.status === 'success' && !!directorId;
+  const directorLoading = showDirectorRow && live.moreFromDirector.status === 'loading';
+  const directorItems   = live.moreFromDirector.data ?? [];
+
   const memberCollections = collections.filter(c => c.items.some(i => i.id === id));
+  // Collection-membership sibling row: other real items from the first
+  // collection this title belongs to (if any) — not the collection cards
+  // themselves (those stay in "Belongs To" below), the other titles inside it.
+  const siblingCollection: SeedCollectionItem | undefined = memberCollections[0];
+  const siblingItems = siblingCollection
+    ? siblingCollection.items
+        .filter(i => i.id !== id)
+        .map(i => ({ id: i.id, title: i.title, year: i.year, posterUrl: i.posterUrl, mediaType: i.mediaType }))
+    : [];
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
@@ -123,7 +148,19 @@ export default function MediaDetailScreen() {
                 )}
 
                 <RevealOnMount delay={60}>
-                  <MediaPrimaryActions title={title ?? ''} synopsis={detail.synopsis || undefined} />
+                  <MediaPrimaryActions
+                    id={id}
+                    title={title ?? ''}
+                    synopsis={detail.synopsis || undefined}
+                    inShelf={persistence.inShelf}
+                    watched={persistence.watched}
+                    rating={persistence.rating}
+                    review={persistence.review}
+                    onToggleShelf={persistence.toggleShelf}
+                    onToggleWatched={persistence.toggleWatched}
+                    onSaveRating={persistence.saveRating}
+                    onSaveReview={persistence.saveReview}
+                  />
                 </RevealOnMount>
 
                 {heroLoading ? (
@@ -162,41 +199,68 @@ export default function MediaDetailScreen() {
                         title="Belongs To"
                         subtitle="Part of these curated shelves."
                       />
-                      <Animated.ScrollView
+                      <FlatList<typeof memberCollections[number]>
+                        data={memberCollections}
                         horizontal
                         showsHorizontalScrollIndicator={false}
+                        keyExtractor={(c) => c.id}
+                        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
                         contentContainerStyle={styles.collectionsList}
-                      >
-                        {memberCollections.map((c, i) => (
-                          <View key={c.id} style={i > 0 ? { marginLeft: 12 } : undefined}>
-                            <CollectionPreviewCard item={c} />
-                          </View>
-                        ))}
-                      </Animated.ScrollView>
+                        renderItem={({ item }) => <CollectionPreviewCard item={item} />}
+                      />
                     </View>
                   </RevealOnMount>
                 ) : null}
 
-                {/* Recommendations — TMDB's native /recommendations, same-media-type
-                    only. Not on TMDB for books, so this section doesn't apply there. */}
-                {!isBook && (
-                  recommendationsLoading ? (
+                {/* ── Related Stories — automatable rows only. Cross-media matching
+                    (e.g. books with a similar theme) needs editorial curation, not
+                    an algorithm — see MediaCrossMediaRow / data/relatedStoriesSeed.ts. ── */}
+
+                {showDirectorRow && (
+                  directorLoading ? (
                     <View style={styles.section}>
-                      <SectionHeader title="Recommendations" subtitle="More to explore." />
+                      <SectionHeader eyebrow="Related Stories" title={`More from ${live.credits.data?.director}`} />
                       <SkeletonPosterRow />
                     </View>
-                  ) : recommendationItems.length > 0 ? (
+                  ) : directorItems.length > 0 ? (
                     <RevealOnMount delay={200}>
                       <View style={styles.section}>
-                        <SectionHeader title="Recommendations" subtitle="More to explore." />
-                        <MediaRecommendations items={recommendationItems} />
+                        <SectionHeader eyebrow="Related Stories" title={`More from ${live.credits.data?.director}`} />
+                        <MediaPosterRow items={directorItems} />
                       </View>
                     </RevealOnMount>
                   ) : null
                 )}
 
-                {/* Watch Providers — hardcoded to the US region (see lib/tmdb.ts).
-                    Not on TMDB for books, so this section doesn't apply there. */}
+                {!isBook && (
+                  recommendationsLoading ? (
+                    <View style={styles.section}>
+                      <SectionHeader eyebrow="Related Stories" title="Because You Liked This" />
+                      <SkeletonPosterRow />
+                    </View>
+                  ) : recommendationItems.length > 0 ? (
+                    <RevealOnMount delay={220}>
+                      <View style={styles.section}>
+                        <SectionHeader eyebrow="Related Stories" title="Because You Liked This" />
+                        <MediaPosterRow items={recommendationItems} />
+                      </View>
+                    </RevealOnMount>
+                  ) : null
+                )}
+
+                {siblingItems.length > 0 ? (
+                  <RevealOnMount delay={240}>
+                    <View style={styles.section}>
+                      <SectionHeader eyebrow="Related Stories" title={`More ${siblingCollection!.title}`} />
+                      <MediaPosterRow items={siblingItems} />
+                    </View>
+                  </RevealOnMount>
+                ) : null}
+
+                <MediaCrossMediaRow id={id} />
+
+                {/* ── Watch Providers — hardcoded to the US region (see lib/tmdb.ts).
+                    Not on TMDB for books, so this section doesn't apply there. ── */}
                 {!isBook && (
                   watchProvidersLoading ? (
                     <View style={styles.section}>
@@ -204,7 +268,7 @@ export default function MediaDetailScreen() {
                       <SkeletonProviderRow />
                     </View>
                   ) : (
-                    <RevealOnMount delay={220}>
+                    <RevealOnMount delay={260}>
                       <View style={styles.section}>
                         <SectionHeader title="Watch Providers" subtitle="Where to stream, rent, or buy." />
                         <MediaWatchProviders providers={watchProvidersData} />
@@ -212,6 +276,36 @@ export default function MediaDetailScreen() {
                     </RevealOnMount>
                   )
                 )}
+
+                {/* ── Friend Activity — honest empty state, no fabricated social content. ── */}
+                <View style={styles.section}>
+                  <SectionHeader title="Friend Activity" />
+                  <FriendActivity />
+                </View>
+
+                {/* ── Reviews — Your Review is real (locally persisted); Friend/Community
+                    are honest empty states. ── */}
+                <View style={styles.section}>
+                  <SectionHeader title="Reviews" />
+                  <MediaReviews review={persistence.review} />
+                </View>
+
+                {/* ── Trivia / Awards — conditionally hidden shells; both seed fields
+                    are empty for every title until a real sourcing decision is made
+                    (see RETURN's OPEN_QUESTIONS). ── */}
+                {detail.trivia && detail.trivia.length > 0 ? (
+                  <View style={styles.section}>
+                    <SectionHeader eyebrow="Did You Know?" title="Trivia" />
+                    <MediaTrivia trivia={detail.trivia} />
+                  </View>
+                ) : null}
+
+                {detail.awards && detail.awards.length > 0 ? (
+                  <View style={styles.section}>
+                    <SectionHeader title="Awards" />
+                    <MediaAwards awards={detail.awards} />
+                  </View>
+                ) : null}
               </View>
             </ExpandEntrance>
           </Animated.ScrollView>

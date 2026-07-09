@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -12,43 +12,79 @@ import {
   View,
 } from 'react-native';
 
+import { RatingModal } from '@/components/RatingModal';
 import { RS } from '@/constants/theme';
 
 interface MediaPrimaryActionsProps {
-  title: string;
-  synopsis?: string;
+  id:              string;
+  title:           string;
+  synopsis?:       string;
+  inShelf:         boolean;
+  watched:         boolean;
+  rating:          number;
+  review:          string;
+  onToggleShelf:   () => void;
+  onToggleWatched: () => void;
+  onSaveRating:    (value: number) => void;
+  onSaveReview:    (text: string) => void;
+}
+
+// Placeholder deep-link format for future universal-link work — this URL does
+// not resolve to anything real yet, it only documents the intended shape.
+function reelShelfShareUrl(id: string): string {
+  return `https://reelshelf.app/media/${id}`;
 }
 
 // Discover Phase 3 established the pattern this reuses: glass-surface pill,
 // `RS.button.primaryFill/primaryBorder/primaryText` for the "on" state
 // (same tokens as Discover's FilterChips active chip) — no new visual system.
 //
-// Every toggle here is LOCAL, EPHEMERAL React state — nothing is written to
-// Supabase, nothing persists across an app reload. No real user accounts
-// exist yet, so this is honest interactive polish, not a real feature.
-export function MediaPrimaryActions({ title, synopsis }: MediaPrimaryActionsProps) {
-  const [inShelf, setInShelf]   = useState(false);
-  const [watched, setWatched]   = useState(false);
-  const [rateOpen, setRateOpen] = useState(false);
-  const [rating, setRating]     = useState(0);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewText, setReviewText] = useState('');
+// Add to Shelf / Watched / Rate / Review now persist via AsyncStorage (see
+// hooks/useMediaPersistence.ts) — device-local, not tied to any account.
+export function MediaPrimaryActions({
+  id,
+  title,
+  synopsis,
+  inShelf,
+  watched,
+  rating,
+  review,
+  onToggleShelf,
+  onToggleWatched,
+  onSaveRating,
+  onSaveReview,
+}: MediaPrimaryActionsProps) {
+  const [rateModalOpen, setRateModalOpen] = useState(false);
+  const [reviewOpen, setReviewOpen]       = useState(false);
+  const [draftReview, setDraftReview]     = useState(review);
+
+  // Keep the draft in sync if the persisted review changes out from under us
+  // (e.g. storage finishes loading after this component already mounted).
+  useEffect(() => {
+    setDraftReview(review);
+  }, [review, id]);
 
   const haptic = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
-  const toggleShelf = () => { haptic(); setInShelf(v => !v); };
-  const toggleWatched = () => { haptic(); setWatched(v => !v); };
+  const toggleShelf = () => { haptic(); onToggleShelf(); };
+  const toggleWatched = () => { haptic(); onToggleWatched(); };
 
-  const toggleRate = () => {
-    haptic();
-    setReviewOpen(false);
-    setRateOpen(v => !v);
+  const openRateModal = () => { haptic(); setRateModalOpen(true); };
+  const closeRateModal = () => setRateModalOpen(false);
+  const handleSaveRating = (value: number) => {
+    onSaveRating(value);
+    setRateModalOpen(false);
   };
 
   const toggleReview = () => {
     haptic();
-    setRateOpen(false);
     setReviewOpen(v => !v);
+  };
+
+  const saveReview = () => {
+    haptic();
+    onSaveReview(draftReview);
+    setReviewOpen(false);
   };
 
   const addToList = () => {
@@ -59,9 +95,11 @@ export function MediaPrimaryActions({ title, synopsis }: MediaPrimaryActionsProp
 
   const share = () => {
     haptic();
+    const url = reelShelfShareUrl(id);
     Share.share({
       title,
-      message: synopsis ? `${title}\n\n${synopsis}` : title,
+      message: `${title}${synopsis ? `\n\n${synopsis}` : ''}\n\n${url}`,
+      url, // iOS-only field; harmless no-op on Android
     }).catch(() => {});
   };
 
@@ -85,58 +123,45 @@ export function MediaPrimaryActions({ title, synopsis }: MediaPrimaryActionsProp
           onPress={toggleWatched}
         />
         <ActionPill
-          icon={rateOpen ? 'star' : 'star-border'}
-          label="Rate"
-          active={rateOpen || rating > 0}
-          onPress={toggleRate}
+          icon={rating > 0 ? 'star' : 'star-border'}
+          label={rating > 0 ? `Rated ${rating.toFixed(1)}` : 'Rate'}
+          active={rating > 0}
+          onPress={openRateModal}
         />
         <ActionPill
           icon="rate-review"
           label="Review"
-          active={reviewOpen}
+          active={reviewOpen || review.length > 0}
           onPress={toggleReview}
         />
         <ActionPill icon="playlist-add" label="Add to List" onPress={addToList} />
         <ActionPill icon="ios-share" label="Share" onPress={share} />
       </ScrollView>
 
-      {rateOpen && (
-        <View style={styles.panel}>
-          <Text style={styles.panelLabel}>Your rating (not saved)</Text>
-          <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5].map(n => (
-              <Pressable
-                key={n}
-                onPress={() => {
-                  haptic();
-                  setRating(n);
-                }}
-                hitSlop={6}
-              >
-                <MaterialIcons
-                  name={n <= rating ? 'star' : 'star-border'}
-                  size={28}
-                  color={n <= rating ? RS.colors.accent : RS.colors.textMuted}
-                />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
-
       {reviewOpen && (
         <View style={styles.panel}>
-          <Text style={styles.panelLabel}>Your thoughts (not saved)</Text>
+          <Text style={styles.panelLabel}>Your thoughts</Text>
           <TextInput
-            value={reviewText}
-            onChangeText={setReviewText}
+            value={draftReview}
+            onChangeText={setDraftReview}
             placeholder="Write a few words…"
             placeholderTextColor={RS.colors.textMuted}
             style={styles.reviewInput}
             multiline
           />
+          <Pressable style={styles.saveReviewBtn} onPress={saveReview}>
+            <Text style={styles.saveReviewLabel}>Save Review</Text>
+          </Pressable>
         </View>
       )}
+
+      <RatingModal
+        visible={rateModalOpen}
+        title={title}
+        initialValue={rating}
+        onCancel={closeRateModal}
+        onSave={handleSaveRating}
+      />
     </View>
   );
 }
@@ -222,14 +247,23 @@ const styles = StyleSheet.create({
     letterSpacing: RS.letterSpacing.wide,
     textTransform: 'uppercase',
   },
-  starsRow: {
-    flexDirection: 'row',
-    gap:           10,
-  },
   reviewInput: {
     fontSize:   RS.typography.body,
     color:      RS.colors.textPrimary,
     minHeight:  60,
     textAlignVertical: 'top',
+  },
+  saveReviewBtn: {
+    alignSelf:         'flex-start',
+    borderRadius:      RS.button.radius,
+    backgroundColor:   RS.button.filledBg,
+    paddingHorizontal: RS.button.paddingH,
+    paddingVertical:   RS.spacing.xs + 2,
+  },
+  saveReviewLabel: {
+    fontSize:      RS.typography.caption,
+    fontWeight:    '700',
+    color:         RS.button.filledText,
+    letterSpacing: RS.letterSpacing.wide,
   },
 });

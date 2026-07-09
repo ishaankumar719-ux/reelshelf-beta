@@ -30,6 +30,13 @@ export interface MediaDetailRecord {
   composer:       string | null;
   author:         string | null;
   dominantColors: string[];
+  /** "Did You Know?" facts — real, verified trivia only, never fabricated. Deliberately
+   *  unpopulated this phase (needs a sourcing decision) — optional so existing entries
+   *  below don't need updating; MediaTrivia hides itself when this is empty/absent. */
+  trivia?:        string[];
+  /** Real, verified awards only, never fabricated claims. Deliberately unpopulated this
+   *  phase (needs a sourcing decision) — MediaAwards hides itself when empty/absent. */
+  awards?:        { name: string; category: string }[];
 }
 
 export const mediaDetails: Record<string, MediaDetailRecord> = {

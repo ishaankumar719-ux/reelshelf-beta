@@ -3,30 +3,41 @@ import { router } from 'expo-router';
 
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
-import type { TmdbRecommendation } from '@/lib/tmdb';
+import type { MediaType } from '@/data/seedHomeContent';
 
 const ITEM_SEP = RS.spacing.sm;
 
-interface MediaRecommendationsProps {
-  items: TmdbRecommendation[];
+/** Minimal shared shape every poster-row data source (TMDB recommendations,
+ *  TMDB discover-by-director, local collection siblings, future curated
+ *  cross-media picks) already satisfies — one row renderer for all of them. */
+export interface PosterRowItem {
+  id:        string;
+  title:     string;
+  year:      number | undefined;
+  posterUrl: string | null;
+  mediaType: MediaType;
 }
 
-// TMDB's native /recommendations endpoint only ever returns same-media-type
-// results (a movie recommends other movies) — this is deliberately labeled
-// "Recommendations", not "Related Stories": the fuller cross-media editorial
-// version (books/TV crossover, editorial framing) remains backlogged.
-export function MediaRecommendations({ items }: MediaRecommendationsProps) {
+interface MediaPosterRowProps {
+  items: PosterRowItem[];
+}
+
+// Single horizontal, virtualized (FlatList) poster row reused by every
+// "more like this" style section on the Movie Detail screen — Because You
+// Liked This, More from this Director, collection-sibling rows, and the
+// (currently empty) editorially-curated cross-media row.
+export function MediaPosterRow({ items }: MediaPosterRowProps) {
   if (items.length === 0) return null;
 
   return (
-    <FlatList<TmdbRecommendation>
+    <FlatList<PosterRowItem>
       data={items}
       horizontal
       showsHorizontalScrollIndicator={false}
       keyExtractor={(item) => item.id}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
-      renderItem={({ item }: ListRenderItemInfo<TmdbRecommendation>) => (
+      renderItem={({ item }: ListRenderItemInfo<PosterRowItem>) => (
         <PosterCard
           title={item.title}
           year={item.year}
