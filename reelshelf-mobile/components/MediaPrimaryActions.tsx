@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   Pressable,
@@ -14,6 +15,7 @@ import {
 
 import { RatingModal } from '@/components/RatingModal';
 import { RS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MediaPrimaryActionsProps {
   id:              string;
@@ -23,6 +25,7 @@ interface MediaPrimaryActionsProps {
   watched:         boolean;
   rating:          number;
   review:          string;
+  error?:          string | null;
   onToggleShelf:   () => void;
   onToggleWatched: () => void;
   onSaveRating:    (value: number) => void;
@@ -49,11 +52,13 @@ export function MediaPrimaryActions({
   watched,
   rating,
   review,
+  error,
   onToggleShelf,
   onToggleWatched,
   onSaveRating,
   onSaveReview,
 }: MediaPrimaryActionsProps) {
+  const { user } = useAuth();
   const [rateModalOpen, setRateModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen]       = useState(false);
   const [draftReview, setDraftReview]     = useState(review);
@@ -66,10 +71,19 @@ export function MediaPrimaryActions({
 
   const haptic = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
-  const toggleShelf = () => { haptic(); onToggleShelf(); };
-  const toggleWatched = () => { haptic(); onToggleWatched(); };
+  // Personal actions require a real account now that they're Supabase-backed
+  // — logged-out taps route to Sign In rather than silently going nowhere.
+  const requireAuth = (): boolean => {
+    if (user) return true;
+    haptic();
+    router.push('/login');
+    return false;
+  };
 
-  const openRateModal = () => { haptic(); setRateModalOpen(true); };
+  const toggleShelf = () => { if (!requireAuth()) return; haptic(); onToggleShelf(); };
+  const toggleWatched = () => { if (!requireAuth()) return; haptic(); onToggleWatched(); };
+
+  const openRateModal = () => { if (!requireAuth()) return; haptic(); setRateModalOpen(true); };
   const closeRateModal = () => setRateModalOpen(false);
   const handleSaveRating = (value: number) => {
     onSaveRating(value);
@@ -77,6 +91,7 @@ export function MediaPrimaryActions({
   };
 
   const toggleReview = () => {
+    if (!requireAuth()) return;
     haptic();
     setReviewOpen(v => !v);
   };
@@ -137,6 +152,8 @@ export function MediaPrimaryActions({
         <ActionPill icon="playlist-add" label="Add to List" onPress={addToList} />
         <ActionPill icon="ios-share" label="Share" onPress={share} />
       </ScrollView>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {reviewOpen && (
         <View style={styles.panel}>
@@ -230,6 +247,11 @@ const styles = StyleSheet.create({
   },
   pillLabelActive: {
     color: RS.button.primaryText,
+  },
+  errorText: {
+    marginHorizontal: RS.spacing.md,
+    fontSize:         RS.typography.caption + 1,
+    color:            '#f87171',
   },
   panel: {
     marginHorizontal: RS.spacing.md,

@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RS } from '@/constants/theme';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const RSTheme = {
   ...DarkTheme,
@@ -25,17 +26,19 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={RSTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
-          <Stack.Screen name="login"           options={{ headerShown: false }} />
-          <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
-          {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
-          <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
-          <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="light" />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider value={RSTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
+            <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
+            {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
+            <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
+            <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="light" />
+        </ThemeProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

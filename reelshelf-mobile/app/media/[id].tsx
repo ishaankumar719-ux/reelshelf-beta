@@ -32,11 +32,13 @@ import {
   SkeletonSynopsis,
 } from '@/components/Skeleton';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { RS } from '@/constants/theme';
 import { collections, type MediaType, type SeedCollectionItem } from '@/data/seedHomeContent';
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import type { MediaMeta } from '@/lib/supabase/mediaActions';
 
 export default function MediaDetailScreen() {
   const { id, title, posterUrl, mediaType } = useLocalSearchParams<{
@@ -48,8 +50,9 @@ export default function MediaDetailScreen() {
   }>();
 
   const live = useMediaDetail(id);
-  const persistence = useMediaPersistence(id);
+  const { user } = useAuth();
   const isBook = live.kind === null;
+  const resolvedMediaType = (mediaType as MediaType) ?? 'film';
 
   // Books have no TMDB equivalent — they keep using the local enrichment seed
   // entirely. For films/TV, the seed is kept ONLY for dominantColors (our own
@@ -91,6 +94,19 @@ export default function MediaDetailScreen() {
         trivia:         seedDetail?.trivia ?? [],
         awards:         seedDetail?.awards ?? [],
       };
+
+  const meta: MediaMeta = {
+    id,
+    title: title ?? '',
+    posterUrl: posterUrl || null,
+    mediaType: resolvedMediaType,
+    year: detail.year || 0,
+    genres: detail.genres,
+    runtime: detail.runtimeMinutes,
+    voteAverage: detail.rating,
+    director: detail.director,
+  };
+  const persistence = useMediaPersistence(id, meta, user?.id ?? null);
 
   const recommendationItems = live.recommendations.data ?? [];
   const watchProvidersData  = live.watchProviders.data ?? { stream: [], rent: [], buy: [] };
@@ -141,7 +157,7 @@ export default function MediaDetailScreen() {
                   <MediaHero
                     title={title ?? '—'}
                     year={detail.year || undefined}
-                    mediaType={(mediaType as MediaType) ?? 'film'}
+                    mediaType={resolvedMediaType}
                     posterUrl={posterUrl || null}
                     detail={detail}
                   />
@@ -156,6 +172,7 @@ export default function MediaDetailScreen() {
                     watched={persistence.watched}
                     rating={persistence.rating}
                     review={persistence.review}
+                    error={persistence.error}
                     onToggleShelf={persistence.toggleShelf}
                     onToggleWatched={persistence.toggleWatched}
                     onSaveRating={persistence.saveRating}
@@ -277,10 +294,11 @@ export default function MediaDetailScreen() {
                   )
                 )}
 
-                {/* ── Friend Activity — honest empty state, no fabricated social content. ── */}
+                {/* ── Friend Activity — real once authenticated (followers + their
+                    public diary_entries), honest empty state otherwise. ── */}
                 <View style={styles.section}>
                   <SectionHeader title="Friend Activity" />
-                  <FriendActivity />
+                  <FriendActivity id={id} mediaType={resolvedMediaType} />
                 </View>
 
                 {/* ── Reviews — Your Review is real (locally persisted); Friend/Community
