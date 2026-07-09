@@ -1,8 +1,9 @@
-// Live TMDB client — Movie Detail screen ONLY (see AGENTS.md scope notes).
-// Uses EXPO_PUBLIC_TMDB_API_KEY client-side, same key already committed for
-// the dev-only seed scripts (scripts/generate-seed-data.ts,
-// scripts/generate-media-details.ts) — bundled into the client, visible to
-// anyone inspecting the app. Standard for TMDB's free-tier client key model.
+// Live TMDB client — Movie Detail and (as of the Universal Search task)
+// Search/Person Detail screens. Uses EXPO_PUBLIC_TMDB_API_KEY client-side,
+// same key already committed for the dev-only seed scripts
+// (scripts/generate-seed-data.ts, scripts/generate-media-details.ts) —
+// bundled into the client, visible to anyone inspecting the app. Standard
+// for TMDB's free-tier client key model.
 //
 // Route ids throughout the app are `film-<tmdbId>`, `tv-<tmdbId>`, or
 // `book-<slug>`. Books have no TMDB equivalent — parseMediaRouteId returns
@@ -228,5 +229,98 @@ export async function fetchTmdbWatchProviders(kind: TmdbKind, tmdbId: string): P
     stream: mapProviderList(region?.flatrate),
     rent:   mapProviderList(region?.rent),
     buy:    mapProviderList(region?.buy),
+  };
+}
+
+// ── Search (Universal Search screen) ─────────────────────────────────────────
+export interface TmdbSearchResult {
+  id:        string;   // route id, e.g. "film-693134"
+  title:     string;
+  year:      number | undefined;
+  posterUrl: string | null;
+  mediaType: 'film' | 'tv';
+  rating:    number | null;
+}
+
+async function searchByKind(kind: TmdbKind, query: string): Promise<TmdbSearchResult[]> {
+  const raw = await tmdbGet<any>(`/search/${kind}`, { query });
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  return results
+    .filter((r: any) => r.poster_path || r.title || r.name)
+    .slice(0, 20)
+    .map((r: any) => {
+      const title = kind === 'movie' ? r.title : r.name;
+      const dateStr = kind === 'movie' ? r.release_date : r.first_air_date;
+      return {
+        id:        `${kind === 'movie' ? 'film' : 'tv'}-${r.id}`,
+        title,
+        year:      dateStr ? Number(String(dateStr).slice(0, 4)) : undefined,
+        posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+        mediaType: kind === 'movie' ? 'film' : 'tv',
+        rating:    typeof r.vote_average === 'number' && r.vote_average > 0 ? Math.round(r.vote_average * 10) / 10 : null,
+      } as TmdbSearchResult;
+    });
+}
+
+export function searchMovies(query: string): Promise<TmdbSearchResult[]> {
+  return searchByKind('movie', query);
+}
+
+export function searchTv(query: string): Promise<TmdbSearchResult[]> {
+  return searchByKind('tv', query);
+}
+
+export interface TmdbPersonSearchResult {
+  id:        number;
+  name:      string;
+  photoUrl:  string | null;
+  knownFor:  string[];
+}
+
+export async function searchPeople(query: string): Promise<TmdbPersonSearchResult[]> {
+  const raw = await tmdbGet<any>('/search/person', { query });
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  return results.slice(0, 20).map((r: any) => ({
+    id:       r.id,
+    name:     r.name,
+    photoUrl: r.profile_path ? `${TMDB_IMG_PROFILE}${r.profile_path}` : null,
+    knownFor: Array.isArray(r.known_for) ? r.known_for.map((k: any) => k.title || k.name).filter(Boolean) : [],
+  }));
+}
+
+// ── Person Detail (new minimal screen) ───────────────────────────────────────
+export interface TmdbPersonDetail {
+  id:          number;
+  name:        string;
+  photoUrl:    string | null;
+  biography:   string;
+  birthday:    string | null;
+  knownFor:    { id: string; title: string; posterUrl: string | null; mediaType: 'film' | 'tv' }[];
+}
+
+export async function fetchPersonDetail(personId: string): Promise<TmdbPersonDetail> {
+  const [person, credits] = await Promise.all([
+    tmdbGet<any>(`/person/${personId}`),
+    tmdbGet<any>(`/person/${personId}/combined_credits`),
+  ]);
+  const cast = Array.isArray(credits.cast) ? credits.cast : [];
+  const knownFor = cast
+    .filter((c: any) => c.poster_path)
+    .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .slice(0, 12)
+    .map((c: any) => ({
+      id:        `${c.media_type === 'tv' ? 'tv' : 'film'}-${c.id}`,
+      title:     c.title || c.name,
+      posterUrl: c.poster_path ? `${TMDB_IMG_POSTER}${c.poster_path}` : null,
+      mediaType: (c.media_type === 'tv' ? 'tv' : 'film') as 'film' | 'tv',
+    }));
+
+  return {
+    id:        person.id,
+    name:      person.name,
+    photoUrl:  person.profile_path ? `${TMDB_IMG_PROFILE}${person.profile_path}` : null,
+    biography: person.biography ?? '',
+    birthday:  person.birthday ?? null,
+    knownFor,
   };
 }

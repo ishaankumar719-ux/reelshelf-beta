@@ -1,6 +1,7 @@
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -71,7 +72,7 @@ export function FloatingSearchBar() {
           }}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            console.log('[Sprint 4] Search pressed — no-op');
+            router.push('/search');
           }}
           android_ripple={{ color: 'rgba(255,255,255,0.06)' }}
         >

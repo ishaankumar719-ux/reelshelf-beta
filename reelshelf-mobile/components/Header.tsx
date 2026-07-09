@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { RS } from '@/constants/theme';
@@ -13,7 +14,7 @@ export function Header() {
       <View style={styles.right}>
         <Pressable
           hitSlop={10}
-          onPress={() => console.log('[Sprint 3] Search pressed — no-op')}
+          onPress={() => router.push('/search')}
         >
           <MaterialIcons name="search" size={24} color={RS.colors.textSecondary} />
         </Pressable>

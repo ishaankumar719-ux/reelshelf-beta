@@ -35,6 +35,10 @@ export default function RootLayout() {
             {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
             <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
             <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
+            <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
+            <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
+            <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
           </Stack>
           <StatusBar style="light" />
         </ThemeProvider>
