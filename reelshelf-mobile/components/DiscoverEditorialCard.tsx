@@ -2,15 +2,21 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, RS } from '@/constants/theme';
 
-export function DiscoverEditorialCard() {
+interface DiscoverEditorialCardProps {
+  headline?:   string;
+  supporting?: string;
+}
+
+export function DiscoverEditorialCard({
+  headline   = "Films that\nchanged cinema.",
+  supporting = "A curated thread through the stories that rewrote the rules.",
+}: DiscoverEditorialCardProps = {}) {
   return (
     <View style={styles.container}>
       <View style={styles.topBorder} />
       <View style={styles.content}>
-        <Text style={styles.headline}>Films that{'\n'}changed cinema.</Text>
-        <Text style={styles.supporting}>
-          A curated thread through the stories that rewrote the rules.
-        </Text>
+        <Text style={styles.headline}>{headline}</Text>
+        <Text style={styles.supporting}>{supporting}</Text>
       </View>
       <View style={styles.bottomBorder} />
     </View>

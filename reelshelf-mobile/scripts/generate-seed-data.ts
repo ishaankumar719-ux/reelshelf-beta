@@ -66,6 +66,10 @@ interface SeedCollectionItem {
   items:       SeedCardItem[];
 }
 
+interface SeedAwardItem extends SeedCardItem {
+  award: string;
+}
+
 // ── Color extraction (atmosphere only — never bundled into the app) ───────────
 
 function darkenHex(hex: string): string {
@@ -136,7 +140,7 @@ async function book(
   titleQuery: string,
   authorQuery: string,
   fallbackYear: number,
-): Promise<SeedCardItem> {
+): Promise<SeedCardItem & { author: string }> {
   const q = encodeURIComponent(`intitle:${titleQuery} inauthor:${authorQuery}`);
   const r = await fetch(`${GBOOKS}?q=${q}&maxResults=1`);
   const d = await r.json() as Record<string, unknown>;
@@ -148,6 +152,7 @@ async function book(
       year:      fallbackYear,
       mediaType: 'book',
       posterUrl: null,
+      author:    authorQuery,
     };
   }
   const item = items[0];
@@ -156,12 +161,14 @@ async function book(
   const links = info.imageLinks as Record<string, string> | undefined;
   let cover   = links?.thumbnail ?? links?.smallThumbnail ?? null;
   if (cover) cover = cover.replace('http:', 'https:').replace('zoom=1', 'zoom=2');
+  const authorsArr = info.authors as string[] | undefined;
   return {
     id:        `book-${volId}`,
     title:     (info.title as string | undefined) ?? titleQuery,
     year:      parseInt(((info.publishedDate as string | undefined) ?? String(fallbackYear)).slice(0, 4)),
     mediaType: 'book',
     posterUrl: cover,
+    author:    authorsArr?.[0] ?? authorQuery,
   };
 }
 
@@ -224,6 +231,28 @@ async function main() {
     floridaProject,
     wilderpeople,
     ghostStory,
+    // Phase 2: Award Winners (new titles)
+    shapeOfWater,
+    chernobyl,
+    // Phase 2: TV Picks (new shows)
+    severance,
+    lastOfUs,
+    // Phase 2: 6 new collections (new titles)
+    ladyBird,
+    drive,
+    // Phase 2: Books — Book of the Month
+    remainsOfTheDay_book,
+    // Phase 2: Books — Trending
+    normalPeople_book,
+    midnightLibrary_book,
+    aLittleLife_book,
+    fourthWing_book,
+    demonCopperhead_book,
+    // Phase 2: Books — Award Winners
+    theRoad_book,
+    lincolnInTheBardo_book,
+    undergroundRailroad_book,
+    gentlemanMoscow_book,
   ] = await Promise.all([
     // ── Core (17 existing) ────────────────────────────────────────────────────
     movie(872585),                               // Oppenheimer (2023)
@@ -277,6 +306,28 @@ async function main() {
     movie(435022),                               // The Florida Project (2017)
     movie(344968),                               // Hunt for the Wilderpeople (2016)
     movie(418064),                               // A Ghost Story (2017)
+    // ── Phase 2: Award Winners new titles ────────────────────────────────────
+    movie(399055),                               // The Shape of Water (2017)
+    show(87108),                                 // Chernobyl (2019)
+    // ── Phase 2: TV Picks new shows ───────────────────────────────────────────
+    show(95396),                                 // Severance (2022)
+    show(100088),                                // The Last of Us (2023)
+    // ── Phase 2: new collection items ────────────────────────────────────────
+    movie(391713),                               // Lady Bird (2017)
+    movie(79218),                                // Drive (2011)
+    // ── Phase 2: Book of the Month ───────────────────────────────────────────
+    book('The Remains of the Day', 'Kazuo Ishiguro', 1989),
+    // ── Phase 2: Trending Books ───────────────────────────────────────────────
+    book('Normal People', 'Sally Rooney', 2018),
+    book('The Midnight Library', 'Matt Haig', 2020),
+    book('A Little Life', 'Hanya Yanagihara', 2015),
+    book('Fourth Wing', 'Rebecca Yarros', 2023),
+    book('Demon Copperhead', 'Barbara Kingsolver', 2022),
+    // ── Phase 2: Award Winners Books ─────────────────────────────────────────
+    book('The Road', 'Cormac McCarthy', 2006),
+    book('Lincoln in the Bardo', 'George Saunders', 2017),
+    book('The Underground Railroad', 'Colson Whitehead', 2016),
+    book('A Gentleman in Moscow', 'Amor Towles', 2016),
   ]);
 
   // ── Extract dominant colors for atmosphere items ───────────────────────────
@@ -359,7 +410,7 @@ async function main() {
     description: 'Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration.',
   };
 
-  // 6 Collections — items[] carries full navigation metadata per poster
+  // 12 Collections — original 6 + 6 Phase 2 additions
   const collections: SeedCollectionItem[] = [
     {
       id:          'c-a24',
@@ -403,6 +454,93 @@ async function main() {
       storyCount:  29,
       items:       [marriageStory, moonlight, her, nomadland],
     },
+    // ── Phase 2: 6 additional collections ─────────────────────────────────────
+    {
+      id:          'c-horror',
+      title:       'Greatest Horror',
+      description: 'Films that stay with you long after you close your eyes.',
+      storyCount:  22,
+      items:       [hereditary, getOut, midsommar, lighthouse],
+    },
+    {
+      id:          'c-mindbend2',
+      title:       'Best Mind-Bending Films',
+      description: 'Curated picks that question reality.',
+      storyCount:  18,
+      items:       [inception, arrival, fightClub, mulholland],
+    },
+    {
+      id:          'c-sunday-watches',
+      title:       'Perfect Sunday Watches',
+      description: 'Unwind with stories built for quiet afternoons.',
+      storyCount:  31,
+      items:       [marriageStory, her, moonlight, nomadland],
+    },
+    {
+      id:          'c-oscar',
+      title:       'Oscar Winners',
+      description: 'The films the Academy couldn\'t ignore.',
+      storyCount:  25,
+      items:       [parasite, moonlight, nomadland, whiplash],
+    },
+    {
+      id:          'c-comingofage',
+      title:       'Coming of Age',
+      description: 'The films that understand what it felt like to grow up.',
+      storyCount:  20,
+      items:       [moonlight, floridaProject, whiplash, ladyBird],
+    },
+    {
+      id:          'c-neonoir',
+      title:       'Neo-Noir',
+      description: 'Sleek, shadowed, morally complicated.',
+      storyCount:  16,
+      items:       [bladeRunner2049, prisoners, zodiac, drive],
+    },
+  ];
+
+  // Phase 2: Award Winners
+  const awardWinners: SeedAwardItem[] = [
+    { ...parasite,     award: 'Best Picture 2020' },
+    { ...moonlight,    award: 'Best Picture 2017' },
+    { ...nomadland,    award: 'Best Picture 2021' },
+    { ...laLaLand,     award: 'Golden Globe — Best Picture' },
+    { ...whiplash,     award: 'Academy Award — Film Editing' },
+    { ...shapeOfWater, award: 'Best Picture 2018' },
+    { ...succession,   award: 'Emmy — Outstanding Drama' },
+    { ...chernobyl,    award: 'Emmy — Limited Series 2019' },
+  ];
+
+  // Phase 2: Mind-Bending films for stacked-shadow section
+  const mindBendingFilms: SeedCardItem[] = [
+    inception, arrival, bladeRunner2049, fightClub, mulholland, parasite,
+  ];
+
+  // Phase 2: TV Picks
+  const tvPicks: SeedCardItem[] = [
+    theBear, succession, shogun, chernobyl, severance, lastOfUs,
+  ];
+
+  // Phase 2: Books
+  const bookOfTheMonth: SeedBookItem = {
+    ...remainsOfTheDay_book,
+    id:          'book-remains-of-the-day',
+    description: 'A butler\'s quiet reflections on duty and suppressed feeling reveal the cost of a life given entirely to service — Ishiguro\'s Booker Prize masterpiece of restraint.',
+  };
+
+  const trendingBooks: SeedBookItem[] = [
+    { ...normalPeople_book,      description: 'Two Irish students drift together and apart over several years — a precise study of how love and class shape the people we become.' },
+    { ...midnightLibrary_book,   description: 'A library between life and death holds every book of every life you could have lived — a moving meditation on regret and possibility.' },
+    { ...aLittleLife_book,       description: 'Four friends navigate adulthood in New York across three decades — an unsparing, devastating novel about trauma, love, and survival.' },
+    { ...fourthWing_book,        description: 'A war college for dragon riders, a heroine who shouldn\'t be there, and a rebellion building in the shadows — ferociously entertaining.' },
+    { ...demonCopperhead_book,   description: 'A Pulitzer Prize-winning retelling of David Copperfield set in the opioid-ravaged Appalachian Mountains — Dickens as American tragedy.' },
+  ];
+
+  const awardWinnerBooks: SeedBookItem[] = [
+    { ...theRoad_book,             description: 'A father and son cross a devastated American landscape — McCarthy\'s Pulitzer-winning novel distils love and survival to their barest elements.' },
+    { ...lincolnInTheBardo_book,   description: 'Abraham Lincoln visits his son\'s tomb; the dead speak. A Booker Prize-winning novel unlike anything else — grief rendered as polyphony.' },
+    { ...undergroundRailroad_book, description: 'A Pulitzer Prize-winning reimagining of the Underground Railroad as a literal network of secret trains carrying enslaved people to freedom.' },
+    { ...gentlemanMoscow_book,     description: 'A count sentenced to house arrest in a luxury Moscow hotel finds that even a world reduced to one building can contain an entire life.' },
   ];
 
   // Discover: Hidden Gems
@@ -476,6 +614,12 @@ export interface SeedCollectionItem {
   items:       SeedCardItem[];
 }
 
+/** Award-winning film or show — extends SeedCardItem with a short award label. */
+export interface SeedAwardItem extends SeedCardItem {
+  /** Short award label, e.g. "Academy Award — Best Picture". */
+  award: string;
+}
+
 // ── Featured Today (backward-compat) ─────────────────────────────────────────
 export const featuredItem: SeedFeaturedItem = ${JSON.stringify(featuredItem, null, 2)};
 
@@ -545,6 +689,27 @@ export const randomDiscoveryPool: SeedCardItem[] = _poolRaw.filter(item => {
   _seenIds.add(item.id);
   return true;
 });
+
+// ── Discover Phase 2: Award Winners ──────────────────────────────────────────
+export const awardWinners: SeedAwardItem[] = ${JSON.stringify(awardWinners, null, 2)};
+
+// ── Discover Phase 2: Mind-Bending films (stacked-shadow section) ─────────────
+export const mindBendingFilms: SeedCardItem[] = ${JSON.stringify(mindBendingFilms, null, 2)};
+
+// ── Discover Phase 2: TV Picks ────────────────────────────────────────────────
+export const tvPicks: SeedCardItem[] = ${JSON.stringify(tvPicks, null, 2)};
+
+// ── Discover Phase 2: Book Section ───────────────────────────────────────────
+export const bookOfTheMonth: SeedBookItem = ${JSON.stringify(bookOfTheMonth, null, 2)};
+
+export const trendingBooks: SeedBookItem[] = ${JSON.stringify(trendingBooks, null, 2)};
+
+export const awardWinnerBooks: SeedBookItem[] = ${JSON.stringify(awardWinnerBooks, null, 2)};
+
+// ── Discover Phase 2: Additional Collections Row ─────────────────────────────
+export const discoverCollections: SeedCollectionItem[] = collections.filter(c =>
+  ['c-horror', 'c-mindbend2', 'c-sunday-watches', 'c-oscar', 'c-comingofage', 'c-neonoir'].includes(c.id)
+);
 `;
 
   const outPath = path.join(__dirname, '..', 'data', 'seedHomeContent.ts');

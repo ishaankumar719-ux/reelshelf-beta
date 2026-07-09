@@ -60,6 +60,12 @@ export interface SeedCollectionItem {
   items:       SeedCardItem[];
 }
 
+/** Award-winning film or show — extends SeedCardItem with a short award label. */
+export interface SeedAwardItem extends SeedCardItem {
+  /** Short award label, e.g. "Academy Award — Best Picture". */
+  award: string;
+}
+
 // ── Featured Today (backward-compat) ─────────────────────────────────────────
 export const featuredItem: SeedFeaturedItem = {
   "id": "film-872585",
@@ -415,6 +421,79 @@ export const collections: SeedCollectionItem[] = [
       { id: "film-752623", title: "Nomadland",       year: 2020, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg" },
     ],
   },
+  // ── Discover Phase 2: 6 additional collections ────────────────────────────────
+  {
+    id:          "c-horror",
+    title:       "Greatest Horror",
+    description: "Films that stay with you long after you close your eyes.",
+    storyCount:  22,
+    items: [
+      { id: "film-493922", title: "Hereditary",      year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg" },
+      { id: "film-419430", title: "Get Out",          year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg" },
+      { id: "film-530385", title: "Midsommar",        year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg" },
+      { id: "film-575264", title: "The Lighthouse",   year: 2019, mediaType: "film", posterUrl: null },
+    ],
+  },
+  {
+    id:          "c-mindbend2",
+    title:       "Best Mind-Bending Films",
+    description: "Curated picks that question reality.",
+    storyCount:  18,
+    items: [
+      { id: "film-27205",  title: "Inception",          year: 2010, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg" },
+      { id: "film-329865", title: "Arrival",             year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg" },
+      { id: "film-550",    title: "Fight Club",          year: 1999, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg" },
+      { id: "film-1018",   title: "Mulholland Drive",    year: 2001, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x7A59t6ySylr1L7aubOQEA480vM.jpg" },
+    ],
+  },
+  {
+    id:          "c-sunday-watches",
+    title:       "Perfect Sunday Watches",
+    description: "Unwind with stories built for quiet afternoons.",
+    storyCount:  31,
+    items: [
+      { id: "film-492188", title: "Marriage Story", year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg" },
+      { id: "film-152601", title: "Her",             year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg" },
+      { id: "film-376867", title: "Moonlight",       year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+      { id: "film-752623", title: "Nomadland",        year: 2020, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg" },
+    ],
+  },
+  {
+    id:          "c-oscar",
+    title:       "Oscar Winners",
+    description: "The films the Academy couldn't ignore.",
+    storyCount:  25,
+    items: [
+      { id: "film-496243", title: "Parasite",   year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" },
+      { id: "film-376867", title: "Moonlight",  year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+      { id: "film-752623", title: "Nomadland",  year: 2020, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg" },
+      { id: "film-244786", title: "Whiplash",   year: 2014, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg" },
+    ],
+  },
+  {
+    id:          "c-comingofage",
+    title:       "Coming of Age",
+    description: "The films that understand what it felt like to grow up.",
+    storyCount:  20,
+    items: [
+      { id: "film-376867", title: "Moonlight",           year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+      { id: "film-435022", title: "The Florida Project",  year: 2017, mediaType: "film", posterUrl: null },
+      { id: "film-244786", title: "Whiplash",             year: 2014, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg" },
+      { id: "film-391713", title: "Lady Bird",            year: 2017, mediaType: "film", posterUrl: null },
+    ],
+  },
+  {
+    id:          "c-neonoir",
+    title:       "Neo-Noir",
+    description: "Sleek, shadowed, morally complicated.",
+    storyCount:  16,
+    items: [
+      { id: "film-335984", title: "Blade Runner 2049", year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg" },
+      { id: "film-146233", title: "Prisoners",         year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/jsS3a3ep2KyBVmmiwaz3LvK49b1.jpg" },
+      { id: "film-929",    title: "Zodiac",            year: 2007, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xJVl1I95StraYAwaNbBkVoWE2qA.jpg" },
+      { id: "film-79218",  title: "Drive",             year: 2011, mediaType: "film", posterUrl: null },
+    ],
+  },
 ];
 
 // ── Discover: Random Discovery pool ──────────────────────────────────────────
@@ -449,3 +528,75 @@ export const randomDiscoveryPool: SeedCardItem[] = _poolRaw.filter(item => {
   _seenIds.add(item.id);
   return true;
 });
+
+// ── Discover Phase 2: Award Winners ──────────────────────────────────────────
+// Landscape-card section. award = short badge text shown on the card.
+export const awardWinners: SeedAwardItem[] = [
+  { id: "film-496243", title: "Parasite",            year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg", award: "Best Picture 2020" },
+  { id: "film-376867", title: "Moonlight",           year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg", award: "Best Picture 2017" },
+  { id: "film-752623", title: "Nomadland",           year: 2020, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/rnheO8cFvCYcmZsDrBoabJbKLFE.jpg", award: "Best Picture 2021" },
+  { id: "film-313369", title: "La La Land",          year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg", award: "Golden Globe — Best Picture" },
+  { id: "film-244786", title: "Whiplash",            year: 2014, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg", award: "Academy Award — Film Editing" },
+  { id: "film-399055", title: "The Shape of Water",  year: 2017, mediaType: "film", posterUrl: null,                                                                  award: "Best Picture 2018" },
+  { id: "tv-76331",    title: "Succession",          year: 2018, mediaType: "tv",   posterUrl: "https://image.tmdb.org/t/p/w342/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg", award: "Emmy — Outstanding Drama" },
+  { id: "tv-87108",    title: "Chernobyl",           year: 2019, mediaType: "tv",   posterUrl: null,                                                                  award: "Emmy — Limited Series 2019" },
+];
+
+// ── Discover Phase 2: Mind-Bending films (stacked-shadow section) ─────────────
+// Single-item stacked-shadow cards — distinct from c-mindbend/c-mindbend2 collections.
+// Uses c-mindbend's title pool + mulholland for variety.
+export const mindBendingFilms: SeedCardItem[] = [
+  { id: "film-27205",  title: "Inception",          year: 2010, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg" },
+  { id: "film-329865", title: "Arrival",             year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg" },
+  { id: "film-335984", title: "Blade Runner 2049",   year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg" },
+  { id: "film-550",    title: "Fight Club",          year: 1999, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg" },
+  { id: "film-1018",   title: "Mulholland Drive",    year: 2001, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x7A59t6ySylr1L7aubOQEA480vM.jpg" },
+  { id: "film-496243", title: "Parasite",            year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" },
+];
+
+// ── Discover Phase 2: TV Picks ────────────────────────────────────────────────
+// Large landscape cards, Apple TV style (portrait poster fills a landscape frame).
+export const tvPicks: SeedCardItem[] = [
+  { id: "tv-136315", title: "The Bear",       year: 2022, mediaType: "tv", posterUrl: "https://image.tmdb.org/t/p/w342/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg" },
+  { id: "tv-76331",  title: "Succession",     year: 2018, mediaType: "tv", posterUrl: "https://image.tmdb.org/t/p/w342/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg" },
+  { id: "tv-126308", title: "Shōgun",         year: 2024, mediaType: "tv", posterUrl: "https://image.tmdb.org/t/p/w342/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg" },
+  { id: "tv-87108",  title: "Chernobyl",      year: 2019, mediaType: "tv", posterUrl: null },
+  { id: "tv-95396",  title: "Severance",      year: 2022, mediaType: "tv", posterUrl: null },
+  { id: "tv-100088", title: "The Last of Us", year: 2023, mediaType: "tv", posterUrl: null },
+];
+
+// ── Discover Phase 2: Book Section ───────────────────────────────────────────
+// Three sub-groups. posterUrl = null → gradient letter-fallback (books don't
+// have consistent CDN URLs; re-run generate-seed-data.ts to populate via Google Books).
+
+export const bookOfTheMonth: SeedBookItem = {
+  id:          "book-remains-of-the-day",
+  title:       "The Remains of the Day",
+  year:         1989,
+  mediaType:   "book",
+  posterUrl:   null,
+  author:      "Kazuo Ishiguro",
+  description: "A butler's quiet reflections on duty and suppressed feeling reveal the cost of a life given entirely to service — Ishiguro's Booker Prize masterpiece of restraint.",
+};
+
+export const trendingBooks: SeedBookItem[] = [
+  { id: "book-normal-people",      title: "Normal People",          year: 2018, mediaType: "book", posterUrl: null, author: "Sally Rooney",        description: "Two Irish students drift together and apart over several years — a precise study of how love and class shape the people we become." },
+  { id: "book-midnight-library",   title: "The Midnight Library",   year: 2020, mediaType: "book", posterUrl: null, author: "Matt Haig",           description: "A library between life and death holds every book of every life you could have lived — a moving meditation on regret and possibility." },
+  { id: "book-a-little-life",      title: "A Little Life",          year: 2015, mediaType: "book", posterUrl: null, author: "Hanya Yanagihara",    description: "Four friends navigate adulthood in New York across three decades — an unsparing, devastating novel about trauma, love, and survival." },
+  { id: "book-fourth-wing",        title: "Fourth Wing",            year: 2023, mediaType: "book", posterUrl: null, author: "Rebecca Yarros",      description: "A war college for dragon riders, a heroine who shouldn't be there, and a rebellion building in the shadows — ferociously entertaining." },
+  { id: "book-demon-copperhead",   title: "Demon Copperhead",       year: 2022, mediaType: "book", posterUrl: null, author: "Barbara Kingsolver",  description: "A Pulitzer Prize-winning retelling of David Copperfield set in the opioid-ravaged Appalachian Mountains — Dickens as American tragedy." },
+];
+
+export const awardWinnerBooks: SeedBookItem[] = [
+  { id: "book-the-road",            title: "The Road",                  year: 2006, mediaType: "book", posterUrl: null, author: "Cormac McCarthy",   description: "A father and son cross a devastated American landscape — McCarthy's Pulitzer-winning novel distils love and survival to their barest elements." },
+  { id: "book-lincoln-bardo",       title: "Lincoln in the Bardo",      year: 2017, mediaType: "book", posterUrl: null, author: "George Saunders",   description: "Abraham Lincoln visits his son's tomb; the dead speak. A Booker Prize-winning novel unlike anything else — grief rendered as polyphony." },
+  { id: "book-underground-railroad", title: "The Underground Railroad",  year: 2016, mediaType: "book", posterUrl: null, author: "Colson Whitehead",  description: "A Pulitzer Prize-winning reimagining of the Underground Railroad as a literal network of secret trains carrying enslaved people to freedom." },
+  { id: "book-gentleman-moscow",    title: "A Gentleman in Moscow",     year: 2016, mediaType: "book", posterUrl: null, author: "Amor Towles",       description: "A count sentenced to house arrest in a luxury Moscow hotel finds that even a world reduced to one building can contain an entire life." },
+];
+
+// ── Discover Phase 2: Additional Collections Row ─────────────────────────────
+// The 6 new collections added above, exported separately for CollectionsRow.
+// Tapping navigates to /collection/[id] — which reads from `collections` above.
+export const discoverCollections: SeedCollectionItem[] = collections.filter(c =>
+  ['c-horror', 'c-mindbend2', 'c-sunday-watches', 'c-oscar', 'c-comingofage', 'c-neonoir'].includes(c.id)
+);
