@@ -18,6 +18,7 @@ import {
 import { Image } from 'expo-image';
 
 import { DecimalSlider } from '@/components/DecimalSlider';
+import { RatingSlider } from '@/components/RatingSlider';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -235,13 +236,9 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                   )}
                 </View>
 
-                {/* Rating */}
+                {/* Rating — same shared RatingSlider instance as the quick Rate modal. */}
                 <View style={styles.field}>
-                  <DecimalSlider
-                    label="Rating"
-                    value={entry.rating}
-                    onChange={(v) => patch({ rating: v })}
-                  />
+                  <RatingSlider value={entry.rating} onChange={(v) => patch({ rating: v })} />
                 </View>
 
                 {/* Review text */}

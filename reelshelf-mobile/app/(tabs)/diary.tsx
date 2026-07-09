@@ -40,7 +40,7 @@ function DiaryRow({ entry, onEdit }: { entry: DiaryListEntry; onEdit: () => void
       <View style={styles.rowMeta}>
         <Text style={styles.title} numberOfLines={2}>{entry.title}</Text>
         <Text style={styles.watchedDate}>{entry.watchedDate}</Text>
-        {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)}/5</Text> : null}
+        {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)} / 10</Text> : null}
         {entry.review ? (
           <SpoilerBlur active={entry.containsSpoilers}>
             <Text style={styles.review} numberOfLines={2}>{entry.review}</Text>

@@ -14,20 +14,26 @@ const TRACK_H = 6;
 const THUMB_SIZE = 22;
 
 interface DecimalSliderProps {
-  label:     string;
-  value:     number | null;   // null = not yet rated
-  onChange:  (value: number) => void;
-  min?:      number;
-  max?:      number;
-  step?:     number;
+  label:        string;
+  value:        number | null;   // null = not yet rated
+  onChange:     (value: number) => void;
+  min?:         number;
+  max?:         number;
+  step?:        number;
+  /** Appended after the live/displayed value, e.g. " / 10" for the primary rating. */
+  valueSuffix?: string;
 }
 
 // Custom Reanimated Pan-gesture slider — reuses this codebase's established
-// "GestureDetector + shared value" pattern (FannedDeck, RatingModal's
-// half-star taps) rather than adding a new slider dependency. Supports both
-// a direct tap-to-set and drag-to-adjust, snapped to `step` increments, with
-// a live value label while dragging.
-export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step = 0.5 }: DecimalSliderProps) {
+// "GestureDetector + shared value" pattern (FannedDeck) rather than adding a
+// new slider dependency. Supports both a direct tap-to-set and drag-to-
+// adjust, snapped to `step` increments, with a live value label while
+// dragging. Cleanly rounded to one decimal place via toFixed (NOT
+// Math.round(raw/step)*step alone, which drifts — e.g. 8.7 becomes
+// 8.700000000000001 in IEEE 754 float arithmetic; toFixed(1) + Number(...)
+// avoids reproducing that artifact, matching the web app's intended
+// precision without its bug).
+export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step = 0.5, valueSuffix = '' }: DecimalSliderProps) {
   const [trackWidth, setTrackWidth] = useState(0);
   const [liveValue, setLiveValue] = useState(value);
   const thumbX = useSharedValue(0);
@@ -46,7 +52,7 @@ export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step 
       if (trackWidth <= 0) return;
       const clamped = Math.min(Math.max(e.x, 0), trackWidth);
       const raw = min + (clamped / trackWidth) * (max - min);
-      const stepped = Math.round(raw / step) * step;
+      const stepped = Number((Math.round(raw / step) * step).toFixed(1));
       thumbX.value = ((stepped - min) / (max - min)) * trackWidth;
       runOnJS(setLiveValue)(stepped);
     })
@@ -54,7 +60,7 @@ export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step 
       if (trackWidth <= 0) return;
       const clamped = Math.min(Math.max(e.x, 0), trackWidth);
       const raw = min + (clamped / trackWidth) * (max - min);
-      const stepped = Math.round(raw / step) * step;
+      const stepped = Number((Math.round(raw / step) * step).toFixed(1));
       thumbX.value = ((stepped - min) / (max - min)) * trackWidth;
       runOnJS(setLiveValue)(stepped);
     })
@@ -62,7 +68,7 @@ export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step 
       if (trackWidth <= 0) return;
       const clamped = Math.min(Math.max(e.x, 0), trackWidth);
       const raw = min + (clamped / trackWidth) * (max - min);
-      const stepped = Math.round(raw / step) * step;
+      const stepped = Number((Math.round(raw / step) * step).toFixed(1));
       runOnJS(commit)(stepped);
     });
 
@@ -75,7 +81,7 @@ export function DecimalSlider({ label, value, onChange, min = 0, max = 10, step 
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.valueText}>{displayValue !== null ? displayValue.toFixed(1) : '—'}</Text>
+        <Text style={styles.valueText}>{displayValue !== null ? `${displayValue.toFixed(1)}${valueSuffix}` : '—'}</Text>
       </View>
       <GestureDetector gesture={gesture}>
         <View

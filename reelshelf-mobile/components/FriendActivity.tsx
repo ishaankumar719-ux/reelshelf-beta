@@ -65,7 +65,7 @@ export function FriendActivity({ id, mediaType }: FriendActivityProps) {
       {entries.map((entry) => (
         <View key={entry.userId} style={styles.entry}>
           <Text style={styles.name}>{entry.displayName || entry.username || 'A friend'}</Text>
-          {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)}/5</Text> : null}
+          {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)} / 10</Text> : null}
           {entry.review ? <Text style={styles.review} numberOfLines={3}>{entry.review}</Text> : null}
         </View>
       ))}

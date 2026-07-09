@@ -143,7 +143,7 @@ export function MediaPrimaryActions({
         />
         <ActionPill
           icon={rating > 0 ? 'star' : 'star-border'}
-          label={rating > 0 ? `Rated ${rating.toFixed(1)}` : 'Rate'}
+          label={rating > 0 ? `Rated ${rating.toFixed(1)} / 10` : 'Rate'}
           active={rating > 0}
           onPress={openRateModal}
         />
