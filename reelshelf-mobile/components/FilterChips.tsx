@@ -1,13 +1,26 @@
+import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
 import { RS } from '@/constants/theme';
 
-const CHIPS = ['All', 'Movies', 'TV', 'Books', 'Trending', 'New', 'Popular', 'Hidden Gems'] as const;
-type Chip = (typeof CHIPS)[number];
+const DISCOVER_CHIPS = [
+  'Movies', 'TV', 'Books', 'Trending', 'New',
+  'Award Winners', 'Horror', 'Comedy', 'Drama', 'Sci-Fi', 'Animation',
+] as const;
 
-export function FilterChips() {
-  const [selected, setSelected] = useState<Chip>('All');
+interface FilterChipsProps {
+  /** Chip labels to render. Defaults to the Discover set. */
+  chips?: readonly string[];
+}
+
+export function FilterChips({ chips = DISCOVER_CHIPS }: FilterChipsProps = {}) {
+  const [selected, setSelected] = useState<string>(chips[0] ?? '');
+
+  const handlePress = (chip: string) => {
+    setSelected(chip);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  };
 
   return (
     <ScrollView
@@ -15,7 +28,7 @@ export function FilterChips() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {CHIPS.map((chip) => {
+      {chips.map((chip) => {
         const active = chip === selected;
         return (
           <Pressable
@@ -24,7 +37,7 @@ export function FilterChips() {
               styles.chip,
               active ? styles.chipActive : pressed && styles.chipPressed,
             ]}
-            onPress={() => setSelected(chip)}
+            onPress={() => handlePress(chip)}
           >
             <Text style={[styles.label, active && styles.labelActive]}>{chip}</Text>
           </Pressable>

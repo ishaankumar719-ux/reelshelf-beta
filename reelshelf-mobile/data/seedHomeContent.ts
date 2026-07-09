@@ -319,6 +319,19 @@ export const bookOfTheWeek: SeedBookItem = {
   "description": "Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration."
 };
 
+// ── Discover: Hidden Gems ────────────────────────────────────────────────────
+// Curated lesser-known films. posterUrl = null items show letter fallback;
+// run scripts/generate-seed-data.ts with EXPO_PUBLIC_TMDB_API_KEY to populate.
+export const hiddenGems: SeedCardItem[] = [
+  { id: "film-376867", title: "Moonlight",                 year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+  { id: "film-152601", title: "Her",                       year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg" },
+  { id: "film-492188", title: "Marriage Story",            year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg" },
+  { id: "film-575264", title: "The Lighthouse",            year: 2019, mediaType: "film", posterUrl: null },
+  { id: "film-435022", title: "The Florida Project",       year: 2017, mediaType: "film", posterUrl: null },
+  { id: "film-344968", title: "Hunt for the Wilderpeople", year: 2016, mediaType: "film", posterUrl: null },
+  { id: "film-418064", title: "A Ghost Story",             year: 2017, mediaType: "film", posterUrl: null },
+];
+
 // ── Collections ───────────────────────────────────────────────────────────────
 // items[] carries full navigation metadata per poster (title, year, mediaType, id).
 // storyCount = editorial full-collection size; items.length = swipeable preview count (3-4).
@@ -403,3 +416,36 @@ export const collections: SeedCollectionItem[] = [
     ],
   },
 ];
+
+// ── Discover: Random Discovery pool ──────────────────────────────────────────
+// Static pool for the "I can't decide" shuffle card. Deduplicated union of
+// curated lists. Items with posterUrl = null show the letter-fallback.
+const _poolRaw: SeedCardItem[] = [
+  // Trending
+  { id: "film-27205",   title: "Inception",                         year: 2010, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg" },
+  { id: "film-693134",  title: "Dune: Part Two",                    year: 2024, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/heM4XKC0jA8fTSNe8F7oUkcJV7Z.jpg" },
+  { id: "film-496243",  title: "Parasite",                          year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" },
+  { id: "film-792307",  title: "Poor Things",                       year: 2023, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg" },
+  { id: "film-545611",  title: "Everything Everywhere All at Once", year: 2022, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg" },
+  // Arthouse / acclaimed
+  { id: "film-376867",  title: "Moonlight",                         year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+  { id: "film-152601",  title: "Her",                               year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg" },
+  { id: "film-492188",  title: "Marriage Story",                    year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg" },
+  { id: "film-329865",  title: "Arrival",                           year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg" },
+  { id: "film-335984",  title: "Blade Runner 2049",                 year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg" },
+  // Horror / A24
+  { id: "film-493922",  title: "Hereditary",                        year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg" },
+  { id: "film-530385",  title: "Midsommar",                         year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg" },
+  { id: "film-419430",  title: "Get Out",                           year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg" },
+  // Hidden gems (null poster = letter fallback)
+  { id: "film-575264",  title: "The Lighthouse",                    year: 2019, mediaType: "film", posterUrl: null },
+  { id: "film-435022",  title: "The Florida Project",               year: 2017, mediaType: "film", posterUrl: null },
+];
+
+// Deduplicate by id
+const _seenIds = new Set<string>();
+export const randomDiscoveryPool: SeedCardItem[] = _poolRaw.filter(item => {
+  if (_seenIds.has(item.id)) return false;
+  _seenIds.add(item.id);
+  return true;
+});

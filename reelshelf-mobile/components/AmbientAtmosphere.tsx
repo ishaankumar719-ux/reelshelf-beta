@@ -71,9 +71,11 @@ function GrainLayer({ reduceMotion }: { reduceMotion: boolean }) {
 
 interface Props {
   scrollY: SharedValue<number>;
+  /** When true, renders at 65% opacity for a darker ambient feel (e.g. Discover screen). */
+  dimmed?:  boolean;
 }
 
-export function AmbientAtmosphere({ scrollY }: Props) {
+export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
   const { baseColors, overrideColor } = useAtmosphere();
 
   // ── Reduce Motion ───────────────────────────────────────────────────────────
@@ -175,7 +177,7 @@ export function AmbientAtmosphere({ scrollY }: Props) {
   const c3t = toColors[2]   ?? toColors[0] ?? '#1a1020';
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={[styles.container, dimmed && styles.containerDimmed]} pointerEvents="none">
 
       {/* ── From gradient (crossfade out) ──────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, fromStyle]}>
@@ -235,6 +237,9 @@ const styles = StyleSheet.create({
     right:     0,
     height:    ATMO_H,
     // No zIndex — render order (first child in parent) puts it behind siblings
+  },
+  containerDimmed: {
+    opacity: 0.65,   // darker variant for Discover screen
   },
   blackOverlay: {
     backgroundColor: '#070707',

@@ -18,6 +18,7 @@ const PLACEHOLDERS = [
   'Search books…',
   'Search people…',
   'Search collections…',
+  'Search lists…',
 ] as const;
 
 const ROTATE_INTERVAL_MS = 2800;

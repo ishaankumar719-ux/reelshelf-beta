@@ -219,6 +219,11 @@ async function main() {
     marriageStory,
     her,
     nomadland,
+    // Discover: Hidden Gems
+    lighthouse,
+    floridaProject,
+    wilderpeople,
+    ghostStory,
   ] = await Promise.all([
     // ── Core (17 existing) ────────────────────────────────────────────────────
     movie(872585),                               // Oppenheimer (2023)
@@ -266,7 +271,12 @@ async function main() {
     // ── Collections: Perfect Sunday Stories (3 new — moonlight reused) ───────
     movie(492188),                               // Marriage Story
     movie(152601),                               // Her
-    movie(752623),                               // Nomadland
+    movie(752623),                               // Nomadland (Perfect Sunday)
+    // ── Discover: Hidden Gems (4 new titles) ─────────────────────────────────
+    movie(575264),                               // The Lighthouse (2019)
+    movie(435022),                               // The Florida Project (2017)
+    movie(344968),                               // Hunt for the Wilderpeople (2016)
+    movie(418064),                               // A Ghost Story (2017)
   ]);
 
   // ── Extract dominant colors for atmosphere items ───────────────────────────
@@ -395,6 +405,12 @@ async function main() {
     },
   ];
 
+  // Discover: Hidden Gems
+  const hiddenGems: SeedCardItem[] = [
+    moonlight, her, marriageStory,
+    lighthouse, floridaProject, wilderpeople, ghostStory,
+  ];
+
   // ── Write output ───────────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
 
@@ -495,6 +511,40 @@ export const bookOfTheWeek: SeedBookItem = ${JSON.stringify(bookOfTheWeek, null,
 
 // ── Collections ───────────────────────────────────────────────────────────────
 export const collections: SeedCollectionItem[] = ${JSON.stringify(collections, null, 2)};
+
+// ── Discover: Hidden Gems ────────────────────────────────────────────────────
+// Curated lesser-known films. posterUrl = null items show letter fallback;
+// run scripts/generate-seed-data.ts with EXPO_PUBLIC_TMDB_API_KEY to populate.
+export const hiddenGems: SeedCardItem[] = ${JSON.stringify(hiddenGems, null, 2)};
+
+// ── Discover: Random Discovery pool ──────────────────────────────────────────
+// Static pool for the "I can't decide" shuffle card. Deduplicated union of
+// curated lists. Items with posterUrl = null show the letter-fallback.
+const _poolRaw: SeedCardItem[] = [
+  // Trending
+  { id: "film-27205",   title: "Inception",                         year: 2010, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg" },
+  { id: "film-693134",  title: "Dune: Part Two",                    year: 2024, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/heM4XKC0jA8fTSNe8F7oUkcJV7Z.jpg" },
+  { id: "film-496243",  title: "Parasite",                          year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" },
+  { id: "film-792307",  title: "Poor Things",                       year: 2023, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg" },
+  { id: "film-545611",  title: "Everything Everywhere All at Once", year: 2022, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg" },
+  { id: "film-376867",  title: "Moonlight",                         year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg" },
+  { id: "film-152601",  title: "Her",                               year: 2013, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg" },
+  { id: "film-492188",  title: "Marriage Story",                    year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg" },
+  { id: "film-329865",  title: "Arrival",                           year: 2016, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg" },
+  { id: "film-335984",  title: "Blade Runner 2049",                 year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg" },
+  { id: "film-493922",  title: "Hereditary",                        year: 2018, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/4GFPuL14eXi66V96xBWY73Y9PfR.jpg" },
+  { id: "film-530385",  title: "Midsommar",                         year: 2019, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg" },
+  { id: "film-419430",  title: "Get Out",                           year: 2017, mediaType: "film", posterUrl: "https://image.tmdb.org/t/p/w342/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg" },
+  { id: "film-575264",  title: "The Lighthouse",                    year: 2019, mediaType: "film", posterUrl: null },
+  { id: "film-435022",  title: "The Florida Project",               year: 2017, mediaType: "film", posterUrl: null },
+];
+
+const _seenIds = new Set<string>();
+export const randomDiscoveryPool: SeedCardItem[] = _poolRaw.filter(item => {
+  if (_seenIds.has(item.id)) return false;
+  _seenIds.add(item.id);
+  return true;
+});
 `;
 
   const outPath = path.join(__dirname, '..', 'data', 'seedHomeContent.ts');
