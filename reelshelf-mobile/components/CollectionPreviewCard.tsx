@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { RS, Fonts } from '@/constants/theme';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { usePressLift } from '@/hooks/usePressLift';
 import type { SeedCardItem, SeedCollectionItem } from '@/data/seedHomeContent';
 
@@ -75,22 +76,32 @@ function StaticPosterStack({ items }: { items: SeedCardItem[] }) {
 export function CollectionPreviewCard({ item }: { item: SeedCollectionItem }) {
   const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
 
+  // Same expand transition (fade+scale fallback, resolved in Discover Phase 3 —
+  // see hooks/useExpandOnPress.ts) used by Featured Collection/Book of the
+  // Month, generalized here to every collection preview card — the same
+  // component shared by Discover's Additional Collections row AND Movie
+  // Detail's "Belongs To" section, so this one change covers both surfaces.
+  const navigate = () => router.push(`/collection/${item.id}?expand=1`);
+  const { style: expandStyle, trigger } = useExpandOnPress(navigate);
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    router.push(`/collection/${item.id}`);
+    trigger();
   };
 
   return (
     <Pressable onPress={handlePress} onPressIn={onPressIn} onPressOut={onPressOut}>
-      <Animated.View style={[styles.cardOuter, animStyle]}>
-        <View style={styles.cardInner}>
-          <StaticPosterStack items={item.items} />
-          {/* Bottom text area */}
-          <View style={styles.textArea}>
-            <Text style={styles.collectionTitle} numberOfLines={2}>{item.title}</Text>
-            <Text style={styles.storyCount}>{item.storyCount} stories</Text>
+      <Animated.View style={expandStyle}>
+        <Animated.View style={[styles.cardOuter, animStyle]}>
+          <View style={styles.cardInner}>
+            <StaticPosterStack items={item.items} />
+            {/* Bottom text area */}
+            <View style={styles.textArea}>
+              <Text style={styles.collectionTitle} numberOfLines={2}>{item.title}</Text>
+              <Text style={styles.storyCount}>{item.storyCount} stories</Text>
+            </View>
           </View>
-        </View>
+        </Animated.View>
       </Animated.View>
     </Pressable>
   );

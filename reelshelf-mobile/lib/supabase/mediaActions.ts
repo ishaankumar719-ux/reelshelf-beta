@@ -101,18 +101,23 @@ export async function removeFromShelf(userId: string, meta: Pick<MediaMeta, 'id'
 
 // ── Diary (watched + rating + review — one unified row) ──────────────────────
 export interface DiaryEntryState {
-  watched: boolean;
-  rating:  number;   // 0 = unrated
-  review:  string;
+  watched:          boolean;
+  rating:           number;   // 0 = unrated
+  review:           string;
+  containsSpoilers: boolean;
 }
 
-const DIARY_SCOPE_DEFAULTS = { review_scope: 'show' as const, show_id: '', season_number: 0, episode_number: 0 };
+/** Title-level scope for movie/tv/book alike — exported so every other diary
+ *  writer (the Universal Review Composer included) targets the exact same
+ *  row as the simple Watched/Rate toggles here, rather than a second
+ *  differently-keyed row for the "same" title. */
+export const DIARY_SCOPE_DEFAULTS = { review_scope: 'show' as const, show_id: '', season_number: 0, episode_number: 0 };
 
 export async function fetchDiaryEntry(userId: string, meta: Pick<MediaMeta, 'id' | 'mediaType'>): Promise<DiaryEntryState> {
   const client = requireClient();
   const { data, error } = await client
     .from('diary_entries')
-    .select('rating, review')
+    .select('rating, review, contains_spoilers')
     .eq('user_id', userId)
     .eq('media_type', toDbMediaType(meta.mediaType))
     .eq('media_id', toDbMediaId(meta.id))
@@ -121,8 +126,13 @@ export async function fetchDiaryEntry(userId: string, meta: Pick<MediaMeta, 'id'
     .eq('episode_number', DIARY_SCOPE_DEFAULTS.episode_number)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return { watched: false, rating: 0, review: '' };
-  return { watched: true, rating: Number(data.rating) || 0, review: data.review ?? '' };
+  if (!data) return { watched: false, rating: 0, review: '', containsSpoilers: false };
+  return {
+    watched: true,
+    rating: Number(data.rating) || 0,
+    review: data.review ?? '',
+    containsSpoilers: data.contains_spoilers ?? false,
+  };
 }
 
 /** Upserts the shared diary_entries row. Existing rating/review are preserved

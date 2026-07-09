@@ -15,17 +15,21 @@ import {
 
 export interface UseMediaPersistenceResult {
   /** True once the initial AsyncStorage read for this id has resolved. */
-  loaded:        boolean;
-  inShelf:       boolean;
-  watched:       boolean;
-  rating:        number;
-  review:        string;
+  loaded:            boolean;
+  inShelf:           boolean;
+  watched:           boolean;
+  rating:            number;
+  review:            string;
+  containsSpoilers:  boolean;
   /** Set when a write to Supabase failed and was rolled back — surfaced inline, not swallowed. */
-  error:         string | null;
-  toggleShelf:   () => void;
-  toggleWatched: () => void;
-  saveRating:    (value: number) => void;
-  saveReview:    (text: string) => void;
+  error:             string | null;
+  toggleShelf:       () => void;
+  toggleWatched:     () => void;
+  saveRating:        (value: number) => void;
+  saveReview:        (text: string) => void;
+  /** Called by UniversalReviewComposer after it saves directly to Supabase —
+   *  updates local state/cache to match without a redundant re-fetch. */
+  applyComposerSave: (fields: { rating: number | null; review: string; containsSpoilers: boolean }) => void;
 }
 
 // Single source of truth for every Primary Action's persisted state, shared
@@ -50,11 +54,12 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   const [watched, setWatched] = useState(false);
   const [rating, setRatingState] = useState(0);
   const [review, setReviewState] = useState('');
+  const [containsSpoilers, setContainsSpoilers] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Latest diary sub-state, kept for writes that need "the other" field
   // (e.g. saving a rating must preserve whatever review is already there).
-  const diaryRef = useRef<DiaryEntryState>({ watched: false, rating: 0, review: '' });
+  const diaryRef = useRef<DiaryEntryState>({ watched: false, rating: 0, review: '', containsSpoilers: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +79,9 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
       setWatched(cachedWatched);
       setRatingState(cachedRating);
       setReviewState(cachedReview);
-      diaryRef.current = { watched: cachedWatched, rating: cachedRating, review: cachedReview };
+      // contains_spoilers isn't part of the local optimistic cache (only
+      // Supabase tracks it) — reconciliation below fills in the real value.
+      diaryRef.current = { watched: cachedWatched, rating: cachedRating, review: cachedReview, containsSpoilers: false };
       setLoaded(true);
 
       // 2. Reconcile with real Supabase state, if authenticated.
@@ -91,6 +98,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
         setWatched(realDiary.watched);
         setRatingState(realDiary.rating);
         setReviewState(realDiary.review);
+        setContainsSpoilers(realDiary.containsSpoilers);
 
         await Promise.all([
           mediaStorage.setShelfState(id, realShelf),
@@ -172,5 +180,20 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     });
   }, [id, meta, review, userId]);
 
-  return { loaded, inShelf, watched, rating, review, error, toggleShelf, toggleWatched, saveRating, saveReview };
+  const applyComposerSave = useCallback((fields: { rating: number | null; review: string; containsSpoilers: boolean }) => {
+    const nextRating = fields.rating ?? 0;
+    setWatched(true);
+    setRatingState(nextRating);
+    setReviewState(fields.review);
+    setContainsSpoilers(fields.containsSpoilers);
+    diaryRef.current = { watched: true, rating: nextRating, review: fields.review, containsSpoilers: fields.containsSpoilers };
+    mediaStorage.setWatchedState(id, true).catch(() => {});
+    mediaStorage.setRating(id, nextRating).catch(() => {});
+    mediaStorage.setReview(id, fields.review).catch(() => {});
+  }, [id]);
+
+  return {
+    loaded, inShelf, watched, rating, review, containsSpoilers, error,
+    toggleShelf, toggleWatched, saveRating, saveReview, applyComposerSave,
+  };
 }

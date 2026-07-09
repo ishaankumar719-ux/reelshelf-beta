@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -18,7 +19,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 
+import { Motion } from '@/constants/motion';
 import { RS, Fonts } from '@/constants/theme';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import type { SeedCardItem, SeedCollectionItem } from '@/data/seedHomeContent';
 
 // ── Card geometry ──────────────────────────────────────────────────────────────
@@ -93,18 +96,42 @@ interface DeckProps {
 }
 
 function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
+  const reduceMotion = useReduceMotion();
   const n        = Math.min(Math.max(items.length, 0), SLOT_CONFIGS.length);
   const dragX    = useSharedValue(0);
   const dragY    = useSharedValue(0);
   const entryScale = useSharedValue(1);   // springs 0.92→1 on each new front-card entrance
+  const pressScale = useSharedValue(1);   // press-lift feedback, independent of entryScale
+  // Expand-transition (source half) — same values/timing as hooks/useExpandOnPress.ts
+  // (opacity 0.88, scale 1.02, 140ms). Inlined here rather than using that hook
+  // directly because the front card is already one Animated.View carrying
+  // drag/press/rotation transforms via GestureDetector + absolute positioning;
+  // a second wrapping Animated.View isn't practical here, so the same
+  // resolved technique is folded into this component's existing shared values
+  // instead of introducing a new transition mechanism.
+  const expandOpacity = useSharedValue(1);
+  const expandScale   = useSharedValue(1);
 
   const navigateFront = useCallback(() => {
     const front = items[activeIndex];
     if (!front) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     router.push(
       `/media/${front.id}?title=${encodeURIComponent(front.title)}&posterUrl=${encodeURIComponent(front.posterUrl ?? '')}&mediaType=${front.mediaType}`
     );
   }, [items, activeIndex]);
+
+  const triggerExpand = useCallback(() => {
+    if (reduceMotion) {
+      navigateFront();
+      return;
+    }
+    expandOpacity.value = withTiming(0.88, { duration: 140 });
+    expandScale.value = withTiming(1.02, { duration: 140 }, (finished) => {
+      if (finished) runOnJS(navigateFront)();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion, navigateFront]);
 
   const commitSwipe = useCallback((dir: 1 | -1) => {
     onAdvance(dir);
@@ -112,24 +139,43 @@ function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
     entryScale.value = withSpring(1, { damping: 14, stiffness: 180 });
   }, [onAdvance, entryScale]);
 
-  const gesture = Gesture.Pan()
-    .minDistance(4)
+  // Root cause of the swallowed-tap bug: Gesture.Pan().minDistance(4) requires
+  // 4px of movement before the gesture even ACTIVATES — a true near-zero-
+  // movement tap often never reaches that threshold, so this onEnd's old
+  // manual isTap/isSwipe check frequently never ran at all (onEnd only fires
+  // for gestures that activated). That's why swipe worked but tap was flaky
+  // rather than reliably broken — real drags always cleared 4px, real taps
+  // sometimes didn't.
+  //
+  // Fix: a dedicated Gesture.Tap (small maxDistance, fires immediately on a
+  // stationary press) raced against the unchanged Pan gesture via
+  // Gesture.Race — whichever recognizes first wins, so a stationary tap is
+  // always caught by Tap, and any real drag still flows through Pan exactly
+  // as before (Pan still receives the full onUpdate stream regardless of
+  // which gesture in the Race ultimately wins).
+  const tapGesture = Gesture.Tap()
+    .maxDistance(10)
+    .onBegin(() => {
+      pressScale.value = withSpring(Motion.lift.depressScale, Motion.spring.depressIn);
+    })
+    .onEnd(() => {
+      runOnJS(triggerExpand)();
+    })
+    .onFinalize(() => {
+      pressScale.value = withSpring(1, Motion.spring.depressOut);
+    });
+
+  const panGesture = Gesture.Pan()
     .onUpdate(e => {
       dragX.value = e.translationX;
       dragY.value = e.translationY * 0.2;   // resist vertical movement
     })
     .onEnd(e => {
-      const dx       = e.translationX;
-      const absVelX  = Math.abs(e.velocityX);
-      const isTap    = Math.abs(dx) < 8 && Math.abs(e.translationY) < 8 && absVelX < 200;
-      const isSwipe  = Math.abs(dx) > SWIPE_THRESHOLD || absVelX > SWIPE_VELOCITY;
+      const dx      = e.translationX;
+      const absVelX = Math.abs(e.velocityX);
+      const isSwipe = Math.abs(dx) > SWIPE_THRESHOLD || absVelX > SWIPE_VELOCITY;
 
-      if (isTap) {
-        // Short non-drag → treat as tap, navigate to front poster's detail screen
-        dragX.value = withSpring(0, { damping: 20, stiffness: 260 });
-        dragY.value = withSpring(0, { damping: 20, stiffness: 260 });
-        runOnJS(navigateFront)();
-      } else if (isSwipe) {
+      if (isSwipe) {
         // Committed swipe: fly the card off-screen, then advance index
         const dir: 1 | -1 = dx < 0 ? 1 : -1;    // left drag = advance (1), right drag = back (-1)
         const exitX = dir > 0 ? -SCREEN_W * 1.4 : SCREEN_W * 1.4;
@@ -145,13 +191,18 @@ function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
       }
     });
 
-  // Animated style for the front card: drag tracking + entrance spring + drag rotation.
-  // Incorporates slot-0 config values (-1° base rotation, 0 offset) as baseline.
+  const gesture = Gesture.Race(tapGesture, panGesture);
+
+  // Animated style for the front card: drag tracking + entrance spring + drag
+  // rotation + press feedback + expand-transition fade/scale-out (on tap,
+  // before navigating). Incorporates slot-0 config values (-1° base
+  // rotation, 0 offset) as baseline.
   const frontAnimStyle = useAnimatedStyle(() => {
     const rotDeg = -1 + dragX.value * 0.025;   // tilt slightly while dragging
     return {
+      opacity: expandOpacity.value,
       transform: [
-        { scale:      entryScale.value },
+        { scale:      entryScale.value * pressScale.value * expandScale.value },
         { rotate:     `${rotDeg}deg` },
         { translateX: dragX.value },
         { translateY: dragY.value },

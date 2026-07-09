@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
@@ -9,18 +9,27 @@ import {
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import { RatingModal } from '@/components/RatingModal';
+import { UniversalReviewComposer } from '@/components/UniversalReviewComposer';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import type { DiaryEntryFull } from '@/lib/supabase/diaryComposer';
+import type { MediaType } from '@/data/seedHomeContent';
 
 interface MediaPrimaryActionsProps {
   id:              string;
   title:           string;
   synopsis?:       string;
+  mediaType:       MediaType;
+  posterUrl:       string | null;
+  year:            number;
+  genres?:         string[];
+  runtime?:        number | null;
+  voteAverage?:    number | null;
+  director?:       string | null;
   inShelf:         boolean;
   watched:         boolean;
   rating:          number;
@@ -29,7 +38,8 @@ interface MediaPrimaryActionsProps {
   onToggleShelf:   () => void;
   onToggleWatched: () => void;
   onSaveRating:    (value: number) => void;
-  onSaveReview:    (text: string) => void;
+  /** Called after the composer saves directly to Supabase, so the screen's persisted state reflects it without a redundant re-fetch. */
+  onReviewSaved:   (entry: DiaryEntryFull) => void;
 }
 
 // Placeholder deep-link format for future universal-link work — this URL does
@@ -48,6 +58,13 @@ export function MediaPrimaryActions({
   id,
   title,
   synopsis,
+  mediaType,
+  posterUrl,
+  year,
+  genres,
+  runtime,
+  voteAverage,
+  director,
   inShelf,
   watched,
   rating,
@@ -56,18 +73,11 @@ export function MediaPrimaryActions({
   onToggleShelf,
   onToggleWatched,
   onSaveRating,
-  onSaveReview,
+  onReviewSaved,
 }: MediaPrimaryActionsProps) {
   const { user } = useAuth();
   const [rateModalOpen, setRateModalOpen] = useState(false);
-  const [reviewOpen, setReviewOpen]       = useState(false);
-  const [draftReview, setDraftReview]     = useState(review);
-
-  // Keep the draft in sync if the persisted review changes out from under us
-  // (e.g. storage finishes loading after this component already mounted).
-  useEffect(() => {
-    setDraftReview(review);
-  }, [review, id]);
+  const [reviewComposerOpen, setReviewComposerOpen] = useState(false);
 
   const haptic = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
@@ -90,16 +100,10 @@ export function MediaPrimaryActions({
     setRateModalOpen(false);
   };
 
-  const toggleReview = () => {
+  const openReviewComposer = () => {
     if (!requireAuth()) return;
     haptic();
-    setReviewOpen(v => !v);
-  };
-
-  const saveReview = () => {
-    haptic();
-    onSaveReview(draftReview);
-    setReviewOpen(false);
+    setReviewComposerOpen(true);
   };
 
   const addToList = () => {
@@ -146,8 +150,8 @@ export function MediaPrimaryActions({
         <ActionPill
           icon="rate-review"
           label="Review"
-          active={reviewOpen || review.length > 0}
-          onPress={toggleReview}
+          active={review.length > 0}
+          onPress={openReviewComposer}
         />
         <ActionPill icon="playlist-add" label="Add to List" onPress={addToList} />
         <ActionPill icon="ios-share" label="Share" onPress={share} />
@@ -155,29 +159,27 @@ export function MediaPrimaryActions({
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {reviewOpen && (
-        <View style={styles.panel}>
-          <Text style={styles.panelLabel}>Your thoughts</Text>
-          <TextInput
-            value={draftReview}
-            onChangeText={setDraftReview}
-            placeholder="Write a few words…"
-            placeholderTextColor={RS.colors.textMuted}
-            style={styles.reviewInput}
-            multiline
-          />
-          <Pressable style={styles.saveReviewBtn} onPress={saveReview}>
-            <Text style={styles.saveReviewLabel}>Save Review</Text>
-          </Pressable>
-        </View>
-      )}
-
       <RatingModal
         visible={rateModalOpen}
         title={title}
         initialValue={rating}
         onCancel={closeRateModal}
         onSave={handleSaveRating}
+      />
+
+      <UniversalReviewComposer
+        visible={reviewComposerOpen}
+        onClose={() => setReviewComposerOpen(false)}
+        onSaved={onReviewSaved}
+        mediaId={id}
+        mediaType={mediaType}
+        title={title}
+        posterUrl={posterUrl}
+        year={year}
+        genres={genres}
+        runtime={runtime}
+        voteAverage={voteAverage}
+        director={director}
       />
     </View>
   );
@@ -252,40 +254,5 @@ const styles = StyleSheet.create({
     marginHorizontal: RS.spacing.md,
     fontSize:         RS.typography.caption + 1,
     color:            '#f87171',
-  },
-  panel: {
-    marginHorizontal: RS.spacing.md,
-    borderRadius:      RS.card.radius,
-    borderWidth:       0.5,
-    borderColor:       RS.colors.border,
-    backgroundColor:   RS.colors.card,
-    padding:           RS.spacing.md,
-    gap:               RS.spacing.sm,
-  },
-  panelLabel: {
-    fontSize:      RS.typography.overline,
-    fontWeight:    '600',
-    color:         RS.colors.textMuted,
-    letterSpacing: RS.letterSpacing.wide,
-    textTransform: 'uppercase',
-  },
-  reviewInput: {
-    fontSize:   RS.typography.body,
-    color:      RS.colors.textPrimary,
-    minHeight:  60,
-    textAlignVertical: 'top',
-  },
-  saveReviewBtn: {
-    alignSelf:         'flex-start',
-    borderRadius:      RS.button.radius,
-    backgroundColor:   RS.button.filledBg,
-    paddingHorizontal: RS.button.paddingH,
-    paddingVertical:   RS.spacing.xs + 2,
-  },
-  saveReviewLabel: {
-    fontSize:      RS.typography.caption,
-    fontWeight:    '700',
-    color:         RS.button.filledText,
-    letterSpacing: RS.letterSpacing.wide,
   },
 });

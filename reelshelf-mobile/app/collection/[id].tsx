@@ -3,6 +3,7 @@
  * Receives: id via route params. Looks up collection from static seed data.
  * Phase 5 will replace with live data, filters, sort, and add/remove.
  */
+import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
@@ -10,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { RS, Fonts } from '@/constants/theme';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { collections, type SeedCardItem } from '@/data/seedHomeContent';
 
 const THUMB_SIZE = 72;
@@ -18,42 +20,47 @@ function CollectionItem({ item }: { item: SeedCardItem }) {
   const badgeMap = { film: RS.badge.film, tv: RS.badge.tv, book: RS.badge.book } as const;
   const badge    = badgeMap[item.mediaType as keyof typeof badgeMap] ?? RS.badge.film;
 
-  const onPress = () => {
-    router.push(
-      `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
-    );
-  };
+  // Same expand transition (fade+scale fallback) generalized to this row —
+  // tapping any item inside a full Collection Detail list now carries the
+  // same continuous-feeling motion into Movie Detail as every other
+  // collection surface.
+  const navigate = () => router.push(
+    `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}&expand=1`
+  );
+  const { style: expandStyle, trigger } = useExpandOnPress(navigate);
 
   return (
-    <Pressable style={styles.itemRow} onPress={onPress}>
-      {/* Thumbnail */}
-      <View style={styles.thumbOuter}>
-        {item.posterUrl ? (
-          <Image
-            source={{ uri: item.posterUrl }}
-            style={styles.thumb}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <View style={[styles.thumb, styles.thumbFallback]} />
-        )}
-      </View>
-
-      {/* Title + badge + year */}
-      <View style={styles.itemMeta}>
-        <Text style={styles.itemTitle} numberOfLines={2}>{item.title}</Text>
-        <View style={styles.itemFooter}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-          </View>
-          <Text style={styles.itemYear}>{item.year}</Text>
+    <Animated.View style={expandStyle}>
+      <Pressable style={styles.itemRow} onPress={trigger}>
+        {/* Thumbnail */}
+        <View style={styles.thumbOuter}>
+          {item.posterUrl ? (
+            <Image
+              source={{ uri: item.posterUrl }}
+              style={styles.thumb}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={[styles.thumb, styles.thumbFallback]} />
+          )}
         </View>
-      </View>
 
-      {/* Tap affordance chevron */}
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
+        {/* Title + badge + year */}
+        <View style={styles.itemMeta}>
+          <Text style={styles.itemTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.itemFooter}>
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+            </View>
+            <Text style={styles.itemYear}>{item.year}</Text>
+          </View>
+        </View>
+
+        {/* Tap affordance chevron */}
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

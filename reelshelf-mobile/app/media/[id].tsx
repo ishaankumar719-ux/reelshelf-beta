@@ -168,6 +168,13 @@ export default function MediaDetailScreen() {
                     id={id}
                     title={title ?? ''}
                     synopsis={detail.synopsis || undefined}
+                    mediaType={resolvedMediaType}
+                    posterUrl={posterUrl || null}
+                    year={detail.year || 0}
+                    genres={detail.genres}
+                    runtime={detail.runtimeMinutes}
+                    voteAverage={detail.rating}
+                    director={detail.director}
                     inShelf={persistence.inShelf}
                     watched={persistence.watched}
                     rating={persistence.rating}
@@ -176,7 +183,11 @@ export default function MediaDetailScreen() {
                     onToggleShelf={persistence.toggleShelf}
                     onToggleWatched={persistence.toggleWatched}
                     onSaveRating={persistence.saveRating}
-                    onSaveReview={persistence.saveReview}
+                    onReviewSaved={(entry) => persistence.applyComposerSave({
+                      rating: entry.rating,
+                      review: entry.review,
+                      containsSpoilers: entry.containsSpoilers,
+                    })}
                   />
                 </RevealOnMount>
 
@@ -305,7 +316,7 @@ export default function MediaDetailScreen() {
                     are honest empty states. ── */}
                 <View style={styles.section}>
                   <SectionHeader title="Reviews" />
-                  <MediaReviews review={persistence.review} />
+                  <MediaReviews review={persistence.review} containsSpoilers={persistence.containsSpoilers} />
                 </View>
 
                 {/* ── Trivia / Awards — conditionally hidden shells; both seed fields

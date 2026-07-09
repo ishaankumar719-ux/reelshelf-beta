@@ -2,10 +2,12 @@ import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SpoilerBlur } from '@/components/SpoilerBlur';
 import { RS } from '@/constants/theme';
 
 interface MediaReviewsProps {
-  review: string;
+  review:           string;
+  containsSpoilers: boolean;
 }
 
 // "Your Review" is the one real review source — pulled from the locally-
@@ -19,7 +21,7 @@ interface MediaReviewsProps {
 // Reply is kept as a future-ready, non-functional affordance (same no-op
 // convention already used elsewhere, e.g. "Add to List") so the card reads
 // as complete once real accounts/social features exist.
-export function MediaReviews({ review }: MediaReviewsProps) {
+export function MediaReviews({ review, containsSpoilers }: MediaReviewsProps) {
   const handleReply = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     console.log('[Movie Detail] Reply pressed — no-op (no accounts yet)');
@@ -31,7 +33,9 @@ export function MediaReviews({ review }: MediaReviewsProps) {
         <Text style={styles.heading}>Your Review</Text>
         {review ? (
           <View style={styles.reviewCard}>
-            <Text style={styles.reviewText}>{review}</Text>
+            <SpoilerBlur active={containsSpoilers}>
+              <Text style={styles.reviewText}>{review}</Text>
+            </SpoilerBlur>
             <Pressable style={styles.replyBtn} onPress={handleReply} hitSlop={6}>
               <MaterialIcons name="reply" size={14} color={RS.colors.textMuted} />
               <Text style={styles.replyLabel}>Reply</Text>

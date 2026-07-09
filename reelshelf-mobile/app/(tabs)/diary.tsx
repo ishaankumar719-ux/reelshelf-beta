@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,18 +8,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
+import { SpoilerBlur } from '@/components/SpoilerBlur';
+import { UniversalReviewComposer } from '@/components/UniversalReviewComposer';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
 
 type Status = 'loading' | 'success' | 'error';
 
-function DiaryRow({ entry }: { entry: DiaryListEntry }) {
+function DiaryRow({ entry, onEdit }: { entry: DiaryListEntry; onEdit: () => void }) {
   const handlePress = () => {
-    const mediaType = entry.routeId.split('-')[0];
     router.push(
-      `/media/${entry.routeId}?title=${encodeURIComponent(entry.title)}&posterUrl=${encodeURIComponent(entry.poster ?? '')}&mediaType=${mediaType}`
+      `/media/${entry.routeId}?title=${encodeURIComponent(entry.title)}&posterUrl=${encodeURIComponent(entry.poster ?? '')}&mediaType=${entry.mediaType}`
     );
+  };
+
+  const handleEdit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onEdit();
   };
 
   return (
@@ -33,8 +41,15 @@ function DiaryRow({ entry }: { entry: DiaryListEntry }) {
         <Text style={styles.title} numberOfLines={2}>{entry.title}</Text>
         <Text style={styles.watchedDate}>{entry.watchedDate}</Text>
         {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)}/5</Text> : null}
-        {entry.review ? <Text style={styles.review} numberOfLines={2}>{entry.review}</Text> : null}
+        {entry.review ? (
+          <SpoilerBlur active={entry.containsSpoilers}>
+            <Text style={styles.review} numberOfLines={2}>{entry.review}</Text>
+          </SpoilerBlur>
+        ) : null}
       </View>
+      <Pressable style={styles.editBtn} onPress={handleEdit} hitSlop={8}>
+        <MaterialIcons name="edit" size={16} color={RS.colors.textMuted} />
+      </Pressable>
     </Pressable>
   );
 }
@@ -43,6 +58,20 @@ export default function DiaryScreen() {
   const { user, initializing } = useAuth();
   const [status, setStatus] = useState<Status>('loading');
   const [entries, setEntries] = useState<DiaryListEntry[]>([]);
+  const [editingEntry, setEditingEntry] = useState<DiaryListEntry | null>(null);
+
+  const loadEntries = () => {
+    if (!user) return;
+    setStatus('loading');
+    fetchDiaryEntries(user.id)
+      .then((data) => {
+        setEntries(data);
+        setStatus('success');
+      })
+      .catch(() => {
+        setStatus('error');
+      });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -99,11 +128,28 @@ export default function DiaryScreen() {
         <FlatList<DiaryListEntry>
           data={entries}
           keyExtractor={(item) => item.routeId}
-          renderItem={({ item }) => <DiaryRow entry={item} />}
+          renderItem={({ item }) => <DiaryRow entry={item} onEdit={() => setEditingEntry(item)} />}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
+
+      {editingEntry ? (
+        <UniversalReviewComposer
+          visible
+          onClose={() => setEditingEntry(null)}
+          onSaved={() => loadEntries()}
+          mediaId={editingEntry.routeId}
+          mediaType={editingEntry.mediaType}
+          title={editingEntry.title}
+          posterUrl={editingEntry.poster}
+          year={editingEntry.year}
+          genres={editingEntry.genres}
+          runtime={editingEntry.runtime}
+          voteAverage={editingEntry.voteAverage}
+          director={editingEntry.director}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -146,6 +192,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap:           RS.spacing.sm + 4,
     paddingVertical: RS.spacing.sm + 2,
+    alignItems:    'center',
   },
   thumbOuter: {
     borderRadius: 8,
@@ -183,6 +230,9 @@ const styles = StyleSheet.create({
     fontSize:   RS.typography.caption + 1,
     color:      RS.colors.textSecondary,
     marginTop:  2,
+  },
+  editBtn: {
+    padding: RS.spacing.xs,
   },
   separator: {
     height:           0.5,
