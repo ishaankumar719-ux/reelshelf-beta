@@ -123,6 +123,46 @@ export async function unfollowUser(viewerId: string, targetId: string): Promise<
   if (error) throw error;
 }
 
+export interface FollowListEntry {
+  id:          string;
+  username:    string | null;
+  displayName: string | null;
+  avatarUrl:   string | null;
+}
+
+/** followers.follower_id/following_id both reference auth.users directly
+ *  (no FK to profiles), so this is two queries merged client-side — same
+ *  pattern already used by lib/supabase/friendActivity.ts. */
+async function resolveProfilesFor(ids: string[]): Promise<FollowListEntry[]> {
+  if (ids.length === 0) return [];
+  const client = requireClient();
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, username, display_name, avatar_url')
+    .in('id', ids);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id:          row.id,
+    username:    row.username,
+    displayName: row.display_name,
+    avatarUrl:   row.avatar_url,
+  }));
+}
+
+export async function fetchFollowersList(userId: string): Promise<FollowListEntry[]> {
+  const client = requireClient();
+  const { data, error } = await client.from('followers').select('follower_id').eq('following_id', userId);
+  if (error) throw error;
+  return resolveProfilesFor((data ?? []).map((r) => r.follower_id as string));
+}
+
+export async function fetchFollowingList(userId: string): Promise<FollowListEntry[]> {
+  const client = requireClient();
+  const { data, error } = await client.from('followers').select('following_id').eq('follower_id', userId);
+  if (error) throw error;
+  return resolveProfilesFor((data ?? []).map((r) => r.following_id as string));
+}
+
 // ── Edit Profile ────────────────────────────────────────────────────────────
 export interface ProfileEditFields {
   displayName:     string;

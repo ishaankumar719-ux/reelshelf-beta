@@ -24,9 +24,13 @@ export function Header() {
         >
           <MaterialIcons name="notifications-none" size={24} color={RS.colors.textSecondary} />
         </Pressable>
-        <View style={styles.avatar}>
+        <Pressable
+          hitSlop={10}
+          style={styles.avatar}
+          onPress={() => router.push('/(tabs)/profile')}
+        >
           <MaterialIcons name="person" size={18} color={RS.colors.textSecondary} />
-        </View>
+        </Pressable>
       </View>
     </View>
   );

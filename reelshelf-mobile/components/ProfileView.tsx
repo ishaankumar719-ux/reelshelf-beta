@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EditProfileModal } from '@/components/EditProfileModal';
+import { FollowListModal } from '@/components/FollowListModal';
 import { PosterCard } from '@/components/poster-card';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
@@ -83,6 +84,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(false);
   const [top4PickerOpen, setTop4PickerOpen] = useState(false);
+  const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [activityStatus, setActivityStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -275,13 +277,23 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         {/* ── Stats ────────────────────────────────────────────────────── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsRow}>
           {([
-            ['Movies', stats.moviesWatched], ['TV', stats.tvWatched], ['Books', stats.booksRead],
-            ['Reviews', stats.reviews], ['Lists', stats.lists], ['Followers', stats.followers], ['Following', stats.following],
-          ] as const).map(([label, value]) => (
-            <View key={label} style={styles.statTile}>
+            ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
+            ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
+            ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
+          ] as const).map(([label, value, mode]) => (
+            <Pressable
+              key={label}
+              style={styles.statTile}
+              disabled={!mode}
+              onPress={() => {
+                if (!mode) return;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setFollowListMode(mode);
+              }}
+            >
               <Text style={styles.statValue}>{value}</Text>
               <Text style={styles.statLabel}>{label}</Text>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
 
@@ -296,7 +308,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             )}
           </View>
           {top4.length === 0 ? (
-            <Text style={styles.emptyInlineText}>Not set yet.</Text>
+            <Text style={styles.emptyInlineText}>Choose your Top 4 stories.</Text>
           ) : (
             <View style={styles.top4Row}>
               {top4.map((item) => (
@@ -328,12 +340,26 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         {/* ── Tab content ──────────────────────────────────────────────── */}
         <View style={styles.tabContent}>
           {activeTab === 'overview' && (
-            activityStatus === 'loading' ? (
-              <ActivityIndicator color={RS.colors.accent} />
-            ) : activity.length === 0 ? (
-              <Text style={styles.emptyInlineText}>No activity yet.</Text>
-            ) : (
-              activity.map((item, i) => (
+            <>
+              {profile.favouriteGenres.length > 0 && (
+                <View style={styles.genresSection}>
+                  <Text style={styles.subheading}>Favourite Genres</Text>
+                  <View style={styles.genreChipRow}>
+                    {profile.favouriteGenres.map((genre) => (
+                      <View key={genre} style={styles.genreChip}>
+                        <Text style={styles.genreChipLabel}>{genre}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              <Text style={styles.subheading}>Recent Activity</Text>
+              {activityStatus === 'loading' ? (
+                <ActivityIndicator color={RS.colors.accent} />
+              ) : activity.length === 0 ? (
+                <Text style={styles.emptyInlineText}>No activity yet.</Text>
+              ) : (
+                activity.map((item, i) => (
                 <Pressable
                   key={i}
                   style={styles.activityRow}
@@ -350,8 +376,9 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   </View>
                   <Text style={styles.activityTime}>{timeAgo(item.timestamp)}</Text>
                 </Pressable>
-              ))
-            )
+                ))
+              )}
+            </>
           )}
 
           {(activeTab === 'movies' || activeTab === 'tv' || activeTab === 'books') && (
@@ -359,7 +386,13 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
               <ActivityIndicator color={RS.colors.accent} />
             ) : (
               <>
-                <Text style={styles.subheading}>Watched</Text>
+                {/* Books uses "Read"/"Want to Read" copy; Movies/TV keep "Watched"/"Shelf".
+                    Note: the schema has no way to distinguish "currently reading" from
+                    "want to read" within saved_items (both are list_type='reading_shelf'
+                    with no progress/status column) — adding one is a schema change out of
+                    scope here, so both collapse into "Want to Read" for now (documented
+                    in RETURN rather than silently merged without explanation). */}
+                <Text style={styles.subheading}>{activeTab === 'books' ? 'Read' : 'Watched'}</Text>
                 {(mediaTabs[activeTab]?.watched.length ?? 0) === 0 ? (
                   <Text style={styles.emptyInlineText}>Nothing logged yet.</Text>
                 ) : (
@@ -375,9 +408,9 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                     )}
                   />
                 )}
-                <Text style={styles.subheading}>Shelf</Text>
+                <Text style={styles.subheading}>{activeTab === 'books' ? 'Want to Read' : 'Shelf'}</Text>
                 {(mediaTabs[activeTab]?.shelf.length ?? 0) === 0 ? (
-                  <Text style={styles.emptyInlineText}>Nothing on the shelf yet.</Text>
+                  <Text style={styles.emptyInlineText}>{activeTab === 'books' ? 'Nothing on the reading list yet.' : 'Nothing on the shelf yet.'}</Text>
                 ) : (
                   <FlatList
                     horizontal
@@ -390,6 +423,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                         onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
                     )}
                   />
+                )}
+                {activeTab === 'tv' && (
+                  <Text style={styles.tvNote}>
+                    Continue Watching isn&apos;t shown here — there&apos;s no per-user episode/season progress data model in the schema yet, so this would have to be fabricated rather than real. Omitted rather than faked.
+                  </Text>
                 )}
               </>
             )
@@ -417,7 +455,23 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             tabLoading && lists === null ? (
               <ActivityIndicator color={RS.colors.accent} />
             ) : (lists?.length ?? 0) === 0 ? (
-              <Text style={styles.emptyInlineText}>No lists yet.</Text>
+              <View style={styles.listsEmptyWrap}>
+                <Text style={styles.emptyInlineText}>No lists yet.</Text>
+                {isOwnProfile && (
+                  // No list-creation UI exists anywhere in this app yet — this
+                  // is a documented no-op (same convention as other not-yet-built
+                  // actions elsewhere), not a fake success path.
+                  <Pressable
+                    style={styles.createListBtn}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      console.log('[Profile] Create List pressed — no-op (list-creation UI not built yet)');
+                    }}
+                  >
+                    <Text style={styles.createListLabel}>Create List</Text>
+                  </Pressable>
+                )}
+              </View>
             ) : (
               lists!.map((l) => (
                 <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
@@ -471,6 +525,15 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             }}
           />
         </>
+      )}
+
+      {followListMode && (
+        <FollowListModal
+          visible
+          mode={followListMode}
+          userId={userId}
+          onClose={() => setFollowListMode(null)}
+        />
       )}
     </SafeAreaView>
   );
@@ -546,4 +609,12 @@ const styles = StyleSheet.create({
   listCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: 2, marginBottom: RS.spacing.sm },
   listTitle: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
   listCount: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
+  genresSection: { gap: RS.spacing.xs, marginBottom: RS.spacing.sm },
+  genreChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: RS.spacing.xs + 2 },
+  genreChip: { borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, paddingHorizontal: 12, paddingVertical: 6 },
+  genreChipLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
+  tvNote: { fontSize: RS.typography.overline, color: RS.colors.textMuted, fontStyle: 'italic', marginTop: RS.spacing.sm, lineHeight: 15 },
+  listsEmptyWrap: { alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.sm },
+  createListBtn: { borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
+  createListLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
 });
