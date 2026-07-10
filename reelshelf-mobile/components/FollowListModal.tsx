@@ -7,6 +7,7 @@ import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View }
 
 import { RS } from '@/constants/theme';
 import { fetchFollowersList, fetchFollowingList, type FollowListEntry } from '@/lib/supabase/profile';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface FollowListModalProps {
   visible:  boolean;
@@ -58,7 +59,7 @@ export function FollowListModal({ visible, onClose, userId, mode }: FollowListMo
           ) : (
             <FlatList
               data={entries}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => getMediaKey('user', item.id)}
               contentContainerStyle={styles.list}
               renderItem={({ item }) => (
                 <Pressable style={styles.row} onPress={() => handleTap(item.id)}>

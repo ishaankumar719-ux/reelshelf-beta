@@ -8,6 +8,7 @@ export interface ProfileData {
   displayName:     string | null;
   avatarUrl:       string | null;
   bio:             string | null;
+  websiteUrl:      string | null;
   favouriteFilm:   string | null;
   favouriteSeries: string | null;
   favouriteBook:   string | null;
@@ -34,7 +35,7 @@ export async function fetchProfile(userId: string): Promise<ProfileData | null> 
   const client = requireClient();
   const { data, error } = await client
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, favourite_film, favourite_series, favourite_book, favourite_genres, created_at')
+    .select('id, username, display_name, avatar_url, bio, website_url, favourite_film, favourite_series, favourite_book, favourite_genres, created_at')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -45,6 +46,7 @@ export async function fetchProfile(userId: string): Promise<ProfileData | null> 
     displayName:     data.display_name,
     avatarUrl:       data.avatar_url,
     bio:             data.bio,
+    websiteUrl:      data.website_url,
     favouriteFilm:   data.favourite_film,
     favouriteSeries: data.favourite_series,
     favouriteBook:   data.favourite_book,
@@ -168,6 +170,7 @@ export interface ProfileEditFields {
   displayName:     string;
   username:        string;
   bio:             string;
+  websiteUrl:      string;
   favouriteGenres: string[];
   favouriteFilm:   string;
   favouriteSeries: string;
@@ -180,6 +183,7 @@ export async function updateProfile(userId: string, fields: ProfileEditFields): 
     display_name:     fields.displayName || null,
     username:          fields.username || null,
     bio:               fields.bio || null,
+    website_url:       fields.websiteUrl || null,
     favourite_genres:  fields.favouriteGenres,
     favourite_film:    fields.favouriteFilm || null,
     favourite_series:  fields.favouriteSeries || null,

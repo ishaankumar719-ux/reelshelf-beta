@@ -3,6 +3,7 @@ import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-nativ
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem, featuredCards } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const ITEM_SEP = RS.spacing.md;
 
@@ -12,7 +13,7 @@ export function FeaturedCarousel() {
       data={featuredCards}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={RS.card.featWidth + ITEM_SEP}

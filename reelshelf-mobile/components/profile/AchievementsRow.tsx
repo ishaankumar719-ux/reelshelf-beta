@@ -2,6 +2,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 
 import { RS } from '@/constants/theme';
 import type { EarnedBadge } from '@/lib/supabase/badges';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface AchievementsRowProps {
   badges:  EarnedBadge[] | null;
@@ -24,7 +25,7 @@ export function AchievementsRow({ badges, loading }: AchievementsRowProps) {
           horizontal
           showsHorizontalScrollIndicator={false}
           data={badges!}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey('badge', item.id)}
           contentContainerStyle={styles.row}
           renderItem={({ item }) => (
             <View style={styles.card}>

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import { hiddenGems, type SeedCardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const GEM_W   = 160;
 const GEM_H   = 240;
@@ -15,7 +16,7 @@ export function HiddenGemsCarousel() {
       data={hiddenGems}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={{ paddingHorizontal: RS.spacing.md }}
       snapToInterval={GEM_W + ITEM_SEP}

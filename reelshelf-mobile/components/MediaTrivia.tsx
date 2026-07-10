@@ -1,6 +1,7 @@
 import { Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { RS } from '@/constants/theme';
+import { getMediaKey } from '@/utils/listKeys';
 
 const CARD_W = Dimensions.get('window').width - 2 * RS.spacing.md - RS.spacing.md;
 const ITEM_SEP = RS.spacing.sm;
@@ -25,7 +26,7 @@ export function MediaTrivia({ trivia }: MediaTriviaProps) {
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(_, i) => `trivia-${i}`}
+      keyExtractor={(_, i) => getMediaKey('trivia', i)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={CARD_W + ITEM_SEP}

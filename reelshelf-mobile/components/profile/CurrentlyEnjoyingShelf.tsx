@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import type { CurrentlyEnjoyingData, EnjoyingItem } from '@/lib/supabase/currentlyEnjoying';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface RowProps {
   label:        string;
@@ -19,7 +20,7 @@ function Row({ label, items, onOpenDetail }: RowProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         data={items}
-        keyExtractor={(item) => `${label}-${item.routeId}`}
+        keyExtractor={(item) => getMediaKey(item.mediaType, item.routeId)}
         contentContainerStyle={styles.posterRow}
         renderItem={({ item }) => (
           <PosterCard

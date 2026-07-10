@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { RS } from '@/constants/theme';
 import { usePressLift } from '@/hooks/usePressLift';
 import { awardWinners, type SeedAwardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 // Landscape card geometry
 const CARD_W  = 280;
@@ -80,7 +81,7 @@ export function AwardWinnersCarousel() {
       data={awardWinners}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={CARD_W + ITEM_SEP}

@@ -5,6 +5,7 @@ import { PosterCard } from '@/components/poster-card';
 import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const ITEM_SEP = RS.spacing.sm;
 
@@ -30,7 +31,7 @@ export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLov
         data={items}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
         ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
         contentContainerStyle={styles.list}
         snapToInterval={RS.card.posterWidth + ITEM_SEP}

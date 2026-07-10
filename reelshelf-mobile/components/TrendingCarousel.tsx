@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem, trendingToday } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const POSTER_W = RS.card.trendingWidth;   // 120 — larger than standard 100
 const POSTER_H = RS.card.trendingHeight;  // 178 — maintains 2:3 ratio
@@ -17,7 +18,7 @@ export function TrendingCarousel() {
       data={trendingToday}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={POSTER_W + ITEM_SEP}

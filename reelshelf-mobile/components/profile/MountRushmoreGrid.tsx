@@ -8,7 +8,8 @@ import Animated from 'react-native-reanimated';
 import { RS } from '@/constants/theme';
 import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { resolveImageUrl } from '@/lib/resolveImageUrl';
-import type { Top4Item } from '@/lib/supabase/mountRushmore';
+import type { MountRushmoreSlot, RushmoreMediaType } from '@/lib/supabase/mountRushmore';
+import { getMediaKey } from '@/utils/listKeys';
 
 function toRouteId(dbMediaType: string, dbMediaId: string): string {
   const prefix = dbMediaType === 'movie' ? 'film' : dbMediaType;
@@ -16,29 +17,29 @@ function toRouteId(dbMediaType: string, dbMediaId: string): string {
   return `${prefix}-${bareId}`;
 }
 
-interface TopStoriesGridProps {
-  items:        Top4Item[];
+interface MountRushmoreGridProps {
+  /** Already filtered to the one media type currently displayed — the
+   *  caller (ProfileView) owns the Films/Series/Books tab strip, mirroring
+   *  the website's own 3-tab display exactly (WEBSITE_PROFILE_AUDIT.md §1c). */
+  slots:        MountRushmoreSlot[];
   onOpenDetail: (routeId: string, title: string, poster: string | null, mediaType: string) => void;
 }
 
-function TopStoryCell({ item, onOpenDetail }: { item: Top4Item; onOpenDetail: TopStoriesGridProps['onOpenDetail'] }) {
+function RushmoreCell({ item, onOpenDetail }: { item: MountRushmoreSlot; onOpenDetail: MountRushmoreGridProps['onOpenDetail'] }) {
   const routeId = toRouteId(item.mediaType, item.mediaId);
   const mobileMediaType = item.mediaType === 'movie' ? 'film' : item.mediaType;
   // Reuses the same source-side fade+scale transition as Discover's
-  // hero-weight cards (Featured Collection/Book of the Month) — the
-  // destination screen (app/media/[id].tsx) already mounts with a matching
-  // entrance for every navigation into it, so no destination-side change
-  // is needed here.
+  // hero-weight cards — the destination screen already mounts with a
+  // matching entrance for every navigation into it.
   const { style, trigger } = useExpandOnPress(() =>
     onOpenDetail(routeId, item.title, item.posterPath, mobileMediaType),
   );
 
-  // resolveImageUrl fixes the confirmed root cause: real mount_rushmore rows
-  // for movies/tv store bare TMDB paths ("/abc123.jpg") with no CDN prefix —
-  // rendering the raw string produced a blank rectangle, never an error.
-  // `broken` additionally covers a resolved URL that fails to actually load
-  // (image deleted/expired) via Image's onError — same graceful fallback
-  // renders either way, never a blank rect.
+  // resolveImageUrl fixes the confirmed root cause (WEBSITE_PROFILE_AUDIT.md
+  // §1b): real mount_rushmore rows for movies/tv store bare TMDB paths
+  // ("/abc123.jpg") with no CDN prefix. `broken` additionally covers a
+  // resolved URL that fails to actually load, via Image's onError — same
+  // graceful fallback either way, never a blank rect.
   const [broken, setBroken] = useState(false);
   const resolvedUri = resolveImageUrl(item.posterPath, 'poster');
   const showFallback = !resolvedUri || broken;
@@ -74,28 +75,83 @@ function TopStoryCell({ item, onOpenDetail }: { item: Top4Item; onOpenDetail: To
   );
 }
 
-// "My Top Stories" (renamed from Top 4) — same mount_rushmore data/4 fixed
-// positions, same tap-to-edit picker flow, now rendered as a large 2x2 grid
-// instead of a small deck. Tapping a populated cell opens Movie Detail;
-// editing the set is still a separate explicit "Edit" affordance (unchanged
-// entry point, just relabeled/restyled by the caller).
-export function TopStoriesGrid({ items, onOpenDetail }: TopStoriesGridProps) {
-  const slots = [1, 2, 3, 4].map((pos) => items.find((i) => i.position === pos) ?? null);
+// "Mount Rushmore" — same real mount_rushmore data, same 4 fixed positions
+// PER media type, rendered as a 2×2 grid (matches the website's own forced
+// `repeat(2,1fr)` mobile treatment exactly — WEBSITE_PROFILE_AUDIT.md §1c).
+// Tapping a populated cell opens Movie Detail; editing is a separate
+// explicit "Edit" affordance opening MountRushmoreEditor.
+export function MountRushmoreGrid({ slots, onOpenDetail }: MountRushmoreGridProps) {
+  const positioned = ([1, 2, 3, 4] as const).map((pos) => slots.find((s) => s.position === pos) ?? null);
 
   return (
     <View style={styles.grid}>
-      {slots.map((item, i) =>
+      {positioned.map((item, i) =>
         item ? (
-          <TopStoryCell key={item.position} item={item} onOpenDetail={onOpenDetail} />
+          <RushmoreCell key={getMediaKey(item.mediaType, `${item.position}-${item.mediaId}`)} item={item} onOpenDetail={onOpenDetail} />
         ) : (
-          <View key={`empty-${i}`} style={[styles.cell, styles.cellEmptySlot]} />
+          <View key={getMediaKey('rushmore-empty', i)} style={[styles.cell, styles.cellEmptySlot]} />
         ),
       )}
     </View>
   );
 }
 
+interface RushmoreTabsProps {
+  activeTab: RushmoreMediaType;
+  onChange:  (tab: RushmoreMediaType) => void;
+}
+
+const TABS: { key: RushmoreMediaType; label: string }[] = [
+  { key: 'movie', label: 'Films' },
+  { key: 'tv',    label: 'Series' },
+  { key: 'book',  label: 'Books' },
+];
+
+export function MountRushmoreTabs({ activeTab, onChange }: RushmoreTabsProps) {
+  return (
+    <View style={styles.tabRow}>
+      {TABS.map((tab) => {
+        const active = activeTab === tab.key;
+        return (
+          <Pressable
+            key={getMediaKey('rushmore-display-tab', tab.key)}
+            style={[styles.tabBtn, active && styles.tabBtnActive]}
+            onPress={() => onChange(tab.key)}
+          >
+            <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  tabRow: {
+    flexDirection: 'row',
+    gap:           RS.spacing.xs,
+    marginBottom:  RS.spacing.sm,
+  },
+  tabBtn: {
+    borderRadius:      RS.button.radius,
+    paddingHorizontal: 14,
+    paddingVertical:   7,
+    backgroundColor:   RS.colors.elevated,
+  },
+  tabBtnActive: {
+    backgroundColor: RS.button.primaryFill,
+    borderWidth:     1,
+    borderColor:     RS.button.primaryBorder,
+  },
+  tabLabel: {
+    fontSize:   RS.typography.caption,
+    fontWeight: '600',
+    color:      RS.colors.textSecondary,
+  },
+  tabLabelActive: {
+    color:      RS.button.primaryText,
+    fontWeight: '700',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap:      'wrap',

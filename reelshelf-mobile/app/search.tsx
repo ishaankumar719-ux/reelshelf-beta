@@ -22,6 +22,7 @@ import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbP
 import { searchBooks, searchCollections, searchLists, searchUsers,
   type BookSearchResult, type CollectionSearchResult, type ListSearchResult, type UserSearchResult } from '@/lib/search';
 import { addRecentSearch, getRecentSearches } from '@/lib/recentSearches';
+import { getMediaKey } from '@/utils/listKeys';
 
 type Category = 'all' | 'movies' | 'tv' | 'books' | 'people' | 'collections' | 'lists' | 'users';
 const CATEGORY_CHIPS: { key: Category; label: string }[] = [
@@ -210,7 +211,7 @@ export default function SearchScreen() {
           {CATEGORY_CHIPS.map((chip) => {
             const active = category === chip.key;
             return (
-              <Pressable key={`chip-${chip.key}`} style={styles.chip} onPress={() => setCategory(chip.key)}>
+              <Pressable key={getMediaKey('chip', chip.key)} style={styles.chip} onPress={() => setCategory(chip.key)}>
                 {!active && <BlurView tint="dark" intensity={RS.blur.cardLight} style={StyleSheet.absoluteFill} />}
                 <View style={[styles.chipFill, active && styles.chipFillActive]} />
                 <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{chip.label}</Text>
@@ -227,7 +228,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Recent Searches</Text>
                   <View style={styles.pillWrap}>
                     {recent.map((q, i) => (
-                      <Pressable key={`recent-${q}-${i}`} style={styles.pill} onPress={() => handleTapRecentOrTrending(q)}>
+                      <Pressable key={getMediaKey('recent', `${q}-${i}`)} style={styles.pill} onPress={() => handleTapRecentOrTrending(q)}>
                         <MaterialIcons name="history" size={14} color={RS.colors.textMuted} />
                         <Text style={styles.pillLabel}>{q}</Text>
                       </Pressable>
@@ -240,7 +241,7 @@ export default function SearchScreen() {
                 <Text style={styles.sectionCaption}>Editorially curated, not live analytics.</Text>
                 <View style={styles.pillWrap}>
                   {TRENDING_SEARCHES.map((q, i) => (
-                    <Pressable key={`trending-${q}-${i}`} style={styles.pill} onPress={() => handleTapRecentOrTrending(q)}>
+                    <Pressable key={getMediaKey('trending', `${q}-${i}`)} style={styles.pill} onPress={() => handleTapRecentOrTrending(q)}>
                       <MaterialIcons name="trending-up" size={14} color={RS.colors.accent} />
                       <Text style={styles.pillLabel}>{q}</Text>
                     </Pressable>
@@ -251,7 +252,7 @@ export default function SearchScreen() {
                 <Text style={styles.sectionTitle}>Browse Categories</Text>
                 <View style={styles.browseGrid}>
                   {CATEGORY_CHIPS.filter((c) => c.key !== 'all').map((c) => (
-                    <Pressable key={`browse-${c.key}`} style={styles.browseCard} onPress={() => setCategory(c.key)}>
+                    <Pressable key={getMediaKey('browse', c.key)} style={styles.browseCard} onPress={() => setCategory(c.key)}>
                       <Text style={styles.browseLabel}>{c.label}</Text>
                     </Pressable>
                   ))}
@@ -295,7 +296,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Movies</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {movies.data.map((item, i) => (
-                      <PosterCard key={`film-${item.id}-${i}`} title={item.title} year={item.year} mediaType="film" posterUrl={item.posterUrl}
+                      <PosterCard key={getMediaKey('film', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="film" posterUrl={item.posterUrl}
                         onPress={() => openMedia(item.id, item.title, item.posterUrl, 'film')} />
                     ))}
                   </ScrollView>
@@ -307,7 +308,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>TV</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {tv.data.map((item, i) => (
-                      <PosterCard key={`tv-${item.id}-${i}`} title={item.title} year={item.year} mediaType="tv" posterUrl={item.posterUrl}
+                      <PosterCard key={getMediaKey('tv', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="tv" posterUrl={item.posterUrl}
                         onPress={() => openMedia(item.id, item.title, item.posterUrl, 'tv')} />
                     ))}
                   </ScrollView>
@@ -319,7 +320,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Books</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {books.data.map((item, i) => (
-                      <PosterCard key={`book-${item.id}-${i}`} title={item.title} year={item.year} mediaType="book" posterUrl={item.posterUrl}
+                      <PosterCard key={getMediaKey('book', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="book" posterUrl={item.posterUrl}
                         onPress={() => openMedia(item.id, item.title, item.posterUrl, 'book')} />
                     ))}
                   </ScrollView>
@@ -336,7 +337,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>People</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {people.data.map((person, i) => (
-                      <Pressable key={`person-${person.id}-${i}`} style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
+                      <Pressable key={getMediaKey('person', `${person.id}-${i}`)} style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
                         <Image source={{ uri: person.photoUrl! }} style={styles.personPhoto} contentFit="cover" />
                         <Text style={styles.personName} numberOfLines={2}>{person.name}</Text>
                         <Text style={styles.personKnownFor} numberOfLines={1}>{person.knownFor.join(', ')}</Text>
@@ -350,7 +351,7 @@ export default function SearchScreen() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Collections</Text>
                   {collections.data.map((c, i) => (
-                    <Pressable key={`collection-${c.id}-${i}`} style={styles.listRow} onPress={() => router.push(`/collection/${c.id}`)}>
+                    <Pressable key={getMediaKey('collection', `${c.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/collection/${c.id}`)}>
                       <View style={styles.listRowThumbOuter}>
                         {c.previewItem?.posterUrl ? (
                           <Image source={{ uri: c.previewItem.posterUrl }} style={styles.listRowThumb} contentFit="cover" />
@@ -372,7 +373,7 @@ export default function SearchScreen() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Lists</Text>
                   {lists.data.map((l, i) => (
-                    <Pressable key={`list-${l.id}-${i}`} style={styles.listRow} onPress={() => router.push(`/list/${l.id}`)}>
+                    <Pressable key={getMediaKey('list', `${l.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/list/${l.id}`)}>
                       <View style={styles.listRowMeta}>
                         <Text style={styles.listRowTitle}>{l.title}</Text>
                         <Text style={styles.listRowSub}>{l.itemCount} titles{l.ownerName ? ` · by ${l.ownerName}` : ''}</Text>
@@ -387,7 +388,7 @@ export default function SearchScreen() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Users</Text>
                   {users.data.map((u, i) => (
-                    <Pressable key={`user-${u.id}-${i}`} style={styles.listRow} onPress={() => router.push(`/profile/${u.id}`)}>
+                    <Pressable key={getMediaKey('user', `${u.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/profile/${u.id}`)}>
                       <View style={styles.listRowThumbOuter}>
                         {u.avatarUrl ? (
                           <Image source={{ uri: u.avatarUrl }} style={styles.userAvatar} contentFit="cover" />

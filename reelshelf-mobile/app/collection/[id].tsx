@@ -13,6 +13,7 @@ import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { RS, Fonts } from '@/constants/theme';
 import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { collections, type SeedCardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const THUMB_SIZE = 72;
 
@@ -98,7 +99,7 @@ export default function CollectionDetailScreen() {
 
         <FlatList<SeedCardItem>
           data={collection.items}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}

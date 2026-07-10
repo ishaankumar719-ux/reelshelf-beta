@@ -8,6 +8,7 @@ import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchFriendActivity, type FriendActivityEntry } from '@/lib/supabase/friendActivity';
 import type { MediaType } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface FriendActivityProps {
   id:        string;
@@ -64,7 +65,7 @@ export function FriendActivity({ id, mediaType }: FriendActivityProps) {
   return (
     <View style={styles.container}>
       {entries.map((entry) => (
-        <Pressable key={entry.userId} style={styles.entry} onPress={() => router.push(`/profile/${entry.userId}`)}>
+        <Pressable key={getMediaKey('friend', entry.userId)} style={styles.entry} onPress={() => router.push(`/profile/${entry.userId}`)}>
           <Text style={styles.name}>{entry.displayName || entry.username || 'A friend'}</Text>
           {entry.rating ? <Text style={styles.rating}>Rated {entry.rating.toFixed(1)} / 10</Text> : null}
           {entry.review ? <Text style={styles.review} numberOfLines={3}>{entry.review}</Text> : null}

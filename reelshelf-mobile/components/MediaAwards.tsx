@@ -2,6 +2,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { RS } from '@/constants/theme';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface MediaAwardsProps {
   awards?: { name: string; category: string }[];
@@ -18,7 +19,7 @@ export function MediaAwards({ awards }: MediaAwardsProps) {
   return (
     <View style={styles.list}>
       {awards.map((award, i) => (
-        <View key={i} style={styles.pill}>
+        <View key={getMediaKey('award', i)} style={styles.pill}>
           <MaterialCommunityIcons name="trophy-outline" size={16} color={RS.colors.accent} />
           <View style={styles.textCol}>
             <Text style={styles.name} numberOfLines={1}>{award.name}</Text>

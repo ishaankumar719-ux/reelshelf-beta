@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { RS } from '@/constants/theme';
 import type { TmdbProvider, TmdbWatchProviders } from '@/lib/tmdb';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface MediaWatchProvidersProps {
   providers: TmdbWatchProviders;
@@ -27,7 +28,7 @@ function ProviderGroup({ label, providers }: { label: string; providers: TmdbPro
     <View style={styles.group}>
       <Text style={styles.groupLabel}>{label}</Text>
       <View style={styles.pillRow}>
-        {providers.map(p => <ProviderPill key={p.id} provider={p} />)}
+        {providers.map(p => <ProviderPill key={getMediaKey('provider', p.id)} provider={p} />)}
       </View>
     </View>
   );

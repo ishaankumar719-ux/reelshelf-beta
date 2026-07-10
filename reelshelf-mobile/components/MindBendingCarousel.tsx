@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
 import { mindBendingFilms, type SeedCardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 // Poster size — slightly larger than standard trending cards
 const POSTER_W  = 130;
@@ -70,7 +71,7 @@ export function MindBendingCarousel() {
       data={mindBendingFilms}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={POSTER_W + ITEM_SEP}

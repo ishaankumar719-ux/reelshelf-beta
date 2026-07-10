@@ -40,6 +40,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
   const [displayName, setDisplayName] = useState(profile.displayName ?? '');
   const [username, setUsername] = useState(profile.username ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
+  const [websiteUrl, setWebsiteUrl] = useState(profile.websiteUrl ?? '');
   const [genres, setGenres] = useState<string[]>(profile.favouriteGenres);
   const [favFilm, setFavFilm] = useState(profile.favouriteFilm ?? '');
   const [favSeries, setFavSeries] = useState(profile.favouriteSeries ?? '');
@@ -54,6 +55,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     setDisplayName(profile.displayName ?? '');
     setUsername(profile.username ?? '');
     setBio(profile.bio ?? '');
+    setWebsiteUrl(profile.websiteUrl ?? '');
     setGenres(profile.favouriteGenres);
     setFavFilm(profile.favouriteFilm ?? '');
     setFavSeries(profile.favouriteSeries ?? '');
@@ -87,6 +89,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
       displayName: displayName.trim(),
       username: username.trim().toLowerCase(),
       bio: bio.trim(),
+      websiteUrl: websiteUrl.trim(),
       favouriteGenres: genres,
       favouriteFilm: favFilm.trim(),
       favouriteSeries: favSeries.trim(),
@@ -161,6 +164,20 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
                   placeholderTextColor={RS.colors.textMuted}
                   multiline
                   maxLength={BIO_MAX}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Website</Text>
+                <TextInput
+                  style={styles.input}
+                  value={websiteUrl}
+                  onChangeText={setWebsiteUrl}
+                  placeholder="https://"
+                  placeholderTextColor={RS.colors.textMuted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
                 />
               </View>
 

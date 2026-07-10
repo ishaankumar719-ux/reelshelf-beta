@@ -3,6 +3,7 @@ import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-nativ
 import { CollectionPreviewCard, COLLECTION_PREVIEW_CARD_W } from '@/components/CollectionPreviewCard';
 import { RS } from '@/constants/theme';
 import { discoverCollections, type SeedCollectionItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 const ITEM_SEP = 12;
 
@@ -12,7 +13,7 @@ export function CollectionsRow() {
       data={discoverCollections}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey('collection', item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={COLLECTION_PREVIEW_CARD_W + ITEM_SEP}

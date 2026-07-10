@@ -8,6 +8,7 @@ import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserLists, type UserListSummary } from '@/lib/supabase/lists';
+import { getMediaKey } from '@/utils/listKeys';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -17,7 +18,7 @@ function ListCard({ list }: { list: UserListSummary }) {
       <View style={styles.posterRow}>
         {list.previewPosters.length > 0 ? (
           list.previewPosters.map((uri, i) => (
-            <Image key={i} source={{ uri }} style={styles.posterThumb} contentFit="cover" transition={150} />
+            <Image key={getMediaKey('poster', `${uri}-${i}`)} source={{ uri }} style={styles.posterThumb} contentFit="cover" transition={150} />
           ))
         ) : (
           <View style={[styles.posterThumb, styles.posterFallback]} />
@@ -83,7 +84,7 @@ export default function ListsScreen() {
       ) : (
         <FlatList<UserListSummary>
           data={lists}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey('list', item.id)}
           renderItem={({ item }) => <ListCard list={item} />}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={{ height: RS.spacing.md }} />}

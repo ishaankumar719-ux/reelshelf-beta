@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { RS } from '@/constants/theme';
 import { usePressLift } from '@/hooks/usePressLift';
 import { tvPicks, type SeedCardItem } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 // Landscape card — portrait poster fills the frame via contentFit="cover"
 const CARD_W  = 264;
@@ -79,7 +80,7 @@ export function TvPicksCarousel() {
       data={tvPicks}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
       snapToInterval={CARD_W + ITEM_SEP}

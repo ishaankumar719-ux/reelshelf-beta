@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated';
 import { RS } from '@/constants/theme';
 import { usePressLift } from '@/hooks/usePressLift';
 import type { CastMember } from '@/data/mediaDetails';
+import { getMediaKey } from '@/utils/listKeys';
 
 const PHOTO_W = 84;
 const PHOTO_H = 110;
@@ -68,7 +69,7 @@ function CrewLine({ director, creator, writer, composer }: CrewLineProps) {
   return (
     <View style={styles.crewWrap}>
       {parts.map((line, i) => (
-        <Text key={i} style={styles.crewLine}>{line}</Text>
+        <Text key={getMediaKey('crew-line', i)} style={styles.crewLine}>{line}</Text>
       ))}
     </View>
   );
@@ -87,7 +88,7 @@ export function MediaCastCrew({ cast, director, creator, writer, composer }: Med
           data={cast}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => `${item.name}-${index}`}
+          keyExtractor={(item, index) => getMediaKey('cast', `${item.name}-${index}`)}
           ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
           contentContainerStyle={styles.list}
           renderItem={({ item }: ListRenderItemInfo<CastMember>) => <CastCard member={item} />}

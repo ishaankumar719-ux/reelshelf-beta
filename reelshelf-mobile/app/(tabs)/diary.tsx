@@ -13,6 +13,7 @@ import { UniversalReviewComposer } from '@/components/UniversalReviewComposer';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
+import { getActivityKey } from '@/utils/listKeys';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -127,7 +128,7 @@ export default function DiaryScreen() {
       ) : (
         <FlatList<DiaryListEntry>
           data={entries}
-          keyExtractor={(item) => item.routeId}
+          keyExtractor={(item, i) => getActivityKey('diary', item.mediaType, item.routeId, item.watchedDate, i)}
           renderItem={({ item }) => <DiaryRow entry={item} onEdit={() => setEditingEntry(item)} />}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

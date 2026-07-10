@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RS } from '@/constants/theme';
 import { fetchListDetail, type ListDetail, type ListDetailItem } from '@/lib/supabase/lists';
+import { getMediaKey } from '@/utils/listKeys';
 
 type Status = 'loading' | 'success' | 'error' | 'not_found';
 
@@ -82,7 +83,7 @@ export default function ListDetailScreen() {
       ) : (
         <FlatList<ListDetailItem>
           data={list.items}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey('list-item', item.id)}
           renderItem={({ item }) => <ListItemRow item={item} />}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

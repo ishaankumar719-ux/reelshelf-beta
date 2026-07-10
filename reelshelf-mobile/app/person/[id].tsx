@@ -9,6 +9,7 @@ import { PosterCard } from '@/components/poster-card';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { fetchPersonDetail, type TmdbPersonDetail } from '@/lib/tmdb';
+import { getMediaKey } from '@/utils/listKeys';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -77,7 +78,7 @@ export default function PersonDetailScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={person.knownFor}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
                 contentContainerStyle={styles.posterRow}
                 renderItem={({ item }) => (
                   <PosterCard

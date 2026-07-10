@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -23,11 +24,11 @@ import { AchievementsRow } from '@/components/profile/AchievementsRow';
 import { ActivityCard } from '@/components/profile/ActivityCard';
 import { CurrentlyEnjoyingShelf } from '@/components/profile/CurrentlyEnjoyingShelf';
 import { GlassTabStrip } from '@/components/profile/GlassTabStrip';
-import { TopStoriesGrid } from '@/components/profile/TopStoriesGrid';
+import { MountRushmoreEditor } from '@/components/profile/MountRushmoreEditor';
+import { MountRushmoreGrid, MountRushmoreTabs } from '@/components/profile/MountRushmoreGrid';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { SpoilerBlur } from '@/components/SpoilerBlur';
-import { Top4Picker } from '@/components/Top4Picker';
 import { RS } from '@/constants/theme';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,13 +37,16 @@ import { fetchEarnedBadges, type EarnedBadge } from '@/lib/supabase/badges';
 import { fetchCurrentlyEnjoying, type CurrentlyEnjoyingData } from '@/lib/supabase/currentlyEnjoying';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
 import { fetchUserLists, type UserListSummary } from '@/lib/supabase/lists';
-import { fetchTop4, saveTop4, type Top4Item } from '@/lib/supabase/mountRushmore';
+import {
+  fetchMountRushmore, type MountRushmoreSlot, type RushmoreMediaType,
+} from '@/lib/supabase/mountRushmore';
 import {
   fetchFollowState, fetchProfile, fetchStats, followUser, unfollowUser,
   type ProfileData, type ProfileStats,
 } from '@/lib/supabase/profile';
 import { fetchMediaTypeTab, fetchReviewsTab, type MediaTypeTabData, type ProfileReviewItem } from '@/lib/supabase/profileMedia';
 import { fetchRecentActivity, type ActivityItem } from '@/lib/supabase/recentActivity';
+import { getActivityKey, getMediaKey } from '@/utils/listKeys';
 
 type TabKey = 'overview' | 'movies' | 'tv' | 'books' | 'reviews' | 'lists' | 'diary';
 const TABS: { key: TabKey; label: string }[] = [
@@ -87,6 +91,12 @@ function monthLabel(dateStr: string): string {
   return new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
+const RUSHMORE_EMPTY_MESSAGE: Record<RushmoreMediaType, string> = {
+  movie: 'Build your top 4 films',
+  tv:    'Build your top 4 series',
+  book:  'Build your top 4 books',
+};
+
 interface ProfileViewProps {
   userId: string;
   /** Stack routes viewing another user pass true so a back button renders. */
@@ -101,11 +111,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [top4, setTop4] = useState<Top4Item[]>([]);
+  const [rushmoreSlots, setRushmoreSlots] = useState<MountRushmoreSlot[]>([]);
+  const [rushmoreActiveTab, setRushmoreActiveTab] = useState<RushmoreMediaType>('movie');
+  const [rushmoreEditorOpen, setRushmoreEditorOpen] = useState(false);
   const [following, setFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(false);
-  const [top4PickerOpen, setTop4PickerOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -126,24 +137,22 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
 
-  // Atmosphere colors sourced from My Top Stories' own posters — same
+  // Atmosphere colors sourced from Mount Rushmore's own posters — same
   // dominant-color-extraction data source Movie Detail already uses
   // (data/mediaDetails.ts, generated at build time via node-vibrant against
   // real TMDB backdrops). No runtime color extraction is added for the
   // avatar: no such library exists in this app and adding one would be a new
-  // native dependency (out of scope, matches the existing Expand Transition
-  // precedent of not introducing new native deps). Falls back to
-  // AtmosphereContext's existing default when no Top Story has precomputed
-  // colors (common for real user picks outside the curated seed set) — see
-  // RETURN's ATMOSPHERIC_HEADER note.
+  // native dependency (out of scope). Falls back to AtmosphereContext's
+  // existing default when no Rushmore pick has precomputed colors (common
+  // for real user picks outside the curated seed set).
   const atmosphereColors = useMemo(() => {
-    for (const item of top4) {
+    for (const item of rushmoreSlots) {
       const routeId = toRouteId(item.mediaType, item.mediaId);
       const colors = mediaDetails[routeId]?.dominantColors;
       if (colors && colors.length > 0) return colors;
     }
     return undefined;
-  }, [top4]);
+  }, [rushmoreSlots]);
 
   const loadCore = useCallback(async () => {
     setStatus('loading');
@@ -154,12 +163,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         return;
       }
       setProfile(profileData);
-      const [statsData, top4Data] = await Promise.all([
+      const [statsData, rushmoreData] = await Promise.all([
         fetchStats(userId),
-        fetchTop4(userId),
+        fetchMountRushmore(userId),
       ]);
       setStats(statsData);
-      setTop4(top4Data);
+      setRushmoreSlots(rushmoreData);
       if (!isOwnProfile && sessionUser) {
         setFollowing(await fetchFollowState(sessionUser.id, userId));
       }
@@ -206,17 +215,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     loadEnjoying();
   }, [loadCore, loadActivity, loadBadges, loadEnjoying]);
 
-  // Lazily load whichever tab's data hasn't been fetched yet. Overview now
-  // also needs `reviews` (for its "Recent Reviews" section) — same
-  // fetchReviewsTab call the Reviews tab uses, just triggered a tab early
-  // and cached in the same state so switching to Reviews afterward is instant.
+  // Lazily load whichever tab's data hasn't been fetched yet. Overview also
+  // needs `reviews` (Reviews section), `lists` (Lists preview), and `diary`
+  // (Recently Watched + Diary preview) — same fetch functions the Reviews/
+  // Lists/Diary tabs use, just triggered together and cached in the same
+  // state so switching to those tabs afterward is instant.
   useEffect(() => {
     let cancelled = false;
 
-    // Overview needs reviews (Recent Reviews), lists (Lists preview), and
-    // diary (Diary preview) all at once — same fetch functions the Reviews/
-    // Lists/Diary tabs use, just triggered together and cached in the same
-    // state so switching to those tabs afterward is instant.
     const run = async () => {
       setTabLoading(true);
       try {
@@ -275,7 +281,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   };
 
   const renderReviewCard = (r: ProfileReviewItem, i: number) => (
-    <Pressable key={`${r.mediaType}-${r.routeId}-${i}`} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
+    <Pressable key={getMediaKey(r.mediaType, `${r.routeId}-${i}`)} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
       <View style={styles.reviewHeaderRow}>
         {r.poster ? (
           <Image source={{ uri: r.poster }} style={styles.reviewPoster} contentFit="cover" />
@@ -293,7 +299,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
       {r.layerRatings.length > 0 && (
         <View style={styles.layerChipRow}>
           {r.layerRatings.map((l) => (
-            <View key={l.label} style={styles.layerChip}>
+            <View key={getMediaKey('layer', l.label)} style={styles.layerChip}>
               <Text style={styles.layerChipLabel}>{l.label} {l.value.toFixed(1)}</Text>
             </View>
           ))}
@@ -369,6 +375,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     return groups;
   }, []);
 
+  // "Recently watched" (WEBSITE_PROFILE_AUDIT.md §5) — a horizontal poster
+  // row distinct from the Recent Activity timeline below it. Reuses the
+  // exact same already-fetched `diary` data (fetchDiaryEntries, already
+  // ordered watched_date desc) — no new query, just filtered to entries
+  // with a poster, same as the website's own `poster IS NOT NULL` filter.
+  const recentlyWatched = (diary ?? []).filter((e) => e.poster).slice(0, 15);
+  const rushmoreTabSlots = rushmoreSlots.filter((s) => s.mediaType === rushmoreActiveTab);
+
   return (
     <AtmosphereProvider initialBaseColors={atmosphereColors}>
       <View style={styles.screen}>
@@ -401,7 +415,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
               <Text style={styles.displayName}>{profile.displayName || profile.username || 'ReelShelf Member'}</Text>
               {profile.username ? <Text style={styles.username}>@{profile.username}</Text> : null}
               {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-              <Text style={styles.joined}>Joined {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
+              {profile.websiteUrl ? (
+                <Pressable onPress={() => Linking.openURL(profile.websiteUrl!).catch(() => {})}>
+                  <Text style={styles.websiteLink}>{profile.websiteUrl}</Text>
+                </Pressable>
+              ) : null}
+              <Text style={styles.joined}>Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
 
               {isOwnProfile ? (
                 <Pressable style={styles.editBtn} onPress={() => setEditOpen(true)}>
@@ -421,75 +440,15 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             <View style={styles.tabContent}>
               {activeTab === 'overview' && (
                 <View style={styles.overviewGap}>
-                  <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.sectionTitle}>My Top Stories</Text>
-                    {isOwnProfile && (
-                      <Pressable onPress={() => setTop4PickerOpen(true)}>
-                        <Text style={styles.editSmallLabel}>Edit</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                  {top4.length === 0 ? (
-                    <Text style={styles.emptyInlineText}>Choose your Top 4 stories.</Text>
-                  ) : (
-                    <TopStoriesGrid items={top4} onOpenDetail={openMediaDetail} />
-                  )}
+                  {/* Section order below matches the website's real profile
+                      page structure (WEBSITE_PROFILE_AUDIT.md §0/§13):
+                      Header → Stats → Badges → Mount Rushmore → Recently
+                      Watched → Recent Activity → Reviews → Taste, adapted
+                      for mobile. Mobile-only additions (Currently Enjoying,
+                      Genres, Lists/Diary previews) are placed in adjacent,
+                      sensible slots rather than invented website sections. */}
 
-                  {enjoyingStatus === 'loading' ? (
-                    <ActivityIndicator color={RS.colors.accent} />
-                  ) : enjoying ? (
-                    <CurrentlyEnjoyingShelf data={enjoying} onOpenDetail={openMediaDetail} />
-                  ) : null}
-
-                  {(reviews?.length ?? 0) > 0 && (
-                    <View style={styles.overviewSubsection}>
-                      <Text style={styles.subheading}>Recent Reviews</Text>
-                      {reviews!.slice(0, 3).map(renderReviewCard)}
-                    </View>
-                  )}
-
-                  <View style={styles.overviewSubsection}>
-                    <Text style={styles.subheading}>Recent Activity</Text>
-                    {activityStatus === 'loading' ? (
-                      <ActivityIndicator color={RS.colors.accent} />
-                    ) : activity.length === 0 ? (
-                      <Text style={styles.emptyInlineText}>No activity yet.</Text>
-                    ) : (
-                      <View style={styles.activityList}>
-                        {activity.map((item, i) => (
-                          <ActivityCard
-                            key={`${item.kind}-${item.mediaType ?? 'x'}-${item.routeId ?? item.title}-${item.timestamp}-${i}`}
-                            kind={item.kind}
-                            verbLabel={ACTIVITY_VERB[item.kind]}
-                            detail={item.detail}
-                            title={item.title}
-                            poster={item.poster}
-                            timeLabel={timeAgo(item.timestamp)}
-                            onPress={item.routeId ? () => openMediaDetail(item.routeId!, item.title, item.poster, item.mediaType ?? 'film') : undefined}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.overviewSubsection}>
-                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} />
-                  </View>
-
-                  {profile.favouriteGenres.length > 0 && (
-                    <View style={styles.overviewSubsection}>
-                      <Text style={styles.subheading}>Favourite Genres</Text>
-                      <View style={styles.genreChipRow}>
-                        {profile.favouriteGenres.map((genre) => (
-                          <View key={genre} style={styles.genreChip}>
-                            <Text style={styles.genreChipLabel}>{genre}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* ── Stats — secondary/compact, positioned lower per spec ── */}
+                  {/* ── Stats — compact, positioned right after header per website order ── */}
                   <View style={styles.statsStrip}>
                     {([
                       ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
@@ -497,7 +456,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
                     ] as const).map(([label, value, mode]) => (
                       <Pressable
-                        key={label}
+                        key={getMediaKey('stat', label)}
                         style={styles.statTile}
                         disabled={!mode}
                         onPress={() => {
@@ -511,6 +470,105 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       </Pressable>
                     ))}
                   </View>
+
+                  <View style={styles.overviewSubsection}>
+                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} />
+                  </View>
+
+                  {/* ── Mount Rushmore — 3 independent per-media-type sets (Films/Series/Books) ── */}
+                  <View style={styles.overviewSubsection}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>Mount Rushmore</Text>
+                      {isOwnProfile && (
+                        <Pressable onPress={() => setRushmoreEditorOpen(true)}>
+                          <Text style={styles.editSmallLabel}>Edit</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                    <MountRushmoreTabs activeTab={rushmoreActiveTab} onChange={setRushmoreActiveTab} />
+                    {rushmoreTabSlots.length === 0 ? (
+                      <Text style={styles.emptyInlineText}>{RUSHMORE_EMPTY_MESSAGE[rushmoreActiveTab]}</Text>
+                    ) : (
+                      <MountRushmoreGrid slots={rushmoreTabSlots} onOpenDetail={openMediaDetail} />
+                    )}
+                  </View>
+
+                  {/* ── Recently Watched — horizontal poster row, distinct from Recent Activity below ── */}
+                  <View style={styles.overviewSubsection}>
+                    <Text style={styles.subheading}>Recently Watched</Text>
+                    {recentlyWatched.length === 0 ? (
+                      <Text style={styles.emptyInlineText}>Nothing logged yet.</Text>
+                    ) : (
+                      <FlatList
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        data={recentlyWatched}
+                        keyExtractor={(item, i) => getActivityKey('recently-watched', item.mediaType, item.routeId, item.watchedDate, i)}
+                        contentContainerStyle={styles.posterRow}
+                        renderItem={({ item }) => (
+                          <View>
+                            <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
+                              onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
+                            {typeof item.rating === 'number' && (
+                              <View style={styles.ratingPill}>
+                                <Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      />
+                    )}
+                  </View>
+
+                  {enjoyingStatus === 'loading' ? (
+                    <ActivityIndicator color={RS.colors.accent} />
+                  ) : enjoying ? (
+                    <CurrentlyEnjoyingShelf data={enjoying} onOpenDetail={openMediaDetail} />
+                  ) : null}
+
+                  <View style={styles.overviewSubsection}>
+                    <Text style={styles.subheading}>Recent Activity</Text>
+                    {activityStatus === 'loading' ? (
+                      <ActivityIndicator color={RS.colors.accent} />
+                    ) : activity.length === 0 ? (
+                      <Text style={styles.emptyInlineText}>No activity yet.</Text>
+                    ) : (
+                      <View style={styles.activityList}>
+                        {activity.map((item, i) => (
+                          <ActivityCard
+                            key={getActivityKey(item.kind, item.mediaType, item.routeId ?? item.title, item.timestamp, i)}
+                            kind={item.kind}
+                            verbLabel={ACTIVITY_VERB[item.kind]}
+                            detail={item.detail}
+                            title={item.title}
+                            poster={item.poster}
+                            timeLabel={timeAgo(item.timestamp)}
+                            onPress={item.routeId ? () => openMediaDetail(item.routeId!, item.title, item.poster, item.mediaType ?? 'film') : undefined}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {(reviews?.length ?? 0) > 0 && (
+                    <View style={styles.overviewSubsection}>
+                      <Text style={styles.subheading}>Reviews</Text>
+                      {reviews!.slice(0, 3).map(renderReviewCard)}
+                    </View>
+                  )}
+
+                  {profile.favouriteGenres.length > 0 && (
+                    <View style={styles.overviewSubsection}>
+                      <Text style={styles.subheading}>Favourite Genres</Text>
+                      <View style={styles.genreChipRow}>
+                        {profile.favouriteGenres.map((genre) => (
+                          <View key={getMediaKey('genre', genre)} style={styles.genreChip}>
+                            <Text style={styles.genreChipLabel}>{genre}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
 
                   {/* ── Lists preview — a taste of the full Lists tab ────────── */}
                   <View style={styles.overviewSubsection}>
@@ -526,11 +584,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       <Text style={styles.emptyInlineText}>No lists yet.</Text>
                     ) : (
                       lists!.slice(0, 2).map((l) => (
-                        <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
+                        <Pressable key={getMediaKey('list', l.id)} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
                           <View style={styles.listCollage}>
                             {l.previewPosters.length > 0 ? (
                               l.previewPosters.slice(0, 4).map((poster, i) => (
-                                <Image key={`${poster}-${i}`} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
+                                <Image key={getMediaKey('poster', `${poster}-${i}`)} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
                               ))
                             ) : (
                               <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
@@ -559,7 +617,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       <Text style={styles.emptyInlineText}>No diary entries yet.</Text>
                     ) : (
                       diary!.slice(0, 3).map((entry, i) => (
-                        <Pressable key={`${entry.mediaType}-${entry.routeId}-${entry.watchedDate}-${i}`} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
+                        <Pressable key={getActivityKey('diary-preview', entry.mediaType, entry.routeId, entry.watchedDate, i)} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
                           {entry.poster ? (
                             <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
                           ) : (
@@ -608,7 +666,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                           horizontal
                           showsHorizontalScrollIndicator={false}
                           data={watched}
-                          keyExtractor={(item, i) => `${item.mediaType}-${item.routeId}-${i}`}
+                          keyExtractor={(item, i) => getMediaKey(item.mediaType, `${item.routeId}-${i}`)}
                           contentContainerStyle={styles.posterRow}
                           renderItem={({ item }) => (
                             <View>
@@ -631,7 +689,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                           horizontal
                           showsHorizontalScrollIndicator={false}
                           data={shelf}
-                          keyExtractor={(item, i) => `${item.mediaType}-${item.routeId}-${i}`}
+                          keyExtractor={(item, i) => getMediaKey(item.mediaType, `${item.routeId}-${i}`)}
                           contentContainerStyle={styles.posterRow}
                           renderItem={({ item }) => (
                             <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
@@ -684,11 +742,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   </View>
                 ) : (
                   lists!.map((l) => (
-                    <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
+                    <Pressable key={getMediaKey('list', l.id)} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
                       <View style={styles.listCollage}>
                         {l.previewPosters.length > 0 ? (
                           l.previewPosters.slice(0, 4).map((poster, i) => (
-                            <Image key={`${poster}-${i}`} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
+                            <Image key={getMediaKey('poster', `${poster}-${i}`)} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
                           ))
                         ) : (
                           <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
@@ -710,10 +768,10 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   <Text style={styles.emptyInlineText}>No diary entries yet.</Text>
                 ) : (
                   diaryGroups.map((group) => (
-                    <View key={group.month} style={styles.diaryMonthGroup}>
+                    <View key={getMediaKey('diary-month', group.month)} style={styles.diaryMonthGroup}>
                       <Text style={styles.diaryMonthLabel}>{group.month}</Text>
                       {group.entries.map((entry, i) => (
-                        <Pressable key={`${entry.mediaType}-${entry.routeId}-${entry.watchedDate}-${i}`} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
+                        <Pressable key={getActivityKey('diary', entry.mediaType, entry.routeId, entry.watchedDate, i)} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
                           {entry.poster ? (
                             <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
                           ) : (
@@ -745,15 +803,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             onSaved={loadCore}
             profile={profile}
           />
-          <Top4Picker
-            visible={top4PickerOpen}
-            onClose={() => setTop4PickerOpen(false)}
-            initial={top4}
-            onSave={async (items) => {
-              await saveTop4(userId, items);
-              setTop4(items);
-              setTop4PickerOpen(false);
-            }}
+          <MountRushmoreEditor
+            visible={rushmoreEditorOpen}
+            onClose={() => setRushmoreEditorOpen(false)}
+            initialSlots={rushmoreSlots}
+            userId={userId}
+            onSaved={(allSlots) => setRushmoreSlots(allSlots)}
           />
         </>
       )}
@@ -806,6 +861,7 @@ const styles = StyleSheet.create({
   displayName: { fontSize: RS.typography.heading + 2, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: RS.letterSpacing.tight },
   username: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
   bio: { fontSize: RS.typography.body, color: RS.colors.textSecondary, textAlign: 'center', marginTop: RS.spacing.xs, lineHeight: 20 },
+  websiteLink: { fontSize: RS.typography.caption, color: RS.colors.accent, marginTop: RS.spacing.xs },
   joined: { fontSize: RS.typography.overline, color: RS.colors.textMuted, marginTop: 2 },
   editBtn: { marginTop: RS.spacing.md, borderRadius: RS.button.radius, borderWidth: 1, borderColor: RS.button.secondaryBorder, paddingHorizontal: RS.spacing.lg, paddingVertical: RS.spacing.sm + 2 },
   followingBtn: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill },
@@ -862,12 +918,12 @@ const styles = StyleSheet.create({
   listsEmptyWrap: { alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.sm },
   createListBtn: { borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
   createListLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
-  // Stats — deliberately de-emphasized: smaller type, no card chrome, quiet
-  // divider-free strip at the very bottom of the screen (was prominent
-  // bordered cards near the top).
+  // Stats — compact/secondary styling (smaller type, no card chrome), but
+  // positioned right after the header per the website's real section order
+  // (WEBSITE_PROFILE_AUDIT.md §3/§13) rather than at the bottom of the page.
   statsStrip: {
     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
-    paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.xxl, paddingBottom: RS.spacing.lg,
+    paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.sm,
     gap: RS.spacing.sm,
   },
   statTile: { alignItems: 'center', minWidth: 64 },

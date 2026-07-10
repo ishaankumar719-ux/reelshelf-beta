@@ -37,6 +37,7 @@ import { RS } from '@/constants/theme';
 import { collections, type MediaType, type SeedCollectionItem } from '@/data/seedHomeContent';
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
+import { getMediaKey } from '@/utils/listKeys';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 
@@ -231,7 +232,7 @@ export default function MediaDetailScreen() {
                         data={memberCollections}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        keyExtractor={(c) => c.id}
+                        keyExtractor={(c) => getMediaKey('collection', c.id)}
                         ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
                         contentContainerStyle={styles.collectionsList}
                         renderItem={({ item }) => <CollectionPreviewCard item={item} />}

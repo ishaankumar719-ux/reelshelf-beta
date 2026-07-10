@@ -15,6 +15,7 @@ import {
   awardWinnerBooks,
   type SeedBookItem,
 } from '@/data/seedHomeContent';
+import { getMediaKey } from '@/utils/listKeys';
 
 function bookHref(item: SeedBookItem, expand?: boolean): `/media/${string}` {
   const base = `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=book`;
@@ -171,7 +172,7 @@ export function BookSection() {
           data={trendingBooks}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
           ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
           contentContainerStyle={styles.bookList}
           snapToInterval={BOOK_W + ITEM_SEP}
@@ -197,7 +198,7 @@ export function BookSection() {
           data={awardWinnerBooks}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
           ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
           contentContainerStyle={styles.bookList}
           snapToInterval={BOOK_W + ITEM_SEP}
