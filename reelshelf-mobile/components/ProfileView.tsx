@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -8,22 +8,32 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import Animated, { useAnimatedRef, useScrollViewOffset } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { EditProfileModal } from '@/components/EditProfileModal';
 import { FollowListModal } from '@/components/FollowListModal';
 import { PosterCard } from '@/components/poster-card';
+import { AchievementsRow } from '@/components/profile/AchievementsRow';
+import { ActivityCard } from '@/components/profile/ActivityCard';
+import { CurrentlyEnjoyingShelf } from '@/components/profile/CurrentlyEnjoyingShelf';
+import { GlassTabStrip } from '@/components/profile/GlassTabStrip';
+import { TopStoriesGrid } from '@/components/profile/TopStoriesGrid';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { SpoilerBlur } from '@/components/SpoilerBlur';
 import { Top4Picker } from '@/components/Top4Picker';
 import { RS } from '@/constants/theme';
+import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { mediaDetails } from '@/data/mediaDetails';
+import { fetchEarnedBadges, type EarnedBadge } from '@/lib/supabase/badges';
+import { fetchCurrentlyEnjoying, type CurrentlyEnjoyingData } from '@/lib/supabase/currentlyEnjoying';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
 import { fetchUserLists, type UserListSummary } from '@/lib/supabase/lists';
 import { fetchTop4, saveTop4, type Top4Item } from '@/lib/supabase/mountRushmore';
@@ -65,6 +75,18 @@ const ACTIVITY_VERB: Record<ActivityItem['kind'], string> = {
   listed:   'Added to List',
 };
 
+/** Mirrors the toRouteId helper duplicated in every lib/supabase/*.ts file —
+ *  mount_rushmore stores media_type/media_id in DB format. */
+function toRouteId(dbMediaType: string, dbMediaId: string): string {
+  const prefix = dbMediaType === 'movie' ? 'film' : dbMediaType;
+  const bareId = dbMediaId.startsWith('tmdb-') ? dbMediaId.slice(5) : dbMediaId;
+  return `${prefix}-${bareId}`;
+}
+
+function monthLabel(dateStr: string): string {
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
 interface ProfileViewProps {
   userId: string;
   /** Stack routes viewing another user pass true so a back button renders. */
@@ -89,11 +111,39 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [activityStatus, setActivityStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
+  const [badges, setBadges] = useState<EarnedBadge[] | null>(null);
+  const [badgesStatus, setBadgesStatus] = useState<'loading' | 'success' | 'error'>('loading');
+
+  const [enjoying, setEnjoying] = useState<CurrentlyEnjoyingData | null>(null);
+  const [enjoyingStatus, setEnjoyingStatus] = useState<'loading' | 'success' | 'error'>('loading');
+
   const [mediaTabs, setMediaTabs] = useState<Record<string, MediaTypeTabData>>({});
   const [reviews, setReviews] = useState<ProfileReviewItem[] | null>(null);
   const [lists, setLists] = useState<UserListSummary[] | null>(null);
   const [diary, setDiary] = useState<DiaryListEntry[] | null>(null);
   const [tabLoading, setTabLoading] = useState(false);
+
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollViewOffset(scrollRef);
+
+  // Atmosphere colors sourced from My Top Stories' own posters — same
+  // dominant-color-extraction data source Movie Detail already uses
+  // (data/mediaDetails.ts, generated at build time via node-vibrant against
+  // real TMDB backdrops). No runtime color extraction is added for the
+  // avatar: no such library exists in this app and adding one would be a new
+  // native dependency (out of scope, matches the existing Expand Transition
+  // precedent of not introducing new native deps). Falls back to
+  // AtmosphereContext's existing default when no Top Story has precomputed
+  // colors (common for real user picks outside the curated seed set) — see
+  // RETURN's ATMOSPHERIC_HEADER note.
+  const atmosphereColors = useMemo(() => {
+    for (const item of top4) {
+      const routeId = toRouteId(item.mediaType, item.mediaId);
+      const colors = mediaDetails[routeId]?.dominantColors;
+      if (colors && colors.length > 0) return colors;
+    }
+    return undefined;
+  }, [top4]);
 
   const loadCore = useCallback(async () => {
     setStatus('loading');
@@ -129,14 +179,38 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     }
   }, [userId]);
 
+  const loadBadges = useCallback(async () => {
+    setBadgesStatus('loading');
+    try {
+      setBadges(await fetchEarnedBadges(userId));
+      setBadgesStatus('success');
+    } catch {
+      setBadgesStatus('error');
+    }
+  }, [userId]);
+
+  const loadEnjoying = useCallback(async () => {
+    setEnjoyingStatus('loading');
+    try {
+      setEnjoying(await fetchCurrentlyEnjoying(userId));
+      setEnjoyingStatus('success');
+    } catch {
+      setEnjoyingStatus('error');
+    }
+  }, [userId]);
+
   useEffect(() => {
     loadCore();
     loadActivity();
-  }, [loadCore, loadActivity]);
+    loadBadges();
+    loadEnjoying();
+  }, [loadCore, loadActivity, loadBadges, loadEnjoying]);
 
-  // Lazily load whichever tab's data hasn't been fetched yet.
+  // Lazily load whichever tab's data hasn't been fetched yet. Overview now
+  // also needs `reviews` (for its "Recent Reviews" section) — same
+  // fetchReviewsTab call the Reviews tab uses, just triggered a tab early
+  // and cached in the same state so switching to Reviews afterward is instant.
   useEffect(() => {
-    if (activeTab === 'overview') return;
     let cancelled = false;
 
     const run = async () => {
@@ -146,7 +220,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
           const dbType = activeTab === 'movies' ? 'movie' : activeTab === 'tv' ? 'tv' : 'book';
           const data = await fetchMediaTypeTab(userId, dbType);
           if (!cancelled) setMediaTabs((prev) => ({ ...prev, [activeTab]: data }));
-        } else if (activeTab === 'reviews' && reviews === null) {
+        } else if ((activeTab === 'reviews' || activeTab === 'overview') && reviews === null) {
           const data = await fetchReviewsTab(userId);
           if (!cancelled) setReviews(data);
         } else if (activeTab === 'lists' && lists === null) {
@@ -173,7 +247,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     setReviews(null);
     setLists(null);
     setDiary(null);
-    await Promise.all([loadCore(), loadActivity()]);
+    await Promise.all([loadCore(), loadActivity(), loadBadges(), loadEnjoying()]);
     setRefreshing(false);
   };
 
@@ -193,318 +267,403 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     router.push(`/media/${routeId}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(poster ?? '')}&mediaType=${mediaType}`);
   };
 
+  const renderReviewCard = (r: ProfileReviewItem) => (
+    <Pressable key={r.routeId} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
+      <View style={styles.reviewHeaderRow}>
+        {r.poster ? (
+          <Image source={{ uri: r.poster }} style={styles.reviewPoster} contentFit="cover" />
+        ) : (
+          <View style={[styles.reviewPoster, styles.activityThumbFallback]} />
+        )}
+        <View style={styles.reviewHeaderMeta}>
+          <Text style={styles.reviewTitle} numberOfLines={1}>{r.title}</Text>
+          {r.rating ? <Text style={styles.reviewRating}>{r.rating.toFixed(1)} / 10</Text> : null}
+        </View>
+      </View>
+      <SpoilerBlur active={r.containsSpoilers}>
+        <Text style={styles.reviewText} numberOfLines={3}>{r.review}</Text>
+      </SpoilerBlur>
+      {r.layerRatings.length > 0 && (
+        <View style={styles.layerChipRow}>
+          {r.layerRatings.map((l) => (
+            <View key={l.label} style={styles.layerChip}>
+              <Text style={styles.layerChipLabel}>{l.label} {l.value.toFixed(1)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {r.attachmentUrl && (
+        <Image source={{ uri: r.attachmentUrl }} style={styles.attachmentPreview} contentFit="cover" />
+      )}
+    </Pressable>
+  );
+
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <View style={styles.loadingWrap}>
-          <SkeletonBlock width={88} height={88} radius={44} />
-          <SkeletonBlock width={140} height={18} style={{ marginTop: RS.spacing.md }} />
-          <SkeletonBlock width={100} height={14} style={{ marginTop: RS.spacing.xs }} />
+      <AtmosphereProvider initialBaseColors={atmosphereColors}>
+        <View style={styles.screen}>
+          <AmbientAtmosphere scrollY={scrollY} />
+          <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <View style={styles.loadingWrap}>
+              <SkeletonBlock width={96} height={96} radius={48} />
+              <SkeletonBlock width={140} height={18} style={{ marginTop: RS.spacing.md }} />
+              <SkeletonBlock width={100} height={14} style={{ marginTop: RS.spacing.xs }} />
+            </View>
+          </SafeAreaView>
         </View>
-      </SafeAreaView>
+      </AtmosphereProvider>
     );
   }
 
   if (status === 'not_found') {
     return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        {showBackButton && (
-          <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
-            <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
-          </Pressable>
-        )}
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>This profile isn&apos;t available.</Text>
+      <AtmosphereProvider initialBaseColors={atmosphereColors}>
+        <View style={styles.screen}>
+          <AmbientAtmosphere scrollY={scrollY} />
+          <SafeAreaView style={styles.safeArea} edges={['top']}>
+            {showBackButton && (
+              <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+                <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
+              </Pressable>
+            )}
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>This profile isn&apos;t available.</Text>
+            </View>
+          </SafeAreaView>
         </View>
-      </SafeAreaView>
+      </AtmosphereProvider>
     );
   }
 
   if (status === 'error' || !profile || !stats) {
     return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>Couldn&apos;t load this profile.</Text>
-          <Pressable style={styles.retryBtn} onPress={loadCore}>
-            <Text style={styles.retryLabel}>Retry</Text>
-          </Pressable>
+      <AtmosphereProvider initialBaseColors={atmosphereColors}>
+        <View style={styles.screen}>
+          <AmbientAtmosphere scrollY={scrollY} />
+          <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>Couldn&apos;t load this profile.</Text>
+              <Pressable style={styles.retryBtn} onPress={loadCore}>
+                <Text style={styles.retryLabel}>Retry</Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
         </View>
-      </SafeAreaView>
+      </AtmosphereProvider>
     );
   }
 
   const initial = (profile.displayName || profile.username || '?')[0]?.toUpperCase();
+  const diaryGroups = (diary ?? []).reduce<{ month: string; entries: DiaryListEntry[] }[]>((groups, entry) => {
+    const label = monthLabel(entry.watchedDate);
+    const last = groups[groups.length - 1];
+    if (last && last.month === label) last.entries.push(entry);
+    else groups.push({ month: label, entries: [entry] });
+    return groups;
+  }, []);
 
   return (
-    <SafeAreaView style={styles.root} edges={showBackButton ? ['top'] : ['top', 'bottom']}>
-      {showBackButton && (
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
-        </Pressable>
-      )}
+    <AtmosphereProvider initialBaseColors={atmosphereColors}>
+      <View style={styles.screen}>
+        <AmbientAtmosphere scrollY={scrollY} />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={RS.colors.accent} />}
-      >
-        {/* ── Hero ─────────────────────────────────────────────────────── */}
-        <View style={styles.hero}>
-          <View style={styles.avatarOuter}>
-            {profile.avatarUrl ? (
-              <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} contentFit="cover" />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.displayName}>{profile.displayName || profile.username || 'ReelShelf Member'}</Text>
-          {profile.username ? <Text style={styles.username}>@{profile.username}</Text> : null}
-          {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-          <Text style={styles.joined}>Joined {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
-
-          {isOwnProfile ? (
-            <Pressable style={styles.editBtn} onPress={() => setEditOpen(true)}>
-              <Text style={styles.editLabel}>Edit Profile</Text>
-            </Pressable>
-          ) : (
-            <Pressable style={[styles.editBtn, following && styles.followingBtn]} onPress={handleToggleFollow}>
-              <Text style={[styles.editLabel, following && styles.followingLabel]}>{following ? 'Following' : 'Follow'}</Text>
+        <SafeAreaView style={styles.safeArea} edges={showBackButton ? ['top'] : ['top', 'bottom']}>
+          {showBackButton && (
+            <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+              <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
             </Pressable>
           )}
-        </View>
 
-        {/* ── Stats ────────────────────────────────────────────────────── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsRow}>
-          {([
-            ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
-            ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
-            ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
-          ] as const).map(([label, value, mode]) => (
-            <Pressable
-              key={label}
-              style={styles.statTile}
-              disabled={!mode}
-              onPress={() => {
-                if (!mode) return;
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                setFollowListMode(mode);
-              }}
-            >
-              <Text style={styles.statValue}>{value}</Text>
-              <Text style={styles.statLabel}>{label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <Animated.ScrollView
+            ref={scrollRef}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={RS.colors.accent} />}
+          >
+            {/* ── Atmospheric Hero ─────────────────────────────────────── */}
+            <View style={styles.hero}>
+              <View style={styles.avatarOuter}>
+                {profile.avatarUrl ? (
+                  <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} contentFit="cover" />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarInitial}>{initial}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.displayName}>{profile.displayName || profile.username || 'ReelShelf Member'}</Text>
+              {profile.username ? <Text style={styles.username}>@{profile.username}</Text> : null}
+              {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+              <Text style={styles.joined}>Joined {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
 
-        {/* ── Top 4 ────────────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Top 4</Text>
-            {isOwnProfile && (
-              <Pressable onPress={() => setTop4PickerOpen(true)}>
-                <Text style={styles.editSmallLabel}>Edit</Text>
-              </Pressable>
-            )}
-          </View>
-          {top4.length === 0 ? (
-            <Text style={styles.emptyInlineText}>Choose your Top 4 stories.</Text>
-          ) : (
-            <View style={styles.top4Row}>
-              {top4.map((item) => (
-                <View key={item.position} style={styles.top4Item}>
-                  {item.posterPath ? (
-                    <Image source={{ uri: item.posterPath }} style={styles.top4Poster} contentFit="cover" />
+              {isOwnProfile ? (
+                <Pressable style={styles.editBtn} onPress={() => setEditOpen(true)}>
+                  <Text style={styles.editLabel}>Edit Profile</Text>
+                </Pressable>
+              ) : (
+                <Pressable style={[styles.editBtn, following && styles.followingBtn]} onPress={handleToggleFollow}>
+                  <Text style={[styles.editLabel, following && styles.followingLabel]}>{following ? 'Following' : 'Follow'}</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* ── Glass segmented tab strip ────────────────────────────── */}
+            <GlassTabStrip tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+
+            {/* ── Tab content ───────────────────────────────────────────── */}
+            <View style={styles.tabContent}>
+              {activeTab === 'overview' && (
+                <View style={styles.overviewGap}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.sectionTitle}>My Top Stories</Text>
+                    {isOwnProfile && (
+                      <Pressable onPress={() => setTop4PickerOpen(true)}>
+                        <Text style={styles.editSmallLabel}>Edit</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  {top4.length === 0 ? (
+                    <Text style={styles.emptyInlineText}>Choose your Top 4 stories.</Text>
                   ) : (
-                    <View style={[styles.top4Poster, styles.top4PosterFallback]} />
+                    <TopStoriesGrid items={top4} onOpenDetail={openMediaDetail} />
+                  )}
+
+                  {enjoyingStatus === 'loading' ? (
+                    <ActivityIndicator color={RS.colors.accent} />
+                  ) : enjoying ? (
+                    <CurrentlyEnjoyingShelf data={enjoying} onOpenDetail={openMediaDetail} />
+                  ) : null}
+
+                  {(reviews?.length ?? 0) > 0 && (
+                    <View style={styles.overviewSubsection}>
+                      <Text style={styles.subheading}>Recent Reviews</Text>
+                      {reviews!.slice(0, 3).map(renderReviewCard)}
+                    </View>
+                  )}
+
+                  <View style={styles.overviewSubsection}>
+                    <Text style={styles.subheading}>Recent Activity</Text>
+                    {activityStatus === 'loading' ? (
+                      <ActivityIndicator color={RS.colors.accent} />
+                    ) : activity.length === 0 ? (
+                      <Text style={styles.emptyInlineText}>No activity yet.</Text>
+                    ) : (
+                      <View style={styles.activityList}>
+                        {activity.map((item, i) => (
+                          <ActivityCard
+                            key={i}
+                            kind={item.kind}
+                            verbLabel={ACTIVITY_VERB[item.kind]}
+                            detail={item.detail}
+                            title={item.title}
+                            poster={item.poster}
+                            timeLabel={timeAgo(item.timestamp)}
+                            onPress={item.routeId ? () => openMediaDetail(item.routeId!, item.title, item.poster, item.mediaType ?? 'film') : undefined}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.overviewSubsection}>
+                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} />
+                  </View>
+
+                  {profile.favouriteGenres.length > 0 && (
+                    <View style={styles.overviewSubsection}>
+                      <Text style={styles.subheading}>Favourite Genres</Text>
+                      <View style={styles.genreChipRow}>
+                        {profile.favouriteGenres.map((genre) => (
+                          <View key={genre} style={styles.genreChip}>
+                            <Text style={styles.genreChipLabel}>{genre}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
                   )}
                 </View>
+              )}
+
+              {(activeTab === 'movies' || activeTab === 'tv' || activeTab === 'books') && (
+                tabLoading && !mediaTabs[activeTab] ? (
+                  <ActivityIndicator color={RS.colors.accent} />
+                ) : (() => {
+                  const data = mediaTabs[activeTab];
+                  const watched = data?.watched ?? [];
+                  // TV/Books reuse the exact honest-proxy filter as the
+                  // Overview's Currently Enjoying shelf: a shelf item counts
+                  // as "in progress" only until a completed diary log exists
+                  // for the same title — Movies has no in-progress concept
+                  // (binary watched/not-watched), so its shelf is shown as-is.
+                  const watchedIds = new Set(watched.map((w) => w.routeId));
+                  const shelfRaw = data?.shelf ?? [];
+                  const shelf = activeTab === 'movies' ? shelfRaw : shelfRaw.filter((s) => !watchedIds.has(s.routeId));
+
+                  const watchedLabel = activeTab === 'books' ? 'Finished' : activeTab === 'tv' ? 'Completed' : 'Watched';
+                  const shelfLabel = activeTab === 'books' ? 'On Your Shelf' : activeTab === 'tv' ? 'Continue Watching' : 'Shelf';
+                  const shelfEmpty = activeTab === 'books' ? 'Nothing on your shelf yet.' : activeTab === 'tv' ? 'Nothing to continue right now.' : 'Nothing on the shelf yet.';
+
+                  return (
+                    <>
+                      <Text style={styles.subheading}>{watchedLabel}</Text>
+                      {watched.length === 0 ? (
+                        <Text style={styles.emptyInlineText}>Nothing logged yet.</Text>
+                      ) : (
+                        <FlatList
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          data={watched}
+                          keyExtractor={(item) => item.routeId}
+                          contentContainerStyle={styles.posterRow}
+                          renderItem={({ item }) => (
+                            <View>
+                              <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
+                                onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
+                              {typeof item.rating === 'number' && (
+                                <View style={styles.ratingPill}>
+                                  <Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+                        />
+                      )}
+                      <Text style={styles.subheading}>{shelfLabel}</Text>
+                      {shelf.length === 0 ? (
+                        <Text style={styles.emptyInlineText}>{shelfEmpty}</Text>
+                      ) : (
+                        <FlatList
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          data={shelf}
+                          keyExtractor={(item) => item.routeId}
+                          contentContainerStyle={styles.posterRow}
+                          renderItem={({ item }) => (
+                            <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
+                              onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
+                          )}
+                        />
+                      )}
+                      {activeTab === 'tv' && (
+                        <Text style={styles.tvNote}>
+                          &quot;Continue Watching&quot; reflects what&apos;s on your watchlist and not yet logged finished — there&apos;s no per-episode progress data in the schema, so this is a shelf-based signal, not live playback position.
+                        </Text>
+                      )}
+                      {activeTab === 'books' && (
+                        <Text style={styles.tvNote}>
+                          &quot;On Your Shelf&quot; combines currently-reading and want-to-read — the schema has no status column to tell them apart yet.
+                        </Text>
+                      )}
+                    </>
+                  );
+                })()
+              )}
+
+              {activeTab === 'reviews' && (
+                tabLoading && reviews === null ? (
+                  <ActivityIndicator color={RS.colors.accent} />
+                ) : (reviews?.length ?? 0) === 0 ? (
+                  <Text style={styles.emptyInlineText}>No reviews yet.</Text>
+                ) : (
+                  reviews!.map(renderReviewCard)
+                )
+              )}
+
+              {activeTab === 'lists' && (
+                tabLoading && lists === null ? (
+                  <ActivityIndicator color={RS.colors.accent} />
+                ) : (lists?.length ?? 0) === 0 ? (
+                  <View style={styles.listsEmptyWrap}>
+                    <Text style={styles.emptyInlineText}>No lists yet.</Text>
+                    {isOwnProfile && (
+                      <Pressable
+                        style={styles.createListBtn}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          console.log('[Profile] Create List pressed — no-op (list-creation UI not built yet)');
+                        }}
+                      >
+                        <Text style={styles.createListLabel}>Create List</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : (
+                  lists!.map((l) => (
+                    <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
+                      <View style={styles.listCollage}>
+                        {l.previewPosters.length > 0 ? (
+                          l.previewPosters.slice(0, 4).map((poster, i) => (
+                            <Image key={i} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
+                          ))
+                        ) : (
+                          <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
+                        )}
+                      </View>
+                      <View style={styles.listMeta}>
+                        <Text style={styles.listTitle}>{l.title}</Text>
+                        <Text style={styles.listCount}>{l.itemCount} {l.itemCount === 1 ? 'title' : 'titles'}</Text>
+                      </View>
+                    </Pressable>
+                  ))
+                )
+              )}
+
+              {activeTab === 'diary' && (
+                tabLoading && diary === null ? (
+                  <ActivityIndicator color={RS.colors.accent} />
+                ) : diaryGroups.length === 0 ? (
+                  <Text style={styles.emptyInlineText}>No diary entries yet.</Text>
+                ) : (
+                  diaryGroups.map((group) => (
+                    <View key={group.month} style={styles.diaryMonthGroup}>
+                      <Text style={styles.diaryMonthLabel}>{group.month}</Text>
+                      {group.entries.map((entry) => (
+                        <Pressable key={entry.routeId + entry.watchedDate} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
+                          {entry.poster ? (
+                            <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
+                          ) : (
+                            <View style={[styles.activityThumb, styles.activityThumbFallback]} />
+                          )}
+                          <View style={styles.activityMeta}>
+                            <Text style={styles.activityTitle} numberOfLines={1}>{entry.title}</Text>
+                            <Text style={styles.activityTime}>{new Date(`${entry.watchedDate}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</Text>
+                          </View>
+                          {typeof entry.rating === 'number' && (
+                            <Text style={styles.diaryRating}>{entry.rating.toFixed(1)}</Text>
+                          )}
+                        </Pressable>
+                      ))}
+                    </View>
+                  ))
+                )
+              )}
+            </View>
+
+            {/* ── Stats — moved lower, visually secondary ─────────────── */}
+            <View style={styles.statsStrip}>
+              {([
+                ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
+                ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
+                ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
+              ] as const).map(([label, value, mode]) => (
+                <Pressable
+                  key={label}
+                  style={styles.statTile}
+                  disabled={!mode}
+                  onPress={() => {
+                    if (!mode) return;
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setFollowListMode(mode);
+                  }}
+                >
+                  <Text style={styles.statValue}>{value}</Text>
+                  <Text style={styles.statLabel}>{label}</Text>
+                </Pressable>
               ))}
             </View>
-          )}
-        </View>
-
-        {/* ── Tab strip ────────────────────────────────────────────────── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabStrip}>
-          {TABS.map((tab) => (
-            <Pressable
-              key={tab.key}
-              style={[styles.tabChip, activeTab === tab.key && styles.tabChipActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* ── Tab content ──────────────────────────────────────────────── */}
-        <View style={styles.tabContent}>
-          {activeTab === 'overview' && (
-            <>
-              {profile.favouriteGenres.length > 0 && (
-                <View style={styles.genresSection}>
-                  <Text style={styles.subheading}>Favourite Genres</Text>
-                  <View style={styles.genreChipRow}>
-                    {profile.favouriteGenres.map((genre) => (
-                      <View key={genre} style={styles.genreChip}>
-                        <Text style={styles.genreChipLabel}>{genre}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-              <Text style={styles.subheading}>Recent Activity</Text>
-              {activityStatus === 'loading' ? (
-                <ActivityIndicator color={RS.colors.accent} />
-              ) : activity.length === 0 ? (
-                <Text style={styles.emptyInlineText}>No activity yet.</Text>
-              ) : (
-                activity.map((item, i) => (
-                <Pressable
-                  key={i}
-                  style={styles.activityRow}
-                  onPress={item.routeId ? () => openMediaDetail(item.routeId!, item.title, item.poster, item.mediaType ?? 'film') : undefined}
-                >
-                  {item.poster ? (
-                    <Image source={{ uri: item.poster }} style={styles.activityThumb} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.activityThumb, styles.activityThumbFallback]} />
-                  )}
-                  <View style={styles.activityMeta}>
-                    <Text style={styles.activityVerb}>{ACTIVITY_VERB[item.kind]}{item.detail ? ` · ${item.detail}` : ''}</Text>
-                    <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
-                  </View>
-                  <Text style={styles.activityTime}>{timeAgo(item.timestamp)}</Text>
-                </Pressable>
-                ))
-              )}
-            </>
-          )}
-
-          {(activeTab === 'movies' || activeTab === 'tv' || activeTab === 'books') && (
-            tabLoading && !mediaTabs[activeTab] ? (
-              <ActivityIndicator color={RS.colors.accent} />
-            ) : (
-              <>
-                {/* Books uses "Read"/"Want to Read" copy; Movies/TV keep "Watched"/"Shelf".
-                    Note: the schema has no way to distinguish "currently reading" from
-                    "want to read" within saved_items (both are list_type='reading_shelf'
-                    with no progress/status column) — adding one is a schema change out of
-                    scope here, so both collapse into "Want to Read" for now (documented
-                    in RETURN rather than silently merged without explanation). */}
-                <Text style={styles.subheading}>{activeTab === 'books' ? 'Read' : 'Watched'}</Text>
-                {(mediaTabs[activeTab]?.watched.length ?? 0) === 0 ? (
-                  <Text style={styles.emptyInlineText}>Nothing logged yet.</Text>
-                ) : (
-                  <FlatList
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    data={mediaTabs[activeTab]!.watched}
-                    keyExtractor={(item) => item.routeId}
-                    contentContainerStyle={styles.posterRow}
-                    renderItem={({ item }) => (
-                      <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
-                        onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
-                    )}
-                  />
-                )}
-                <Text style={styles.subheading}>{activeTab === 'books' ? 'Want to Read' : 'Shelf'}</Text>
-                {(mediaTabs[activeTab]?.shelf.length ?? 0) === 0 ? (
-                  <Text style={styles.emptyInlineText}>{activeTab === 'books' ? 'Nothing on the reading list yet.' : 'Nothing on the shelf yet.'}</Text>
-                ) : (
-                  <FlatList
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    data={mediaTabs[activeTab]!.shelf}
-                    keyExtractor={(item) => item.routeId}
-                    contentContainerStyle={styles.posterRow}
-                    renderItem={({ item }) => (
-                      <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
-                        onPress={() => openMediaDetail(item.routeId, item.title, item.poster, item.mediaType)} />
-                    )}
-                  />
-                )}
-                {activeTab === 'tv' && (
-                  <Text style={styles.tvNote}>
-                    Continue Watching isn&apos;t shown here — there&apos;s no per-user episode/season progress data model in the schema yet, so this would have to be fabricated rather than real. Omitted rather than faked.
-                  </Text>
-                )}
-              </>
-            )
-          )}
-
-          {activeTab === 'reviews' && (
-            tabLoading && reviews === null ? (
-              <ActivityIndicator color={RS.colors.accent} />
-            ) : (reviews?.length ?? 0) === 0 ? (
-              <Text style={styles.emptyInlineText}>No reviews yet.</Text>
-            ) : (
-              reviews!.map((r) => (
-                <Pressable key={r.routeId} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
-                  <Text style={styles.reviewTitle}>{r.title}</Text>
-                  {r.rating ? <Text style={styles.reviewRating}>{r.rating.toFixed(1)} / 10</Text> : null}
-                  <SpoilerBlur active={r.containsSpoilers}>
-                    <Text style={styles.reviewText} numberOfLines={3}>{r.review}</Text>
-                  </SpoilerBlur>
-                </Pressable>
-              ))
-            )
-          )}
-
-          {activeTab === 'lists' && (
-            tabLoading && lists === null ? (
-              <ActivityIndicator color={RS.colors.accent} />
-            ) : (lists?.length ?? 0) === 0 ? (
-              <View style={styles.listsEmptyWrap}>
-                <Text style={styles.emptyInlineText}>No lists yet.</Text>
-                {isOwnProfile && (
-                  // No list-creation UI exists anywhere in this app yet — this
-                  // is a documented no-op (same convention as other not-yet-built
-                  // actions elsewhere), not a fake success path.
-                  <Pressable
-                    style={styles.createListBtn}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                      console.log('[Profile] Create List pressed — no-op (list-creation UI not built yet)');
-                    }}
-                  >
-                    <Text style={styles.createListLabel}>Create List</Text>
-                  </Pressable>
-                )}
-              </View>
-            ) : (
-              lists!.map((l) => (
-                <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
-                  <Text style={styles.listTitle}>{l.title}</Text>
-                  <Text style={styles.listCount}>{l.itemCount} {l.itemCount === 1 ? 'title' : 'titles'}</Text>
-                </Pressable>
-              ))
-            )
-          )}
-
-          {activeTab === 'diary' && (
-            tabLoading && diary === null ? (
-              <ActivityIndicator color={RS.colors.accent} />
-            ) : (diary?.length ?? 0) === 0 ? (
-              <Text style={styles.emptyInlineText}>No diary entries yet.</Text>
-            ) : (
-              diary!.map((entry) => (
-                <Pressable key={entry.routeId + entry.watchedDate} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
-                  {entry.poster ? (
-                    <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.activityThumb, styles.activityThumbFallback]} />
-                  )}
-                  <View style={styles.activityMeta}>
-                    <Text style={styles.activityTitle} numberOfLines={1}>{entry.title}</Text>
-                    <Text style={styles.activityTime}>{entry.watchedDate}</Text>
-                  </View>
-                </Pressable>
-              ))
-            )
-          )}
-        </View>
-      </ScrollView>
+          </Animated.ScrollView>
+        </SafeAreaView>
+      </View>
 
       {isOwnProfile && (
         <>
@@ -535,7 +694,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
           onClose={() => setFollowListMode(null)}
         />
       )}
-    </SafeAreaView>
+    </AtmosphereProvider>
   );
 }
 
@@ -553,6 +712,8 @@ export function LoggedOutProfilePrompt() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: RS.colors.base },
+  screen: { flex: 1, backgroundColor: RS.colors.base },
+  safeArea: { flex: 1, backgroundColor: 'transparent' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: RS.spacing.lg },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: RS.typography.body, color: RS.colors.textMuted, textAlign: 'center' },
@@ -561,12 +722,16 @@ const styles = StyleSheet.create({
   retryLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
   backBtn: { paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.xs },
   scrollContent: { paddingBottom: RS.tabBar.contentBottomPad },
-  hero: { alignItems: 'center', gap: 4, paddingHorizontal: RS.spacing.lg, paddingTop: RS.spacing.sm },
-  avatarOuter: { marginBottom: RS.spacing.sm },
-  avatar: { width: 88, height: 88, borderRadius: 44 },
+  hero: { alignItems: 'center', gap: 4, paddingHorizontal: RS.spacing.lg, paddingTop: RS.spacing.lg, paddingBottom: RS.spacing.md },
+  avatarOuter: {
+    marginBottom: RS.spacing.sm,
+    shadowColor: RS.shadow.color, shadowOffset: { width: 0, height: RS.shadow.offsetY },
+    shadowOpacity: RS.shadow.opacity, shadowRadius: RS.shadow.radius, elevation: RS.shadow.android,
+  },
+  avatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.16)' },
   avatarFallback: { backgroundColor: RS.colors.elevated, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 36, fontWeight: '700', color: RS.colors.textMuted },
-  displayName: { fontSize: RS.typography.heading, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: RS.letterSpacing.tight },
+  avatarInitial: { fontSize: 40, fontWeight: '700', color: RS.colors.textMuted },
+  displayName: { fontSize: RS.typography.heading + 2, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: RS.letterSpacing.tight },
   username: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
   bio: { fontSize: RS.typography.body, color: RS.colors.textSecondary, textAlign: 'center', marginTop: RS.spacing.xs, lineHeight: 20 },
   joined: { fontSize: RS.typography.overline, color: RS.colors.textMuted, marginTop: 2 },
@@ -574,42 +739,50 @@ const styles = StyleSheet.create({
   followingBtn: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill },
   editLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
   followingLabel: { color: RS.button.primaryText },
-  statsRow: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, paddingVertical: RS.spacing.lg },
-  statTile: { alignItems: 'center', borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, paddingVertical: RS.spacing.sm + 2, paddingHorizontal: RS.spacing.md, minWidth: 76 },
-  statValue: { fontSize: RS.typography.heading, fontWeight: '700', color: RS.colors.textPrimary },
-  statLabel: { fontSize: RS.typography.overline, fontWeight: '600', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: 2 },
-  section: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, marginBottom: RS.spacing.lg },
+  tabContent: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, minHeight: 120, marginTop: RS.spacing.lg },
+  overviewGap: { gap: RS.spacing.lg },
+  overviewSubsection: { gap: RS.spacing.xs },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   editSmallLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
-  top4Row: { flexDirection: 'row', gap: RS.spacing.sm },
-  top4Item: { flex: 1 },
-  top4Poster: { width: '100%', aspectRatio: 2 / 3, borderRadius: RS.card.radius },
-  top4PosterFallback: { backgroundColor: RS.colors.elevated },
-  tabStrip: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.xs + 2, paddingBottom: RS.spacing.sm },
-  tabChip: { borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: RS.colors.elevated },
-  tabChipActive: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill, borderWidth: 1 },
-  tabLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
-  tabLabelActive: { color: RS.button.primaryText },
-  tabContent: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, minHeight: 120 },
   subheading: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: RS.spacing.sm },
   posterRow: { gap: RS.spacing.sm, paddingVertical: RS.spacing.xs },
-  activityRow: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.xs },
+  ratingPill: {
+    position: 'absolute', top: RS.spacing.xs, right: RS.spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: RS.button.radius,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  ratingPillText: { fontSize: 10, fontWeight: '700', color: RS.colors.textPrimary },
+  activityList: { gap: RS.spacing.xs },
   activityThumb: { width: 44, height: 66, borderRadius: 6 },
   activityThumbFallback: { backgroundColor: RS.colors.elevated },
   activityMeta: { flex: 1, gap: 2 },
-  activityVerb: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.accent, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
   activityTitle: { fontSize: RS.typography.body, fontWeight: '600', color: RS.colors.textPrimary },
   activityTime: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
+  diaryMonthGroup: { gap: RS.spacing.xs, marginBottom: RS.spacing.sm },
+  diaryMonthLabel: {
+    fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginBottom: 2,
+  },
   diaryRow: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.xs },
-  reviewCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: 4, marginBottom: RS.spacing.sm },
+  diaryRating: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
+  reviewCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: RS.spacing.xs, marginBottom: RS.spacing.sm },
+  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm },
+  reviewPoster: { width: 40, height: 60, borderRadius: 6 },
+  reviewHeaderMeta: { flex: 1, gap: 2 },
   reviewTitle: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
   reviewRating: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.accent },
-  reviewText: { fontSize: RS.typography.caption + 1, color: RS.colors.textSecondary, marginTop: 4 },
-  listCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: 2, marginBottom: RS.spacing.sm },
+  reviewText: { fontSize: RS.typography.caption + 1, color: RS.colors.textSecondary },
+  layerChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  layerChip: { borderRadius: RS.button.radius, backgroundColor: RS.colors.elevated, paddingHorizontal: 8, paddingVertical: 3 },
+  layerChipLabel: { fontSize: 10, fontWeight: '600', color: RS.colors.textSecondary },
+  attachmentPreview: { width: '100%', height: 140, borderRadius: RS.card.radius - 4, marginTop: 4 },
+  listCard: { flexDirection: 'row', gap: RS.spacing.sm, borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.sm, marginBottom: RS.spacing.sm },
+  listCollage: { width: 84, height: 84, borderRadius: 10, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' },
+  listCollageCell: { width: '50%', height: '50%' },
+  listMeta: { flex: 1, justifyContent: 'center', gap: 2 },
   listTitle: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
   listCount: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
-  genresSection: { gap: RS.spacing.xs, marginBottom: RS.spacing.sm },
   genreChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: RS.spacing.xs + 2 },
   genreChip: { borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, paddingHorizontal: 12, paddingVertical: 6 },
   genreChipLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
@@ -617,4 +790,15 @@ const styles = StyleSheet.create({
   listsEmptyWrap: { alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.sm },
   createListBtn: { borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
   createListLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
+  // Stats — deliberately de-emphasized: smaller type, no card chrome, quiet
+  // divider-free strip at the very bottom of the screen (was prominent
+  // bordered cards near the top).
+  statsStrip: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.xxl, paddingBottom: RS.spacing.lg,
+    gap: RS.spacing.sm,
+  },
+  statTile: { alignItems: 'center', minWidth: 64 },
+  statValue: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textSecondary },
+  statLabel: { fontSize: 9, fontWeight: '600', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: 1 },
 });
