@@ -213,23 +213,30 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   useEffect(() => {
     let cancelled = false;
 
+    // Overview needs reviews (Recent Reviews), lists (Lists preview), and
+    // diary (Diary preview) all at once — same fetch functions the Reviews/
+    // Lists/Diary tabs use, just triggered together and cached in the same
+    // state so switching to those tabs afterward is instant.
     const run = async () => {
       setTabLoading(true);
       try {
+        const tasks: Promise<void>[] = [];
         if ((activeTab === 'movies' || activeTab === 'tv' || activeTab === 'books') && !mediaTabs[activeTab]) {
           const dbType = activeTab === 'movies' ? 'movie' : activeTab === 'tv' ? 'tv' : 'book';
-          const data = await fetchMediaTypeTab(userId, dbType);
-          if (!cancelled) setMediaTabs((prev) => ({ ...prev, [activeTab]: data }));
-        } else if ((activeTab === 'reviews' || activeTab === 'overview') && reviews === null) {
-          const data = await fetchReviewsTab(userId);
-          if (!cancelled) setReviews(data);
-        } else if (activeTab === 'lists' && lists === null) {
-          const data = await fetchUserLists(userId);
-          if (!cancelled) setLists(data);
-        } else if (activeTab === 'diary' && diary === null) {
-          const data = await fetchDiaryEntries(userId);
-          if (!cancelled) setDiary(data);
+          tasks.push(fetchMediaTypeTab(userId, dbType).then((data) => {
+            if (!cancelled) setMediaTabs((prev) => ({ ...prev, [activeTab]: data }));
+          }));
         }
+        if ((activeTab === 'reviews' || activeTab === 'overview') && reviews === null) {
+          tasks.push(fetchReviewsTab(userId).then((data) => { if (!cancelled) setReviews(data); }));
+        }
+        if ((activeTab === 'lists' || activeTab === 'overview') && lists === null) {
+          tasks.push(fetchUserLists(userId).then((data) => { if (!cancelled) setLists(data); }));
+        }
+        if ((activeTab === 'diary' || activeTab === 'overview') && diary === null) {
+          tasks.push(fetchDiaryEntries(userId).then((data) => { if (!cancelled) setDiary(data); }));
+        }
+        await Promise.all(tasks);
       } catch {
         // Per-tab failure — leave that tab's data null so its empty/error state renders; other tabs unaffected.
       } finally {
@@ -267,8 +274,8 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     router.push(`/media/${routeId}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(poster ?? '')}&mediaType=${mediaType}`);
   };
 
-  const renderReviewCard = (r: ProfileReviewItem) => (
-    <Pressable key={r.routeId} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
+  const renderReviewCard = (r: ProfileReviewItem, i: number) => (
+    <Pressable key={`${r.mediaType}-${r.routeId}-${i}`} style={styles.reviewCard} onPress={() => openMediaDetail(r.routeId, r.title, r.poster, r.mediaType)}>
       <View style={styles.reviewHeaderRow}>
         {r.poster ? (
           <Image source={{ uri: r.poster }} style={styles.reviewPoster} contentFit="cover" />
@@ -451,7 +458,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       <View style={styles.activityList}>
                         {activity.map((item, i) => (
                           <ActivityCard
-                            key={i}
+                            key={`${item.kind}-${item.mediaType ?? 'x'}-${item.routeId ?? item.title}-${item.timestamp}-${i}`}
                             kind={item.kind}
                             verbLabel={ACTIVITY_VERB[item.kind]}
                             detail={item.detail}
@@ -481,6 +488,94 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       </View>
                     </View>
                   )}
+
+                  {/* ── Stats — secondary/compact, positioned lower per spec ── */}
+                  <View style={styles.statsStrip}>
+                    {([
+                      ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
+                      ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
+                      ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
+                    ] as const).map(([label, value, mode]) => (
+                      <Pressable
+                        key={label}
+                        style={styles.statTile}
+                        disabled={!mode}
+                        onPress={() => {
+                          if (!mode) return;
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          setFollowListMode(mode);
+                        }}
+                      >
+                        <Text style={styles.statValue}>{value}</Text>
+                        <Text style={styles.statLabel}>{label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  {/* ── Lists preview — a taste of the full Lists tab ────────── */}
+                  <View style={styles.overviewSubsection}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.subheading}>Lists</Text>
+                      {(lists?.length ?? 0) > 0 && (
+                        <Pressable onPress={() => setActiveTab('lists')}>
+                          <Text style={styles.editSmallLabel}>See All</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                    {(lists?.length ?? 0) === 0 ? (
+                      <Text style={styles.emptyInlineText}>No lists yet.</Text>
+                    ) : (
+                      lists!.slice(0, 2).map((l) => (
+                        <Pressable key={l.id} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
+                          <View style={styles.listCollage}>
+                            {l.previewPosters.length > 0 ? (
+                              l.previewPosters.slice(0, 4).map((poster, i) => (
+                                <Image key={`${poster}-${i}`} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
+                              ))
+                            ) : (
+                              <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
+                            )}
+                          </View>
+                          <View style={styles.listMeta}>
+                            <Text style={styles.listTitle}>{l.title}</Text>
+                            <Text style={styles.listCount}>{l.itemCount} {l.itemCount === 1 ? 'title' : 'titles'}</Text>
+                          </View>
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
+
+                  {/* ── Diary preview — a taste of the full Diary tab ────────── */}
+                  <View style={styles.overviewSubsection}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.subheading}>Diary</Text>
+                      {(diary?.length ?? 0) > 0 && (
+                        <Pressable onPress={() => setActiveTab('diary')}>
+                          <Text style={styles.editSmallLabel}>See All</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                    {(diary?.length ?? 0) === 0 ? (
+                      <Text style={styles.emptyInlineText}>No diary entries yet.</Text>
+                    ) : (
+                      diary!.slice(0, 3).map((entry, i) => (
+                        <Pressable key={`${entry.mediaType}-${entry.routeId}-${entry.watchedDate}-${i}`} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
+                          {entry.poster ? (
+                            <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
+                          ) : (
+                            <View style={[styles.activityThumb, styles.activityThumbFallback]} />
+                          )}
+                          <View style={styles.activityMeta}>
+                            <Text style={styles.activityTitle} numberOfLines={1}>{entry.title}</Text>
+                            <Text style={styles.activityTime}>{new Date(`${entry.watchedDate}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</Text>
+                          </View>
+                          {typeof entry.rating === 'number' && (
+                            <Text style={styles.diaryRating}>{entry.rating.toFixed(1)}</Text>
+                          )}
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
                 </View>
               )}
 
@@ -513,7 +608,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                           horizontal
                           showsHorizontalScrollIndicator={false}
                           data={watched}
-                          keyExtractor={(item) => item.routeId}
+                          keyExtractor={(item, i) => `${item.mediaType}-${item.routeId}-${i}`}
                           contentContainerStyle={styles.posterRow}
                           renderItem={({ item }) => (
                             <View>
@@ -536,7 +631,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                           horizontal
                           showsHorizontalScrollIndicator={false}
                           data={shelf}
-                          keyExtractor={(item) => item.routeId}
+                          keyExtractor={(item, i) => `${item.mediaType}-${item.routeId}-${i}`}
                           contentContainerStyle={styles.posterRow}
                           renderItem={({ item }) => (
                             <PosterCard title={item.title} year={item.year} mediaType={item.mediaType as any} posterUrl={item.poster}
@@ -593,7 +688,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       <View style={styles.listCollage}>
                         {l.previewPosters.length > 0 ? (
                           l.previewPosters.slice(0, 4).map((poster, i) => (
-                            <Image key={i} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
+                            <Image key={`${poster}-${i}`} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
                           ))
                         ) : (
                           <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
@@ -617,8 +712,8 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   diaryGroups.map((group) => (
                     <View key={group.month} style={styles.diaryMonthGroup}>
                       <Text style={styles.diaryMonthLabel}>{group.month}</Text>
-                      {group.entries.map((entry) => (
-                        <Pressable key={entry.routeId + entry.watchedDate} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
+                      {group.entries.map((entry, i) => (
+                        <Pressable key={`${entry.mediaType}-${entry.routeId}-${entry.watchedDate}-${i}`} style={styles.diaryRow} onPress={() => openMediaDetail(entry.routeId, entry.title, entry.poster, entry.mediaType)}>
                           {entry.poster ? (
                             <Image source={{ uri: entry.poster }} style={styles.activityThumb} contentFit="cover" />
                           ) : (
@@ -637,29 +732,6 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   ))
                 )
               )}
-            </View>
-
-            {/* ── Stats — moved lower, visually secondary ─────────────── */}
-            <View style={styles.statsStrip}>
-              {([
-                ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
-                ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
-                ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
-              ] as const).map(([label, value, mode]) => (
-                <Pressable
-                  key={label}
-                  style={styles.statTile}
-                  disabled={!mode}
-                  onPress={() => {
-                    if (!mode) return;
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                    setFollowListMode(mode);
-                  }}
-                >
-                  <Text style={styles.statValue}>{value}</Text>
-                  <Text style={styles.statLabel}>{label}</Text>
-                </Pressable>
-              ))}
             </View>
           </Animated.ScrollView>
         </SafeAreaView>

@@ -277,15 +277,27 @@ export interface TmdbPersonSearchResult {
   knownFor:  string[];
 }
 
+/** TMDB's /search/person returns a lot of non-entries alongside real actors/
+ *  directors — crew stub records, fan-uploaded joke names, etc. — almost
+ *  always with no profile photo AND no real known-for credits. Confirmed
+ *  directly against the live API for query "spiderman": 7 of 8 results were
+ *  entries like "Spiderman Dato", "Lego Spiderman 200", "spiderman shirt",
+ *  all with profile_path=null; only 1 (Alain Robert, profile_path set, 3
+ *  known-for credits) was a real person. Requiring BOTH a real photo and at
+ *  least one known-for credit filters out every placeholder in that sample
+ *  without removing the one legitimate result. */
 export async function searchPeople(query: string): Promise<TmdbPersonSearchResult[]> {
   const raw = await tmdbGet<any>('/search/person', { query });
   const results = Array.isArray(raw.results) ? raw.results : [];
-  return results.slice(0, 20).map((r: any) => ({
-    id:       r.id,
-    name:     r.name,
-    photoUrl: r.profile_path ? `${TMDB_IMG_PROFILE}${r.profile_path}` : null,
-    knownFor: Array.isArray(r.known_for) ? r.known_for.map((k: any) => k.title || k.name).filter(Boolean) : [],
-  }));
+  return results
+    .filter((r: any) => !!r.profile_path && Array.isArray(r.known_for) && r.known_for.length > 0)
+    .slice(0, 20)
+    .map((r: any) => ({
+      id:       r.id,
+      name:     r.name,
+      photoUrl: `${TMDB_IMG_PROFILE}${r.profile_path}`,
+      knownFor: r.known_for.map((k: any) => k.title || k.name).filter(Boolean),
+    }));
 }
 
 // ── Person Detail (new minimal screen) ───────────────────────────────────────

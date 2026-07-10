@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { RS } from '@/constants/theme';
 import { useExpandOnPress } from '@/hooks/useExpandOnPress';
+import { resolveImageUrl } from '@/lib/resolveImageUrl';
 import type { Top4Item } from '@/lib/supabase/mountRushmore';
 
 function toRouteId(dbMediaType: string, dbMediaId: string): string {
@@ -30,13 +33,31 @@ function TopStoryCell({ item, onOpenDetail }: { item: Top4Item; onOpenDetail: To
     onOpenDetail(routeId, item.title, item.posterPath, mobileMediaType),
   );
 
+  // resolveImageUrl fixes the confirmed root cause: real mount_rushmore rows
+  // for movies/tv store bare TMDB paths ("/abc123.jpg") with no CDN prefix —
+  // rendering the raw string produced a blank rectangle, never an error.
+  // `broken` additionally covers a resolved URL that fails to actually load
+  // (image deleted/expired) via Image's onError — same graceful fallback
+  // renders either way, never a blank rect.
+  const [broken, setBroken] = useState(false);
+  const resolvedUri = resolveImageUrl(item.posterPath, 'poster');
+  const showFallback = !resolvedUri || broken;
+
   return (
     <Pressable style={styles.cell} onPress={trigger}>
       <Animated.View style={[styles.cellInner, style]}>
-        {item.posterPath ? (
-          <Image source={{ uri: item.posterPath }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        {!showFallback ? (
+          <Image
+            source={{ uri: resolvedUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+            onError={() => setBroken(true)}
+          />
         ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallback]} />
+          <View style={[StyleSheet.absoluteFill, styles.fallback]}>
+            <MaterialIcons name="image-not-supported" size={22} color={RS.colors.textMuted} />
+          </View>
         )}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.85)']}
@@ -107,6 +128,8 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: RS.colors.elevated,
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   cellFooter: {
     padding: RS.spacing.sm,
