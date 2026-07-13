@@ -73,7 +73,18 @@ export async function fetchCurrentlyEnjoying(userId: string): Promise<CurrentlyE
     (diaryRes.data ?? []).map((r) => `${r.media_type}:${r.media_id}`),
   );
 
-  const saved = (savedRes.data ?? []) as SavedRow[];
+  // Dedupe by normalized route id — the same title can legitimately have two
+  // saved_items rows with different literal media_id strings (e.g. "194662"
+  // vs. "tmdb-194662", both pointing at the same movie) that only turn out
+  // to be identical once toRouteId normalizes them. Keeping the first
+  // occurrence is correct since `saved` is already sorted added_at desc.
+  const seenRouteIds = new Set<string>();
+  const saved = ((savedRes.data ?? []) as SavedRow[]).filter((r) => {
+    const routeId = toRouteId(r.media_type, r.media_id);
+    if (seenRouteIds.has(routeId)) return false;
+    seenRouteIds.add(routeId);
+    return true;
+  });
   const toItem = (row: SavedRow): EnjoyingItem => ({
     routeId:   toRouteId(row.media_type, row.media_id),
     title:     row.title,

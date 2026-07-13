@@ -15,13 +15,16 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { ListCoverCollage } from '@/components/lists/ListCoverCollage';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
+import { resolveImageUrl } from '@/lib/resolveImageUrl';
 import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbPersonSearchResult } from '@/lib/tmdb';
 import { searchBooks, searchCollections, searchLists, searchUsers,
   type BookSearchResult, type CollectionSearchResult, type ListSearchResult, type UserSearchResult } from '@/lib/search';
-import { addRecentSearch, getRecentSearches } from '@/lib/recentSearches';
+import { addRecentSearch, clearRecentSearches, getRecentSearches } from '@/lib/recentSearches';
 import { getMediaKey } from '@/utils/listKeys';
 
 type Category = 'all' | 'movies' | 'tv' | 'books' | 'people' | 'collections' | 'lists' | 'users';
@@ -55,6 +58,27 @@ interface BestMatchPreview {
   onPress:   () => void;
 }
 
+// Crossfades the active-color fill in/out instead of an instant style swap —
+// BlurView stays permanently mounted (never toggled) so there's no
+// mount/unmount pop underneath the fade, matching the app's calm/non-bouncy
+// motion convention (timing, not spring, for an opacity crossfade).
+function CategoryChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const activeOpacity = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    activeOpacity.value = withTiming(active ? 1 : 0, { duration: 180 });
+  }, [active, activeOpacity]);
+  const activeFillStyle = useAnimatedStyle(() => ({ opacity: activeOpacity.value }));
+
+  return (
+    <Pressable style={styles.chip} onPress={onPress}>
+      <BlurView tint="dark" intensity={RS.blur.cardLight} style={StyleSheet.absoluteFill} />
+      <View style={styles.chipFill} />
+      <Animated.View style={[styles.chipFill, styles.chipFillActive, activeFillStyle]} />
+      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category>('all');
@@ -69,6 +93,13 @@ export default function SearchScreen() {
   const [users, setUsers] = useState<SectionState<UserSearchResult>>(idleSection());
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Monotonic request-id guard — debouncing controls how OFTEN a search
+  // fires, not the ORDER in which responses arrive. Without this, a fast
+  // typer can have an earlier keystroke's slower network response resolve
+  // AFTER a later, more current one, silently overwriting fresher results
+  // with stale ones. Every async fetch below checks its own id against this
+  // ref before committing state.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     getRecentSearches().then(setRecent);
@@ -91,33 +122,48 @@ export default function SearchScreen() {
 
   const runSearch = (q: string) => {
     const wantAll = category === 'all';
+    const requestId = ++requestIdRef.current;
+    const isStale = () => requestIdRef.current !== requestId;
 
     if (wantAll || category === 'movies') {
       setMovies({ status: 'loading', data: [] });
-      searchMovies(q).then((data) => setMovies({ status: 'success', data })).catch(() => setMovies({ status: 'error', data: [] }));
+      searchMovies(q)
+        .then((data) => { if (!isStale()) setMovies({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setMovies({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'tv') {
       setTv({ status: 'loading', data: [] });
-      searchTv(q).then((data) => setTv({ status: 'success', data })).catch(() => setTv({ status: 'error', data: [] }));
+      searchTv(q)
+        .then((data) => { if (!isStale()) setTv({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setTv({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'books') {
       setBooks({ status: 'loading', data: [] });
-      searchBooks(q).then((data) => setBooks({ status: 'success', data })).catch(() => setBooks({ status: 'error', data: [] }));
+      searchBooks(q)
+        .then((data) => { if (!isStale()) setBooks({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setBooks({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'people') {
       setPeople({ status: 'loading', data: [] });
-      searchPeople(q).then((data) => setPeople({ status: 'success', data })).catch(() => setPeople({ status: 'error', data: [] }));
+      searchPeople(q)
+        .then((data) => { if (!isStale()) setPeople({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setPeople({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'collections') {
+      // Synchronous/local — nothing to race against, no guard needed.
       setCollections({ status: 'success', data: searchCollections(q) });
     }
     if (wantAll || category === 'lists') {
       setLists({ status: 'loading', data: [] });
-      searchLists(q).then((data) => setLists({ status: 'success', data })).catch(() => setLists({ status: 'error', data: [] }));
+      searchLists(q)
+        .then((data) => { if (!isStale()) setLists({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setLists({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'users') {
       setUsers({ status: 'loading', data: [] });
-      searchUsers(q).then((data) => setUsers({ status: 'success', data })).catch(() => setUsers({ status: 'error', data: [] }));
+      searchUsers(q)
+        .then((data) => { if (!isStale()) setUsers({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setUsers({ status: 'error', data: [] }); });
     }
   };
 
@@ -139,6 +185,17 @@ export default function SearchScreen() {
   const anyResults = movies.data.length || tv.data.length || books.data.length || people.data.length || collections.data.length || lists.data.length || users.data.length;
   const anyLoading = [movies, tv, books, people, lists, users].some((s) => s.status === 'loading');
   const allSettled = [movies, tv, books, people, collections, lists, users].every((s) => s.status !== 'loading' && s.status !== 'idle');
+
+  // Distinguishes "genuinely no results" from "the network call(s) actually
+  // failed" — only the async sections relevant to the current filter count,
+  // since switching category doesn't re-query the others (they just stay
+  // hidden). Collections is local/synchronous — it never errors.
+  const asyncSectionsByCategory: Record<string, SectionState<unknown>> = { movies, tv, books, people, lists, users };
+  const relevantErrorKeys = category === 'all'
+    ? ['movies', 'tv', 'books', 'people', 'lists', 'users']
+    : category === 'collections' ? [] : [category];
+  const relevantErrorSections = relevantErrorKeys.map((k) => asyncSectionsByCategory[k]);
+  const allAttemptedErrored = relevantErrorSections.length > 0 && relevantErrorSections.every((s) => s.status === 'error');
 
   // Best Match — no cross-category relevance signal exists (each source API
   // only ranks within its own category), so this is an honest, deterministic
@@ -164,7 +221,7 @@ export default function SearchScreen() {
     }
     if (collections.data.length > 0) {
       const c = collections.data[0];
-      return { title: c.title, subtitle: `${c.storyCount} stories`, imageUrl: c.previewItem?.posterUrl ?? null, onPress: () => router.push(`/collection/${c.id}`) };
+      return { title: c.title, subtitle: `${c.storyCount} stories`, imageUrl: c.previewItems[0]?.posterUrl ?? null, onPress: () => router.push(`/collection/${c.id}`) };
     }
     if (lists.data.length > 0) {
       const l = lists.data[0];
@@ -208,16 +265,14 @@ export default function SearchScreen() {
         {/* Compact horizontal filter-chip row — one row, content-based width,
             36-42px height, green-accent active / dark-glass inactive. */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-          {CATEGORY_CHIPS.map((chip) => {
-            const active = category === chip.key;
-            return (
-              <Pressable key={getMediaKey('chip', chip.key)} style={styles.chip} onPress={() => setCategory(chip.key)}>
-                {!active && <BlurView tint="dark" intensity={RS.blur.cardLight} style={StyleSheet.absoluteFill} />}
-                <View style={[styles.chipFill, active && styles.chipFillActive]} />
-                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{chip.label}</Text>
-              </Pressable>
-            );
-          })}
+          {CATEGORY_CHIPS.map((chip) => (
+            <CategoryChip
+              key={getMediaKey('chip', chip.key)}
+              label={chip.label}
+              active={category === chip.key}
+              onPress={() => setCategory(chip.key)}
+            />
+          ))}
         </ScrollView>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -225,7 +280,12 @@ export default function SearchScreen() {
             <>
               {recent.length > 0 && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Recent Searches</Text>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.sectionTitle}>Recent Searches</Text>
+                    <Pressable onPress={() => clearRecentSearches().then(() => setRecent([]))} hitSlop={8}>
+                      <Text style={styles.clearLabel}>Clear</Text>
+                    </Pressable>
+                  </View>
                   <View style={styles.pillWrap}>
                     {recent.map((q, i) => (
                       <Pressable key={getMediaKey('recent', `${q}-${i}`)} style={styles.pill} onPress={() => handleTapRecentOrTrending(q)}>
@@ -249,7 +309,7 @@ export default function SearchScreen() {
                 </View>
               </View>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Browse Categories</Text>
+                <Text style={styles.sectionTitle}>Browse ReelShelf</Text>
                 <View style={styles.browseGrid}>
                   {CATEGORY_CHIPS.filter((c) => c.key !== 'all').map((c) => (
                     <Pressable key={getMediaKey('browse', c.key)} style={styles.browseCard} onPress={() => setCategory(c.key)}>
@@ -262,6 +322,14 @@ export default function SearchScreen() {
           ) : anyLoading && !anyResults ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={RS.colors.accent} />
+            </View>
+          ) : allSettled && !anyResults && allAttemptedErrored ? (
+            <View style={styles.centered}>
+              <MaterialIcons name="cloud-off" size={28} color={RS.colors.textMuted} />
+              <Text style={styles.emptyText}>Couldn&apos;t reach the network. Check your connection and try again.</Text>
+              <Pressable style={styles.retryBtn} onPress={() => runSearch(query.trim())}>
+                <Text style={styles.retryLabel}>Retry</Text>
+              </Pressable>
             </View>
           ) : allSettled && !anyResults ? (
             <View style={styles.centered}>
@@ -296,8 +364,13 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Movies</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {movies.data.map((item, i) => (
-                      <PosterCard key={getMediaKey('film', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="film" posterUrl={item.posterUrl}
-                        onPress={() => openMedia(item.id, item.title, item.posterUrl, 'film')} />
+                      <View key={getMediaKey('film', `${item.id}-${i}`)}>
+                        <PosterCard title={item.title} year={item.year} mediaType="film" posterUrl={resolveImageUrl(item.posterUrl)}
+                          onPress={() => openMedia(item.id, item.title, item.posterUrl, 'film')} />
+                        {typeof item.rating === 'number' && (
+                          <View style={styles.ratingPill}><Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text></View>
+                        )}
+                      </View>
                     ))}
                   </ScrollView>
                 </View>
@@ -308,8 +381,13 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>TV</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {tv.data.map((item, i) => (
-                      <PosterCard key={getMediaKey('tv', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="tv" posterUrl={item.posterUrl}
-                        onPress={() => openMedia(item.id, item.title, item.posterUrl, 'tv')} />
+                      <View key={getMediaKey('tv', `${item.id}-${i}`)}>
+                        <PosterCard title={item.title} year={item.year} mediaType="tv" posterUrl={resolveImageUrl(item.posterUrl)}
+                          onPress={() => openMedia(item.id, item.title, item.posterUrl, 'tv')} />
+                        {typeof item.rating === 'number' && (
+                          <View style={styles.ratingPill}><Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text></View>
+                        )}
+                      </View>
                     ))}
                   </ScrollView>
                 </View>
@@ -320,8 +398,11 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Books</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {books.data.map((item, i) => (
-                      <PosterCard key={getMediaKey('book', `${item.id}-${i}`)} title={item.title} year={item.year} mediaType="book" posterUrl={item.posterUrl}
-                        onPress={() => openMedia(item.id, item.title, item.posterUrl, 'book')} />
+                      <View key={getMediaKey('book', `${item.id}-${i}`)} style={styles.bookCard}>
+                        <PosterCard title={item.title} year={item.year} mediaType="book" posterUrl={resolveImageUrl(item.posterUrl)}
+                          onPress={() => openMedia(item.id, item.title, item.posterUrl, 'book')} />
+                        {item.author ? <Text style={styles.bookAuthor} numberOfLines={1}>{item.author}</Text> : null}
+                      </View>
                     ))}
                   </ScrollView>
                 </View>
@@ -338,7 +419,7 @@ export default function SearchScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {people.data.map((person, i) => (
                       <Pressable key={getMediaKey('person', `${person.id}-${i}`)} style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
-                        <Image source={{ uri: person.photoUrl! }} style={styles.personPhoto} contentFit="cover" />
+                        <Image source={{ uri: resolveImageUrl(person.photoUrl, 'profile')! }} style={styles.personPhoto} contentFit="cover" />
                         <Text style={styles.personName} numberOfLines={2}>{person.name}</Text>
                         <Text style={styles.personKnownFor} numberOfLines={1}>{person.knownFor.join(', ')}</Text>
                       </Pressable>
@@ -352,12 +433,8 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Collections</Text>
                   {collections.data.map((c, i) => (
                     <Pressable key={getMediaKey('collection', `${c.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/collection/${c.id}`)}>
-                      <View style={styles.listRowThumbOuter}>
-                        {c.previewItem?.posterUrl ? (
-                          <Image source={{ uri: c.previewItem.posterUrl }} style={styles.listRowThumb} contentFit="cover" />
-                        ) : (
-                          <View style={[styles.listRowThumb, styles.listRowThumbFallback]} />
-                        )}
+                      <View style={styles.collageThumbOuter}>
+                        <ListCoverCollage items={c.previewItems.map((it, idx) => ({ url: resolveImageUrl(it.posterUrl), alt: `${c.title} preview ${idx + 1}` }))} />
                       </View>
                       <View style={styles.listRowMeta}>
                         <Text style={styles.listRowTitle}>{c.title}</Text>
@@ -374,6 +451,9 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Lists</Text>
                   {lists.data.map((l, i) => (
                     <Pressable key={getMediaKey('list', `${l.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/list/${l.id}`)}>
+                      <View style={styles.collageThumbOuter}>
+                        <ListCoverCollage items={l.previewPosters.map((url, idx) => ({ url, alt: `${l.title} cover ${idx + 1}` }))} />
+                      </View>
                       <View style={styles.listRowMeta}>
                         <Text style={styles.listRowTitle}>{l.title}</Text>
                         <Text style={styles.listRowSub}>{l.itemCount} titles{l.ownerName ? ` · by ${l.ownerName}` : ''}</Text>
@@ -455,8 +535,12 @@ const styles = StyleSheet.create({
   centered: { paddingVertical: RS.spacing.xl, alignItems: 'center', paddingHorizontal: RS.spacing.lg },
   emptyText: { fontSize: RS.typography.body, color: RS.colors.textMuted, textAlign: 'center' },
   section: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   sectionCaption: { fontSize: RS.typography.overline, color: RS.colors.textMuted, marginTop: -6 },
+  clearLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
+  retryBtn: { marginTop: RS.spacing.md, borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
+  retryLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: RS.spacing.xs + 2 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: RS.colors.elevated },
   pillLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
@@ -464,6 +548,15 @@ const styles = StyleSheet.create({
   browseCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.sm + 2 },
   browseLabel: { fontSize: RS.typography.body, fontWeight: '600', color: RS.colors.textPrimary },
   posterRow: { gap: RS.spacing.sm },
+  ratingPill: {
+    position: 'absolute', top: RS.spacing.xs, right: RS.spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: RS.button.radius,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  ratingPillText: { fontSize: 10, fontWeight: '700', color: RS.colors.textPrimary },
+  bookCard: { gap: 4 },
+  bookAuthor: { fontSize: RS.typography.overline, color: RS.colors.textMuted, maxWidth: RS.card.posterWidth },
+  collageThumbOuter: { width: 56, height: 56, borderRadius: 8, overflow: 'hidden' },
   personCard: { width: 100, alignItems: 'center', gap: 6 },
   personPhoto: { width: 84, height: 84, borderRadius: 42, backgroundColor: RS.colors.elevated },
   personName: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textPrimary, textAlign: 'center' },

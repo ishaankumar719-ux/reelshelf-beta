@@ -2,49 +2,54 @@
 // same one already used by scripts/generate-seed-data.ts), and Supabase
 // (collections from existing seed data, user_lists, profiles) — all
 // respecting existing RLS, no new policies.
+import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
 import { collections, type SeedCollectionItem } from '@/data/seedHomeContent';
 
 const GBOOKS = 'https://www.googleapis.com/books/v1/volumes';
 
 export interface BookSearchResult {
-  id:        string; // route id, e.g. "book-<slug>"
+  id:        string; // route id, e.g. "book-<real Google Books volumeId>"
   title:     string;
   author:    string | null;
   year:      number | undefined;
   posterUrl: string | null;
 }
 
-function slugify(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
-
+/** Google Books' /volumes response gives each item a top-level `id` — the
+ *  real, globally-unique volume id (confirmed against this app's own
+ *  scripts/generate-seed-data.ts, which reads the same field: `item.id`).
+ *  Previously this used a slugified title instead, which collided for any
+ *  two books sharing a title (reprints, unrelated books, etc.) both in the
+ *  React key and in the route id persisted downstream via toDbMediaId. */
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
   const res = await fetch(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
   if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
   const data = await res.json();
   const items = Array.isArray(data.items) ? data.items : [];
   return items
-    .filter((item: any) => item.volumeInfo?.title)
+    .filter((item: any) => item.id && item.volumeInfo?.title)
     .map((item: any) => {
       const info = item.volumeInfo;
       const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
       return {
-        id:        `book-${slugify(info.title)}`,
+        id:        `book-${item.id}`,
         title:     info.title,
         author:    Array.isArray(info.authors) ? info.authors[0] : null,
         year:      Number.isNaN(year) ? undefined : year,
-        posterUrl: info.imageLinks?.thumbnail?.replace('http://', 'https://') ?? null,
+        posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
       } as BookSearchResult;
     });
 }
 
 // ── Collections (existing curated seed data — not a live table) ─────────────
 export interface CollectionSearchResult {
-  id:          string;
-  title:       string;
-  storyCount:  number;
-  previewItem: SeedCollectionItem['items'][number] | undefined;
+  id:            string;
+  title:         string;
+  storyCount:    number;
+  /** Up to 4 items for a cover-collage deck preview (matches Lists' own
+   *  ListCoverCollage treatment) — was previously a single preview thumb. */
+  previewItems:  SeedCollectionItem['items'];
 }
 
 export function searchCollections(query: string): CollectionSearchResult[] {
@@ -52,17 +57,25 @@ export function searchCollections(query: string): CollectionSearchResult[] {
   if (!q) return [];
   return collections
     .filter((c) => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q))
-    .map((c) => ({ id: c.id, title: c.title, storyCount: c.storyCount, previewItem: c.items[0] }));
+    .map((c) => ({
+      id:           c.id,
+      title:        c.title,
+      storyCount:   c.storyCount,
+      previewItems: c.items.slice(0, 4),
+    }));
 }
 
 // ── Lists (real user_lists — RLS already restricts to public/unlisted for non-owners) ──
 export interface ListSearchResult {
-  id:          string;
-  title:       string;
-  description: string | null;
-  ownerId:     string;
-  ownerName:   string | null;
-  itemCount:   number;
+  id:             string;
+  title:          string;
+  description:    string | null;
+  ownerId:        string;
+  ownerName:      string | null;
+  itemCount:      number;
+  /** Up to 4 resolved poster URLs for a ListCoverCollage — same shape
+   *  fetchUserLists already builds for Profile/Lists tab. */
+  previewPosters: string[];
 }
 
 function requireClient() {
@@ -83,26 +96,36 @@ export async function searchLists(query: string): Promise<ListSearchResult[]> {
   const lists = data ?? [];
   const listIds = lists.map((l) => l.id as string);
   const counts = new Map<string, number>();
+  const previewsByList = new Map<string, string[]>();
   if (listIds.length > 0) {
     const { data: items, error: itemsError } = await client
       .from('user_list_items')
-      .select('list_id')
-      .in('list_id', listIds);
+      .select('list_id, poster_url')
+      .in('list_id', listIds)
+      .order('rank_order', { ascending: true });
     if (itemsError) throw itemsError;
     for (const item of items ?? []) {
-      counts.set(item.list_id as string, (counts.get(item.list_id as string) ?? 0) + 1);
+      const listId = item.list_id as string;
+      counts.set(listId, (counts.get(listId) ?? 0) + 1);
+      const posters = previewsByList.get(listId) ?? [];
+      if (posters.length < 4) {
+        const resolved = resolveImageUrl(item.poster_url as string | null, 'poster');
+        if (resolved) posters.push(resolved);
+      }
+      previewsByList.set(listId, posters);
     }
   }
 
   return lists.map((l) => {
     const owner = Array.isArray(l.profiles) ? l.profiles[0] : l.profiles;
     return {
-      id:          l.id as string,
-      title:       l.title as string,
-      description: l.description as string | null,
-      ownerId:     l.user_id as string,
-      ownerName:   (owner?.display_name || owner?.username) ?? null,
-      itemCount:   counts.get(l.id as string) ?? 0,
+      id:             l.id as string,
+      title:          l.title as string,
+      description:    l.description as string | null,
+      ownerId:        l.user_id as string,
+      ownerName:      (owner?.display_name || owner?.username) ?? null,
+      itemCount:      counts.get(l.id as string) ?? 0,
+      previewPosters: previewsByList.get(l.id as string) ?? [],
     };
   });
 }
@@ -128,6 +151,6 @@ export async function searchUsers(query: string): Promise<UserSearchResult[]> {
     id:          row.id as string,
     username:    row.username as string,
     displayName: row.display_name as string | null,
-    avatarUrl:   row.avatar_url as string | null,
+    avatarUrl:   resolveImageUrl(row.avatar_url as string | null, 'profile'),
   }));
 }

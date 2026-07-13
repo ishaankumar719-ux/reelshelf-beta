@@ -20,7 +20,7 @@ function Row({ label, items, onOpenDetail }: RowProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         data={items}
-        keyExtractor={(item) => getMediaKey(item.mediaType, item.routeId)}
+        keyExtractor={(item, i) => getMediaKey(item.mediaType, `${item.routeId}-${i}`)}
         contentContainerStyle={styles.posterRow}
         renderItem={({ item }) => (
           <PosterCard
