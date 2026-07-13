@@ -300,7 +300,16 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         )}
         <View style={styles.reviewHeaderMeta}>
           <Text style={styles.reviewTitle} numberOfLines={1}>{r.title}</Text>
-          {r.rating ? <Text style={styles.reviewRating}>{r.rating.toFixed(1)} / 10</Text> : null}
+          <View style={styles.reviewMetaRow}>
+            {r.rating ? <Text style={styles.reviewRating}>{r.rating.toFixed(1)} / 10</Text> : null}
+            <Text style={styles.reviewDate}>{new Date(`${r.watchedDate}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</Text>
+            {r.watchedInCinema && (
+              <View style={styles.cinemaBadge}>
+                <MaterialIcons name="theaters" size={10} color={RS.colors.accent} />
+                <Text style={styles.cinemaBadgeLabel}>Cinema</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
       <SpoilerBlur active={r.containsSpoilers}>
@@ -316,7 +325,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         </View>
       )}
       {r.attachmentUrl && (
-        <Image source={{ uri: r.attachmentUrl }} style={styles.attachmentPreview} contentFit="cover" />
+        <View>
+          <Image source={{ uri: r.attachmentUrl }} style={styles.attachmentPreview} contentFit="cover" />
+          {r.attachmentType === 'gif' && (
+            <View style={styles.gifBadge}>
+              <Text style={styles.gifBadgeLabel}>GIF</Text>
+            </View>
+          )}
+        </View>
       )}
     </Pressable>
   );
@@ -902,12 +918,18 @@ const styles = StyleSheet.create({
   reviewPoster: { width: 40, height: 60, borderRadius: 6 },
   reviewHeaderMeta: { flex: 1, gap: 2 },
   reviewTitle: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
+  reviewMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
   reviewRating: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.accent },
+  reviewDate: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
+  cinemaBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 4, backgroundColor: RS.colors.accentGlow, paddingHorizontal: 6, paddingVertical: 2 },
+  cinemaBadgeLabel: { fontSize: 9, fontWeight: '700', color: RS.colors.accent, textTransform: 'uppercase', letterSpacing: 0.3 },
   reviewText: { fontSize: RS.typography.caption + 1, color: RS.colors.textSecondary },
   layerChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   layerChip: { borderRadius: RS.button.radius, backgroundColor: RS.colors.elevated, paddingHorizontal: 8, paddingVertical: 3 },
   layerChipLabel: { fontSize: 10, fontWeight: '600', color: RS.colors.textSecondary },
   attachmentPreview: { width: '100%', height: 140, borderRadius: RS.card.radius - 4, marginTop: 4 },
+  gifBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6, paddingVertical: 2 },
+  gifBadgeLabel: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
   listCard: { flexDirection: 'row', gap: RS.spacing.sm, borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.sm, marginBottom: RS.spacing.sm },
   listCollage: { width: 84, height: 84, borderRadius: 10, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' },
   listCollageCell: { width: '50%', height: '50%' },

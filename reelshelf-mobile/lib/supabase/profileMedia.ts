@@ -79,6 +79,10 @@ export interface ProfileReviewItem extends ProfileMediaItem {
   // it already wrote (no new fetch shape, no new table).
   attachmentUrl:    string | null;
   attachmentType:   string | null;
+  /** Real column, already written by the Review Composer but never
+   *  surfaced anywhere on mobile (WEBSITE_PROFILE_AUDIT.md §Cinema /
+   *  WEBSITE_MOBILE_PARITY_CHECKLIST.md #10) — used for a small cinema badge. */
+  watchedInCinema:  boolean;
   layerRatings:     { label: string; value: number }[];
 }
 
@@ -104,7 +108,7 @@ export async function fetchReviewsTab(userId: string): Promise<ProfileReviewItem
   const { data, error } = await client
     .from('diary_entries')
     .select(`media_id, media_type, title, poster, year, rating, review, contains_spoilers, watched_date,
-      attachment_url, attachment_type,
+      attachment_url, attachment_type, watched_in_cinema,
       ${REVIEW_LAYER_COLUMNS.map((l) => l.column).join(', ')}`)
     .eq('user_id', userId)
     .eq('review_scope', 'show')
@@ -125,6 +129,7 @@ export async function fetchReviewsTab(userId: string): Promise<ProfileReviewItem
     watchedDate:      row.watched_date,
     attachmentUrl:    row.attachment_url ?? null,
     attachmentType:   row.attachment_type ?? null,
+    watchedInCinema:  row.watched_in_cinema ?? false,
     layerRatings:     REVIEW_LAYER_COLUMNS
       .map((l) => ({ label: l.label, value: row[l.column] }))
       .filter((l): l is { label: string; value: number } => typeof l.value === 'number'),
