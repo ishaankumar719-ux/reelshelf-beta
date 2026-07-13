@@ -24,6 +24,8 @@ import { AchievementsRow } from '@/components/profile/AchievementsRow';
 import { ActivityCard } from '@/components/profile/ActivityCard';
 import { CurrentlyEnjoyingShelf } from '@/components/profile/CurrentlyEnjoyingShelf';
 import { GlassTabStrip } from '@/components/profile/GlassTabStrip';
+import { ListCoverCollage } from '@/components/lists/ListCoverCollage';
+import { ListEditorModal } from '@/components/lists/ListEditorModal';
 import { MountRushmoreEditor } from '@/components/profile/MountRushmoreEditor';
 import { MountRushmoreGrid, MountRushmoreTabs } from '@/components/profile/MountRushmoreGrid';
 import { SignInPrompt } from '@/components/SignInPrompt';
@@ -36,7 +38,7 @@ import { mediaDetails } from '@/data/mediaDetails';
 import { fetchEarnedBadges, type EarnedBadge } from '@/lib/supabase/badges';
 import { fetchCurrentlyEnjoying, type CurrentlyEnjoyingData } from '@/lib/supabase/currentlyEnjoying';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
-import { fetchUserLists, type UserListSummary } from '@/lib/supabase/lists';
+import { createList, fetchUserLists, type ListEditFields, type UserListSummary } from '@/lib/supabase/lists';
 import {
   fetchMountRushmore, type MountRushmoreSlot, type RushmoreMediaType,
 } from '@/lib/supabase/mountRushmore';
@@ -117,6 +119,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [following, setFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(false);
+  const [listEditorOpen, setListEditorOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -237,7 +240,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
           tasks.push(fetchReviewsTab(userId).then((data) => { if (!cancelled) setReviews(data); }));
         }
         if ((activeTab === 'lists' || activeTab === 'overview') && lists === null) {
-          tasks.push(fetchUserLists(userId).then((data) => { if (!cancelled) setLists(data); }));
+          tasks.push(fetchUserLists(userId, isOwnProfile).then((data) => { if (!cancelled) setLists(data); }));
         }
         if ((activeTab === 'diary' || activeTab === 'overview') && diary === null) {
           tasks.push(fetchDiaryEntries(userId).then((data) => { if (!cancelled) setDiary(data); }));
@@ -278,6 +281,13 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
 
   const openMediaDetail = (routeId: string, title: string, poster: string | null, mediaType: string) => {
     router.push(`/media/${routeId}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(poster ?? '')}&mediaType=${mediaType}`);
+  };
+
+  const handleCreateList = async (fields: ListEditFields) => {
+    if (!sessionUser) return;
+    const newId = await createList(sessionUser.id, fields);
+    fetchUserLists(userId, isOwnProfile).then(setLists).catch(() => {});
+    router.push(`/list/${newId}`);
   };
 
   const renderReviewCard = (r: ProfileReviewItem, i: number) => (
@@ -586,13 +596,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       lists!.slice(0, 2).map((l) => (
                         <Pressable key={getMediaKey('list', l.id)} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
                           <View style={styles.listCollage}>
-                            {l.previewPosters.length > 0 ? (
-                              l.previewPosters.slice(0, 4).map((poster, i) => (
-                                <Image key={getMediaKey('poster', `${poster}-${i}`)} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
-                              ))
-                            ) : (
-                              <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
-                            )}
+                            <ListCoverCollage items={l.previewPosters.map((url, i) => ({ url, alt: `${l.title} cover ${i + 1}` }))} />
                           </View>
                           <View style={styles.listMeta}>
                             <Text style={styles.listTitle}>{l.title}</Text>
@@ -733,7 +737,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                         style={styles.createListBtn}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          console.log('[Profile] Create List pressed — no-op (list-creation UI not built yet)');
+                          setListEditorOpen(true);
                         }}
                       >
                         <Text style={styles.createListLabel}>Create List</Text>
@@ -744,13 +748,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   lists!.map((l) => (
                     <Pressable key={getMediaKey('list', l.id)} style={styles.listCard} onPress={() => router.push(`/list/${l.id}`)}>
                       <View style={styles.listCollage}>
-                        {l.previewPosters.length > 0 ? (
-                          l.previewPosters.slice(0, 4).map((poster, i) => (
-                            <Image key={getMediaKey('poster', `${poster}-${i}`)} source={{ uri: poster }} style={styles.listCollageCell} contentFit="cover" />
-                          ))
-                        ) : (
-                          <View style={[styles.listCollageCell, styles.activityThumbFallback, { width: '100%', height: '100%' }]} />
-                        )}
+                        <ListCoverCollage items={l.previewPosters.map((url, i) => ({ url, alt: `${l.title} cover ${i + 1}` }))} />
                       </View>
                       <View style={styles.listMeta}>
                         <Text style={styles.listTitle}>{l.title}</Text>
@@ -809,6 +807,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             initialSlots={rushmoreSlots}
             userId={userId}
             onSaved={(allSlots) => setRushmoreSlots(allSlots)}
+          />
+          <ListEditorModal
+            visible={listEditorOpen}
+            onClose={() => setListEditorOpen(false)}
+            onSave={handleCreateList}
           />
         </>
       )}
