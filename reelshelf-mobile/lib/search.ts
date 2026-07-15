@@ -73,6 +73,9 @@ export interface ListSearchResult {
   ownerId:        string;
   ownerName:      string | null;
   itemCount:      number;
+  /** Real aggregate from user_lists.like_count (same denormalized column
+   *  List Detail's like toggle already maintains via recalculateListEngagement). */
+  likeCount:      number;
   /** Up to 4 resolved poster URLs for a ListCoverCollage — same shape
    *  fetchUserLists already builds for Profile/Lists tab. */
   previewPosters: string[];
@@ -87,7 +90,7 @@ export async function searchLists(query: string): Promise<ListSearchResult[]> {
   const client = requireClient();
   const { data, error } = await client
     .from('user_lists')
-    .select('id, title, description, user_id, profiles(username, display_name)')
+    .select('id, title, description, user_id, like_count, profiles(username, display_name)')
     .ilike('title', `%${query}%`)
     .in('visibility', ['public', 'unlisted'])
     .limit(15);
@@ -125,6 +128,7 @@ export async function searchLists(query: string): Promise<ListSearchResult[]> {
       ownerId:        l.user_id as string,
       ownerName:      (owner?.display_name || owner?.username) ?? null,
       itemCount:      counts.get(l.id as string) ?? 0,
+      likeCount:      (l.like_count as number) ?? 0,
       previewPosters: previewsByList.get(l.id as string) ?? [],
     };
   });

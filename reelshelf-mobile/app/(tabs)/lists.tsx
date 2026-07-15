@@ -33,7 +33,10 @@ function ListCard({ list, onPress }: { list: UserListSummary; onPress: () => voi
         </View>
         {list.description ? <Text style={styles.cardDescription} numberOfLines={2}>{list.description}</Text> : null}
         <View style={styles.cardMetaRow}>
-          <Text style={styles.cardCount}>{list.itemCount} {list.itemCount === 1 ? 'title' : 'titles'}</Text>
+          <View style={styles.cardMetaLeft}>
+            <Text style={styles.cardCount}>{list.itemCount} {list.itemCount === 1 ? 'title' : 'titles'}</Text>
+            {list.likeCount > 0 && <Text style={styles.cardLikeCount}>♡ {list.likeCount}</Text>}
+          </View>
           {list.visibility !== 'public' && (
             <Text style={styles.cardVisibility}>
               {list.visibility === 'private' ? '🔒 Private' : '🔗 Unlisted'}
@@ -248,12 +251,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop:      2,
   },
+  cardMetaLeft: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           8,
+  },
   cardCount: {
     fontSize:      RS.typography.overline,
     fontWeight:    '600',
     color:         RS.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: RS.letterSpacing.wide,
+  },
+  cardLikeCount: {
+    fontSize:   RS.typography.overline,
+    fontWeight: '600',
+    color:      'rgba(248,113,113,0.75)',
   },
   cardVisibility: {
     fontSize: RS.typography.overline,

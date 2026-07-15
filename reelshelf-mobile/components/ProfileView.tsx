@@ -616,7 +616,10 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                           </View>
                           <View style={styles.listMeta}>
                             <Text style={styles.listTitle}>{l.title}</Text>
-                            <Text style={styles.listCount}>{l.itemCount} {l.itemCount === 1 ? 'title' : 'titles'}</Text>
+                            <View style={styles.listMetaRow}>
+                              <Text style={styles.listCount}>{l.itemCount} {l.itemCount === 1 ? 'title' : 'titles'}</Text>
+                              {l.likeCount > 0 && <Text style={styles.listLikeCount}>♡ {l.likeCount}</Text>}
+                            </View>
                           </View>
                         </Pressable>
                       ))
@@ -935,7 +938,9 @@ const styles = StyleSheet.create({
   listCollageCell: { width: '50%', height: '50%' },
   listMeta: { flex: 1, justifyContent: 'center', gap: 2 },
   listTitle: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
+  listMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   listCount: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
+  listLikeCount: { fontSize: RS.typography.overline, fontWeight: '600', color: 'rgba(248,113,113,0.75)' },
   genreChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: RS.spacing.xs + 2 },
   genreChip: { borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, paddingHorizontal: 12, paddingVertical: 6 },
   genreChipLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },

@@ -456,7 +456,7 @@ export default function SearchScreen() {
                       </View>
                       <View style={styles.listRowMeta}>
                         <Text style={styles.listRowTitle}>{l.title}</Text>
-                        <Text style={styles.listRowSub}>{l.itemCount} titles{l.ownerName ? ` · by ${l.ownerName}` : ''}</Text>
+                        <Text style={styles.listRowSub}>{l.itemCount} titles{l.ownerName ? ` · by ${l.ownerName}` : ''}{l.likeCount > 0 ? ` · ♡ ${l.likeCount}` : ''}</Text>
                       </View>
                       <Text style={styles.chevron}>›</Text>
                     </Pressable>
