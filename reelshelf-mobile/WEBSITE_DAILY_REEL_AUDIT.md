@@ -288,3 +288,46 @@ mobile would need its own client-computed local date rather than trusting a serv
 4. There is no "Related Discovery"/"More Like This" row anywhere in this feature on the website —
    confirmed absent, not simply unread. If mobile wants such a row, it would be a net-new addition
    with no website behavior to port, not a parity item.
+
+---
+
+## Addendum (read-only, 2026-07-15): Friend Activity, New Reviews, New Lists, Trending
+## Collections, Recently Added — do any of these appear on `/daily-reel`?
+
+> Re-read fresh for this specific question, not pulled from memory of the passes above. Covers
+> `app/daily-reel/page.tsx`, `components/daily-reel/DailyReelPage.tsx` (full, all 1174 lines —
+> the file was previously read in two passes; this addendum confirms full coverage), and
+> `components/daily-reel/DailyReelEditorial.tsx` (full, 579 lines — not previously read in
+> either prior audit pass). No code was changed to produce this addendum.
+
+**New finding this pass:** `components/daily-reel/DailyReelEditorial.tsx` defines a full
+alternate component tree — `FeaturedArticleSection`, its own separate `StaffPicksSection`,
+`UpcomingSection` ("Upcoming releases"), and `FanPicksSection` (eyebrow "Community", title
+"Trending this week", ranked by `log_count`) — but its default-exported `DailyReelEditorial`
+component is **never imported as a value anywhere in the codebase** (confirmed via repo-wide
+grep: only its *types* — `ArticleData`, `StaffPickData`, `UpcomingRelease`, `FanPickData` — are
+imported, by `app/daily-reel/page.tsx` and `DailyReelPage.tsx`, purely for type annotations).
+This file is dead code with respect to the real page — the actual `/daily-reel` route renders
+`DailyReelPage.tsx`'s own inline section components instead (confirmed exact section list below).
+None of the five concepts below live in this orphaned file either, so this doesn't change any of
+the five outcomes — but it's worth flagging so no future pass mistakes this file for something
+live.
+
+**The real, definitive `/daily-reel` render tree** (`DailyReelPage.tsx` lines 1078–1172) is
+exactly 7 sections, in order: Header, Daily Pick, Question of the Day, Today's Story, Today's
+Staff Picks, Hidden Gem, Today's Progress. Nothing else is rendered.
+
+| Concept | Outcome | Evidence |
+|---|---|---|
+| **Friend Activity** | Exists on the website, but on a different page | Home page, not `/daily-reel`: `components/home/HomeDashboardClient.tsx` section 3 "FRIENDS ACTIVITY" (line 1418), a `FriendActivityCard` component (line 222), fed by `friendsActivity` state (line 1003) populated via `getFriendsActivity()` (line 1076). Also a dedicated route, `app/activity/page.tsx`, rendering `ActivityFeed` (`components/activity/ActivityFeed.tsx`). Zero occurrences of "friend" in any of the three `daily-reel/*` files. |
+| **New Reviews** | Does not exist anywhere under this name; closest analog lives elsewhere, not on `/daily-reel` | No file/component/section titled "New Reviews" exists anywhere in `app/` or `components/` (exact-phrase grep: zero hits). The closest conceptual match is Home's "Recently logged" section (`HomeDashboardClient.tsx` line 1486, `recentlyLogged` derived from the user's own `diaryEntries`, line 1111) and `recentReviews` passed into `ProfileShowcase` on `app/u/[username]/page.tsx` (line 514) — different name, different page, and neither appears in any `daily-reel/*` file (zero occurrences of "review" beyond the unrelated word "preview"). |
+| **New Lists** | Exists on the website, but under a different name and a different page | Home page: `components/home/HomeDashboardClient.tsx` section 4 "RECENT LISTS" (line 1459), title copy "Recent lists" (line 1463), fed by a `recentLists` prop (`DiscoveryList[]`, line 992). Not literally "New Lists," and not on `/daily-reel` — zero occurrences of "list" in any `daily-reel/*` file (the one match, "Add to **Watchlist**," is unrelated). |
+| **Trending Collections** | Does not appear to exist anywhere on the website | Exact-phrase grep for "Trending Collections" across `app/` and `components/`: zero hits. The two halves exist *separately* and never combine: "Trending" appears extensively as per-media-type rows (Trending Films/Series/Books/Today/This Week/Now) across Home, Discover, Movies, Series, Books, and Search pages; "Collection" appears separately as a static curated-franchise detail page (`app/discover/collection/[slug]/page.tsx`, backed by `COLLECTION_DEFS` in `lib/discoverCollections`) — not a trending row, not a Home/daily-reel section. No component, route, or copy anywhere merges these into a "Trending Collections" concept. Zero occurrences of "collection" in any `daily-reel/*` file. |
+| **Recently Added** | Does not appear to exist anywhere on the website | Exact-phrase grep for "Recently Added" (and near variants "newly added," "new arrivals," "just added") across `app/` and `components/`: zero hits. The closest adjacent concepts are Home's "Recently logged" (user's own diary activity, not catalog-wide "recently added" content) and "Recent lists" — neither titled "Recently Added," neither catalog-scoped, neither on `/daily-reel`. Zero occurrences of "recently" or "added" in any `daily-reel/*` file. |
+
+**Conclusion:** None of the five — Friend Activity, New Reviews, New Lists, Trending
+Collections, Recently Added — appear anywhere in the real `/daily-reel` render tree. Two
+(Friend Activity, as "Recent lists"-style New Lists) exist on the website under different names,
+on the Home page. One ("New Reviews") has a loosely related but differently-named and
+differently-scoped analog on Home/profile pages. Two (Trending Collections, Recently Added) do
+not appear to exist anywhere on the website in any form, under any name.

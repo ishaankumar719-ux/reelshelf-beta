@@ -189,11 +189,11 @@ export default function DailyReelScreen() {
             ) : null}
 
             {/* ── Question of the Day ──────────────────────────────────────────
-                Community-response aggregate ("X% got this right") is deliberately
-                OMITTED: it requires the website's admin/service-role client to
-                read across all users' trivia_answers rows, which mobile's RLS
-                (own-rows-only SELECT) cannot do without a server-side piece that
-                doesn't exist yet (WEBSITE_QUESTION_OF_THE_DAY_AUDIT.md §4). */}
+                Community-response aggregate ("X% got this right") is now real,
+                via the get_trivia_correct_percentage RPC (SECURITY DEFINER) —
+                see lib/supabase/trivia.ts. RLS still blocks a direct SELECT
+                across other users' trivia_answers rows; the RPC returns only
+                the computed aggregate, never raw rows. */}
             {qotd.status !== 'idle' && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Question of the Day</Text>
@@ -432,6 +432,11 @@ function QuestionOfTheDaySection({
                 {cs.xpEarned > 0 ? <Text style={styles.revealXp}> +{cs.xpEarned} XP</Text> : null}
               </Text>
               {cs.explanation ? <Text style={styles.revealExplanation}>{cs.explanation}</Text> : null}
+              {cs.communityStats ? (
+                <Text style={styles.revealCommunity}>
+                  {cs.communityStats.percentCorrect}% of {cs.communityStats.totalAnswers} players got this right
+                </Text>
+              ) : null}
               <Text style={styles.revealCountdown}>New question in {timeUntilNextRotation(today)}</Text>
             </View>
           )}
@@ -539,5 +544,6 @@ const styles = StyleSheet.create({
   revealTitleWrong: { color: '#ef4444' },
   revealXp: { fontSize: RS.typography.caption, fontWeight: '400', color: RS.colors.textMuted },
   revealExplanation: { fontSize: RS.typography.caption, color: RS.colors.textSecondary, lineHeight: 17 },
+  revealCommunity: { fontSize: 10, color: RS.colors.textMuted },
   revealCountdown: { fontSize: 10, color: RS.colors.textMuted, letterSpacing: RS.letterSpacing.normal },
 });

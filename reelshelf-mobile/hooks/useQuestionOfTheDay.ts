@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  fetchCorrectPercentage,
   fetchQuestionsForRotation,
   fetchTodaysAnswers,
   fetchTriviaProgress,
   getOrCreateRotation,
   getUtcDateString,
   submitTriviaAnswer,
+  type CommunityStat,
   type RotationRow,
   type TriviaCategory,
   type TriviaProgress,
@@ -23,6 +25,10 @@ export interface CatAnswerState {
   // setting it from `q.correct_index` even in the 409/"already answered" case.
   xpEarned: number;
   explanation: string | null;
+  // Aggregate-only ("X% of Y got this right"), from the get_trivia_correct_percentage
+  // RPC — null for the "already answered elsewhere" conflict case, matching the
+  // website's own submitAnswer() setting communityStats: null there too.
+  communityStats: CommunityStat | null;
   submitting: boolean;
 }
 
@@ -33,6 +39,7 @@ const emptyCatState: CatAnswerState = {
   correctIndex: null,
   xpEarned: 0,
   explanation: null,
+  communityStats: null,
   submitting: false,
 };
 
@@ -83,6 +90,19 @@ export function useQuestionOfTheDay() {
         book: catStateFromAnswer(answers.book, qs.book),
       });
       setStatus('success');
+
+      // Community % for categories already answered today (e.g. app reopened
+      // after answering earlier) — fetched after the initial paint so it
+      // never blocks the reveal states from showing, same non-fatal shape as
+      // fetchCorrectPercentage's own internal error handling.
+      (['film', 'tv', 'book'] as TriviaCategory[])
+        .filter((cat) => answers[cat] !== null)
+        .forEach((cat) => {
+          void fetchCorrectPercentage(utcToday, cat).then((stat) => {
+            if (!isMounted.current || !stat) return;
+            setCatStates((prev) => ({ ...prev, [cat]: { ...prev[cat], communityStats: stat } }));
+          });
+        });
     } catch (e) {
       if (!isMounted.current) return;
       setStatus('error');
@@ -114,7 +134,7 @@ export function useQuestionOfTheDay() {
           ...prev,
           [cat]: {
             revealed: true, selectedIndex, isCorrect: null, correctIndex: q.correctIndex,
-            xpEarned: 0, explanation: q.explanation, submitting: false,
+            xpEarned: 0, explanation: q.explanation, communityStats: null, submitting: false,
           },
         }));
         return;
@@ -124,7 +144,8 @@ export function useQuestionOfTheDay() {
         ...prev,
         [cat]: {
           revealed: true, selectedIndex, isCorrect: result.isCorrect, correctIndex: result.correctIndex,
-          xpEarned: result.xpEarned, explanation: result.explanation, submitting: false,
+          xpEarned: result.xpEarned, explanation: result.explanation,
+          communityStats: result.communityStats, submitting: false,
         },
       }));
       setProgress(result.progress);
@@ -153,6 +174,7 @@ function catStateFromAnswer(
     correctIndex: question?.correctIndex ?? null,
     xpEarned: answer.xpEarned,
     explanation: question?.explanation ?? null,
+    communityStats: null, // filled in async right after — see load()
     submitting: false,
   };
 }

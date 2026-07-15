@@ -24,7 +24,7 @@
 | — Streak/XP algorithm | `app/api/trivia/answer/route.ts` | `submitTriviaAnswer()` in `lib/supabase/trivia.ts` | ✅ Exact port, live-verified | `BASE_XP` (easy=10/medium=20/hard=30) + `min(newStreak*3, 21)` bonus if correct; streak increments only if `last_{cat}_date === rotationDate - 1 day`, else resets to 1 (correct) or 0 (incorrect); `last_{cat}_date` always updates to `rotationDate` regardless of correctness; `longest_streak = max(prev, newStreak)`. Verified against the real dedicated test account (see below). |
 | — Header streak pills | `StreakPill`, hub header, only rendered if streak > 0 | `StreakPill` in header of `app/(tabs)/daily-reel.tsx`, same `>0` gate | ✅ | Copy: "{Label} · {N}-day streak". Same `CAT_COLORS` hex values (film gold / tv blue / book red) ported verbatim for cross-platform color parity. |
 | — Per-category result glyph | ✓ / ✗ / · next to each pill | Same three glyphs, same color logic | ✅ | `·` = "already answered" conflict case (23505), matching the website's distinct third state. |
-| — Community response aggregate ("X% got this right") | `getCommunityStats()` / per-answer community stats, both via `createAdminClient()` (service-role) | **Not built** | ❌ Explicitly omitted | RLS-confirmed hard blocker: `trivia_answers` SELECT policy is `auth.uid() = user_id` (own rows only) — a regular client cannot read other users' rows, and shipping a service-role key to the app would be a real security regression. Requires a Supabase Edge Function or `SECURITY DEFINER` RPC — new backend work, not in this sprint's scope. No fake/placeholder percentage was rendered anywhere. |
+| — Community response aggregate ("X% got this right") | `getCommunityStats()` / per-answer community stats, both via `createAdminClient()` (service-role) — no shared RPC/function existed on the website side either (confirmed by re-reading both call sites and a full `pg_proc` scan: this logic was duplicated inline in two places, never factored into a shared mechanism) | `public.get_trivia_correct_percentage(p_rotation_date date, p_category text)` — new `SECURITY DEFINER` Postgres RPC, `lib/supabase/trivia.ts` → `fetchCorrectPercentage()`, wired into `hooks/useQuestionOfTheDay.ts` and the reveal panel in `app/(tabs)/daily-reel.tsx` | ✅ Built, live-verified, security boundary confirmed at the REST layer | New shared infrastructure (not a port of an existing website mechanism — none existed). Returns only `{total_answers, percent_correct}` — verified by reading the function definition directly, no code path selects raw `trivia_answers` rows. `EXECUTE` granted to `authenticated` only (Postgres's default `PUBLIC` grant was caught and explicitly revoked, along with `anon`) — confirmed both via `information_schema.routine_privileges` and a real anon-key REST call, which returns `42501 permission denied`. Website still uses its own inline admin-client logic — not migrated to this RPC as part of this task (see open questions). |
 | — Badge grants (6 trivia badges) | `app/api/trivia/answer/route.ts`, admin-client badge checks | **Not built** | ❌ Not in scope | Not requested for this sprint (the task's CONSTRAINTS did not ask for badge-granting logic). Flagged as an open question below — mobile's existing `badges`/`user_badges` system could plausibly support this client-side without an admin client, unlike community stats. |
 | **Today's Story** | `fetchEditorialData()` (`articles` query) | `lib/supabase/articles.ts` → `fetchTodaysStory()` | ✅ | Exact same query shape: `is_published=true`, `published_at desc`, limit 1. Confirmed live: 1 published article in production. |
 | **Today's Staff Picks** | `fetchEditorialData()` (`staff_picks` query) | `lib/supabase/staffPicks.ts` → `fetchStaffPicks()` | ✅ | Exact same query shape: `is_active=true`, `display_order asc`, limit 6. Confirmed live: 3 active staff picks in production. Independent of `daily_picks` on both platforms. |
@@ -78,3 +78,38 @@ confirmed by direct inspection (see below), not assumed.
 run (iOS + Android, two iPhone sizes) tapping through the UI with the real dedicated test
 account's login — confirming visual layout, haptics, the reveal panel's tap-through states, and
 "results persist after restart" via an actual cold app restart rather than a database re-read.
+
+---
+
+## Community-stats RPC verification (added later same day, 2026-07-15)
+
+5. **RPC correctness against real data**: called `get_trivia_correct_percentage('2026-07-15', cat)`
+   directly for all three categories, against the exact `trivia_answers` rows written in step 2/3
+   above (the dedicated test account is the only respondent for today's questions so far):
+   `film` → `{total_answers: 1, percent_correct: 100}`, `tv` → `{total_answers: 1, percent_correct:
+   100}`, `book` → `{total_answers: 1, percent_correct: 0}` — matches the underlying rows exactly
+   (film/tv answered correctly, book deliberately incorrect). Also verified the no-data path
+   (`{total_answers: 0, percent_correct: null}`) for an invalid category and a date with no
+   rotation row.
+6. **Security boundary, verified at two layers, not just one**:
+   - *Grant inspection*: `information_schema.routine_privileges` initially showed `PUBLIC` and
+     `anon` both had `EXECUTE` — Postgres grants `EXECUTE` to `PUBLIC` by default on function
+     creation, which silently included `anon` despite the intent. Caught by explicitly checking
+     rather than assuming the `GRANT ... TO authenticated` statement alone was sufficient. Fixed
+     with a follow-up migration (`REVOKE ... FROM PUBLIC`, `REVOKE ... FROM anon`) — final grants
+     are exactly `authenticated`, `service_role`, `postgres`.
+   - *Real REST API call*: called the live `/rest/v1/rpc/get_trivia_correct_percentage` endpoint
+     with only the anon key (no authenticated session) — got back `{"code":"42501","message":
+     "permission denied for function get_trivia_correct_percentage"}`. This proves the restriction
+     end-to-end through the actual network path the app uses, not just via a privileged SQL
+     connection.
+7. **Function definition inspected directly** (`pg_get_functiondef`) to confirm no code path
+   selects or returns raw `trivia_answers` rows — every `SELECT` inside is either a scalar
+   (`question_id`) or a `count()`/`count() FILTER` aggregate; the only return values are
+   `jsonb_build_object('total_answers', ..., 'percent_correct', ...)`.
+
+No physical device was available to test the *authenticated* success path through the real REST
+API (same login-credential gap as above) — confirmed instead via the direct-SQL result matching
+in point 5, using the same client library (`@supabase/supabase-js`) and the same call the mobile
+code makes (`lib/supabase/trivia.ts`'s `fetchCorrectPercentage()`), just not through an actual
+signed-in device session.

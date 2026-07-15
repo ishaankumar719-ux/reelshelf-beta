@@ -46,6 +46,11 @@ export interface TriviaProgress {
   longestStreak: number;
 }
 
+export interface CommunityStat {
+  totalAnswers: number;
+  percentCorrect: number;
+}
+
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured');
   return supabase;
@@ -244,6 +249,40 @@ export async function fetchTriviaProgress(userId: string): Promise<TriviaProgres
   };
 }
 
+/** Calls the shared `get_trivia_correct_percentage` Postgres RPC (SECURITY
+ *  DEFINER) — the only way an ordinary authenticated client can see this
+ *  aggregate, since `trivia_answers` SELECT is `auth.uid() = user_id` (own
+ *  rows only). The RPC itself only ever returns two aggregate integers
+ *  (`total_answers`, `percent_correct`) — never raw rows, user_ids, or other
+ *  users' answer choices; verified directly against its definition, not just
+ *  assumed. Mirrors the exact `round((correct/total)*100)` formula the
+ *  website computes inline via its service-role admin client in both
+ *  app/api/trivia/answer/route.ts and app/daily-reel/page.tsx's
+ *  getCommunityStats() — this RPC is new shared infrastructure, not a port of
+ *  an existing shared mechanism (neither website call site used one).
+ *  Returns null (not thrown) on any failure — this is a decorative addition
+ *  to the reveal panel, not something that should ever break the reveal
+ *  itself if the RPC call fails for any reason. */
+export async function fetchCorrectPercentage(
+  rotationDate: string,
+  category: TriviaCategory,
+): Promise<CommunityStat | null> {
+  const client = requireClient();
+  try {
+    const { data, error } = await client.rpc('get_trivia_correct_percentage', {
+      p_rotation_date: rotationDate,
+      p_category: category,
+    });
+    if (error) throw error;
+    const totalAnswers = (data as any)?.total_answers as number | undefined;
+    const percentCorrect = (data as any)?.percent_correct as number | null | undefined;
+    if (!totalAnswers || percentCorrect === null || percentCorrect === undefined) return null;
+    return { totalAnswers, percentCorrect };
+  } catch {
+    return null;
+  }
+}
+
 export type SubmitAnswerResult =
   | { alreadyAnswered: true }
   | {
@@ -253,6 +292,7 @@ export type SubmitAnswerResult =
       xpEarned: number;
       explanation: string | null;
       progress: TriviaProgress;
+      communityStats: CommunityStat | null;
     };
 
 /** Exact port of /api/trivia/answer's scoring + streak logic. correct_index is
@@ -310,18 +350,25 @@ export async function submitTriviaAnswer(params: {
   const newTotalCorrect = (progress ? ((progress.total_correct as number) ?? 0) : 0) + (isCorrect ? 1 : 0);
   const newLongest = Math.max(progress ? ((progress.longest_streak as number) ?? 0) : 0, newStreak);
 
-  const { error: progressUpdateErr } = await client.from('trivia_user_progress').upsert(
-    {
-      user_id: userId,
-      [`${category}_streak`]: newStreak,
-      [`${category}_correct`]: newCorrect,
-      [`last_${category}_date`]: rotationDate,
-      total_correct: newTotalCorrect,
-      longest_streak: newLongest,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id' },
-  );
+  // Community percentage is fetched alongside the progress upsert (not after)
+  // so the reveal shows correct/incorrect and "X% got this right" together in
+  // one moment, matching the website's single-response reveal — not a
+  // percentage that pops in a beat later.
+  const [{ error: progressUpdateErr }, communityStats] = await Promise.all([
+    client.from('trivia_user_progress').upsert(
+      {
+        user_id: userId,
+        [`${category}_streak`]: newStreak,
+        [`${category}_correct`]: newCorrect,
+        [`last_${category}_date`]: rotationDate,
+        total_correct: newTotalCorrect,
+        longest_streak: newLongest,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    ),
+    fetchCorrectPercentage(rotationDate, category),
+  ]);
   if (progressUpdateErr) throw progressUpdateErr;
 
   const filmStreak = progress ? ((progress.film_streak as number) ?? 0) : 0;
@@ -337,6 +384,7 @@ export async function submitTriviaAnswer(params: {
     correctIndex: question.correctIndex,
     xpEarned,
     explanation: question.explanation,
+    communityStats,
     progress: {
       filmStreak: category === 'film' ? newStreak : filmStreak,
       tvStreak: category === 'tv' ? newStreak : tvStreak,
