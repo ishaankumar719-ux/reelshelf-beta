@@ -225,7 +225,11 @@ export default function ListDetailScreen() {
     try {
       const counts = wasLiked ? await unlikeList(list.id, user.id) : await likeList(list.id, user.id);
       setList((prev) => prev ? { ...prev, likeCount: counts.likeCount, saveCount: counts.saveCount } : prev);
-    } catch {
+    } catch (err) {
+      // Surfaced, not silently swallowed — a prior version of this handler
+      // hid failures entirely, which is what made a real error indistinguishable
+      // from "nothing happened" during diagnosis.
+      console.error('[List Detail] like/unlike failed', err);
       setIsLiked(wasLiked);
       setList((prev) => prev ? { ...prev, likeCount: prev.likeCount + (wasLiked ? 1 : -1) } : prev);
     } finally {

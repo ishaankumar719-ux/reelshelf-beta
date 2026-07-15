@@ -158,6 +158,83 @@ export async function fetchTmdbMoreFromDirector(
     }));
 }
 
+// ── Genre id → name maps (TMDB's stable, well-known genre lists) ────────────
+// Needed for Daily Pick's live candidate scoring: /movie/popular and /tv/popular
+// return `genre_ids` (numbers), not names, so genre-taste matching against
+// diary_entries.genres (real names) needs this translation.
+export const TMDB_MOVIE_GENRE_NAMES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+  878: 'Science Fiction', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+};
+
+export const TMDB_TV_GENRE_NAMES: Record<number, string> = {
+  10759: 'Action & Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 10762: 'Kids', 9648: 'Mystery',
+  10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap',
+  10767: 'Talk', 10768: 'War & Politics', 37: 'Western',
+};
+
+// ── Popular (Daily Pick's live candidate pool) ───────────────────────────────
+export interface TmdbPopularItem {
+  id:          string; // route id, e.g. "film-693134"
+  tmdbId:      string;
+  title:       string;
+  year:        number | undefined;
+  posterUrl:   string | null;
+  overview:    string;
+  mediaType:   'film' | 'tv';
+  genres:      string[];
+  voteAverage: number | null;
+}
+
+export async function fetchTmdbPopular(kind: TmdbKind, page: number): Promise<TmdbPopularItem[]> {
+  const raw = await tmdbGet<any>(`/${kind === 'movie' ? 'movie' : 'tv'}/popular`, { page: String(page) });
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  const genreNames = kind === 'movie' ? TMDB_MOVIE_GENRE_NAMES : TMDB_TV_GENRE_NAMES;
+  return results.map((r: any) => {
+    const title = kind === 'movie' ? r.title : r.name;
+    const dateStr = kind === 'movie' ? r.release_date : r.first_air_date;
+    const genreIds: number[] = Array.isArray(r.genre_ids) ? r.genre_ids : [];
+    return {
+      id:          `${kind === 'movie' ? 'film' : 'tv'}-${r.id}`,
+      tmdbId:      String(r.id),
+      title,
+      year:        dateStr ? Number(String(dateStr).slice(0, 4)) : undefined,
+      posterUrl:   r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+      overview:    r.overview ?? '',
+      mediaType:   kind === 'movie' ? 'film' : 'tv',
+      genres:      genreIds.map((id) => genreNames[id]).filter(Boolean) as string[],
+      voteAverage: typeof r.vote_average === 'number' && r.vote_average > 0 ? Math.round(r.vote_average * 10) / 10 : null,
+    } as TmdbPopularItem;
+  });
+}
+
+/** Fetches a single movie/TV item directly by its known TMDB id — used to
+ *  re-resolve an already-picked Daily Pick's display data without having to
+ *  re-search the (potentially-shifted) /popular list for it. */
+export async function fetchTmdbItemById(kind: TmdbKind, tmdbId: string): Promise<TmdbPopularItem | null> {
+  try {
+    const r = await tmdbGet<any>(`/${kind}/${tmdbId}`);
+    const genreNames: string[] = Array.isArray(r.genres) ? r.genres.map((g: any) => g.name).filter(Boolean) : [];
+    const dateStr = kind === 'movie' ? r.release_date : r.first_air_date;
+    return {
+      id:          `${kind === 'movie' ? 'film' : 'tv'}-${r.id}`,
+      tmdbId:      String(r.id),
+      title:       kind === 'movie' ? r.title : r.name,
+      year:        dateStr ? Number(String(dateStr).slice(0, 4)) : undefined,
+      posterUrl:   r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+      overview:    r.overview ?? '',
+      mediaType:   kind === 'movie' ? 'film' : 'tv',
+      genres:      genreNames,
+      voteAverage: typeof r.vote_average === 'number' && r.vote_average > 0 ? Math.round(r.vote_average * 10) / 10 : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Discover by genre (Genre Detail screen) ──────────────────────────────────
 // Exact same query shape as the website's app/discover/genre/[genre]/page.tsx
 // `tmdbGenre()`: with_genres + popularity sort + vote_count floor + no adult.

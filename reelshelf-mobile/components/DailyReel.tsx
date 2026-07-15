@@ -10,29 +10,52 @@ import Animated, {
 
 import { RS, Fonts } from '@/constants/theme';
 import { Motion } from '@/constants/motion';
-import { dailyReelPick } from '@/data/seedHomeContent';
+import { useDailyPick } from '@/hooks/useDailyPick';
+import { SkeletonBlock } from '@/components/Skeleton';
 
 const SCREEN_W  = Dimensions.get('window').width;
 const ARTWORK_W = SCREEN_W - 2 * RS.spacing.md;
 const ARTWORK_H = RS.card.featuredArtHeight;
 
-function navigateToDailyReelPick() {
-  router.push(
-    `/media/${dailyReelPick.id}?title=${encodeURIComponent(dailyReelPick.title)}&posterUrl=${encodeURIComponent(dailyReelPick.posterUrl ?? '')}&mediaType=${dailyReelPick.mediaType}`
-  );
-}
+const MEDIA_BADGE_LABEL: Record<'film' | 'tv' | 'book', string> = {
+  film: 'Film', tv: 'TV Series', book: 'Book',
+};
 
+// Real, personalized Daily Pick — backed by the SAME useDailyPick hook (and
+// therefore the same daily_picks row) the Daily Reel tab uses, so the two
+// surfaces can never disagree on today's item (WEBSITE_DAILY_REEL_AUDIT.md
+// §0/§5). The website's own DailyPickCard renders nothing at all when
+// logged out or once genuinely errored with no cache — matched here, rather
+// than inventing a Home-specific fallback state.
 export function DailyReel() {
-  const badge = RS.badge[dailyReelPick.mediaType];
+  const { status, pick, isLoggedIn } = useDailyPick();
 
   const cardScale = useSharedValue<number>(1);
   const cardAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cardScale.value }],
   }));
 
+  if (!isLoggedIn) return null;
+  if (status === 'loading' && !pick) {
+    return (
+      <View style={styles.container}>
+        <SkeletonBlock width={ARTWORK_W} height={ARTWORK_H} radius={RS.card.radius} />
+      </View>
+    );
+  }
+  if (!pick) return null;
+
+  const badge = MEDIA_BADGE_LABEL[pick.mediaType];
+
+  const navigateToPick = () => {
+    router.push(
+      `/media/${pick.mediaId}?title=${encodeURIComponent(pick.title)}&posterUrl=${encodeURIComponent(pick.posterUrl ?? '')}&mediaType=${pick.mediaType}`,
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.eyebrow}>DAILY REEL</Text>
+      <Text style={styles.eyebrow}>✨ YOUR DAILY PICK</Text>
 
       {/* ── Artwork card — outer holds shadow + depress animation ──────────── */}
       <Animated.View
@@ -46,14 +69,18 @@ export function DailyReel() {
           onPressOut={() => {
             cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
           }}
-          onPress={navigateToDailyReelPick}
+          onPress={navigateToPick}
         >
-          <Image
-            source={{ uri: dailyReelPick.posterUrl ?? undefined }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={300}
-          />
+          {pick.posterUrl ? (
+            <Image
+              source={{ uri: pick.posterUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={300}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.artworkFallback]} />
+          )}
 
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.94)']}
@@ -63,30 +90,32 @@ export function DailyReel() {
             pointerEvents="none"
           />
 
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeLabel, { color: badge.text }]}>{badge.label}</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeLabel}>{badge}</Text>
           </View>
 
           <View style={styles.titleArea}>
-            <Text style={styles.title} numberOfLines={2}>{dailyReelPick.title}</Text>
-            <Text style={styles.year}>{dailyReelPick.year}</Text>
+            <Text style={styles.title} numberOfLines={2}>{pick.title}</Text>
+            {pick.year ? <Text style={styles.year}>{pick.year}</Text> : null}
           </View>
         </Pressable>
       </Animated.View>
 
       {/* ── Editorial description ─────────────────────────────────────────── */}
-      <Text style={styles.description}>{dailyReelPick.description}</Text>
+      {pick.overview ? <Text style={styles.description} numberOfLines={3}>{pick.overview}</Text> : null}
 
-      {/* ── "Why ReelShelf picked this" tagline ──────────────────────────── */}
-      <Text style={styles.reason}>{dailyReelPick.reason}</Text>
+      {/* ── "Why this pick?" — real, personalized-or-fallback reason ──────── */}
+      {pick.reasons.length > 0 && (
+        <Text style={styles.reason}>{pick.reasons[0]}</Text>
+      )}
 
       {/* ── THE one filled button on the Home screen ─────────────────────── */}
       <Pressable
         style={({ pressed }) => [styles.btnPick, pressed && styles.btnPickPressed]}
-        onPress={navigateToDailyReelPick}
+        onPress={navigateToPick}
         android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
       >
-        <Text style={styles.btnPickLabel}>View Today's Pick</Text>
+        <Text style={styles.btnPickLabel}>View Today&apos;s Pick</Text>
       </Pressable>
     </View>
   );
@@ -103,7 +132,6 @@ const styles = StyleSheet.create({
     color:         RS.colors.textMuted,
     letterSpacing: RS.letterSpacing.widest,
   },
-  // Outer holds shadow and depress scale (no overflow — iOS shadow requires no clip)
   artworkOuter: {
     borderRadius:  RS.card.radius,
     shadowColor:   RS.shadow.color,
@@ -122,6 +150,9 @@ const styles = StyleSheet.create({
     justifyContent:  'flex-end',
     backgroundColor: RS.colors.card,
   },
+  artworkFallback: {
+    backgroundColor: RS.colors.elevated,
+  },
   badge: {
     position:          'absolute',
     top:               RS.spacing.sm,
@@ -129,11 +160,14 @@ const styles = StyleSheet.create({
     borderRadius:      RS.badge.pillRadius,
     paddingHorizontal: 7,
     paddingVertical:   2,
+    backgroundColor:   'rgba(255,255,255,0.15)',
   },
   badgeLabel: {
     fontSize:      8,
     fontWeight:    '700',
     letterSpacing: 0.6,
+    color:         '#fff',
+    textTransform: 'uppercase',
   },
   titleArea: {
     paddingHorizontal: RS.spacing.md,
