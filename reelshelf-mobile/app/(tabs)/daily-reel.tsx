@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import {
   ActivityIndicator,
   Pressable,
@@ -18,20 +19,32 @@ import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
 import { PosterCard } from '@/components/poster-card';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
-import { RS } from '@/constants/theme';
+import { RS, Fonts } from '@/constants/theme';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailyPick } from '@/hooks/useDailyPick';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import { type CatAnswerState, useQuestionOfTheDay } from '@/hooks/useQuestionOfTheDay';
 import { fetchTodaysStory, type TodaysStory } from '@/lib/supabase/articles';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 import { fetchStaffPicks, type StaffPick } from '@/lib/supabase/staffPicks';
 import type { DailyPick } from '@/lib/supabase/dailyPick';
+import type { RotationRow, TriviaCategory, TriviaQuestion } from '@/lib/supabase/trivia';
 import { getMediaKey } from '@/utils/listKeys';
 
 const MEDIA_BADGE_LABEL: Record<'film' | 'tv' | 'book', string> = {
   film: 'Film', tv: 'TV Series', book: 'Book',
 };
+
+// Exact values from the website's DailyReelPage.tsx CAT_COLORS/OPTION_LETTERS —
+// content-identity colors, not part of the app's own theme palette, kept
+// identical for cross-platform parity (WEBSITE_QUESTION_OF_THE_DAY_AUDIT.md §5).
+const CAT_COLORS: Record<TriviaCategory, string> = {
+  film: 'rgba(212,175,55,0.95)',
+  tv:   'rgba(99,179,237,0.95)',
+  book: 'rgba(252,129,129,0.95)',
+};
+const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
 function todayLabel(): string {
   return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -40,6 +53,7 @@ function todayLabel(): string {
 export default function DailyReelScreen() {
   const { user, initializing } = useAuth();
   const { status, pick, rerolling, error, reroll, refetch } = useDailyPick();
+  const qotd = useQuestionOfTheDay();
 
   const [staffPicks, setStaffPicks] = useState<StaffPick[] | null>(null);
   const [story, setStory] = useState<TodaysStory | null>(null);
@@ -76,7 +90,7 @@ export default function DailyReelScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setSectionsLoaded(false);
-    await Promise.all([refetch(), loadSections()]);
+    await Promise.all([refetch(), loadSections(), qotd.refetch()]);
     setRefreshing(false);
   };
 
@@ -119,6 +133,19 @@ export default function DailyReelScreen() {
               <Text style={styles.headerTitle}>Daily Reel</Text>
               <Text style={styles.headerDate}>{todayLabel()}</Text>
               <Text style={styles.headerSubtitle}>One story, chosen for you today.</Text>
+              {qotd.progress && (
+                <View style={styles.streakRow}>
+                  {qotd.progress.filmStreak > 0 && (
+                    <StreakPill label="Film" streak={qotd.progress.filmStreak} color={CAT_COLORS.film} />
+                  )}
+                  {qotd.progress.tvStreak > 0 && (
+                    <StreakPill label="TV" streak={qotd.progress.tvStreak} color={CAT_COLORS.tv} />
+                  )}
+                  {qotd.progress.bookStreak > 0 && (
+                    <StreakPill label="Book" streak={qotd.progress.bookStreak} color={CAT_COLORS.book} />
+                  )}
+                </View>
+              )}
             </View>
 
             {/* ── Daily Pick ────────────────────────────────────────────────── */}
@@ -160,6 +187,33 @@ export default function DailyReelScreen() {
                 <RerollButton pick={pick} rerolling={rerolling} onReroll={reroll} />
               </View>
             ) : null}
+
+            {/* ── Question of the Day ──────────────────────────────────────────
+                Community-response aggregate ("X% got this right") is deliberately
+                OMITTED: it requires the website's admin/service-role client to
+                read across all users' trivia_answers rows, which mobile's RLS
+                (own-rows-only SELECT) cannot do without a server-side piece that
+                doesn't exist yet (WEBSITE_QUESTION_OF_THE_DAY_AUDIT.md §4). */}
+            {qotd.status !== 'idle' && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Question of the Day</Text>
+                {qotd.status === 'loading' ? (
+                  <SkeletonBlock width="100%" height={140} radius={RS.card.radius} />
+                ) : qotd.status === 'error' ? (
+                  <Text style={styles.emptyText}>{qotd.error ?? "Couldn't load today's question."}</Text>
+                ) : (
+                  <QuestionOfTheDaySection
+                    rotation={qotd.rotation}
+                    questions={qotd.questions}
+                    catStates={qotd.catStates}
+                    activeCategory={qotd.activeCategory}
+                    onSelectCategory={qotd.selectCategory}
+                    onSubmitAnswer={qotd.submitAnswer}
+                    today={qotd.today}
+                  />
+                )}
+              </View>
+            )}
 
             {/* ── Today's Staff Picks ───────────────────────────────────────── */}
             {staffPicks === null ? (
@@ -245,6 +299,148 @@ function DailyPickHero({ pick, onPress }: { pick: DailyPick; onPress: () => void
   );
 }
 
+// ── Question of the Day ──────────────────────────────────────────────────
+function StreakPill({ label, streak, color }: { label: string; streak: number; color: string }) {
+  return (
+    <View style={[styles.streakPill, { borderColor: `${color}55`, backgroundColor: `${color}1A` }]}>
+      <Text style={[styles.streakPillLabel, { color }]}>{label} · {streak}-day streak</Text>
+    </View>
+  );
+}
+
+/** Matches the website's "New question in {h}h {m}m" countdown to the next UTC
+ *  midnight after `rotationDate` — WEBSITE_QUESTION_OF_THE_DAY_AUDIT.md §5. */
+function timeUntilNextRotation(rotationDate: string): string {
+  const [y, m, d] = rotationDate.split('-').map(Number);
+  const nextUtcMidnight = Date.UTC(y, m - 1, d + 1);
+  const diff = nextUtcMidnight - Date.now();
+  if (diff <= 0) return 'soon';
+  const h = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h}h ${mins}m` : `${mins}m`;
+}
+
+function QuestionOfTheDaySection({
+  rotation, questions, catStates, activeCategory, onSelectCategory, onSubmitAnswer, today,
+}: {
+  rotation: RotationRow | null;
+  questions: Record<TriviaCategory, TriviaQuestion | null>;
+  catStates: Record<TriviaCategory, CatAnswerState>;
+  activeCategory: TriviaCategory | null;
+  onSelectCategory: (cat: TriviaCategory) => void;
+  onSubmitAnswer: (cat: TriviaCategory, idx: number) => Promise<void>;
+  today: string;
+}) {
+  const cats: TriviaCategory[] = ['film', 'tv', 'book'];
+  const q = activeCategory ? questions[activeCategory] : null;
+  const cs = activeCategory ? catStates[activeCategory] : null;
+
+  const handleSelectCategory = (cat: TriviaCategory) => {
+    if (!questions[cat]) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onSelectCategory(cat);
+  };
+
+  const handleAnswer = async (cat: TriviaCategory, idx: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    await onSubmitAnswer(cat, idx);
+  };
+
+  if (!rotation) {
+    return <Text style={styles.emptyText}>No question available today.</Text>;
+  }
+
+  return (
+    <View style={styles.qotdCard}>
+      <View style={styles.catPillRow}>
+        {cats.map((cat) => {
+          const hasQ = !!questions[cat];
+          const isActive = activeCategory === cat;
+          const answered = catStates[cat].revealed;
+          const glyph = answered
+            ? catStates[cat].isCorrect === true ? '✓' : catStates[cat].isCorrect === false ? '✗' : '·'
+            : null;
+          const glyphColor = catStates[cat].isCorrect === true
+            ? '#1d9e75' : catStates[cat].isCorrect === false ? '#ef4444' : RS.colors.textMuted;
+          return (
+            <Pressable
+              key={getMediaKey('trivia-cat', cat)}
+              disabled={!hasQ}
+              onPress={() => handleSelectCategory(cat)}
+              style={[
+                styles.catPill,
+                isActive && styles.catPillActive,
+                { opacity: hasQ ? 1 : 0.3 },
+              ]}
+            >
+              {glyph && <Text style={[styles.catPillGlyph, { color: glyphColor }]}>{glyph}</Text>}
+              <Text style={styles.catPillLabel}>{MEDIA_BADGE_LABEL[cat]}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {!activeCategory && (
+        <Text style={styles.qotdPrompt}>Select a category to answer today&apos;s question</Text>
+      )}
+
+      {activeCategory && q && cs && (
+        <View style={styles.qotdBody}>
+          <Text style={styles.qotdQuestion}>{q.question}</Text>
+
+          <View style={styles.answerList}>
+            {q.answers.map((answer, idx) => {
+              // Exact port of the website's isRevealedCorrect/isRevealedWrong:
+              // the true correct option is always highlighted once revealed
+              // (green), the user's pick is highlighted red only if it was wrong.
+              const isRevealedCorrect = cs.revealed && cs.correctIndex === idx;
+              const isRevealedWrong = cs.revealed && cs.selectedIndex === idx && !isRevealedCorrect;
+              return (
+                <Pressable
+                  key={`${activeCategory}-${idx}`}
+                  disabled={cs.revealed || cs.submitting}
+                  onPress={() => void handleAnswer(activeCategory, idx)}
+                  style={[
+                    styles.answerBtn,
+                    isRevealedCorrect && styles.answerBtnCorrect,
+                    isRevealedWrong && styles.answerBtnWrong,
+                  ]}
+                >
+                  <View style={styles.answerLetter}>
+                    <Text style={styles.answerLetterLabel}>{OPTION_LETTERS[idx]}</Text>
+                  </View>
+                  <Text style={styles.answerText}>{answer}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {cs.submitting && <Text style={styles.qotdSubmitting}>Submitting…</Text>}
+
+          {cs.revealed && (
+            <View style={[
+              styles.revealPanel,
+              cs.isCorrect === true && styles.revealPanelCorrect,
+              cs.isCorrect === false && styles.revealPanelWrong,
+            ]}>
+              <Text style={[
+                styles.revealTitle,
+                cs.isCorrect === true && styles.revealTitleCorrect,
+                cs.isCorrect === false && styles.revealTitleWrong,
+              ]}>
+                {cs.isCorrect === true ? 'Correct' : cs.isCorrect === false ? 'Incorrect' : 'Already answered'}
+                {cs.xpEarned > 0 ? <Text style={styles.revealXp}> +{cs.xpEarned} XP</Text> : null}
+              </Text>
+              {cs.explanation ? <Text style={styles.revealExplanation}>{cs.explanation}</Text> : null}
+              <Text style={styles.revealCountdown}>New question in {timeUntilNextRotation(today)}</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function RerollButton({ pick, rerolling, onReroll }: { pick: DailyPick; rerolling: boolean; onReroll: () => void }) {
   const rerollsLeft = pick.rerollCount < 1;
   const label = rerolling ? 'Choosing…' : rerollsLeft ? '✨ Surprise Me' : 'No more rerolls today';
@@ -271,6 +467,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: RS.typography.display - 6, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: RS.letterSpacing.tight },
   headerDate: { fontSize: RS.typography.body, color: RS.colors.textSecondary, fontStyle: 'italic' },
   headerSubtitle: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
+  streakRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  streakPill: { borderRadius: RS.badge.pillRadius, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  streakPillLabel: { fontSize: 11, fontWeight: '600', letterSpacing: RS.letterSpacing.normal },
   section: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   hero: { height: 380, borderRadius: RS.card.radius, overflow: 'hidden', borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, justifyContent: 'flex-end' },
@@ -303,4 +502,42 @@ const styles = StyleSheet.create({
   storyAuthor: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
   storyBody: { fontSize: RS.typography.body, color: RS.colors.textSecondary, lineHeight: 21 },
   readMore: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.accent, marginTop: 2 },
+  // ── Question of the Day ──────────────────────────────────────────────────
+  qotdCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: RS.spacing.sm },
+  catPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catPill: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: RS.button.radius,
+    borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  catPillActive: { borderColor: RS.colors.borderStrong, backgroundColor: 'rgba(255,255,255,0.08)' },
+  catPillGlyph: { fontSize: 12, fontWeight: '700', marginRight: 5 },
+  catPillLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textPrimary },
+  qotdPrompt: { fontSize: RS.typography.caption, color: RS.colors.textMuted, textAlign: 'center', paddingVertical: RS.spacing.sm },
+  qotdBody: { gap: RS.spacing.sm },
+  qotdQuestion: { fontFamily: Fonts?.serif, fontStyle: 'italic', fontSize: RS.typography.body + 1, color: RS.colors.textPrimary, lineHeight: 22 },
+  answerList: { gap: 8 },
+  answerBtn: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 10,
+    borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  answerBtnCorrect: { borderColor: 'rgba(29,158,117,0.5)', backgroundColor: 'rgba(29,158,117,0.10)' },
+  answerBtnWrong: { borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.10)' },
+  answerLetter: {
+    width: 20, height: 20, borderRadius: 4, borderWidth: 0.5, borderColor: RS.colors.border,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  answerLetterLabel: { fontSize: 10, fontWeight: '700', color: RS.colors.textMuted },
+  answerText: { flex: 1, fontSize: RS.typography.body, color: RS.colors.textSecondary, lineHeight: 19 },
+  qotdSubmitting: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
+  revealPanel: { borderRadius: 10, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, padding: RS.spacing.sm, gap: 4 },
+  revealPanelCorrect: { borderColor: 'rgba(29,158,117,0.35)', backgroundColor: 'rgba(29,158,117,0.08)' },
+  revealPanelWrong: { borderColor: 'rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.08)' },
+  revealTitle: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.textSecondary },
+  revealTitleCorrect: { color: '#1d9e75' },
+  revealTitleWrong: { color: '#ef4444' },
+  revealXp: { fontSize: RS.typography.caption, fontWeight: '400', color: RS.colors.textMuted },
+  revealExplanation: { fontSize: RS.typography.caption, color: RS.colors.textSecondary, lineHeight: 17 },
+  revealCountdown: { fontSize: 10, color: RS.colors.textMuted, letterSpacing: RS.letterSpacing.normal },
 });
