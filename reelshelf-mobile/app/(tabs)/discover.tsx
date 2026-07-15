@@ -14,6 +14,7 @@ import { DiscoverHero } from '@/components/DiscoverHero';
 import { FeaturedCollectionSpotlight } from '@/components/FeaturedCollectionSpotlight';
 import { FilterChips } from '@/components/FilterChips';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
+import { GenreChipsRow } from '@/components/GenreChipsRow';
 import { HiddenGemsCarousel } from '@/components/HiddenGemsCarousel';
 import { MindBendingCarousel } from '@/components/MindBendingCarousel';
 import { RandomDiscoveryCard } from '@/components/RandomDiscoveryCard';
@@ -88,6 +89,23 @@ export default function DiscoverScreen() {
                   subtitle="Recognised by the industry, remembered by us."
                 />
                 <AwardWinnersCarousel />
+              </View>
+            </RevealOnMount>
+
+            {/* ── Browse by Genre — direct port of the website's Discover
+                 "Browse by Genre" section (components/discover/
+                 DiscoverClient.tsx), same position (after Award Winners),
+                 same copy, same 12-genre config, links to the new Genre
+                 Detail screen. This is genre browsing's real entry point —
+                 the website's Movie/TV Detail genre metadata is plain text,
+                 never a link, so it stays that way here too. ── */}
+            <RevealOnMount delay={230}>
+              <View style={styles.section}>
+                <SectionHeader
+                  title="🎭 Browse by Genre"
+                  subtitle="Explore by mood, theme, or taste."
+                />
+                <GenreChipsRow />
               </View>
             </RevealOnMount>
 

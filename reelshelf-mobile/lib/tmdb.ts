@@ -158,6 +158,38 @@ export async function fetchTmdbMoreFromDirector(
     }));
 }
 
+// ── Discover by genre (Genre Detail screen) ──────────────────────────────────
+// Exact same query shape as the website's app/discover/genre/[genre]/page.tsx
+// `tmdbGenre()`: with_genres + popularity sort + vote_count floor + no adult.
+export interface GenreDiscoverItem {
+  id:        string; // route id, e.g. "film-693134"
+  title:     string;
+  year:      number | undefined;
+  posterUrl: string | null;
+  mediaType: 'film' | 'tv';
+}
+
+export async function fetchTmdbDiscoverByGenre(kind: TmdbKind, genreId: number): Promise<GenreDiscoverItem[]> {
+  const raw = await tmdbGet<any>(`/discover/${kind}`, {
+    with_genres:       String(genreId),
+    sort_by:           'popularity.desc',
+    'vote_count.gte':  '50',
+    include_adult:     'false',
+  });
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  return results.map((r: any) => {
+    const title = kind === 'movie' ? r.title : r.name;
+    const dateStr = kind === 'movie' ? r.release_date : r.first_air_date;
+    return {
+      id:        `${kind === 'movie' ? 'film' : 'tv'}-${r.id}`,
+      title,
+      year:      dateStr ? Number(String(dateStr).slice(0, 4)) : undefined,
+      posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+      mediaType: kind === 'movie' ? 'film' : 'tv',
+    } as GenreDiscoverItem;
+  });
+}
+
 // ── Videos — fetched per spec, held but not yet rendered anywhere: the
 // approved section list (Hero/Metadata/Synopsis/Cast/Crew/Collections/
 // Recommendations/Watch Providers) has no trailer UI, and CONSTRAINTS forbids
