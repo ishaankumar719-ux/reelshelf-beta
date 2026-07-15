@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
@@ -68,9 +68,10 @@ export default function DailyReelScreen() {
     setSectionsLoaded(true);
   };
 
-  if (!sectionsLoaded && user) {
-    void loadSections();
-  }
+  useEffect(() => {
+    if (user) void loadSections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
