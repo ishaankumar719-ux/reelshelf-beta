@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 
+import { AttachmentPicker, type AttachmentValue } from '@/components/AttachmentPicker';
 import { DecimalSlider } from '@/components/DecimalSlider';
 import { RatingSlider } from '@/components/RatingSlider';
 import { SignInPrompt } from '@/components/SignInPrompt';
@@ -26,7 +27,6 @@ import {
   emptyDiaryEntry,
   fetchLatestDiaryEntry,
   saveDiaryEntryFull,
-  type AttachmentType,
   type DiaryEntryFull,
   type MediaCoreMeta,
   type ReviewScope,
@@ -90,8 +90,7 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
   const [error, setError] = useState<string | null>(null);
   const [entry, setEntry] = useState<DiaryEntryFull>(emptyDiaryEntry());
   const [layersOpen, setLayersOpen] = useState(false);
-  const [attachmentPickerOpen, setAttachmentPickerOpen] = useState<AttachmentType | null>(null);
-  const [attachmentDraft, setAttachmentDraft] = useState('');
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const key = { mediaId, mediaType, showId, seasonNumber, episodeNumber, reviewScope };
@@ -106,7 +105,6 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
       .then((data) => {
         if (cancelled) return;
         setEntry(data);
-        setAttachmentDraft(data.attachmentUrl ?? '');
         setLoading(false);
       })
       .catch((e) => {
@@ -120,8 +118,10 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
 
   const patch = (fields: Partial<DiaryEntryFull>) => setEntry((prev) => ({ ...prev, ...fields }));
 
+  // Blocked while an image upload is in flight — prevents saving a review
+  // whose attachment upload hasn't resolved yet, and prevents duplicate saves.
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || attachmentUploading) return;
     setSaving(true);
     setError(null);
     try {
@@ -134,28 +134,6 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
     } finally {
       setSaving(false);
     }
-  };
-
-  const openAttachmentInput = (type: AttachmentType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setAttachmentPickerOpen(type);
-    setAttachmentDraft(entry.attachmentType === type ? entry.attachmentUrl ?? '' : '');
-  };
-
-  const confirmAttachment = () => {
-    const url = attachmentDraft.trim();
-    if (!url) {
-      patch({ attachmentUrl: null, attachmentType: null });
-    } else {
-      patch({ attachmentUrl: url, attachmentType: attachmentPickerOpen });
-    }
-    setAttachmentPickerOpen(null);
-  };
-
-  const removeAttachment = () => {
-    patch({ attachmentUrl: null, attachmentType: null });
-    setAttachmentDraft('');
-    setAttachmentPickerOpen(null);
   };
 
   const dateLabel = mediaType === 'book' ? 'Read date' : 'Watched date';
@@ -257,58 +235,15 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                 {/* Attachments */}
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Attachment</Text>
-                  <View style={styles.attachRow}>
-                    <Pressable style={styles.attachBtn} onPress={() => openAttachmentInput('image')}>
-                      <MaterialIcons name="image" size={15} color={RS.colors.textSecondary} />
-                      <Text style={styles.attachBtnLabel}>Image</Text>
-                    </Pressable>
-                    <Pressable style={styles.attachBtn} onPress={() => openAttachmentInput('gif')}>
-                      <MaterialIcons name="gif" size={15} color={RS.colors.textSecondary} />
-                      <Text style={styles.attachBtnLabel}>GIF</Text>
-                    </Pressable>
-                    <Pressable style={styles.attachBtn} onPress={() => openAttachmentInput('link')}>
-                      <MaterialIcons name="link" size={15} color={RS.colors.textSecondary} />
-                      <Text style={styles.attachBtnLabel}>Link</Text>
-                    </Pressable>
-                  </View>
-
-                  {attachmentPickerOpen && (
-                    <View style={styles.attachInputRow}>
-                      <TextInput
-                        style={styles.attachInput}
-                        value={attachmentDraft}
-                        onChangeText={setAttachmentDraft}
-                        placeholder={
-                          attachmentPickerOpen === 'image' ? 'Paste an image URL…'
-                          : attachmentPickerOpen === 'gif' ? 'Paste a GIF URL…'
-                          : 'Paste a link…'
-                        }
-                        placeholderTextColor={RS.colors.textMuted}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                      <Pressable style={styles.attachConfirmBtn} onPress={confirmAttachment}>
-                        <Text style={styles.attachConfirmLabel}>Add</Text>
-                      </Pressable>
-                    </View>
-                  )}
-
-                  {entry.attachmentUrl && !attachmentPickerOpen ? (
-                    <View style={styles.attachedRow}>
-                      <Text style={styles.attachedText} numberOfLines={1}>
-                        {entry.attachmentType?.toUpperCase()}: {entry.attachmentUrl}
-                      </Text>
-                      <Pressable onPress={removeAttachment} hitSlop={8}>
-                        <MaterialIcons name="close" size={16} color={RS.colors.textMuted} />
-                      </Pressable>
-                    </View>
-                  ) : null}
-
-                  {/* Image attachments are stored as a URL only in this
-                      phase — no Supabase Storage upload pipeline is wired
-                      yet, so a locally-picked device photo wouldn't persist
-                      across devices/reinstalls. Paste-a-URL is the honest v1
-                      here, matching GIF's own accepted v1 approach. */}
+                  <AttachmentPicker
+                    value={
+                      entry.attachmentUrl && (entry.attachmentType === 'image' || entry.attachmentType === 'gif')
+                        ? ({ url: entry.attachmentUrl, type: entry.attachmentType } as AttachmentValue)
+                        : null
+                    }
+                    onChange={(v) => patch({ attachmentUrl: v?.url ?? null, attachmentType: v?.type ?? null })}
+                    onUploadingChange={setAttachmentUploading}
+                  />
                 </View>
 
                 {/* Media-type-specific toggles */}
@@ -384,8 +319,14 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                   <Pressable style={styles.cancelBtn} onPress={onClose}>
                     <Text style={styles.cancelLabel}>Cancel</Text>
                   </Pressable>
-                  <Pressable style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
-                    {saving ? <ActivityIndicator color={RS.button.filledText} /> : <Text style={styles.saveLabel}>Save Review</Text>}
+                  <Pressable
+                    style={[styles.saveBtn, (saving || attachmentUploading) && styles.saveBtnDisabled]}
+                    onPress={handleSave}
+                    disabled={saving || attachmentUploading}
+                  >
+                    {saving ? <ActivityIndicator color={RS.button.filledText} /> : (
+                      <Text style={styles.saveLabel}>{attachmentUploading ? 'Uploading…' : 'Save Review'}</Text>
+                    )}
                   </Pressable>
                 </View>
               </ScrollView>
@@ -527,65 +468,6 @@ const styles = StyleSheet.create({
     borderColor:       RS.colors.border,
     backgroundColor:   RS.colors.elevated,
     padding:           RS.spacing.sm + 2,
-  },
-  attachRow: {
-    flexDirection: 'row',
-    gap:           RS.spacing.xs + 2,
-  },
-  attachBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               5,
-    borderRadius:      RS.button.radius,
-    borderWidth:       0.5,
-    borderColor:       RS.colors.border,
-    paddingHorizontal: RS.spacing.sm + 2,
-    paddingVertical:   RS.spacing.xs + 2,
-    backgroundColor:   RS.colors.elevated,
-  },
-  attachBtnLabel: {
-    fontSize:   RS.typography.caption,
-    fontWeight: '600',
-    color:      RS.colors.textSecondary,
-  },
-  attachInputRow: {
-    flexDirection: 'row',
-    gap:           RS.spacing.xs,
-    marginTop:     RS.spacing.xs,
-  },
-  attachInput: {
-    flex:              1,
-    fontSize:          RS.typography.body,
-    color:             RS.colors.textPrimary,
-    borderRadius:      RS.button.radius,
-    borderWidth:       0.5,
-    borderColor:       RS.colors.border,
-    backgroundColor:   RS.colors.elevated,
-    paddingHorizontal: RS.spacing.sm + 2,
-    paddingVertical:   RS.spacing.xs + 2,
-  },
-  attachConfirmBtn: {
-    borderRadius:      RS.button.radius,
-    backgroundColor:   RS.button.filledBg,
-    paddingHorizontal: RS.spacing.md,
-    justifyContent:    'center',
-  },
-  attachConfirmLabel: {
-    fontSize:   RS.typography.caption,
-    fontWeight: '700',
-    color:      RS.button.filledText,
-  },
-  attachedRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    marginTop:      RS.spacing.xs,
-    gap:            RS.spacing.xs,
-  },
-  attachedText: {
-    flex:     1,
-    fontSize: RS.typography.caption,
-    color:    RS.colors.textMuted,
   },
   toggleGrid: {
     flexDirection: 'row',

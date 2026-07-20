@@ -8,7 +8,11 @@ import { DIARY_SCOPE_DEFAULTS, toDbMediaId, toDbMediaType } from './mediaActions
 import type { MediaType } from '@/data/seedHomeContent';
 
 export type ReviewScope = 'title' | 'show' | 'season' | 'episode';
-export type AttachmentType = 'image' | 'gif' | 'link';
+// 'link' deliberately removed — confirmed (WEBSITE_ATTACHMENT_SYSTEM_AUDIT.md
+// §4) to not exist as a real website feature despite the DB column still
+// allowing it (untouched, no migration): zero website code path ever
+// produces 'link', so mobile now matches that exactly and never writes it.
+export type AttachmentType = 'image' | 'gif';
 
 export interface DiaryScopeKey {
   mediaId:       string;   // route id, e.g. "film-693134"
