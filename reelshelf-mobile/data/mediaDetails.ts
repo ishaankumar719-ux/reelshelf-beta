@@ -7,6 +7,10 @@
 // TMDB attribution: "This app uses the TMDB API but is not endorsed or certified by TMDB."
 
 export interface CastMember {
+  /** TMDB person id, for navigating to /person/[id]. Optional/absent on the
+   *  generated seed data (books never have cast); always populated on the
+   *  live TMDB path (see lib/tmdb.ts's TmdbCastMember). */
+  personId?: number | null;
   name:      string;
   character: string;
   photoUrl:  string | null;

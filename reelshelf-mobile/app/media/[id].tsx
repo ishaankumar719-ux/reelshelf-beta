@@ -12,7 +12,6 @@ import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { CollectionPreviewCard } from '@/components/CollectionPreviewCard';
 import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { FriendActivity } from '@/components/FriendActivity';
-import { MediaAwards } from '@/components/MediaAwards';
 import { MediaCastCrew } from '@/components/MediaCastCrew';
 import { MediaCrossMediaRow } from '@/components/MediaCrossMediaRow';
 import { MediaHero } from '@/components/MediaHero';
@@ -20,7 +19,6 @@ import { MediaPosterRow } from '@/components/MediaPosterRow';
 import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
 import { MediaReviews } from '@/components/MediaReviews';
 import { MediaSynopsis } from '@/components/MediaSynopsis';
-import { MediaTrivia } from '@/components/MediaTrivia';
 import { MediaWatchProviders } from '@/components/MediaWatchProviders';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
@@ -34,7 +32,7 @@ import {
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { RS } from '@/constants/theme';
-import { collections, type MediaType, type SeedCollectionItem } from '@/data/seedHomeContent';
+import type { MediaType, SeedCardItem, SeedCollectionItem } from '@/data/seedHomeContent';
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
@@ -119,16 +117,38 @@ export default function MediaDetailScreen() {
   const directorLoading = showDirectorRow && live.moreFromDirector.status === 'loading';
   const directorItems   = live.moreFromDirector.data ?? [];
 
-  const memberCollections = collections.filter(c => c.items.some(i => i.id === id));
-  // Collection-membership sibling row: other real items from the first
-  // collection this title belongs to (if any) — not the collection cards
-  // themselves (those stay in "Belongs To" below), the other titles inside it.
-  const siblingCollection: SeedCollectionItem | undefined = memberCollections[0];
-  const siblingItems = siblingCollection
-    ? siblingCollection.items
-        .filter(i => i.id !== id)
-        .map(i => ({ id: i.id, title: i.title, year: i.year, posterUrl: i.posterUrl, mediaType: i.mediaType }))
-    : [];
+  // "More Like This" — the ONE recommendation section the real website has
+  // (FilmDetailClient.tsx merges TMDB /recommendations with a scored local-
+  // catalog fallback). Mobile has no local movie catalog to score against, so
+  // the merge here is TMDB recommendations + the live TMDB director-discover
+  // list mobile already fetches — same "primary + relevant fallback, deduped"
+  // shape as the website, using real data mobile actually has.
+  const moreLikeThisItems = [
+    ...recommendationItems,
+    ...directorItems.filter((d) => !recommendationItems.some((r) => r.id === d.id)),
+  ].slice(0, 10);
+
+  // "Belongs To" — real collection membership (WEBSITE_MOVIE_DETAIL parity:
+  // getFilmCollections()/getTVCollections() heuristics against live TMDB
+  // genre/company/rating/runtime data), not the old static seed array. Each
+  // matched collection's preview posters are the same live TMDB discover
+  // results the real collection page itself renders — see hooks/useMediaDetail.ts.
+  const memberCollectionsLoading = !isBook && live.collections.status === 'loading';
+  const memberCollections: SeedCollectionItem[] = (live.collections.data ?? [])
+    .filter((m) => m.previewItems.length > 0)
+    .map((m) => ({
+      id:          m.def.slug,
+      title:       m.def.name,
+      description: m.def.description,
+      storyCount:  m.previewItems.length,
+      items:       m.previewItems.slice(0, 4).map((item): SeedCardItem => ({
+        id:        item.id,
+        title:     item.title,
+        year:      item.year ?? 0,
+        mediaType: item.mediaType,
+        posterUrl: item.posterUrl,
+      })),
+    }));
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
@@ -220,7 +240,12 @@ export default function MediaDetailScreen() {
                   </RevealOnMount>
                 ) : null}
 
-                {memberCollections.length > 0 ? (
+                {memberCollectionsLoading ? (
+                  <View style={styles.section}>
+                    <SectionHeader eyebrow="Collections" title="Belongs To" subtitle="Part of these curated shelves." />
+                    <SkeletonPosterRow />
+                  </View>
+                ) : memberCollections.length > 0 ? (
                   <RevealOnMount delay={180}>
                     <View style={styles.section}>
                       <SectionHeader
@@ -245,46 +270,32 @@ export default function MediaDetailScreen() {
                     (e.g. books with a similar theme) needs editorial curation, not
                     an algorithm — see MediaCrossMediaRow / data/relatedStoriesSeed.ts. ── */}
 
-                {showDirectorRow && (
-                  directorLoading ? (
+                {/* ── More Like This — collapsed to the ONE section the real website
+                    has (FilmDetailClient.tsx: single "More Like This" row, TMDB
+                    recommendations merged with a reason-annotated fallback,
+                    gated on >=3 total results). Mobile has no local movie catalog
+                    to score against (a documented, accepted divergence from the
+                    website elsewhere in this app — see Daily Pick's candidate-pool
+                    adaptation), so the fallback here is the live TMDB "more from
+                    this director" list, annotated with a reason exactly the way
+                    the website annotates its local-catalog fallback — an honest
+                    adaptation of the same idea using data mobile actually has,
+                    not a fabrication. */}
+                {!isBook && (
+                  (recommendationsLoading || directorLoading) ? (
                     <View style={styles.section}>
-                      <SectionHeader eyebrow="Related Stories" title={`More from ${live.credits.data?.director}`} />
+                      <SectionHeader eyebrow="Related Stories" title="More Like This" />
                       <SkeletonPosterRow />
                     </View>
-                  ) : directorItems.length > 0 ? (
+                  ) : moreLikeThisItems.length >= 3 ? (
                     <RevealOnMount delay={200}>
                       <View style={styles.section}>
-                        <SectionHeader eyebrow="Related Stories" title={`More from ${live.credits.data?.director}`} />
-                        <MediaPosterRow items={directorItems} />
+                        <SectionHeader eyebrow="Related Stories" title="More Like This" />
+                        <MediaPosterRow items={moreLikeThisItems} />
                       </View>
                     </RevealOnMount>
                   ) : null
                 )}
-
-                {!isBook && (
-                  recommendationsLoading ? (
-                    <View style={styles.section}>
-                      <SectionHeader eyebrow="Related Stories" title="Because You Liked This" />
-                      <SkeletonPosterRow />
-                    </View>
-                  ) : recommendationItems.length > 0 ? (
-                    <RevealOnMount delay={220}>
-                      <View style={styles.section}>
-                        <SectionHeader eyebrow="Related Stories" title="Because You Liked This" />
-                        <MediaPosterRow items={recommendationItems} />
-                      </View>
-                    </RevealOnMount>
-                  ) : null
-                )}
-
-                {siblingItems.length > 0 ? (
-                  <RevealOnMount delay={240}>
-                    <View style={styles.section}>
-                      <SectionHeader eyebrow="Related Stories" title={`More ${siblingCollection!.title}`} />
-                      <MediaPosterRow items={siblingItems} />
-                    </View>
-                  </RevealOnMount>
-                ) : null}
 
                 <MediaCrossMediaRow id={id} />
 
@@ -320,22 +331,11 @@ export default function MediaDetailScreen() {
                   <MediaReviews review={persistence.review} containsSpoilers={persistence.containsSpoilers} />
                 </View>
 
-                {/* ── Trivia / Awards — conditionally hidden shells; both seed fields
-                    are empty for every title until a real sourcing decision is made
-                    (see RETURN's OPEN_QUESTIONS). ── */}
-                {detail.trivia && detail.trivia.length > 0 ? (
-                  <View style={styles.section}>
-                    <SectionHeader eyebrow="Did You Know?" title="Trivia" />
-                    <MediaTrivia trivia={detail.trivia} />
-                  </View>
-                ) : null}
-
-                {detail.awards && detail.awards.length > 0 ? (
-                  <View style={styles.section}>
-                    <SectionHeader title="Awards" />
-                    <MediaAwards awards={detail.awards} />
-                  </View>
-                ) : null}
+                {/* Trivia and Awards sections were removed from this screen —
+                    confirmed the real website has neither anywhere on Movie
+                    Detail (full-file read + repo-wide grep, zero matches).
+                    MediaTrivia.tsx/MediaAwards.tsx remain in the codebase,
+                    just unrendered, in case real data is sourced later. */}
               </View>
             </ExpandEntrance>
           </Animated.ScrollView>

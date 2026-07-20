@@ -57,6 +57,13 @@ export interface TmdbDetails {
   synopsis:       string;
   runtimeMinutes: number | null;
   genres:         string[];
+  /** Raw TMDB genre ids (not names) — needed for the collection-membership
+   *  heuristic in lib/discoverCollections.ts, which matches by id exactly
+   *  like the website's getFilmCollections()/getTVCollections(). */
+  genreIds:       number[];
+  /** Raw TMDB production_company ids — movie-only field, needed for the
+   *  "best-of-a24" collection check (with_companies=41077). */
+  companyIds:     number[];
   rating:         number | null;
   /** TV-only — sourced from created_by, mirrors MediaDetailRecord.creator. */
   creator:        string | null;
@@ -79,6 +86,8 @@ export async function fetchTmdbDetails(kind: TmdbKind, tmdbId: string): Promise<
     synopsis:       raw.overview ?? '',
     runtimeMinutes,
     genres:         Array.isArray(raw.genres) ? raw.genres.map((g: any) => g.name) : [],
+    genreIds:       Array.isArray(raw.genres) ? raw.genres.map((g: any) => g.id).filter((id: any) => typeof id === 'number') : [],
+    companyIds:     Array.isArray(raw.production_companies) ? raw.production_companies.map((c: any) => c.id).filter((id: any) => typeof id === 'number') : [],
     rating:         typeof raw.vote_average === 'number' && raw.vote_average > 0
       ? Math.round(raw.vote_average * 10) / 10
       : null,
@@ -95,6 +104,7 @@ export async function fetchTmdbFallbackBackdrop(kind: TmdbKind, tmdbId: string):
 
 // ── Credits ───────────────────────────────────────────────────────────────────
 export interface TmdbCastMember {
+  personId:  number | null;
   name:      string;
   character: string;
   photoUrl:  string | null;
@@ -123,6 +133,7 @@ export async function fetchTmdbCredits(kind: TmdbKind, tmdbId: string): Promise<
 
   return {
     cast: castRaw.map((c: any) => ({
+      personId:  typeof c.id === 'number' ? c.id : null,
       name:      c.name,
       character: c.character ?? '',
       photoUrl:  c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
@@ -264,6 +275,43 @@ export async function fetchTmdbDiscoverByGenre(kind: TmdbKind, genreId: number):
       posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
       mediaType: kind === 'movie' ? 'film' : 'tv',
     } as GenreDiscoverItem;
+  });
+}
+
+// ── Collections (real TMDB-backed discover queries) ──────────────────────────
+// Exact port of the website's fetchTmdb()/CollectionPage mapping
+// (app/discover/collection/[slug]/page.tsx) — takes a CollectionDef's full
+// tmdbPath (e.g. "/discover/movie?with_companies=41077&vote_average.gte=7.0
+// &...") verbatim and appends api_key, rather than going through tmdbGet's
+// narrower params-object shape (some collection queries use dotted keys like
+// "vote_average.gte" which read cleanly as a raw query string but awkwardly
+// as a typed params object).
+export interface CollectionDiscoverItem {
+  id:        string; // route id, e.g. "film-693134"
+  title:     string;
+  year:      number | undefined;
+  posterUrl: string | null;
+  mediaType: 'film' | 'tv';
+}
+
+export async function fetchTmdbCollectionByPath(tmdbPath: string, tmdbMediaType: 'movie' | 'tv'): Promise<CollectionDiscoverItem[]> {
+  if (!TMDB_KEY) throw new Error('EXPO_PUBLIC_TMDB_API_KEY is not set');
+  const sep = tmdbPath.includes('?') ? '&' : '?';
+  const res = await fetch(`${TMDB_BASE}${tmdbPath}${sep}api_key=${TMDB_KEY}`);
+  if (!res.ok) throw new Error(`TMDB ${tmdbPath} failed: ${res.status}`);
+  const data = await res.json();
+  const results = Array.isArray(data.results) ? data.results : [];
+  const isMovie = tmdbMediaType === 'movie';
+  return results.map((r: any) => {
+    const title = isMovie ? r.title : r.name;
+    const dateStr = isMovie ? r.release_date : r.first_air_date;
+    return {
+      id:        `${isMovie ? 'film' : 'tv'}-${r.id}`,
+      title:     title ?? 'Untitled',
+      year:      dateStr ? Number(String(dateStr).slice(0, 4)) : undefined,
+      posterUrl: r.poster_path ? `${TMDB_IMG_POSTER}${r.poster_path}` : null,
+      mediaType: isMovie ? 'film' : 'tv',
+    } as CollectionDiscoverItem;
   });
 }
 

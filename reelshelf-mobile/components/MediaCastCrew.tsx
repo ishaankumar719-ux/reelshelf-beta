@@ -1,5 +1,6 @@
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 
 import { RS } from '@/constants/theme';
@@ -20,14 +21,19 @@ interface MediaCastCrewProps {
   composer?: string | null;
 }
 
-// Reuses the shared press-lift primitive from Discover Phase 3 — no person
-// detail screen exists yet, so this is press feedback only, no navigation.
+// A real Person Detail screen exists at app/person/[id].tsx — wired here so
+// cast cards navigate, matching the website's cast → /people/[id] link.
 function CastCard({ member }: { member: CastMember }) {
   const initial = member.name[0]?.toUpperCase() ?? '';
   const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
 
   return (
-    <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={() => member.personId && router.push(`/person/${member.personId}`)}
+      disabled={!member.personId}
+    >
       <Animated.View style={[styles.castItem, animStyle]}>
         <View style={styles.photoOuter}>
           {member.photoUrl ? (
