@@ -18,6 +18,7 @@ import {
 
 import { RS } from '@/constants/theme';
 import { pickAndUploadAvatar, updateProfile, type ProfileData } from '@/lib/supabase/profile';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface EditProfileModalProps {
   visible:  boolean;
@@ -187,7 +188,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
                   {GENRE_OPTIONS.map((genre) => {
                     const active = genres.includes(genre);
                     return (
-                      <Pressable key={genre} style={[styles.genreChip, active && styles.genreChipActive]} onPress={() => toggleGenre(genre)}>
+                      <Pressable key={getMediaKey('edit-genre', genre)} style={[styles.genreChip, active && styles.genreChipActive]} onPress={() => toggleGenre(genre)}>
                         <Text style={[styles.genreLabel, active && styles.genreLabelActive]}>{genre}</Text>
                       </Pressable>
                     );

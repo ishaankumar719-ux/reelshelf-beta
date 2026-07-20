@@ -45,7 +45,8 @@
 - **Deliberate exceptions** (not converted, and shouldn't be): purely decorative or structurally-fixed-position arrays where the array size/identity never changes at runtime and keying by anything other than position would be *incorrect*, not just stylistically different:
   - `AmbientAtmosphere.tsx` grain dots (22 fixed decorative dots, computed once at module load)
   - `CollectionCard.tsx` / `CollectionPreviewCard.tsx` fanned-deck slot positions (keying by slot index is required for the shuffle/drag animation's identity tracking — keying by item content here would break the animation)
-  - `Skeleton.tsx` loading placeholders, `MindBendingCarousel.tsx`'s 2 fixed shadow-decorator layers, `GlassTabStrip.tsx`/`FilterChips.tsx`/`EditProfileModal.tsx`'s fixed constant option lists (tabs, genres, category chips) — all fixed-size, always-unique-by-construction, non-data arrays.
+  - `Skeleton.tsx` loading placeholders, `MindBendingCarousel.tsx`'s 2 fixed shadow-decorator layers, `FilterChips.tsx`'s fixed constant option list — fixed-size, always-unique-by-construction, non-data arrays.
+  - **Revised 2026-07-20**: `GlassTabStrip.tsx`'s tab list and `EditProfileModal.tsx`'s genre-chip list were previously listed here too, but the current Profile diagnose-and-complete pass's brief required literal 100% `getMediaKey`/`getActivityKey` coverage for every list on this screen, grep-confirmed. Both were converted (`getMediaKey('profile-tab', tab.key)`, `getMediaKey('edit-genre', genre)`) — harmless (still fixed-size, still collision-free either way) but now consistent with the stricter bar rather than carved out as an exception. Not a behavior change, purely which key-construction path is used.
 
 ## Verification performed
 
@@ -53,3 +54,77 @@
 - `npx tsc --noEmit`: zero errors (run twice — after the initial rebuild and again after the final key-fix sweep).
 - `npx expo export --platform ios` / `--platform android`: both clean, both times.
 - No iOS Simulator/Android emulator is available in this environment — the acceptance criteria requiring a literal running-app navigation pass while watching the console (duplicate-key warnings, visual confirmation of the 2×2 grid rendering, etc.) could **not** be performed. Everything above is code-level and live-database verification, not on-device observation — stated plainly here and in the final RETURN rather than claimed as done.
+
+---
+
+## Addendum (2026-07-20): Diagnose-and-complete pass — no rebuild, only genuine gaps fixed
+
+Re-verified every item above against the actual running database and current code (not assumed
+from this document's prior snapshot). Nothing in rows 1–28 above needed correction — this pass's
+findings:
+
+### Mount Rushmore tabs — re-confirmed, still correct, no schema change needed
+
+The task brief that opened this pass warned the `mount_rushmore` table might only support "ONE
+unified set of 4 mixed-media favourites" and asked for the tabs question to be resolved with
+fresh evidence before touching anything. Re-checked from scratch, independent of row 12 above:
+
+- **Live constraint, queried directly**: `mount_rushmore_user_position_type_key: UNIQUE (user_id,
+  position, media_type)` — not `UNIQUE(user_id, position)`. The schema already supports up to 12
+  rows/user (4 positions × 3 media types). No schema change needed, then or now.
+- **Website source, re-read fresh**: `src/components/profile/MountRushmoreEditor.tsx`'s
+  `normalizeTabSlots()` matches slots by `position AND media_type` together; `handleSelect`/
+  `handleRemove` filter `allSlots` by `media_type !== activeTab` before merging — structurally
+  three independent sets, confirmed by reading the actual logic, not inferred from naming.
+- **Real production data**: the dedicated test account alone has 12 real `mount_rushmore` rows
+  (4 movie + 4 tv + 4 book, `position` 1–4 repeating across each type) — e.g. Babylon/When Harry
+  Met Sally/Parasite/Her (movies), INVINCIBLE/Ted Lasso/Avatar/Brooklyn Nine-Nine (tv), Project
+  Hail Mary/Strange Pictures/Sunrise on the Reaping/And Then There Were None (books).
+- **Mobile's code** (`lib/supabase/mountRushmore.ts`, `MountRushmoreGrid.tsx`,
+  `MountRushmoreEditor.tsx`) already implements this exactly — confirmed by its own header
+  comment ("CORRECTED MODEL (was wrong before this pass)"), consistent with row 12 above. Nothing
+  to fix here; the interpretation was already resolved and already correctly built.
+
+### Drag-and-drop reordering — premise corrected, not a gap
+
+The brief also stated Mount Rushmore drag-and-drop "already has real backend support via the
+position column" and asked to confirm/fix it. **The website has no drag-and-drop reordering for
+Mount Rushmore at all** — re-confirmed directly in `MountRushmoreEditor.tsx`: position is fixed
+by which slot (1–4) you tap to fill; there is no drag handle, no reorder gesture, anywhere in the
+website's editor. This appears to conflate Mount Rushmore with the **separate, real** list-item
+drag-and-drop feature on `/list/[id]` (User Lists, `user_list_items.rank_order` — a different
+screen, already fixed in an earlier sprint per memory). Row 14 above already documented this
+correctly ("no reorder mechanism on the website either — none invented here"); re-confirmed, no
+mobile-only reorder gesture was added, since that would be a net-new mobile feature beyond parity,
+not something this diagnose-and-complete pass should introduce unasked.
+
+### listKeys — 100% coverage confirmed, two minor gaps fixed
+
+Full grep sweep across every Profile-reachable component (`ProfileView.tsx`,
+`EditProfileModal.tsx`, `MountRushmoreEditor.tsx`, `MountRushmoreGrid.tsx`, `AchievementsRow.tsx`,
+`ActivityCard.tsx`, `CurrentlyEnjoyingShelf.tsx`, `GlassTabStrip.tsx`, `FollowListModal.tsx`,
+`ListEditorModal.tsx`) for both `key={...}` and `keyExtractor`. Found two raw-string keys
+(`GlassTabStrip.tsx`'s `key={tab.key}`, `EditProfileModal.tsx`'s `key={genre}`) — fixed to use
+`getMediaKey`. See the revised "Deliberate exceptions" note above for why these were previously
+carved out and why they were converted anyway this pass. Re-grepped after the fix: zero remaining
+non-`getMediaKey`/`getActivityKey` keys anywhere in the Profile component tree.
+
+### Live data verified for the dedicated test account (`da816c20-…`, real production data)
+
+Confirmed every required section has substantial real data, not placeholders: 915 `diary_entries`
+rows, 9 written reviews, 3 lists, 30 `saved_items`, 5 followers / 8 following, 14 earned badges,
+12 `mount_rushmore` rows across all three media types. Profile fields fully populated (bio,
+avatar, favourite film/series/book) except `website_url` and `favourite_genres` (both empty for
+this account — correctly renders as a hidden section, not an empty/broken one, per
+`ProfileView.tsx`'s own `.length > 0` / truthiness gates).
+
+### Fixes applied this pass (the only two)
+
+1. `components/profile/GlassTabStrip.tsx` — `key={tab.key}` → `key={getMediaKey('profile-tab',
+   tab.key)}`.
+2. `components/EditProfileModal.tsx` — `key={genre}` → `key={getMediaKey('edit-genre', genre)}`.
+
+Everything else audited (header, Edit Profile all-fields save, Stats, Followers/Following,
+Achievements, Mount Rushmore incl. reorder, Recent Activity, all 7 tabs, favourite genres, shelf
+statistics, empty states) was confirmed already correct from prior sprints — no rebuild performed,
+matching this task's explicit "diagnose, don't rebuild" constraint.

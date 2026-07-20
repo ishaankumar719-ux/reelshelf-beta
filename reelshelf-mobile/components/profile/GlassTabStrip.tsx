@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 
 import { RS } from '@/constants/theme';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
+import { getMediaKey } from '@/utils/listKeys';
 
 export interface GlassTabStripProps<T extends string> {
   tabs:      { key: T; label: string }[];
@@ -68,7 +69,7 @@ export function GlassTabStrip<T extends string>({ tabs, activeTab, onChange }: G
             const active = tab.key === activeTab;
             return (
               <Pressable
-                key={tab.key}
+                key={getMediaKey('profile-tab', tab.key)}
                 onLayout={handleLayout(tab.key)}
                 style={styles.tabBtn}
                 onPress={() => handlePress(tab.key)}
