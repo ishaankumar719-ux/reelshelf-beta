@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
     borderColor:       RS.glass.border,
   },
   scrollContent: {
-    paddingHorizontal: 4,
-    paddingVertical:   4,
+    paddingHorizontal: 3,
+    paddingVertical:   3,
   },
   track: {
     flexDirection: 'row',
@@ -106,15 +106,15 @@ const styles = StyleSheet.create({
     bottom:          0,
     borderRadius:    RS.button.radius,
     backgroundColor: RS.button.primaryFill,
-    borderWidth:     1,
+    borderWidth:     0.5,
     borderColor:     RS.button.primaryBorder,
   },
   tabBtn: {
-    paddingHorizontal: 16,
-    paddingVertical:   10,
+    paddingHorizontal: 13,
+    paddingVertical:   7,
   },
   label: {
-    fontSize:   RS.typography.caption,
+    fontSize:   RS.typography.caption - 1,
     fontWeight: '600',
     color:      RS.colors.textSecondary,
   },

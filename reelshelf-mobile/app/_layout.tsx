@@ -38,6 +38,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
             <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
             <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
+            <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
           </Stack>
           <StatusBar style="light" />

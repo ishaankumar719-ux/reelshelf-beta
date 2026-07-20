@@ -153,12 +153,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           RS.spacing.sm,
+    flexDirection:  'row',
+    flexWrap:       'wrap',
+    justifyContent: 'space-between',
+    rowGap:         RS.spacing.sm,
   },
+  // Slightly smaller than before (48% → 44%) so all four favourites read as
+  // a compact grid rather than dominating the screen — aspectRatio 2/3 keeps
+  // the correct poster ratio, so height shrinks proportionally with width.
   cell: {
-    width:      '48%',
+    width:      '44%',
     aspectRatio: 2 / 3,
     shadowColor:   RS.shadow.color,
     shadowOffset:  { width: 0, height: RS.shadow.offsetY },

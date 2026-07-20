@@ -427,7 +427,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             contentContainerStyle={styles.scrollContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={RS.colors.accent} />}
           >
-            {/* ── Atmospheric Hero ─────────────────────────────────────── */}
+            {/* ── Atmospheric Hero (compact) ───────────────────────────── */}
             <View style={styles.hero}>
               <View style={styles.avatarOuter}>
                 {profile.avatarUrl ? (
@@ -448,6 +448,33 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
               ) : null}
               <Text style={styles.joined}>Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
 
+              {/* ── Followers/Following — single compact row, lives ONLY here now (removed from Stats) ── */}
+              <View style={styles.followRow}>
+                <Pressable
+                  style={styles.followRowItem}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setFollowListMode('followers');
+                  }}
+                >
+                  <Text style={styles.followRowText}>
+                    <Text style={styles.followRowValue}>{stats.followers}</Text> Followers
+                  </Text>
+                </Pressable>
+                <Text style={styles.followRowDivider}>·</Text>
+                <Pressable
+                  style={styles.followRowItem}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setFollowListMode('following');
+                  }}
+                >
+                  <Text style={styles.followRowText}>
+                    <Text style={styles.followRowValue}>{stats.following}</Text> Following
+                  </Text>
+                </Pressable>
+              </View>
+
               {isOwnProfile ? (
                 <Pressable style={styles.editBtn} onPress={() => setEditOpen(true)}>
                   <Text style={styles.editLabel}>Edit Profile</Text>
@@ -466,40 +493,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             <View style={styles.tabContent}>
               {activeTab === 'overview' && (
                 <View style={styles.overviewGap}>
-                  {/* Section order below matches the website's real profile
-                      page structure (WEBSITE_PROFILE_AUDIT.md §0/§13):
-                      Header → Stats → Badges → Mount Rushmore → Recently
-                      Watched → Recent Activity → Reviews → Taste, adapted
-                      for mobile. Mobile-only additions (Currently Enjoying,
-                      Genres, Lists/Diary previews) are placed in adjacent,
-                      sensible slots rather than invented website sections. */}
-
-                  {/* ── Stats — compact, positioned right after header per website order ── */}
-                  <View style={styles.statsStrip}>
-                    {([
-                      ['Movies', stats.moviesWatched, null], ['TV', stats.tvWatched, null], ['Books', stats.booksRead, null],
-                      ['Reviews', stats.reviews, null], ['Lists', stats.lists, null],
-                      ['Followers', stats.followers, 'followers'], ['Following', stats.following, 'following'],
-                    ] as const).map(([label, value, mode]) => (
-                      <Pressable
-                        key={getMediaKey('stat', label)}
-                        style={styles.statTile}
-                        disabled={!mode}
-                        onPress={() => {
-                          if (!mode) return;
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          setFollowListMode(mode);
-                        }}
-                      >
-                        <Text style={styles.statValue}>{value}</Text>
-                        <Text style={styles.statLabel}>{label}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-
-                  <View style={styles.overviewSubsection}>
-                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} />
-                  </View>
+                  {/* Reordered per the section-priority pass: Mount Rushmore
+                      leads (the primary visual identity section), followed
+                      by activity-shaped content (Currently Enjoying →
+                      Recently Watched → Recent Reviews → Recent Activity),
+                      then the quieter self-descriptive blocks (Stats →
+                      Achievements → Favourite Genres), then Lists/Diary
+                      previews last. Followers/Following now live only in the
+                      Hero — removed from Stats to avoid duplication. */}
 
                   {/* ── Mount Rushmore — 3 independent per-media-type sets (Films/Series/Books) ── */}
                   <View style={styles.overviewSubsection}>
@@ -518,6 +519,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                       <MountRushmoreGrid slots={rushmoreTabSlots} onOpenDetail={openMediaDetail} />
                     )}
                   </View>
+
+                  {enjoyingStatus === 'loading' ? (
+                    <ActivityIndicator color={RS.colors.accent} />
+                  ) : enjoying ? (
+                    <CurrentlyEnjoyingShelf data={enjoying} onOpenDetail={openMediaDetail} />
+                  ) : null}
 
                   {/* ── Recently Watched — horizontal poster row, distinct from Recent Activity below ── */}
                   <View style={styles.overviewSubsection}>
@@ -546,11 +553,12 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                     )}
                   </View>
 
-                  {enjoyingStatus === 'loading' ? (
-                    <ActivityIndicator color={RS.colors.accent} />
-                  ) : enjoying ? (
-                    <CurrentlyEnjoyingShelf data={enjoying} onOpenDetail={openMediaDetail} />
-                  ) : null}
+                  {(reviews?.length ?? 0) > 0 && (
+                    <View style={styles.overviewSubsection}>
+                      <Text style={styles.subheading}>Recent Reviews</Text>
+                      {reviews!.slice(0, 3).map(renderReviewCard)}
+                    </View>
+                  )}
 
                   <View style={styles.overviewSubsection}>
                     <Text style={styles.subheading}>Recent Activity</Text>
@@ -576,12 +584,34 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                     )}
                   </View>
 
-                  {(reviews?.length ?? 0) > 0 && (
-                    <View style={styles.overviewSubsection}>
-                      <Text style={styles.subheading}>Reviews</Text>
-                      {reviews!.slice(0, 3).map(renderReviewCard)}
+                  {/* ── Stats — de-emphasized: quieter type, no border, visually secondary to Mount Rushmore above. Followers/Following removed (now Hero-only). ── */}
+                  <View style={styles.overviewSubsection}>
+                    <Text style={styles.subheading}>Stats</Text>
+                    <View style={styles.statsStrip}>
+                      {([
+                        ['Movies', stats.moviesWatched], ['TV', stats.tvWatched], ['Books', stats.booksRead],
+                        ['Reviews', stats.reviews], ['Lists', stats.lists],
+                      ] as const).map(([label, value]) => (
+                        <View key={getMediaKey('stat', label)} style={styles.statTile}>
+                          <Text style={styles.statValue}>{value}</Text>
+                          <Text style={styles.statLabel}>{label}</Text>
+                        </View>
+                      ))}
                     </View>
-                  )}
+                  </View>
+
+                  {/* ── Achievements — 3-4 card preview + View All ── */}
+                  <View style={styles.overviewSubsection}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.subheading}>Achievements</Text>
+                      {(badges?.length ?? 0) > 0 && (
+                        <Pressable onPress={() => router.push(`/achievements/${userId}`)}>
+                          <Text style={styles.editSmallLabel}>View All</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} limit={4} />
+                  </View>
 
                   {profile.favouriteGenres.length > 0 && (
                     <View style={styles.overviewSubsection}>
@@ -871,27 +901,41 @@ const styles = StyleSheet.create({
   retryLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
   backBtn: { paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.xs },
   scrollContent: { paddingBottom: RS.tabBar.contentBottomPad },
-  hero: { alignItems: 'center', gap: 4, paddingHorizontal: RS.spacing.lg, paddingTop: RS.spacing.lg, paddingBottom: RS.spacing.md },
+  // Compacted hero: smaller avatar (88px, matches the website's own size),
+  // tighter top/bottom padding — Followers/Following now lives here as one
+  // compact row (moved out of Stats, which no longer duplicates it).
+  hero: { alignItems: 'center', gap: 4, paddingHorizontal: RS.spacing.lg, paddingTop: RS.spacing.md, paddingBottom: RS.spacing.sm },
   avatarOuter: {
-    marginBottom: RS.spacing.sm,
+    marginBottom: RS.spacing.xs,
     shadowColor: RS.shadow.color, shadowOffset: { width: 0, height: RS.shadow.offsetY },
     shadowOpacity: RS.shadow.opacity, shadowRadius: RS.shadow.radius, elevation: RS.shadow.android,
   },
-  avatar: { width: 104, height: 104, borderRadius: 52, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.16)' },
+  avatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.16)' },
   avatarFallback: { backgroundColor: RS.colors.elevated, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 40, fontWeight: '700', color: RS.colors.textMuted },
+  avatarInitial: { fontSize: 34, fontWeight: '700', color: RS.colors.textMuted },
   displayName: { fontSize: RS.typography.heading + 2, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: RS.letterSpacing.tight },
   username: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
   bio: { fontSize: RS.typography.body, color: RS.colors.textSecondary, textAlign: 'center', marginTop: RS.spacing.xs, lineHeight: 20 },
   websiteLink: { fontSize: RS.typography.caption, color: RS.colors.accent, marginTop: RS.spacing.xs },
   joined: { fontSize: RS.typography.overline, color: RS.colors.textMuted, marginTop: 2 },
-  editBtn: { marginTop: RS.spacing.md, borderRadius: RS.button.radius, borderWidth: 1, borderColor: RS.button.secondaryBorder, paddingHorizontal: RS.spacing.lg, paddingVertical: RS.spacing.sm + 2 },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.xs + 2, marginTop: RS.spacing.xs + 2 },
+  followRowItem: { paddingVertical: 2 },
+  followRowText: { fontSize: RS.typography.caption, color: RS.colors.textSecondary },
+  followRowValue: { fontWeight: '700', color: RS.colors.textPrimary },
+  followRowDivider: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
+  editBtn: { marginTop: RS.spacing.sm, borderRadius: RS.button.radius, borderWidth: 1, borderColor: RS.button.secondaryBorder, paddingHorizontal: RS.spacing.lg, paddingVertical: RS.spacing.sm + 2 },
   followingBtn: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill },
   editLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
   followingLabel: { color: RS.button.primaryText },
-  tabContent: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, minHeight: 120, marginTop: RS.spacing.lg },
-  overviewGap: { gap: RS.spacing.lg },
-  overviewSubsection: { gap: RS.spacing.xs },
+  tabContent: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm, minHeight: 120, marginTop: RS.spacing.md },
+  // Increased major-section breathing room: RS.spacing.lg (24) → RS.spacing.xl
+  // (40) — the existing scale already had a large-enough token, so nothing
+  // new was added to it.
+  overviewGap: { gap: RS.spacing.xl },
+  // Was RS.spacing.xs (4) — bumped to sm (8) for more breathing room between
+  // each section's title and its content, applies uniformly whether the
+  // title is a bare <Text> or a sectionHeaderRow (title + "See All"/"Edit").
+  overviewSubsection: { gap: RS.spacing.sm },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   editSmallLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
@@ -948,15 +992,17 @@ const styles = StyleSheet.create({
   listsEmptyWrap: { alignItems: 'center', gap: RS.spacing.sm, paddingVertical: RS.spacing.sm },
   createListBtn: { borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
   createListLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
-  // Stats — compact/secondary styling (smaller type, no card chrome), but
-  // positioned right after the header per the website's real section order
-  // (WEBSITE_PROFILE_AUDIT.md §3/§13) rather than at the bottom of the page.
+  // Stats — moved below the activity sections, deliberately the quietest
+  // block on the screen: no card chrome, smaller/lighter value type than
+  // before, tonal (not bordered) strip background so it reads as visually
+  // secondary to Mount Rushmore. Followers/Following removed — Hero-only now.
   statsStrip: {
     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    borderRadius: RS.card.radius, backgroundColor: RS.colors.elevated,
     paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.sm,
     gap: RS.spacing.sm,
   },
-  statTile: { alignItems: 'center', minWidth: 64 },
-  statValue: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textSecondary },
+  statTile: { alignItems: 'center', minWidth: 56 },
+  statValue: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
   statLabel: { fontSize: 9, fontWeight: '600', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: 1 },
 });
