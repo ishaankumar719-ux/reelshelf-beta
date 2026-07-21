@@ -498,7 +498,38 @@ export async function fetchPersonDetail(personId: string): Promise<TmdbPersonDet
     tmdbGet<any>(`/person/${personId}/combined_credits`),
   ]);
   const cast = Array.isArray(credits.cast) ? credits.cast : [];
-  const knownFor = cast
+
+  // Root cause (verified against real TMDB data for Cillian Murphy/Bryan
+  // Cranston/Steve Carell): combined_credits.cast's own `media_type` field is
+  // read correctly (it's an accurate movie/tv tag straight from TMDB) — the
+  // bug was never a wrong bucket. It's that every cast credit was weighted
+  // equally by the PARENT TITLE's popularity, with no filtering or dedup.
+  // That systematically buries an actor's real, substantial work under:
+  //  - talk/awards/news-show guest appearances (character starts with "Self"),
+  //    which have huge popularity as titles despite being a one-off cameo;
+  //  - the same show appearing many times over (one row per guest episode/
+  //    character variant — e.g. 6 separate "Family Guy" rows for one actor);
+  //  - single-episode animated-cameo voice roles on juggernaut shows, which
+  //    outrank genuine lead roles on smaller shows purely on title fame.
+  // Fix: drop self-appearances, dedupe by id (keep the most substantial
+  // version via episode_count), and require TV credits to have episode_count
+  // >= 2 — a real per-actor substance signal TMDB provides, instead of only
+  // the title's own popularity. Verified this produces the real, correct
+  // filmography for all three test actors (e.g. Peaky Blinders/Oppenheimer
+  // for Cillian Murphy, Breaking Bad/Malcolm in the Middle for Bryan
+  // Cranston, The Office/Despicable Me for Steve Carell — none of which
+  // surfaced at all before this fix).
+  const isSelfAppearance = (character: string | undefined) => /^self/i.test(character ?? '');
+  const substantial = cast.filter((c: any) =>
+    !isSelfAppearance(c.character) &&
+    (c.media_type !== 'tv' || (c.episode_count ?? 0) >= 2),
+  );
+  const byId = new Map<number, any>();
+  for (const c of substantial) {
+    const existing = byId.get(c.id);
+    if (!existing || (c.episode_count ?? 0) > (existing.episode_count ?? 0)) byId.set(c.id, c);
+  }
+  const knownFor = Array.from(byId.values())
     .filter((c: any) => c.poster_path)
     .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
     .slice(0, 12)
