@@ -82,40 +82,80 @@ export async function deleteReviewAttachment(publicUrl: string): Promise<void> {
 }
 
 // ── GIPHY ────────────────────────────────────────────────────────────────────
-// Exact port of the website's fetchGifs() (components/AttachmentPicker.tsx) —
-// same two endpoints, same limit/rating params, same silent-empty-array
-// failure behavior (never a jarring error state for a GIF search failure).
+// Same two endpoints/params as the website (search + trending, limit=18,
+// rating=g) and the same saved-value convention (fullUrl == images.downsized.url
+// goes into attachment_url). Diverges from the website deliberately in two
+// ways, both explicit product decisions: real failures are thrown (not
+// swallowed to []) so the UI can show a genuine error+Retry state, and an
+// `offset` param supports mobile-only pagination the website never had.
 
-export interface GiphyGifResult {
-  id:             string;
-  thumbnailUrl:   string; // images.fixed_height_small.url — grid thumbnail only
-  downsizedUrl:   string; // images.downsized.url — the actual saved attachment value
+export interface GiphyGif {
+  id:         string;
+  title:      string;
+  previewUrl: string; // images.fixed_height_small.url — grid thumbnail
+  fullUrl:    string;  // images.downsized.url — the saved attachment value
+  width:      number;
+  height:     number;
+  provider:   'giphy';
 }
+
+export interface GiphyFetchResult {
+  gifs:    GiphyGif[];
+  hasMore: boolean;
+}
+
+const GIPHY_LIMIT = 18;
 
 export function hasGiphyKey(): boolean {
   return Boolean(process.env.EXPO_PUBLIC_GIPHY_API_KEY);
 }
 
-export async function fetchGiphyGifs(query: string): Promise<GiphyGifResult[]> {
+/** Missing key is treated as a caller-side precondition, not a fetch failure —
+ *  callers must check `hasGiphyKey()` themselves and show the dedicated
+ *  "unavailable" state instead of ever calling this. */
+export async function fetchGiphyGifs(
+  query: string,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<GiphyFetchResult> {
   const key = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
-  if (!key) return [];
-  try {
-    const base = 'https://api.giphy.com/v1/gifs';
-    const endpoint = query.trim()
-      ? `${base}/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=18&rating=g`
-      : `${base}/trending?api_key=${key}&limit=18&rating=g`;
-    const res = await fetch(endpoint);
-    if (!res.ok) return [];
-    const json = await res.json();
-    const data = Array.isArray(json.data) ? json.data : [];
-    return data
-      .filter((g: any) => g?.id && g?.images?.fixed_height_small?.url && g?.images?.downsized?.url)
-      .map((g: any) => ({
-        id:           g.id,
-        thumbnailUrl: g.images.fixed_height_small.url,
-        downsizedUrl: g.images.downsized.url,
-      }));
-  } catch {
-    return [];
+  if (!key) throw new Error('EXPO_PUBLIC_GIPHY_API_KEY is not configured');
+
+  const base = 'https://api.giphy.com/v1/gifs';
+  const endpoint = query.trim()
+    ? `${base}/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=${GIPHY_LIMIT}&offset=${offset}&rating=g`
+    : `${base}/trending?api_key=${key}&limit=${GIPHY_LIMIT}&offset=${offset}&rating=g`;
+  const redactedEndpoint = endpoint.replace(key, '<redacted>');
+
+  const res = await fetch(endpoint, { signal });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '<unreadable body>');
+    if (__DEV__) {
+      console.warn(`[giphy] ${res.status} ${redactedEndpoint} — ${body.slice(0, 300)}`);
+    }
+    throw new Error(`GIPHY request failed (${res.status})`);
   }
+
+  const json = await res.json();
+  if (__DEV__) {
+    console.log(`[giphy] 200 ${redactedEndpoint} — ${Array.isArray(json?.data) ? json.data.length : 0} results`);
+  }
+  const data = Array.isArray(json.data) ? json.data : [];
+  const gifs: GiphyGif[] = data
+    .filter((g: any) => g?.id && g?.images?.fixed_height_small?.url && g?.images?.downsized?.url)
+    .map((g: any) => ({
+      id:         g.id,
+      title:      typeof g.title === 'string' ? g.title : '',
+      previewUrl: g.images.fixed_height_small.url,
+      fullUrl:    g.images.downsized.url,
+      width:      Number(g.images.fixed_height_small.width) || 0,
+      height:     Number(g.images.fixed_height_small.height) || 0,
+      provider:   'giphy' as const,
+    }));
+
+  const totalCount = Number(json?.pagination?.total_count) || 0;
+  const returnedOffset = Number(json?.pagination?.offset) || offset;
+  const hasMore = returnedOffset + gifs.length < totalCount;
+
+  return { gifs, hasMore };
 }

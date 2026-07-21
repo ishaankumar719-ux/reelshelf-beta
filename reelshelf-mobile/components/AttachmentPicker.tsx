@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
@@ -6,9 +6,9 @@ import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
+  FlatList,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,9 +21,8 @@ import {
   fetchGiphyGifs,
   hasGiphyKey,
   uploadReviewImage,
-  type GiphyGifResult,
+  type GiphyGif,
 } from '@/lib/supabase/attachments';
-import { getMediaKey } from '@/utils/listKeys';
 
 export interface AttachmentValue {
   url:  string;
@@ -39,7 +38,7 @@ interface AttachmentPickerProps {
   onUploadingChange?: (uploading: boolean) => void;
 }
 
-const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 300;
 
 // Real image upload + real GIPHY search/trending — replaces the old shared
 // paste-URL TextInput that funneled Image/GIF/Link into one generic field.
@@ -56,8 +55,14 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [gifQuery, setGifQuery] = useState('');
-  const [gifResults, setGifResults] = useState<GiphyGifResult[]>([]);
+  const [gifResults, setGifResults] = useState<GiphyGif[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
+  const [gifLoadingMore, setGifLoadingMore] = useState(false);
+  const [gifError, setGifError] = useState<string | null>(null);
+  const [gifOffset, setGifOffset] = useState(0);
+  const [gifHasMore, setGifHasMore] = useState(false);
+  const gifAbortRef = useRef<AbortController | null>(null);
+  const gifRequestIdRef = useRef(0);
 
   // Deliberate mobile-side improvement over website parity (explicit product
   // decision, not silent): when the OLD attachment being replaced/removed was
@@ -139,29 +144,82 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
   const openGifSheet = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setGifQuery('');
+    setGifResults([]);
+    setGifOffset(0);
+    setGifHasMore(false);
+    setGifError(null);
     setGifSheetOpen(true);
   };
 
+  // The abort happens here — right before a NEW request supersedes an old
+  // one — never in the debounce effect's cleanup. That's the fix for the
+  // "cancelled before it had a chance to resolve" failure mode: a keystroke
+  // that only resets the debounce timer (no fetch started yet) triggers no
+  // abort at all, since nothing is in flight yet to cancel.
+  const runGifFetch = useCallback(async (query: string, offset: number, append: boolean) => {
+    gifAbortRef.current?.abort();
+    const controller = new AbortController();
+    gifAbortRef.current = controller;
+    const requestId = ++gifRequestIdRef.current;
+
+    if (append) setGifLoadingMore(true);
+    else setGifLoading(true);
+
+    try {
+      const { gifs, hasMore } = await fetchGiphyGifs(query, offset, controller.signal);
+      if (requestId !== gifRequestIdRef.current) return; // superseded by a newer request
+      setGifResults((prev) => (append ? [...prev, ...gifs] : gifs));
+      setGifHasMore(hasMore);
+      setGifOffset(offset + gifs.length);
+      setGifError(null);
+    } catch (e) {
+      if (controller.signal.aborted) return; // intentional cancellation, not a real failure
+      if (requestId !== gifRequestIdRef.current) return;
+      if (append) {
+        // Load-more failures degrade quietly — don't blow away already-loaded
+        // results with a full error state, just stop offering more.
+        setGifHasMore(false);
+      } else {
+        setGifError(e instanceof Error ? e.message : 'Something went wrong.');
+      }
+    } finally {
+      if (requestId === gifRequestIdRef.current) {
+        setGifLoading(false);
+        setGifLoadingMore(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!gifSheetOpen) return;
-    let cancelled = false;
-    setGifLoading(true);
-    // Trending loads immediately (0ms) on open with no query; search debounces
-    // 400ms — exact match to the website's fetchGifs() timing.
-    const delay = gifQuery ? DEBOUNCE_MS : 0;
-    const timer = setTimeout(async () => {
-      const results = await fetchGiphyGifs(gifQuery);
-      if (!cancelled) {
-        setGifResults(results);
-        setGifLoading(false);
+    if (!hasGiphyKey()) {
+      if (__DEV__) {
+        console.warn(
+          '[AttachmentPicker] EXPO_PUBLIC_GIPHY_API_KEY is missing or empty — GIF search is unavailable.',
+        );
       }
+      return;
+    }
+    // Trending loads immediately (0ms) on open with no query; search debounces 300ms.
+    const delay = gifQuery ? DEBOUNCE_MS : 0;
+    const timer = setTimeout(() => {
+      void runGifFetch(gifQuery, 0, false);
     }, delay);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [gifQuery, gifSheetOpen]);
+    return () => clearTimeout(timer);
+  }, [gifQuery, gifSheetOpen, runGifFetch]);
 
-  const selectGif = (gif: GiphyGifResult) => {
+  const retryGifFetch = () => {
+    void runGifFetch(gifQuery, 0, false);
+  };
+
+  const loadMoreGifs = () => {
+    if (gifLoading || gifLoadingMore || !gifHasMore) return;
+    void runGifFetch(gifQuery, gifOffset, true);
+  };
+
+  const selectGif = (gif: GiphyGif) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    applyChange({ url: gif.downsizedUrl, type: 'gif' });
+    applyChange({ url: gif.fullUrl, type: 'gif' });
     setGifSheetOpen(false);
     setGifQuery('');
     setGifResults([]);
@@ -257,32 +315,61 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
           <Pressable style={styles.gifSheet} onPress={(e) => e.stopPropagation()}>
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
             <View style={styles.grabber} />
-            <TextInput
-              style={styles.gifSearchInput}
-              value={gifQuery}
-              onChangeText={setGifQuery}
-              placeholder="Search GIFs…"
-              placeholderTextColor={RS.colors.textMuted}
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <ScrollView contentContainerStyle={styles.gifGrid} keyboardShouldPersistTaps="handled">
-              {gifLoading ? (
-                <ActivityIndicator color={RS.colors.accent} style={styles.gifLoadingIndicator} />
-              ) : !hasGiphyKey() ? (
-                <Text style={styles.gifEmptyText}>GIF search isn&apos;t configured yet.</Text>
-              ) : gifResults.length === 0 ? (
-                <Text style={styles.gifEmptyText}>{gifQuery ? 'No results' : 'Loading trending…'}</Text>
-              ) : (
-                gifResults.map((gif) => (
-                  <Pressable key={getMediaKey('gif', gif.id)} style={styles.gifCell} onPress={() => selectGif(gif)}>
-                    <Image source={{ uri: gif.thumbnailUrl }} style={styles.gifCellImage} contentFit="cover" />
-                  </Pressable>
-                ))
-              )}
-            </ScrollView>
-            <Text style={styles.giphyAttribution}>Powered by GIPHY</Text>
+            {!hasGiphyKey() ? (
+              <View style={styles.gifUnavailableWrap}>
+                <Text style={styles.gifUnavailableText}>GIF search is unavailable.</Text>
+              </View>
+            ) : (
+              <>
+                <TextInput
+                  style={styles.gifSearchInput}
+                  value={gifQuery}
+                  onChangeText={setGifQuery}
+                  placeholder="Search GIFs…"
+                  placeholderTextColor={RS.colors.textMuted}
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {gifError ? (
+                  <View style={styles.gifErrorWrap}>
+                    <Text style={styles.gifErrorText}>{gifError}</Text>
+                    <Pressable onPress={retryGifFetch} hitSlop={8}>
+                      <Text style={styles.retryLabel}>Retry</Text>
+                    </Pressable>
+                  </View>
+                ) : gifLoading ? (
+                  <ActivityIndicator color={RS.colors.accent} style={styles.gifLoadingIndicator} />
+                ) : gifResults.length === 0 ? (
+                  <Text style={styles.gifEmptyText}>
+                    {gifQuery ? 'No results' : 'No trending GIFs right now'}
+                  </Text>
+                ) : (
+                  <FlatList
+                    style={styles.gifList}
+                    data={gifResults}
+                    keyExtractor={(gif) => `gif-${gif.provider}-${gif.id}`}
+                    numColumns={2}
+                    columnWrapperStyle={styles.gifRow}
+                    contentContainerStyle={styles.gifGrid}
+                    keyboardShouldPersistTaps="handled"
+                    onEndReachedThreshold={0.5}
+                    onEndReached={loadMoreGifs}
+                    ListFooterComponent={
+                      gifLoadingMore ? (
+                        <ActivityIndicator color={RS.colors.accent} style={styles.gifFooterLoader} />
+                      ) : null
+                    }
+                    renderItem={({ item }) => (
+                      <Pressable style={styles.gifCell} onPress={() => selectGif(item)}>
+                        <Image source={{ uri: item.previewUrl }} style={styles.gifCellImage} contentFit="cover" />
+                      </Pressable>
+                    )}
+                  />
+                )}
+                <Text style={styles.giphyAttribution}>Powered by GIPHY</Text>
+              </>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -456,17 +543,24 @@ const styles = StyleSheet.create({
     fontSize:          RS.typography.body,
     color:             RS.colors.textPrimary,
   },
+  gifList: {
+    flex: 1,
+  },
   gifGrid: {
-    flexDirection:     'row',
-    flexWrap:          'wrap',
-    gap:               6,
+    gap:               10,
     paddingHorizontal: RS.spacing.md,
     paddingTop:        RS.spacing.sm,
     paddingBottom:     RS.spacing.md,
   },
+  gifRow: {
+    gap: 10,
+  },
   gifLoadingIndicator: {
     width:           '100%',
     paddingVertical: RS.spacing.xl,
+  },
+  gifFooterLoader: {
+    paddingVertical: RS.spacing.md,
   },
   gifEmptyText: {
     width:      '100%',
@@ -475,8 +569,32 @@ const styles = StyleSheet.create({
     color:      RS.colors.textMuted,
     paddingVertical: RS.spacing.xl,
   },
+  gifErrorWrap: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    justifyContent:    'center',
+    gap:               RS.spacing.sm,
+    paddingHorizontal: RS.spacing.md,
+    paddingVertical:   RS.spacing.xl,
+  },
+  gifErrorText: {
+    fontSize:  RS.typography.caption,
+    color:     '#f87171',
+    textAlign: 'center',
+  },
+  gifUnavailableWrap: {
+    flex:              1,
+    alignItems:        'center',
+    justifyContent:    'center',
+    paddingHorizontal: RS.spacing.xl,
+  },
+  gifUnavailableText: {
+    fontSize:  RS.typography.body,
+    color:     RS.colors.textMuted,
+    textAlign: 'center',
+  },
   gifCell: {
-    width:           '31.5%',
+    width:           '48%',
     aspectRatio:     4 / 3,
     borderRadius:    8,
     overflow:        'hidden',
