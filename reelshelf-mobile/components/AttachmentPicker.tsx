@@ -19,8 +19,10 @@ import { RS } from '@/constants/theme';
 import {
   deleteReviewAttachment,
   fetchGiphyGifs,
+  GiphyFetchError,
   hasGiphyKey,
   uploadReviewImage,
+  type GiphyErrorKind,
   type GiphyGif,
 } from '@/lib/supabase/attachments';
 
@@ -40,6 +42,50 @@ interface AttachmentPickerProps {
 
 const DEBOUNCE_MS = 300;
 
+interface GifErrorState {
+  kind:   GiphyErrorKind;
+  detail: string; // dev-mode technical detail (e.g. real HTTP status) — never shown in a would-be production build
+}
+
+/** One distinct message per real cause, not a single catch-all string.
+ *  `invalid-key` needs a real fix (a corrected env var + rebuild), so no
+ *  Retry is offered for it — same reasoning as the missing-key case. The
+ *  other three are transient/environmental, so Retry re-attempts the same
+ *  search/trending fetch. This project has no production build config yet,
+ *  so dev-level technical detail (status codes) is shown unconditionally in
+ *  __DEV__; a shipped build would swap in calmer generic copy per kind. */
+function describeGifError(err: GifErrorState): { message: string; canRetry: boolean } {
+  switch (err.kind) {
+    case 'invalid-key':
+      return {
+        message: __DEV__
+          ? `GIF search is misconfigured — ${err.detail}. Check EXPO_PUBLIC_GIPHY_API_KEY.`
+          : 'GIF search is temporarily unavailable.',
+        canRetry: false,
+      };
+    case 'rate-limited':
+      return {
+        message: __DEV__
+          ? `GIF search is rate-limited — ${err.detail}. Try again shortly.`
+          : 'GIF search is busy right now. Try again shortly.',
+        canRetry: true,
+      };
+    case 'offline':
+      return {
+        message: 'You appear to be offline. Check your connection and try again.',
+        canRetry: true,
+      };
+    case 'request-failed':
+    default:
+      return {
+        message: __DEV__
+          ? `GIF search request failed — ${err.detail}.`
+          : 'GIF search failed to load. Try again.',
+        canRetry: true,
+      };
+  }
+}
+
 // Real image upload + real GIPHY search/trending — replaces the old shared
 // paste-URL TextInput that funneled Image/GIF/Link into one generic field.
 // "Link" is gone entirely (confirmed not a real website feature —
@@ -58,7 +104,7 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
   const [gifResults, setGifResults] = useState<GiphyGif[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
   const [gifLoadingMore, setGifLoadingMore] = useState(false);
-  const [gifError, setGifError] = useState<string | null>(null);
+  const [gifError, setGifError] = useState<GifErrorState | null>(null);
   const [gifOffset, setGifOffset] = useState(0);
   const [gifHasMore, setGifHasMore] = useState(false);
   const gifAbortRef = useRef<AbortController | null>(null);
@@ -174,13 +220,16 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
       setGifError(null);
     } catch (e) {
       if (controller.signal.aborted) return; // intentional cancellation, not a real failure
+      if (e instanceof Error && e.name === 'AbortError') return; // same — RN's own abort signal
       if (requestId !== gifRequestIdRef.current) return;
       if (append) {
         // Load-more failures degrade quietly — don't blow away already-loaded
         // results with a full error state, just stop offering more.
         setGifHasMore(false);
+      } else if (e instanceof GiphyFetchError) {
+        setGifError({ kind: e.kind, detail: e.message });
       } else {
-        setGifError(e instanceof Error ? e.message : 'Something went wrong.');
+        setGifError({ kind: 'request-failed', detail: e instanceof Error ? e.message : 'Unknown error' });
       }
     } finally {
       if (requestId === gifRequestIdRef.current) {
@@ -317,7 +366,11 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
             <View style={styles.grabber} />
             {!hasGiphyKey() ? (
               <View style={styles.gifUnavailableWrap}>
-                <Text style={styles.gifUnavailableText}>GIF search is unavailable.</Text>
+                <Text style={styles.gifUnavailableText}>
+                  {__DEV__
+                    ? 'GIF search is unavailable — EXPO_PUBLIC_GIPHY_API_KEY is not set.'
+                    : 'GIF search is temporarily unavailable.'}
+                </Text>
               </View>
             ) : (
               <>
@@ -333,10 +386,12 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
                 />
                 {gifError ? (
                   <View style={styles.gifErrorWrap}>
-                    <Text style={styles.gifErrorText}>{gifError}</Text>
-                    <Pressable onPress={retryGifFetch} hitSlop={8}>
-                      <Text style={styles.retryLabel}>Retry</Text>
-                    </Pressable>
+                    <Text style={styles.gifErrorText}>{describeGifError(gifError).message}</Text>
+                    {describeGifError(gifError).canRetry && (
+                      <Pressable onPress={retryGifFetch} hitSlop={8}>
+                        <Text style={styles.retryLabel}>Retry</Text>
+                      </Pressable>
+                    )}
                   </View>
                 ) : gifLoading ? (
                   <ActivityIndicator color={RS.colors.accent} style={styles.gifLoadingIndicator} />

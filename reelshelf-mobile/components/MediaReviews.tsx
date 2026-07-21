@@ -1,30 +1,103 @@
+import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MediaReviewCard } from '@/components/MediaReviewCard';
+import { SignInPrompt } from '@/components/SignInPrompt';
 import { SpoilerBlur } from '@/components/SpoilerBlur';
+import { UniversalReviewComposer } from '@/components/UniversalReviewComposer';
 import { RS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import type { MediaType } from '@/data/seedHomeContent';
+import type { DiaryEntryFull } from '@/lib/supabase/diaryComposer';
+import {
+  fetchCommunityReviewsForMedia,
+  fetchFriendReviewsForMedia,
+  type MediaReviewEntry,
+} from '@/lib/supabase/mediaReviews';
+import { getMediaKey } from '@/utils/listKeys';
 
 interface MediaReviewsProps {
+  id:               string;
+  mediaType:        MediaType;
+  title:            string;
+  posterUrl:        string | null;
+  year:             number;
+  genres?:          string[];
+  runtime?:         number | null;
+  voteAverage?:     number | null;
+  director?:        string | null;
   review:           string;
   containsSpoilers: boolean;
+  onReviewSaved:    (entry: DiaryEntryFull) => void;
 }
 
-// "Your Review" is the one real review source — pulled from the locally-
-// persisted review saved via the Review button (see hooks/useMediaPersistence.ts).
-// Friend Reviews and Community Reviews show honest empty states, since no
-// real other-user/social data exists — never fabricated names, avatars,
-// ratings, or review text.
-//
-// Like is intentionally omitted: there's no one else to like your own review
-// yet, so a Like control here would be decorative rather than functional.
-// Reply is kept as a future-ready, non-functional affordance (same no-op
-// convention already used elsewhere, e.g. "Add to List") so the card reads
-// as complete once real accounts/social features exist.
-export function MediaReviews({ review, containsSpoilers }: MediaReviewsProps) {
-  const handleReply = () => {
+type ListStatus = 'loading' | 'success' | 'error';
+
+// "Your Review" is real — the local user's diary_entries row, tap-to-edit via
+// the same Universal Review Composer used by the Review action pill. Friend
+// Reviews is a real query (followed users' public reviews for this exact
+// title, via the `followers` table — same shape as FriendActivity.tsx but
+// filtered to entries with actual review text). Community Reviews is real
+// too: RLS ("Public can view shared diary entries" — profiles.username is
+// not null) permits reading any public user's diary_entries, not just
+// followed ones, so the same query without the followers filter, excluding
+// the current user and whoever's already shown in Friend Reviews, is exactly
+// as practical to build — no data-volume concern at this app's real scale.
+export function MediaReviews({
+  id, mediaType, title, posterUrl, year, genres, runtime, voteAverage, director,
+  review, containsSpoilers, onReviewSaved,
+}: MediaReviewsProps) {
+  const { user } = useAuth();
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const [friendStatus, setFriendStatus] = useState<ListStatus>('loading');
+  const [friendReviews, setFriendReviews] = useState<MediaReviewEntry[]>([]);
+
+  const [communityStatus, setCommunityStatus] = useState<ListStatus>('loading');
+  const [communityReviews, setCommunityReviews] = useState<MediaReviewEntry[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setFriendStatus('success');
+      setFriendReviews([]);
+      return;
+    }
+    let cancelled = false;
+    setFriendStatus('loading');
+    fetchFriendReviewsForMedia(user.id, { id, mediaType })
+      .then((data) => {
+        if (cancelled) return;
+        setFriendReviews(data);
+        setFriendStatus('success');
+      })
+      .catch(() => { if (!cancelled) setFriendStatus('error'); });
+    return () => { cancelled = true; };
+  }, [user, id, mediaType]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCommunityStatus('loading');
+    const exclude = [
+      ...(user ? [user.id] : []),
+      ...friendReviews.map((r) => r.userId),
+    ];
+    fetchCommunityReviewsForMedia({ id, mediaType }, exclude)
+      .then((data) => {
+        if (cancelled) return;
+        setCommunityReviews(data);
+        setCommunityStatus('success');
+      })
+      .catch(() => { if (!cancelled) setCommunityStatus('error'); });
+    return () => { cancelled = true; };
+    // Re-runs once friendStatus settles so the exclusion set is final —
+    // avoids a request with a still-empty friend list racing the real one.
+  }, [id, mediaType, user, friendStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openComposer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    console.log('[Movie Detail] Reply pressed — no-op (no accounts yet)');
+    setComposerOpen(true);
   };
 
   return (
@@ -32,15 +105,15 @@ export function MediaReviews({ review, containsSpoilers }: MediaReviewsProps) {
       <View style={styles.subSection}>
         <Text style={styles.heading}>Your Review</Text>
         {review ? (
-          <View style={styles.reviewCard}>
+          <Pressable style={styles.reviewCard} onPress={openComposer}>
             <SpoilerBlur active={containsSpoilers}>
               <Text style={styles.reviewText}>{review}</Text>
             </SpoilerBlur>
-            <Pressable style={styles.replyBtn} onPress={handleReply} hitSlop={6}>
-              <MaterialIcons name="reply" size={14} color={RS.colors.textMuted} />
-              <Text style={styles.replyLabel}>Reply</Text>
-            </Pressable>
-          </View>
+            <View style={styles.editRow}>
+              <MaterialIcons name="edit" size={14} color={RS.colors.textMuted} />
+              <Text style={styles.editLabel}>Edit</Text>
+            </View>
+          </Pressable>
         ) : (
           <Text style={styles.emptyText}>Add your review using the Review button above.</Text>
         )}
@@ -48,13 +121,54 @@ export function MediaReviews({ review, containsSpoilers }: MediaReviewsProps) {
 
       <View style={styles.subSection}>
         <Text style={styles.heading}>Friend Reviews</Text>
-        <Text style={styles.emptyText}>No friends have reviewed this yet.</Text>
+        {!user ? (
+          <SignInPrompt message="Sign in to see what friends you follow think of this." />
+        ) : friendStatus === 'loading' ? (
+          <ActivityIndicator color={RS.colors.accent} style={styles.loader} />
+        ) : friendStatus === 'error' ? (
+          <Text style={styles.emptyText}>Couldn&apos;t load friend reviews.</Text>
+        ) : friendReviews.length === 0 ? (
+          <Text style={styles.emptyText}>No friends have reviewed this yet.</Text>
+        ) : (
+          <View style={styles.cardList}>
+            {friendReviews.map((entry) => (
+              <MediaReviewCard key={getMediaKey('friend-review', entry.userId)} entry={entry} />
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.subSection}>
         <Text style={styles.heading}>Community Reviews</Text>
-        <Text style={styles.emptyText}>No community reviews yet.</Text>
+        {communityStatus === 'loading' ? (
+          <ActivityIndicator color={RS.colors.accent} style={styles.loader} />
+        ) : communityStatus === 'error' ? (
+          <Text style={styles.emptyText}>Couldn&apos;t load community reviews.</Text>
+        ) : communityReviews.length === 0 ? (
+          <Text style={styles.emptyText}>No community reviews yet.</Text>
+        ) : (
+          <View style={styles.cardList}>
+            {communityReviews.map((entry) => (
+              <MediaReviewCard key={getMediaKey('community-review', entry.userId)} entry={entry} />
+            ))}
+          </View>
+        )}
       </View>
+
+      <UniversalReviewComposer
+        visible={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onSaved={onReviewSaved}
+        mediaId={id}
+        mediaType={mediaType}
+        title={title}
+        posterUrl={posterUrl}
+        year={year}
+        genres={genres}
+        runtime={runtime}
+        voteAverage={voteAverage}
+        director={director}
+      />
     </View>
   );
 }
@@ -86,16 +200,22 @@ const styles = StyleSheet.create({
     color:      RS.colors.textSecondary,
     lineHeight: 21,
   },
-  replyBtn: {
+  editRow: {
     flexDirection: 'row',
     alignItems:    'center',
     gap:           4,
     alignSelf:     'flex-start',
   },
-  replyLabel: {
+  editLabel: {
     fontSize:   RS.typography.caption,
     fontWeight: '600',
     color:      RS.colors.textMuted,
+  },
+  cardList: {
+    gap: RS.spacing.sm,
+  },
+  loader: {
+    marginVertical: RS.spacing.md,
   },
   emptyText: {
     fontSize:  RS.typography.body,

@@ -84,10 +84,13 @@ export default function MediaDetailScreen() {
         genres:         live.details.data?.genres ?? [],
         rating:         live.details.data?.rating ?? null,
         cast:           live.credits.data?.cast ?? [],
+        fullCast:       live.credits.data?.fullCast ?? [],
         director:       live.credits.data?.director ?? null,
         creator:        live.details.data?.creator ?? null,
         writer:         live.credits.data?.writer ?? null,
         composer:       live.credits.data?.composer ?? null,
+        cinematographer: live.credits.data?.cinematographer ?? null,
+        producers:      live.credits.data?.producers ?? [],
         author:         null,
         dominantColors: seedDetail?.dominantColors ?? [],
         trivia:         seedDetail?.trivia ?? [],
@@ -108,7 +111,7 @@ export default function MediaDetailScreen() {
   const persistence = useMediaPersistence(id, meta, user?.id ?? null);
 
   const recommendationItems = live.recommendations.data ?? [];
-  const watchProvidersData  = live.watchProviders.data ?? { stream: [], rent: [], buy: [] };
+  const watchProvidersData  = live.watchProviders.data ?? { stream: [], rent: [], buy: [], attributionLink: null };
 
   // "More from this Director" — movie-only; only meaningful once credits has
   // actually resolved with a real director id (TV series never have one).
@@ -128,7 +131,7 @@ export default function MediaDetailScreen() {
     ...directorItems.filter((d) => !recommendationItems.some((r) => r.id === d.id)),
   ].slice(0, 10);
 
-  // "Belongs To" — real collection membership (WEBSITE_MOVIE_DETAIL parity:
+  // "Appears in" — real collection membership (WEBSITE_MOVIE_DETAIL parity:
   // getFilmCollections()/getTVCollections() heuristics against live TMDB
   // genre/company/rating/runtime data), not the old static seed array. Each
   // matched collection's preview posters are the same live TMDB discover
@@ -231,10 +234,13 @@ export default function MediaDetailScreen() {
                       <SectionHeader title="Cast & Crew" />
                       <MediaCastCrew
                         cast={detail.cast}
+                        fullCast={detail.fullCast}
                         director={detail.director}
                         creator={detail.creator}
                         writer={detail.writer}
                         composer={detail.composer}
+                        cinematographer={detail.cinematographer}
+                        producers={detail.producers}
                       />
                     </View>
                   </RevealOnMount>
@@ -242,17 +248,16 @@ export default function MediaDetailScreen() {
 
                 {memberCollectionsLoading ? (
                   <View style={styles.section}>
-                    <SectionHeader eyebrow="Collections" title="Belongs To" subtitle="Part of these curated shelves." />
+                    <SectionHeader title="Appears in" />
                     <SkeletonPosterRow />
                   </View>
                 ) : memberCollections.length > 0 ? (
                   <RevealOnMount delay={180}>
                     <View style={styles.section}>
-                      <SectionHeader
-                        eyebrow="Collections"
-                        title="Belongs To"
-                        subtitle="Part of these curated shelves."
-                      />
+                      {/* Real website copy is "Appears in" (FilmDetailClient.tsx),
+                          not "Belongs To" / eyebrow "Collections" — corrected to
+                          match per RELATED CONTENT labeling verification. */}
+                      <SectionHeader title="Appears in" />
                       <FlatList<typeof memberCollections[number]>
                         data={memberCollections}
                         horizontal
@@ -324,11 +329,30 @@ export default function MediaDetailScreen() {
                   <FriendActivity id={id} mediaType={resolvedMediaType} />
                 </View>
 
-                {/* ── Reviews — Your Review is real (locally persisted); Friend/Community
-                    are honest empty states. ── */}
+                {/* ── Reviews — Your Review is real (Supabase-backed diary_entries,
+                    tap to edit via the same Composer as the Review action pill);
+                    Friend/Community are real queries against followers +
+                    diary_entries, gated by the same RLS Friend Activity uses. ── */}
                 <View style={styles.section}>
                   <SectionHeader title="Reviews" />
-                  <MediaReviews review={persistence.review} containsSpoilers={persistence.containsSpoilers} />
+                  <MediaReviews
+                    id={id}
+                    mediaType={resolvedMediaType}
+                    title={title ?? ''}
+                    posterUrl={posterUrl || null}
+                    year={detail.year || 0}
+                    genres={detail.genres}
+                    runtime={detail.runtimeMinutes}
+                    voteAverage={detail.rating}
+                    director={detail.director}
+                    review={persistence.review}
+                    containsSpoilers={persistence.containsSpoilers}
+                    onReviewSaved={(entry) => persistence.applyComposerSave({
+                      rating: entry.rating,
+                      review: entry.review,
+                      containsSpoilers: entry.containsSpoilers,
+                    })}
+                  />
                 </View>
 
                 {/* Trivia and Awards sections were removed from this screen —

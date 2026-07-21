@@ -111,37 +111,55 @@ export interface TmdbCastMember {
 }
 
 export interface TmdbCredits {
+  /** Top CAST_CAP entries — what the on-screen carousel renders. */
   cast:       TmdbCastMember[];
+  /** TMDB's complete, uncapped cast list — powers "View Full Cast" (see
+   *  FullCastModal.tsx). Same single /credits call as `cast`, just unsliced,
+   *  so extending to a full-cast view costs no extra network request. */
+  fullCast:   TmdbCastMember[];
   director:   string | null;
   /** TMDB person id for `director` — needed for the "More from this Director" discover query. Movie-only (TV series don't carry a series-level director credit). */
   directorId: number | null;
   writer:     string | null;
   composer:   string | null;
+  /** job === 'Director of Photography' — TMDB's standard single-credit job title for cinematographer. */
+  cinematographer: string | null;
+  /** All crew entries with job exactly 'Producer' (not Executive/Co/Associate
+   *  Producer — those are frequently a long tail and would read as noise next
+   *  to the single-name director/writer/composer/cinematographer lines). */
+  producers:  string[];
 }
 
 const CAST_CAP = 12;
 
 export async function fetchTmdbCredits(kind: TmdbKind, tmdbId: string): Promise<TmdbCredits> {
   const raw = await tmdbGet<any>(`/${kind}/${tmdbId}/credits`);
-  const castRaw = Array.isArray(raw.cast) ? raw.cast.slice(0, CAST_CAP) : [];
+  const castRaw = Array.isArray(raw.cast) ? raw.cast : [];
   const crew    = Array.isArray(raw.crew) ? raw.crew : [];
+
+  const mapCast = (c: any): TmdbCastMember => ({
+    personId:  typeof c.id === 'number' ? c.id : null,
+    name:      c.name,
+    character: c.character ?? '',
+    photoUrl:  c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
+  });
 
   const directorEntry = crew.find((c: any) => c.job === 'Director') ?? null;
   const findJob = (job: string) => crew.find((c: any) => c.job === job)?.name ?? null;
   const writer    = findJob('Screenplay') ?? findJob('Writer');
   const composer  = findJob('Original Music Composer');
+  const cinematographer = findJob('Director of Photography');
+  const producers = crew.filter((c: any) => c.job === 'Producer').map((c: any) => c.name as string);
 
   return {
-    cast: castRaw.map((c: any) => ({
-      personId:  typeof c.id === 'number' ? c.id : null,
-      name:      c.name,
-      character: c.character ?? '',
-      photoUrl:  c.profile_path ? `${TMDB_IMG_PROFILE}${c.profile_path}` : null,
-    })),
+    cast:       castRaw.slice(0, CAST_CAP).map(mapCast),
+    fullCast:   castRaw.map(mapCast),
     director:   directorEntry?.name ?? null,
     directorId: directorEntry?.id ?? null,
     writer,
     composer,
+    cinematographer,
+    producers,
   };
 }
 
@@ -368,6 +386,12 @@ export interface TmdbWatchProviders {
   stream: TmdbProvider[];
   rent:   TmdbProvider[];
   buy:    TmdbProvider[];
+  /** TMDB's `link` field for this region — a real "powered by JustWatch"
+   *  attribution page listing all providers for this title. This is the ONLY
+   *  external destination TMDB's watch/providers response actually supplies:
+   *  there is no per-provider deep link in this endpoint. Never fabricate
+   *  one — a provider pill with no real destination stays non-interactive. */
+  attributionLink: string | null;
 }
 
 function mapProviderList(list: any[] | undefined): TmdbProvider[] {
@@ -386,6 +410,7 @@ export async function fetchTmdbWatchProviders(kind: TmdbKind, tmdbId: string): P
     stream: mapProviderList(region?.flatrate),
     rent:   mapProviderList(region?.rent),
     buy:    mapProviderList(region?.buy),
+    attributionLink: typeof region?.link === 'string' ? region.link : null,
   };
 }
 

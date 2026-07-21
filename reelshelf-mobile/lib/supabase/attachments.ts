@@ -104,6 +104,24 @@ export interface GiphyFetchResult {
   hasMore: boolean;
 }
 
+/** Classifies WHY a GIPHY request failed so the UI can show a specific
+ *  message and decide whether Retry would even help:
+ *  - 'invalid-key': 401/403 — the key itself is wrong/revoked, retrying won't help.
+ *  - 'rate-limited': 429 — transient, retrying later will likely help.
+ *  - 'offline': the fetch never reached GIPHY at all (no connectivity) — transient.
+ *  - 'request-failed': any other non-OK status or unexpected exception — transient. */
+export type GiphyErrorKind = 'invalid-key' | 'rate-limited' | 'offline' | 'request-failed';
+
+export class GiphyFetchError extends Error {
+  readonly kind: GiphyErrorKind;
+  readonly status?: number;
+  constructor(kind: GiphyErrorKind, message: string, status?: number) {
+    super(message);
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
 const GIPHY_LIMIT = 18;
 
 export function hasGiphyKey(): boolean {
@@ -127,13 +145,29 @@ export async function fetchGiphyGifs(
     : `${base}/trending?api_key=${key}&limit=${GIPHY_LIMIT}&offset=${offset}&rating=g`;
   const redactedEndpoint = endpoint.replace(key, '<redacted>');
 
-  const res = await fetch(endpoint, { signal });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, { signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') throw e; // let the caller's abort check see this
+    // React Native's fetch throws a plain TypeError ("Network request failed")
+    // when the request never reaches the server at all — no connectivity.
+    if (__DEV__) console.warn(`[giphy] network exception ${redactedEndpoint} — ${String(e)}`);
+    throw new GiphyFetchError('offline', 'Network request failed');
+  }
+
   if (!res.ok) {
     const body = await res.text().catch(() => '<unreadable body>');
     if (__DEV__) {
       console.warn(`[giphy] ${res.status} ${redactedEndpoint} — ${body.slice(0, 300)}`);
     }
-    throw new Error(`GIPHY request failed (${res.status})`);
+    if (res.status === 401 || res.status === 403) {
+      throw new GiphyFetchError('invalid-key', `GIPHY rejected the API key (${res.status})`, res.status);
+    }
+    if (res.status === 429) {
+      throw new GiphyFetchError('rate-limited', 'GIPHY rate limit exceeded (429)', res.status);
+    }
+    throw new GiphyFetchError('request-failed', `GIPHY request failed (${res.status})`, res.status);
   }
 
   const json = await res.json();

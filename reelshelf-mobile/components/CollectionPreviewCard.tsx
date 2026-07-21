@@ -80,7 +80,7 @@ export function CollectionPreviewCard({ item }: { item: SeedCollectionItem }) {
   // see hooks/useExpandOnPress.ts) used by Featured Collection/Book of the
   // Month, generalized here to every collection preview card — the same
   // component shared by Discover's Additional Collections row AND Movie
-  // Detail's "Belongs To" section, so this one change covers both surfaces.
+  // Detail's "Appears in" section, so this one change covers both surfaces.
   const navigate = () => router.push(`/collection/${item.id}?expand=1`);
   const { style: expandStyle, trigger } = useExpandOnPress(navigate);
 

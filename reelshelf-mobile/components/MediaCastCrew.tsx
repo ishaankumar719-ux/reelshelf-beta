@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 
+import { FullCastModal } from '@/components/FullCastModal';
 import { RS } from '@/constants/theme';
 import { usePressLift } from '@/hooks/usePressLift';
 import type { CastMember } from '@/data/mediaDetails';
@@ -15,10 +17,17 @@ const ITEM_SEP = 12;
 
 interface MediaCastCrewProps {
   cast:     CastMember[];
+  /** Uncapped cast list for "View Full Cast" — absent (e.g. book seed data,
+   *  which never carries a full-credits list) hides the trigger entirely. */
+  fullCast?: CastMember[];
   director?: string | null;
   creator?:  string | null;
   writer?:   string | null;
   composer?: string | null;
+  /** job === 'Director of Photography' — movie/TV only, absent for books. */
+  cinematographer?: string | null;
+  /** job === 'Producer' entries, joined for display — movie/TV only. */
+  producers?: string[];
 }
 
 // A real Person Detail screen exists at app/person/[id].tsx — wired here so
@@ -58,17 +67,19 @@ function CastCard({ member }: { member: CastMember }) {
   );
 }
 
-type CrewLineProps = Pick<MediaCastCrewProps, 'director' | 'creator' | 'writer' | 'composer'>;
+type CrewLineProps = Pick<MediaCastCrewProps, 'director' | 'creator' | 'writer' | 'composer' | 'cinematographer' | 'producers'>;
 
 // Crew line — omits any field cleanly when not applicable (e.g. no composer for
 // a book, no per-episode crew attribution for a TV series) rather than showing
 // an empty label.
-function CrewLine({ director, creator, writer, composer }: CrewLineProps) {
+function CrewLine({ director, creator, writer, composer, cinematographer, producers }: CrewLineProps) {
   const parts: string[] = [];
   if (director) parts.push(`Directed by ${director}`);
   if (creator) parts.push(`Created by ${creator}`);
   if (writer) parts.push(`Written by ${writer}`);
+  if (cinematographer) parts.push(`Cinematography by ${cinematographer}`);
   if (composer) parts.push(`Music by ${composer}`);
+  if (producers && producers.length > 0) parts.push(`Produced by ${producers.join(', ')}`);
 
   if (parts.length === 0) return null;
 
@@ -81,13 +92,25 @@ function CrewLine({ director, creator, writer, composer }: CrewLineProps) {
   );
 }
 
-export function MediaCastCrew({ cast, director, creator, writer, composer }: MediaCastCrewProps) {
-  const hasCrewLine = !!(director || creator || writer || composer);
+export function MediaCastCrew({ cast, fullCast, director, creator, writer, composer, cinematographer, producers }: MediaCastCrewProps) {
+  const [fullCastOpen, setFullCastOpen] = useState(false);
+  const hasCrewLine = !!(director || creator || writer || composer || cinematographer || (producers && producers.length > 0));
   if (cast.length === 0 && !hasCrewLine) return null;
+
+  // Only worth its own destination once there's meaningfully more to see than
+  // the carousel already shows.
+  const showFullCastLink = !!fullCast && fullCast.length > cast.length;
 
   return (
     <View style={styles.container}>
-      <CrewLine director={director} creator={creator} writer={writer} composer={composer} />
+      <CrewLine
+        director={director}
+        creator={creator}
+        writer={writer}
+        composer={composer}
+        cinematographer={cinematographer}
+        producers={producers}
+      />
 
       {cast.length > 0 && (
         <FlatList<CastMember>
@@ -99,6 +122,16 @@ export function MediaCastCrew({ cast, director, creator, writer, composer }: Med
           contentContainerStyle={styles.list}
           renderItem={({ item }: ListRenderItemInfo<CastMember>) => <CastCard member={item} />}
         />
+      )}
+
+      {showFullCastLink && (
+        <Pressable style={styles.fullCastBtn} onPress={() => setFullCastOpen(true)} hitSlop={6}>
+          <Text style={styles.fullCastLabel}>View Full Cast ({fullCast!.length})</Text>
+        </Pressable>
+      )}
+
+      {fullCast && (
+        <FullCastModal visible={fullCastOpen} onClose={() => setFullCastOpen(false)} cast={fullCast} />
       )}
     </View>
   );
@@ -119,6 +152,16 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: RS.spacing.md,
+  },
+  fullCastBtn: {
+    marginHorizontal: RS.spacing.md,
+    alignSelf:        'flex-start',
+  },
+  fullCastLabel: {
+    fontSize:      RS.typography.caption,
+    fontWeight:    '700',
+    color:         RS.colors.accent,
+    letterSpacing: RS.letterSpacing.tight,
   },
   castItem: {
     width: ITEM_W,

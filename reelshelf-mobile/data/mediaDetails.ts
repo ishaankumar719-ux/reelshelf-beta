@@ -28,10 +28,17 @@ export interface MediaDetailRecord {
   /** Real TMDB vote_average (rounded to 1 decimal), shown as "ReelShelf {rating}" — never a fabricated personal rating. null for books this pass. */
   rating:         number | null;
   cast:           CastMember[];
+  /** Uncapped cast list, live-TMDB path only — powers "View Full Cast". Absent
+   *  (undefined) for books, which have no TMDB credits endpoint to draw from. */
+  fullCast?:      CastMember[];
   director:       string | null;
   creator:        string | null;
   writer:         string | null;
   composer:       string | null;
+  /** job === 'Director of Photography', live-TMDB path only. */
+  cinematographer?: string | null;
+  /** job === 'Producer' entries, live-TMDB path only. */
+  producers?:     string[];
   author:         string | null;
   dominantColors: string[];
   /** "Did You Know?" facts — real, verified trivia only, never fabricated. Deliberately
