@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import Animated from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -8,20 +9,43 @@ import { router } from 'expo-router';
 import { Fonts, RS } from '@/constants/theme';
 import { usePressLift } from '@/hooks/usePressLift';
 import { useExpandOnPress } from '@/hooks/useExpandOnPress';
-import { collections, COLLECTION_OF_THE_WEEK_ID } from '@/data/seedHomeContent';
+import { SkeletonBlock } from '@/components/Skeleton';
+import { fetchFeaturedCollection, type CollectionCardData } from '@/lib/supabase/collections';
 
 const ARTWORK_H = 220;
 
-const collection = collections.find(c => c.id === COLLECTION_OF_THE_WEEK_ID)!;
-const artworkItem = collection?.items[0];
-
+// Real Supabase-backed — same single "featured collection" concept the old
+// COLLECTION_OF_THE_WEEK_ID constant pointed at (the first currently-live
+// collection by sort_order), and the same one CollectionsSection shows on
+// Home, so both surfaces stay in sync automatically now instead of each
+// reading its own copy of a hardcoded id.
 export function FeaturedCollectionSpotlight() {
+  const [collection, setCollection] = useState<CollectionCardData | null | undefined>(undefined);
   const { style: liftStyle, onPressIn, onPressOut } = usePressLift('depress');
 
-  const navigate = () => router.push(`/collection/${collection?.id}?expand=1`);
+  useEffect(() => {
+    let cancelled = false;
+    fetchFeaturedCollection()
+      .then((data) => { if (!cancelled) setCollection(data); })
+      .catch(() => { if (!cancelled) setCollection(null); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const navigate = () => { if (collection) router.push(`/collection/${collection.id}?expand=1`); };
   const { style: expandStyle, trigger } = useExpandOnPress(navigate);
 
-  if (!collection) return null;
+  if (collection === null) return null;
+
+  if (collection === undefined) {
+    return (
+      <View style={styles.wrapper}>
+        <Text style={styles.eyebrow}>FEATURED</Text>
+        <SkeletonBlock width="100%" height={ARTWORK_H + 90} radius={RS.card.radius} />
+      </View>
+    );
+  }
+
+  const artworkItem = collection.items[0];
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});

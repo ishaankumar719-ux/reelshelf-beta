@@ -28,7 +28,7 @@ import { config } from 'dotenv';
 import { Vibrant } from 'node-vibrant/node';
 
 import * as seed from '../data/seedHomeContent';
-import type { SeedCardItem, SeedCollectionItem } from '../data/seedHomeContent';
+import type { SeedCardItem } from '../data/seedHomeContent';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.join(__dirname, '..', '.env') });
@@ -109,8 +109,12 @@ async function extractDominantColors(imageUrl: string | null): Promise<string[]>
 }
 
 // ── Collect every unique navigable item across all seed sections ─────────────
+// Collections (Best A24 Films, Oscar Winners, etc.) are no longer part of
+// this static seed system — real, editorially-verified collections now live
+// in the shared Supabase collections/collection_items tables, populated
+// separately by scripts/validate-collections.ts, which fetches its own
+// TMDB data directly rather than depending on this seed-detail enrichment.
 function collectAllItems(): SeedCardItem[] {
-  const collectionItems = ([...seed.collections] as SeedCollectionItem[]).flatMap(c => c.items);
   const all: SeedCardItem[] = [
     ...seed.featuredCards,
     ...seed.trendingToday,
@@ -119,7 +123,6 @@ function collectAllItems(): SeedCardItem[] {
     ...seed.bylTheBear,
     seed.bookOfTheWeek,
     ...seed.hiddenGems,
-    ...collectionItems,
     ...seed.randomDiscoveryPool,
     ...seed.awardWinners,
     ...seed.mindBendingFilms,

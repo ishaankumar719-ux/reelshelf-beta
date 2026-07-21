@@ -1,10 +1,10 @@
 // Universal Search — non-TMDB data sources: Google Books (public endpoint,
 // same one already used by scripts/generate-seed-data.ts), and Supabase
-// (collections from existing seed data, user_lists, profiles) — all
-// respecting existing RLS, no new policies.
+// (collections, user_lists, profiles) — all respecting existing RLS, no new
+// policies.
 import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
-import { collections, type SeedCollectionItem } from '@/data/seedHomeContent';
+import { searchCollections as searchCollectionsReal, type CollectionCardData } from './supabase/collections';
 
 const GBOOKS = 'https://www.googleapis.com/books/v1/volumes';
 
@@ -42,27 +42,24 @@ export async function searchBooks(query: string): Promise<BookSearchResult[]> {
     });
 }
 
-// ── Collections (existing curated seed data — not a live table) ─────────────
+// ── Collections (real collections/collection_items tables) ──────────────────
 export interface CollectionSearchResult {
   id:            string;
   title:         string;
   storyCount:    number;
   /** Up to 4 items for a cover-collage deck preview (matches Lists' own
    *  ListCoverCollage treatment) — was previously a single preview thumb. */
-  previewItems:  SeedCollectionItem['items'];
+  previewItems:  CollectionCardData['items'];
 }
 
-export function searchCollections(query: string): CollectionSearchResult[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return collections
-    .filter((c) => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q))
-    .map((c) => ({
-      id:           c.id,
-      title:        c.title,
-      storyCount:   c.storyCount,
-      previewItems: c.items.slice(0, 4),
-    }));
+export async function searchCollections(query: string): Promise<CollectionSearchResult[]> {
+  const results = await searchCollectionsReal(query);
+  return results.map((c) => ({
+    id:           c.id,
+    title:        c.title,
+    storyCount:   c.storyCount,
+    previewItems: c.items.slice(0, 4),
+  }));
 }
 
 // ── Lists (real user_lists — RLS already restricts to public/unlisted for non-owners) ──

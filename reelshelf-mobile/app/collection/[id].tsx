@@ -1,8 +1,9 @@
-// Real collection detail screen — the route param is a collection SLUG
-// (matching COLLECTION_DEFS, exact port of the website's
-// app/discover/collection/[slug]/page.tsx). Live TMDB discover results,
-// same query per collection, every item a real tappable link back into
-// Movie Detail — no static seed data, no dead ends.
+// Real collection detail screen — the route param is a collection SLUG.
+// Reads the shared collections/collection_items tables (verification_status
+// ='verified' items only) via lib/supabase/collections.ts — a small, fixed,
+// individually-verified list per collection, not a live TMDB discover query
+// re-deriving the collection's rule (that's what this screen did before;
+// replaced entirely now that the real table is the source of truth).
 import { useEffect, useState } from 'react';
 import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -13,14 +14,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { RS, Fonts } from '@/constants/theme';
 import { useExpandOnPress } from '@/hooks/useExpandOnPress';
-import { COLLECTION_DEFS, type CollectionDef } from '@/lib/discoverCollections';
-import { fetchTmdbCollectionByPath, type CollectionDiscoverItem } from '@/lib/tmdb';
+import { fetchCollectionBySlug, type CollectionCardData, type CollectionItemCard } from '@/lib/supabase/collections';
 import { getMediaKey } from '@/utils/listKeys';
 
 const THUMB_SIZE = 72;
 
-function CollectionItem({ item }: { item: CollectionDiscoverItem }) {
-  const badgeMap = { film: RS.badge.film, tv: RS.badge.tv } as const;
+function CollectionItem({ item }: { item: CollectionItemCard }) {
+  const badgeMap = { film: RS.badge.film, tv: RS.badge.tv, book: RS.badge.book } as const;
   const badge = badgeMap[item.mediaType];
 
   const navigate = () => router.push(
@@ -55,38 +55,30 @@ function CollectionItem({ item }: { item: CollectionDiscoverItem }) {
   );
 }
 
-type Status = 'loading' | 'success' | 'error';
+type Status = 'loading' | 'success' | 'error' | 'not-found';
 
 export default function CollectionDetailScreen() {
   const { id, expand } = useLocalSearchParams<{ id: string; expand?: string }>();
   const isExpandEntry = expand === '1';
-  const def: CollectionDef | undefined = COLLECTION_DEFS.find((c) => c.slug === id);
 
   const [status, setStatus] = useState<Status>('loading');
-  const [items, setItems] = useState<CollectionDiscoverItem[]>([]);
+  const [collection, setCollection] = useState<CollectionCardData | null>(null);
 
   useEffect(() => {
-    if (!def) { setStatus('error'); return; }
-    // localFilter collections (classic-literature, books-to-screen) use the
-    // website's local book catalog, which has no mobile equivalent (same
-    // documented divergence as Daily Pick's candidate-pool adaptation —
-    // mobile has no local finite catalog). Honest empty result, not fabricated
-    // data, matching the website's own "No items in this collection right
-    // now." copy for the zero-items case.
-    if (!def.tmdbPath || !def.tmdbMediaType) {
-      setStatus('success');
-      setItems([]);
-      return;
-    }
     let cancelled = false;
     setStatus('loading');
-    fetchTmdbCollectionByPath(def.tmdbPath, def.tmdbMediaType)
-      .then((data) => { if (!cancelled) { setItems(data); setStatus('success'); } })
+    fetchCollectionBySlug(id)
+      .then((data) => {
+        if (cancelled) return;
+        if (!data) { setStatus('not-found'); return; }
+        setCollection(data);
+        setStatus('success');
+      })
       .catch(() => { if (!cancelled) setStatus('error'); });
     return () => { cancelled = true; };
-  }, [def]);
+  }, [id]);
 
-  if (!def) {
+  if (status === 'not-found') {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
         <Pressable style={styles.backRow} onPress={() => router.back()}>
@@ -100,7 +92,8 @@ export default function CollectionDetailScreen() {
     );
   }
 
-  const renderItem = ({ item }: ListRenderItemInfo<CollectionDiscoverItem>) => <CollectionItem item={item} />;
+  const items = collection?.items ?? [];
+  const renderItem = ({ item }: ListRenderItemInfo<CollectionItemCard>) => <CollectionItem item={item} />;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -119,7 +112,7 @@ export default function CollectionDetailScreen() {
             <Text style={styles.emptyText}>Couldn&apos;t load this collection.</Text>
           </View>
         ) : (
-          <FlatList<CollectionDiscoverItem>
+          <FlatList<CollectionItemCard>
             data={items}
             keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
             renderItem={renderItem}
@@ -127,8 +120,8 @@ export default function CollectionDetailScreen() {
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={
               <View style={styles.header}>
-                <Text style={styles.collectionTitle}>{def.name}</Text>
-                <Text style={styles.collectionDesc}>{def.description}</Text>
+                <Text style={styles.collectionTitle}>{collection?.title}</Text>
+                <Text style={styles.collectionDesc}>{collection?.description}</Text>
                 <Text style={styles.collectionCount}>
                   Collection · {items.length} title{items.length !== 1 ? 's' : ''}
                 </Text>

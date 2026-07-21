@@ -150,8 +150,10 @@ export default function SearchScreen() {
         .catch(() => { if (!isStale()) setPeople({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'collections') {
-      // Synchronous/local — nothing to race against, no guard needed.
-      setCollections({ status: 'success', data: searchCollections(q) });
+      setCollections({ status: 'loading', data: [] });
+      searchCollections(q)
+        .then((data) => { if (!isStale()) setCollections({ status: 'success', data }); })
+        .catch(() => { if (!isStale()) setCollections({ status: 'error', data: [] }); });
     }
     if (wantAll || category === 'lists') {
       setLists({ status: 'loading', data: [] });
@@ -183,17 +185,17 @@ export default function SearchScreen() {
 
   const hasQuery = query.trim().length > 0;
   const anyResults = movies.data.length || tv.data.length || books.data.length || people.data.length || collections.data.length || lists.data.length || users.data.length;
-  const anyLoading = [movies, tv, books, people, lists, users].some((s) => s.status === 'loading');
+  const anyLoading = [movies, tv, books, people, collections, lists, users].some((s) => s.status === 'loading');
   const allSettled = [movies, tv, books, people, collections, lists, users].every((s) => s.status !== 'loading' && s.status !== 'idle');
 
   // Distinguishes "genuinely no results" from "the network call(s) actually
   // failed" — only the async sections relevant to the current filter count,
   // since switching category doesn't re-query the others (they just stay
-  // hidden). Collections is local/synchronous — it never errors.
-  const asyncSectionsByCategory: Record<string, SectionState<unknown>> = { movies, tv, books, people, lists, users };
+  // hidden).
+  const asyncSectionsByCategory: Record<string, SectionState<unknown>> = { movies, tv, books, people, collections, lists, users };
   const relevantErrorKeys = category === 'all'
-    ? ['movies', 'tv', 'books', 'people', 'lists', 'users']
-    : category === 'collections' ? [] : [category];
+    ? ['movies', 'tv', 'books', 'people', 'collections', 'lists', 'users']
+    : [category];
   const relevantErrorSections = relevantErrorKeys.map((k) => asyncSectionsByCategory[k]);
   const allAttemptedErrored = relevantErrorSections.length > 0 && relevantErrorSections.every((s) => s.status === 'error');
 

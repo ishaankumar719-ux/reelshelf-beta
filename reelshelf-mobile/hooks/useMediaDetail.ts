@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 
+import { fetchCollectionMembershipForMedia, type MediaCollectionMembership } from '@/lib/supabase/collections';
+import type { MediaType } from '@/data/seedHomeContent';
 import {
-  getFilmCollections,
-  getTVCollections,
-  type CollectionDef,
-} from '@/lib/discoverCollections';
-import {
-  fetchTmdbCollectionByPath,
   fetchTmdbCredits,
   fetchTmdbDetails,
   fetchTmdbFallbackBackdrop,
@@ -15,13 +11,24 @@ import {
   fetchTmdbVideos,
   fetchTmdbWatchProviders,
   parseMediaRouteId,
-  type CollectionDiscoverItem,
   type TmdbCredits,
   type TmdbDetails,
   type TmdbRecommendation,
   type TmdbVideo,
   type TmdbWatchProviders,
 } from '@/lib/tmdb';
+
+/** Route ids are film-<tmdbId>/tv-<tmdbId>/book-<slug> — collection_items'
+ *  media_id convention mirrors this exactly (bare TMDB id for movie/tv, bare
+ *  slug for books; see lib/supabase/collections.ts), so this only needs to
+ *  strip the routing prefix, not translate to a different id scheme. */
+function deriveMediaIdentity(routeId: string): { mediaType: MediaType; rawId: string } | null {
+  const parsed = parseMediaRouteId(routeId);
+  if (parsed) return { mediaType: parsed.kind === 'movie' ? 'film' : 'tv', rawId: parsed.tmdbId };
+  const dashIdx = routeId.indexOf('-');
+  if (dashIdx < 0) return null;
+  return { mediaType: 'book', rawId: routeId.slice(dashIdx + 1) };
+}
 
 export type ResourceStatus = 'loading' | 'success' | 'error' | 'empty';
 
@@ -65,11 +72,6 @@ function useTmdbResource<T>(fetchFn: (() => Promise<T>) | null, deps: unknown[])
   return state;
 }
 
-export interface CollectionMatch {
-  def:          CollectionDef;
-  previewItems: CollectionDiscoverItem[];
-}
-
 export interface UseMediaDetailResult {
   /** null for books — TMDB has no book endpoint, callers fall back to local seed data entirely. */
   kind:            'movie' | 'tv' | null;
@@ -83,10 +85,11 @@ export interface UseMediaDetailResult {
   fallbackBackdrop: Resource<string | null>;
   /** "More from this Director" — movie-only, only fires once credits resolve with a director id. */
   moreFromDirector: Resource<TmdbRecommendation[]>;
-  /** Real collection membership — exact port of the website's getFilmCollections()/
-   *  getTVCollections() heuristics, each matched def's preview posters fetched
-   *  live from the same TMDB discover query the real collection page uses. */
-  collections:     Resource<CollectionMatch[]>;
+  /** Real collection membership — is this exact title a verified item in any
+   *  currently-live collection (collections/collection_items tables)? See
+   *  lib/supabase/collections.ts. Applies to movie/TV/book alike, unlike the
+   *  old TMDB-rule-based version this replaced (movie/TV only). */
+  collections:     Resource<MediaCollectionMembership[]>;
 }
 
 /** Orchestrates every live TMDB call the Movie Detail screen needs, one independent
@@ -133,29 +136,10 @@ export function useMediaDetail(routeId: string): UseMediaDetailResult {
     [directorId, tmdbId],
   );
 
-  // Matched defs are derived synchronously from `details` (pure, no network) —
-  // only the preview-poster fetch per matched collection is async.
-  const matchedDefs: CollectionDef[] = details.status === 'success' && details.data
-    ? kind === 'movie'
-      ? getFilmCollections(details.data.genreIds, details.data.companyIds, details.data.rating ?? 0, details.data.runtimeMinutes)
-      : kind === 'tv'
-        ? getTVCollections(details.data.genreIds, details.data.rating ?? 0)
-        : []
-    : [];
-  const matchedSlugs = matchedDefs.map((d) => d.slug).join(',');
-
-  const collections = useTmdbResource<CollectionMatch[]>(
-    kind && tmdbId && details.status === 'success'
-      ? async () => Promise.all(
-          matchedDefs
-            .filter((def) => def.tmdbPath && def.tmdbMediaType)
-            .map(async (def) => ({
-              def,
-              previewItems: await fetchTmdbCollectionByPath(def.tmdbPath!, def.tmdbMediaType!).catch(() => []),
-            })),
-        )
-      : null,
-    [kind, tmdbId, details.status, matchedSlugs],
+  const identity = deriveMediaIdentity(routeId);
+  const collections = useTmdbResource<MediaCollectionMembership[]>(
+    identity ? () => fetchCollectionMembershipForMedia(identity.mediaType, identity.rawId) : null,
+    [identity?.mediaType, identity?.rawId],
   );
 
   return { kind, details, credits, recommendations, watchProviders, videos, fallbackBackdrop, moreFromDirector, collections };

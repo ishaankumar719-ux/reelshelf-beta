@@ -131,18 +131,19 @@ export default function MediaDetailScreen() {
     ...directorItems.filter((d) => !recommendationItems.some((r) => r.id === d.id)),
   ].slice(0, 10);
 
-  // "Appears in" — real collection membership (WEBSITE_MOVIE_DETAIL parity:
-  // getFilmCollections()/getTVCollections() heuristics against live TMDB
-  // genre/company/rating/runtime data), not the old static seed array. Each
-  // matched collection's preview posters are the same live TMDB discover
-  // results the real collection page itself renders — see hooks/useMediaDetail.ts.
-  const memberCollectionsLoading = !isBook && live.collections.status === 'loading';
+  // "Appears in" — real collection membership: is this exact title a
+  // verified item in any currently-live collection (collections/
+  // collection_items tables)? Not a live TMDB discover-query re-derivation
+  // of a rule anymore — see hooks/useMediaDetail.ts / lib/supabase/collections.ts.
+  // Media-type-generic (movie/TV/book alike), unlike the old TMDB-rule
+  // version this replaced, which only ever ran for movies/TV.
+  const memberCollectionsLoading = live.collections.status === 'loading';
   const memberCollections: SeedCollectionItem[] = (live.collections.data ?? [])
     .filter((m) => m.previewItems.length > 0)
     .map((m) => ({
-      id:          m.def.slug,
-      title:       m.def.name,
-      description: m.def.description,
+      id:          m.slug,
+      title:       m.title,
+      description: m.description,
       storyCount:  m.previewItems.length,
       items:       m.previewItems.slice(0, 4).map((item): SeedCardItem => ({
         id:        item.id,

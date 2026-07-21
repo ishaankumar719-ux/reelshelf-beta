@@ -58,14 +58,6 @@ interface SeedBookItem extends SeedCardItem {
   description: string;
 }
 
-interface SeedCollectionItem {
-  id:          string;
-  title:       string;
-  description: string;
-  storyCount:  number;
-  items:       SeedCardItem[];
-}
-
 interface SeedAwardItem extends SeedCardItem {
   award: string;
 }
@@ -203,29 +195,12 @@ async function main() {
     odyssey2001,
     // BYL: The Bear extras
     theMenu,
-    // Collections: Best A24 Films
-    hereditary,
-    midsommar,
-    // Collections: Under 90 Minutes
-    runLolaRun,
-    moonlight,
-    getOut,
-    // Collections: Mind-Bending Stories
+    // Mind-Bending stacked-shadow section
     fightClub,
-    // Collections: True Crime Essentials
-    zodiac,
-    prisoners,
-    spotlight,
-    knivesOut,
-    // Collections: Space Adventures
-    interstellar,
-    theMartian,
-    gravity,
-    contact,
-    // Collections: Perfect Sunday Stories
+    moonlight,
+    // Perfect Sunday / Hidden Gems shared items
     marriageStory,
     her,
-    nomadland,
     // Discover: Hidden Gems
     lighthouse,
     floridaProject,
@@ -234,12 +209,10 @@ async function main() {
     // Phase 2: Award Winners (new titles)
     shapeOfWater,
     chernobyl,
+    nomadland,
     // Phase 2: TV Picks (new shows)
     severance,
     lastOfUs,
-    // Phase 2: 6 new collections (new titles)
-    ladyBird,
-    drive,
     // Phase 2: Books — Book of the Month
     remainsOfTheDay_book,
     // Phase 2: Books — Trending
@@ -278,29 +251,12 @@ async function main() {
     movie(62),                                   // 2001: A Space Odyssey
     // ── BYL: The Bear extras (1) ─────────────────────────────────────────────
     movie(593643),                               // The Menu
-    // ── Collections: Best A24 Films (2 new — poorThings + eeaao reused) ──────
-    movie(493922),                               // Hereditary (A24)
-    movie(530385),                               // Midsommar (A24)
-    // ── Collections: Under 90 Minutes (3 new — whiplash reused) ─────────────
-    movie(5765),                                 // Run Lola Run
-    movie(376867),                               // Moonlight (A24)
-    movie(419430),                               // Get Out
-    // ── Collections: Mind-Bending (1 new — inception + arrival + BR2049 reused)
+    // ── Mind-Bending stacked-shadow section (fightClub new; inception/arrival/BR2049 reused) ──
     movie(550),                                  // Fight Club
-    // ── Collections: True Crime Essentials (4 new) ───────────────────────────
-    movie(929),                                  // Zodiac
-    movie(146233),                               // Prisoners
-    movie(314365),                               // Spotlight
-    movie(546554),                               // Knives Out
-    // ── Collections: Space Adventures (4 new) ────────────────────────────────
-    movie(157336),                               // Interstellar
-    movie(286217),                               // The Martian
-    movie(80537),                                // Gravity
-    movie(36557),                                // Contact
-    // ── Collections: Perfect Sunday Stories (3 new — moonlight reused) ───────
+    movie(376867),                               // Moonlight (A24)
+    // ── Perfect Sunday / Hidden Gems shared items ────────────────────────────
     movie(492188),                               // Marriage Story
     movie(152601),                               // Her
-    movie(752623),                               // Nomadland (Perfect Sunday)
     // ── Discover: Hidden Gems (4 new titles) ─────────────────────────────────
     movie(575264),                               // The Lighthouse (2019)
     movie(435022),                               // The Florida Project (2017)
@@ -309,12 +265,10 @@ async function main() {
     // ── Phase 2: Award Winners new titles ────────────────────────────────────
     movie(399055),                               // The Shape of Water (2017)
     show(87108),                                 // Chernobyl (2019)
+    movie(752623),                               // Nomadland
     // ── Phase 2: TV Picks new shows ───────────────────────────────────────────
     show(95396),                                 // Severance (2022)
     show(100088),                                // The Last of Us (2023)
-    // ── Phase 2: new collection items ────────────────────────────────────────
-    movie(391713),                               // Lady Bird (2017)
-    movie(79218),                                // Drive (2011)
     // ── Phase 2: Book of the Month ───────────────────────────────────────────
     book('The Remains of the Day', 'Kazuo Ishiguro', 1989),
     // ── Phase 2: Trending Books ───────────────────────────────────────────────
@@ -331,26 +285,12 @@ async function main() {
   ]);
 
   // ── Extract dominant colors for atmosphere items ───────────────────────────
-  console.log('Extracting dominant colors for atmosphere (Daily Reel + Collection of Week)…');
-  const [
-    oppenheimerColors,
-    poorThingsColors,
-    eeaaoColors,
-    hereditaryColors,
-    midsommarColors,
-  ] = await Promise.all([
-    extractDominantColors(oppenheimer.posterUrl),
-    extractDominantColors(poorThings.posterUrl),
-    extractDominantColors(eeaao.posterUrl),
-    extractDominantColors(hereditary.posterUrl),
-    extractDominantColors(midsommar.posterUrl),
-  ]);
-
-  // Attach colors to the items that need them
-  const poorThingsC  = { ...poorThings,  dominantColors: poorThingsColors  };
-  const eeaaoC       = { ...eeaao,       dominantColors: eeaaoColors       };
-  const hereditaryC  = { ...hereditary,  dominantColors: hereditaryColors  };
-  const midsommarC   = { ...midsommar,   dominantColors: midsommarColors   };
+  // Collection of the Week's dominant-color deck was the other consumer of
+  // this extraction (alongside Daily Reel) — collections are no longer
+  // generated here at all (see the removed `collections` const below), so
+  // only Daily Reel's own color extraction remains.
+  console.log('Extracting dominant colors for atmosphere (Daily Reel)…');
+  const oppenheimerColors = await extractDominantColors(oppenheimer.posterUrl);
 
   // ── Build all exports ──────────────────────────────────────────────────────
 
@@ -409,95 +349,6 @@ async function main() {
     author:      'Gabrielle Zevin',
     description: 'Two friends spend thirty years building video games together — a novel about creation, obsession, and the invisible grammar of a long collaboration.',
   };
-
-  // 12 Collections — original 6 + 6 Phase 2 additions
-  const collections: SeedCollectionItem[] = [
-    {
-      id:          'c-a24',
-      title:       'Best A24 Films',
-      description: 'Fearless cinema from A24.',
-      storyCount:  24,
-      items:       [poorThingsC, eeaaoC, hereditaryC, midsommarC],
-    },
-    {
-      id:          'c-under90',
-      title:       'Under 90 Minutes',
-      description: 'Great stories that don\'t overstay their welcome.',
-      storyCount:  36,
-      items:       [runLolaRun, whiplash, moonlight, getOut],
-    },
-    {
-      id:          'c-mindbend',
-      title:       'Mind-Bending Stories',
-      description: 'Films that warp reality and linger long after the credits.',
-      storyCount:  20,
-      items:       [inception, arrival, bladeRunner2049, fightClub],
-    },
-    {
-      id:          'c-truecrime',
-      title:       'True Crime Essentials',
-      description: 'Investigations that won\'t let you go.',
-      storyCount:  18,
-      items:       [zodiac, prisoners, spotlight, knivesOut],
-    },
-    {
-      id:          'c-space',
-      title:       'Space Adventures',
-      description: 'Odysseys beyond the known — wormholes, alien worlds, the deep unknown.',
-      storyCount:  15,
-      items:       [interstellar, theMartian, gravity, contact],
-    },
-    {
-      id:          'c-sunday',
-      title:       'Perfect Sunday Stories',
-      description: 'Slow, warm, unmissable.',
-      storyCount:  29,
-      items:       [marriageStory, moonlight, her, nomadland],
-    },
-    // ── Phase 2: 6 additional collections ─────────────────────────────────────
-    {
-      id:          'c-horror',
-      title:       'Greatest Horror',
-      description: 'Films that stay with you long after you close your eyes.',
-      storyCount:  22,
-      items:       [hereditary, getOut, midsommar, lighthouse],
-    },
-    {
-      id:          'c-mindbend2',
-      title:       'Best Mind-Bending Films',
-      description: 'Curated picks that question reality.',
-      storyCount:  18,
-      items:       [inception, arrival, fightClub, mulholland],
-    },
-    {
-      id:          'c-sunday-watches',
-      title:       'Perfect Sunday Watches',
-      description: 'Unwind with stories built for quiet afternoons.',
-      storyCount:  31,
-      items:       [marriageStory, her, moonlight, nomadland],
-    },
-    {
-      id:          'c-oscar',
-      title:       'Oscar Winners',
-      description: 'The films the Academy couldn\'t ignore.',
-      storyCount:  25,
-      items:       [parasite, moonlight, nomadland, whiplash],
-    },
-    {
-      id:          'c-comingofage',
-      title:       'Coming of Age',
-      description: 'The films that understand what it felt like to grow up.',
-      storyCount:  20,
-      items:       [moonlight, floridaProject, whiplash, ladyBird],
-    },
-    {
-      id:          'c-neonoir',
-      title:       'Neo-Noir',
-      description: 'Sleek, shadowed, morally complicated.',
-      storyCount:  16,
-      items:       [bladeRunner2049, prisoners, zodiac, drive],
-    },
-  ];
 
   // Phase 2: Award Winners
   const awardWinners: SeedAwardItem[] = [
@@ -653,8 +504,11 @@ export const bylTheBear: SeedCardItem[] = ${JSON.stringify(bylTheBear, null, 2)}
 // posterUrl: null — extend with Google Books cover fetch in Phase 4.
 export const bookOfTheWeek: SeedBookItem = ${JSON.stringify(bookOfTheWeek, null, 2)};
 
-// ── Collections ───────────────────────────────────────────────────────────────
-export const collections: SeedCollectionItem[] = ${JSON.stringify(collections, null, 2)};
+// Collections (Best A24 Films, Oscar Winners, etc.) are no longer generated
+// here — real, editorially-verified collections now live in the shared
+// Supabase collections/collection_items tables. See
+// supabase/migrations/20260721_collections.sql, scripts/validate-collections.ts,
+// and lib/supabase/collections.ts.
 
 // ── Discover: Hidden Gems ────────────────────────────────────────────────────
 // Curated lesser-known films. posterUrl = null items show letter fallback;
@@ -705,11 +559,6 @@ export const bookOfTheMonth: SeedBookItem = ${JSON.stringify(bookOfTheMonth, nul
 export const trendingBooks: SeedBookItem[] = ${JSON.stringify(trendingBooks, null, 2)};
 
 export const awardWinnerBooks: SeedBookItem[] = ${JSON.stringify(awardWinnerBooks, null, 2)};
-
-// ── Discover Phase 2: Additional Collections Row ─────────────────────────────
-export const discoverCollections: SeedCollectionItem[] = collections.filter(c =>
-  ['c-horror', 'c-mindbend2', 'c-sunday-watches', 'c-oscar', 'c-comingofage', 'c-neonoir'].includes(c.id)
-);
 `;
 
   const outPath = path.join(__dirname, '..', 'data', 'seedHomeContent.ts');
@@ -723,11 +572,6 @@ export const discoverCollections: SeedCollectionItem[] = collections.filter(c =>
       seen.add(c.id);
       console.log(`  ${c.mediaType.padEnd(4)} ${c.year}  ${c.title}`);
     }
-  });
-  console.log('\nCollections:');
-  collections.forEach(col => {
-    const filled = col.items.filter(i => i.posterUrl !== null).length;
-    console.log(`  ${col.title} — ${filled}/${col.items.length} posters, ${col.storyCount} stories`);
   });
 }
 

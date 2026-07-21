@@ -1,0 +1,741 @@
+{
+  "generatedAt": "2026-07-21T19:47:31.611Z",
+  "a24CompanyIdVerification": {
+    "companyId": 41077,
+    "method": "TMDB /search/company?query=A24 (US-origin result, id 41077 — a second, unrelated GB-origin \"A24\" also exists, id 293354) cross-checked against production_companies on Moonlight (376867), which lists id 41077."
+  },
+  "dataIntegrityFindings": [
+    "The old static seed (scripts/generate-seed-data.ts) hardcoded 7 TMDB movie ids that resolve to the WRONG title or don't exist at all — none of these were caught until this validation ran real lookups against them: \"Run Lola Run\" was id 5765 (actually \"Knight Moves\"; correct id 104), \"Zodiac\" was id 929 (actually \"Godzilla\"; correct id 1949), \"Gravity\" was id 80537 (404, does not exist; correct id 49047), \"Contact\" was id 36557 (actually \"Casino Royale\"; correct id 686), \"Nomadland\" was id 752623 (actually \"The Lost City\"; correct id 581734), \"The Florida Project\" was id 435022 (404, does not exist; correct id 394117), \"Drive\" was id 79218 (actually \"Ice Age: A Mammoth Christmas\"; correct id 64690). All corrected in this script's COLLECTIONS list; the old static seed data itself is untouched by this data-only task but should be treated as unreliable.",
+    "lib/discoverCollections.ts's live \"neo-noir\" TMDB discover query (with_keywords=6564) uses the wrong keyword id — TMDB keyword 6564 is \"terminal illness\", not \"neo-noir\" (confirmed via /keyword/6564 and /search/keyword?query=neo-noir, which gives 207268 as the real \"neo-noir\" keyword). This is a bug in currently-running app code (both mobile's port and the website's original), out of scope to fix in this schema/data-only task, but should be corrected in a future pass — it means the app's live Neo-Noir Discover row is not actually filtering by neo-noir at all right now."
+  ],
+  "collections": [
+    {
+      "slug": "best-a24-films",
+      "title": "Best A24 Films",
+      "collectionType": "studio",
+      "verificationSource": "TMDB production_companies field, checked against verified company id 41077 (A24)",
+      "summary": {
+        "verified": 7,
+        "flagged": 3,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "under-90-minutes",
+      "title": "Under 90 Minutes",
+      "collectionType": "runtime",
+      "verificationSource": "TMDB runtime field",
+      "summary": {
+        "verified": 1,
+        "flagged": 3,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "mind-bending-stories",
+      "title": "Mind-Bending Stories",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 4,
+        "flagged": 0,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "true-crime-essentials",
+      "title": "True Crime Essentials",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 3,
+        "flagged": 1,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "space-adventures",
+      "title": "Space Adventures",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 2,
+        "flagged": 2,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "perfect-sunday-stories",
+      "title": "Perfect Sunday Stories",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 4,
+        "flagged": 0,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "greatest-horror",
+      "title": "Greatest Horror",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 3,
+        "flagged": 1,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "best-mind-bending-films",
+      "title": "Best Mind-Bending Films",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 4,
+        "flagged": 0,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "perfect-sunday-watches",
+      "title": "Perfect Sunday Watches",
+      "collectionType": "genre",
+      "verificationSource": "TMDB genres field",
+      "summary": {
+        "verified": 4,
+        "flagged": 0,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "oscar-winners",
+      "title": "Oscar Winners",
+      "collectionType": "awards",
+      "verificationSource": "No verified awards data source available in this project — every item flagged, requires manual curation",
+      "summary": {
+        "verified": 0,
+        "flagged": 4,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "coming-of-age",
+      "title": "Coming of Age",
+      "collectionType": "curated",
+      "verificationSource": "TMDB keywords endpoint (no single discrete genre/runtime/company field defines this theme)",
+      "summary": {
+        "verified": 3,
+        "flagged": 1,
+        "unverified": 0
+      }
+    },
+    {
+      "slug": "neo-noir",
+      "title": "Neo-Noir",
+      "collectionType": "curated",
+      "verificationSource": "TMDB keywords endpoint (no single discrete genre/runtime/company field defines this theme)",
+      "summary": {
+        "verified": 2,
+        "flagged": 2,
+        "unverified": 0
+      }
+    }
+  ],
+  "items": [
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 545611,
+      "mediaType": "movie",
+      "expectedTitle": "Everything Everywhere All at Once",
+      "resolvedTitle": "Everything Everywhere All at Once",
+      "year": 2022,
+      "posterPath": "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 493922,
+      "mediaType": "movie",
+      "expectedTitle": "Hereditary",
+      "resolvedTitle": "Hereditary",
+      "year": 2018,
+      "posterPath": "/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+      "status": "flagged",
+      "note": "production_companies does NOT include id 41077 (A24) — TMDB's production_companies field reflects producers, not distributors, so a real A24-DISTRIBUTED title can legitimately fail this specific check (confirmed for Hereditary/Midsommar/Lady Bird — all real A24 films with no A24 entry in this field). Not independently verifiable via this field alone."
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 530385,
+      "mediaType": "movie",
+      "expectedTitle": "Midsommar",
+      "resolvedTitle": "Midsommar",
+      "year": 2019,
+      "posterPath": "/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg",
+      "status": "flagged",
+      "note": "production_companies does NOT include id 41077 (A24) — TMDB's production_companies field reflects producers, not distributors, so a real A24-DISTRIBUTED title can legitimately fail this specific check (confirmed for Hereditary/Midsommar/Lady Bird — all real A24 films with no A24 entry in this field). Not independently verifiable via this field alone."
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 503919,
+      "mediaType": "movie",
+      "expectedTitle": "The Lighthouse",
+      "resolvedTitle": "The Lighthouse",
+      "year": 2019,
+      "posterPath": "/yAKNmpcUweGH6WMCEWenwU9PsbE.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 473033,
+      "mediaType": "movie",
+      "expectedTitle": "Uncut Gems",
+      "resolvedTitle": "Uncut Gems",
+      "year": 2019,
+      "posterPath": "/6XN1vxHc7kUSqNWtaQKN45J5x2v.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 391713,
+      "mediaType": "movie",
+      "expectedTitle": "Lady Bird",
+      "resolvedTitle": "Lady Bird",
+      "year": 2017,
+      "posterPath": "/gl66K7zRdtNYGrxyS2YDUP5ASZd.jpg",
+      "status": "flagged",
+      "note": "production_companies does NOT include id 41077 (A24) — TMDB's production_companies field reflects producers, not distributors, so a real A24-DISTRIBUTED title can legitimately fail this specific check (confirmed for Hereditary/Midsommar/Lady Bird — all real A24 films with no A24 entry in this field). Not independently verifiable via this field alone."
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 559907,
+      "mediaType": "movie",
+      "expectedTitle": "The Green Knight",
+      "resolvedTitle": "The Green Knight",
+      "year": 2021,
+      "posterPath": "/if4hw3Ou5Sav9Em7WWHj66mnywp.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 666277,
+      "mediaType": "movie",
+      "expectedTitle": "Past Lives",
+      "resolvedTitle": "Past Lives",
+      "year": 2023,
+      "posterPath": "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "best-a24-films",
+      "tmdbId": 467244,
+      "mediaType": "movie",
+      "expectedTitle": "The Zone of Interest",
+      "resolvedTitle": "The Zone of Interest",
+      "year": 2023,
+      "posterPath": "/hUu9zyZmDd8VZegKi1iK1Vk0RYS.jpg",
+      "status": "verified",
+      "note": "production_companies includes id 41077 (A24)"
+    },
+    {
+      "slug": "under-90-minutes",
+      "tmdbId": 104,
+      "mediaType": "movie",
+      "expectedTitle": "Run Lola Run",
+      "resolvedTitle": "Run Lola Run",
+      "year": 1998,
+      "posterPath": "/v0giIi4bTILVhNhJajet3WWY3FA.jpg",
+      "status": "verified",
+      "note": "runtime=80 (rule: <= 90)"
+    },
+    {
+      "slug": "under-90-minutes",
+      "tmdbId": 244786,
+      "mediaType": "movie",
+      "expectedTitle": "Whiplash",
+      "resolvedTitle": "Whiplash",
+      "year": 2014,
+      "posterPath": "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+      "status": "flagged",
+      "note": "runtime=107 (rule: <= 90)"
+    },
+    {
+      "slug": "under-90-minutes",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "flagged",
+      "note": "runtime=111 (rule: <= 90)"
+    },
+    {
+      "slug": "under-90-minutes",
+      "tmdbId": 419430,
+      "mediaType": "movie",
+      "expectedTitle": "Get Out",
+      "resolvedTitle": "Get Out",
+      "year": 2017,
+      "posterPath": "/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg",
+      "status": "flagged",
+      "note": "runtime=104 (rule: <= 90)"
+    },
+    {
+      "slug": "mind-bending-stories",
+      "tmdbId": 27205,
+      "mediaType": "movie",
+      "expectedTitle": "Inception",
+      "resolvedTitle": "Inception",
+      "year": 2010,
+      "posterPath": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
+      "status": "verified",
+      "note": "genre_ids=[28,878,12] (rule: any of [878,53])"
+    },
+    {
+      "slug": "mind-bending-stories",
+      "tmdbId": 329865,
+      "mediaType": "movie",
+      "expectedTitle": "Arrival",
+      "resolvedTitle": "Arrival",
+      "year": 2016,
+      "posterPath": "/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,878,9648] (rule: any of [878,53])"
+    },
+    {
+      "slug": "mind-bending-stories",
+      "tmdbId": 335984,
+      "mediaType": "movie",
+      "expectedTitle": "Blade Runner 2049",
+      "resolvedTitle": "Blade Runner 2049",
+      "year": 2017,
+      "posterPath": "/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+      "status": "verified",
+      "note": "genre_ids=[878,18] (rule: any of [878,53])"
+    },
+    {
+      "slug": "mind-bending-stories",
+      "tmdbId": 550,
+      "mediaType": "movie",
+      "expectedTitle": "Fight Club",
+      "resolvedTitle": "Fight Club",
+      "year": 1999,
+      "posterPath": "/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,53] (rule: any of [878,53])"
+    },
+    {
+      "slug": "true-crime-essentials",
+      "tmdbId": 1949,
+      "mediaType": "movie",
+      "expectedTitle": "Zodiac",
+      "resolvedTitle": "Zodiac",
+      "year": 2007,
+      "posterPath": "/6YmeO4pB7XTh8P8F960O1uA14JO.jpg",
+      "status": "verified",
+      "note": "genre_ids=[80,9648,53] (rule: any of [80])"
+    },
+    {
+      "slug": "true-crime-essentials",
+      "tmdbId": 146233,
+      "mediaType": "movie",
+      "expectedTitle": "Prisoners",
+      "resolvedTitle": "Prisoners",
+      "year": 2013,
+      "posterPath": "/uhviyknTT5cEQXbn6vWIqfM4vGm.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,53,80] (rule: any of [80])"
+    },
+    {
+      "slug": "true-crime-essentials",
+      "tmdbId": 314365,
+      "mediaType": "movie",
+      "expectedTitle": "Spotlight",
+      "resolvedTitle": "Spotlight",
+      "year": 2015,
+      "posterPath": "/8DPGG400FgaFWaqcv11n8mRd2NG.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[18,36] (rule: any of [80])"
+    },
+    {
+      "slug": "true-crime-essentials",
+      "tmdbId": 546554,
+      "mediaType": "movie",
+      "expectedTitle": "Knives Out",
+      "resolvedTitle": "Knives Out",
+      "year": 2019,
+      "posterPath": "/pThyQovXQrw2m0s9x82twj48Jq4.jpg",
+      "status": "verified",
+      "note": "genre_ids=[35,80,9648] (rule: any of [80])"
+    },
+    {
+      "slug": "space-adventures",
+      "tmdbId": 157336,
+      "mediaType": "movie",
+      "expectedTitle": "Interstellar",
+      "resolvedTitle": "Interstellar",
+      "year": 2014,
+      "posterPath": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+      "status": "verified",
+      "note": "genre_ids=[12,18,878] (rule: all of [878,12])"
+    },
+    {
+      "slug": "space-adventures",
+      "tmdbId": 286217,
+      "mediaType": "movie",
+      "expectedTitle": "The Martian",
+      "resolvedTitle": "The Martian",
+      "year": 2015,
+      "posterPath": "/fASz8A0yFE3QB6LgGoOfwvFSseV.jpg",
+      "status": "verified",
+      "note": "genre_ids=[878,18,12] (rule: all of [878,12])"
+    },
+    {
+      "slug": "space-adventures",
+      "tmdbId": 49047,
+      "mediaType": "movie",
+      "expectedTitle": "Gravity",
+      "resolvedTitle": "Gravity",
+      "year": 2013,
+      "posterPath": "/kZ2nZw8D681aphje8NJi8EfbL1U.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[878,53,18] (rule: all of [878,12])"
+    },
+    {
+      "slug": "space-adventures",
+      "tmdbId": 686,
+      "mediaType": "movie",
+      "expectedTitle": "Contact",
+      "resolvedTitle": "Contact",
+      "year": 1997,
+      "posterPath": "/bCpMIywuNZeWt3i5UMLEIc0VSwM.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[18,878,9648] (rule: all of [878,12])"
+    },
+    {
+      "slug": "perfect-sunday-stories",
+      "tmdbId": 492188,
+      "mediaType": "movie",
+      "expectedTitle": "Marriage Story",
+      "resolvedTitle": "Marriage Story",
+      "year": 2019,
+      "posterPath": "/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-stories",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-stories",
+      "tmdbId": 152601,
+      "mediaType": "movie",
+      "expectedTitle": "Her",
+      "resolvedTitle": "Her",
+      "year": 2013,
+      "posterPath": "/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg",
+      "status": "verified",
+      "note": "genre_ids=[10749,878,18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-stories",
+      "tmdbId": 581734,
+      "mediaType": "movie",
+      "expectedTitle": "Nomadland",
+      "resolvedTitle": "Nomadland",
+      "year": 2021,
+      "posterPath": "/8Vc5EOUEIF1EUXuX9eLFf7BvN3P.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "greatest-horror",
+      "tmdbId": 493922,
+      "mediaType": "movie",
+      "expectedTitle": "Hereditary",
+      "resolvedTitle": "Hereditary",
+      "year": 2018,
+      "posterPath": "/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+      "status": "verified",
+      "note": "genre_ids=[27,9648,53] (rule: any of [27])"
+    },
+    {
+      "slug": "greatest-horror",
+      "tmdbId": 419430,
+      "mediaType": "movie",
+      "expectedTitle": "Get Out",
+      "resolvedTitle": "Get Out",
+      "year": 2017,
+      "posterPath": "/tFXcEccSQMf3lfhfXKSU9iRBpa3.jpg",
+      "status": "verified",
+      "note": "genre_ids=[9648,53,27] (rule: any of [27])"
+    },
+    {
+      "slug": "greatest-horror",
+      "tmdbId": 530385,
+      "mediaType": "movie",
+      "expectedTitle": "Midsommar",
+      "resolvedTitle": "Midsommar",
+      "year": 2019,
+      "posterPath": "/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg",
+      "status": "verified",
+      "note": "genre_ids=[27,18,9648] (rule: any of [27])"
+    },
+    {
+      "slug": "greatest-horror",
+      "tmdbId": 503919,
+      "mediaType": "movie",
+      "expectedTitle": "The Lighthouse",
+      "resolvedTitle": "The Lighthouse",
+      "year": 2019,
+      "posterPath": "/yAKNmpcUweGH6WMCEWenwU9PsbE.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[18,14,53] (rule: any of [27])"
+    },
+    {
+      "slug": "best-mind-bending-films",
+      "tmdbId": 27205,
+      "mediaType": "movie",
+      "expectedTitle": "Inception",
+      "resolvedTitle": "Inception",
+      "year": 2010,
+      "posterPath": "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
+      "status": "verified",
+      "note": "genre_ids=[28,878,12] (rule: any of [878,53])"
+    },
+    {
+      "slug": "best-mind-bending-films",
+      "tmdbId": 329865,
+      "mediaType": "movie",
+      "expectedTitle": "Arrival",
+      "resolvedTitle": "Arrival",
+      "year": 2016,
+      "posterPath": "/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,878,9648] (rule: any of [878,53])"
+    },
+    {
+      "slug": "best-mind-bending-films",
+      "tmdbId": 550,
+      "mediaType": "movie",
+      "expectedTitle": "Fight Club",
+      "resolvedTitle": "Fight Club",
+      "year": 1999,
+      "posterPath": "/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,53] (rule: any of [878,53])"
+    },
+    {
+      "slug": "best-mind-bending-films",
+      "tmdbId": 1018,
+      "mediaType": "movie",
+      "expectedTitle": "Mulholland Drive",
+      "resolvedTitle": "Mulholland Drive",
+      "year": 2001,
+      "posterPath": "/x7A59t6ySylr1L7aubOQEA480vM.jpg",
+      "status": "verified",
+      "note": "genre_ids=[53,18,9648] (rule: any of [878,53])"
+    },
+    {
+      "slug": "perfect-sunday-watches",
+      "tmdbId": 492188,
+      "mediaType": "movie",
+      "expectedTitle": "Marriage Story",
+      "resolvedTitle": "Marriage Story",
+      "year": 2019,
+      "posterPath": "/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-watches",
+      "tmdbId": 152601,
+      "mediaType": "movie",
+      "expectedTitle": "Her",
+      "resolvedTitle": "Her",
+      "year": 2013,
+      "posterPath": "/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg",
+      "status": "verified",
+      "note": "genre_ids=[10749,878,18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-watches",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "perfect-sunday-watches",
+      "tmdbId": 581734,
+      "mediaType": "movie",
+      "expectedTitle": "Nomadland",
+      "resolvedTitle": "Nomadland",
+      "year": 2021,
+      "posterPath": "/8Vc5EOUEIF1EUXuX9eLFf7BvN3P.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18] (rule: any of [18])"
+    },
+    {
+      "slug": "oscar-winners",
+      "tmdbId": 496243,
+      "mediaType": "movie",
+      "expectedTitle": "Parasite",
+      "resolvedTitle": "Parasite",
+      "year": 2019,
+      "posterPath": "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+      "status": "flagged",
+      "note": "No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified."
+    },
+    {
+      "slug": "oscar-winners",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "flagged",
+      "note": "No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified."
+    },
+    {
+      "slug": "oscar-winners",
+      "tmdbId": 581734,
+      "mediaType": "movie",
+      "expectedTitle": "Nomadland",
+      "resolvedTitle": "Nomadland",
+      "year": 2021,
+      "posterPath": "/8Vc5EOUEIF1EUXuX9eLFf7BvN3P.jpg",
+      "status": "flagged",
+      "note": "No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified."
+    },
+    {
+      "slug": "oscar-winners",
+      "tmdbId": 244786,
+      "mediaType": "movie",
+      "expectedTitle": "Whiplash",
+      "resolvedTitle": "Whiplash",
+      "year": 2014,
+      "posterPath": "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+      "status": "flagged",
+      "note": "No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified."
+    },
+    {
+      "slug": "coming-of-age",
+      "tmdbId": 376867,
+      "mediaType": "movie",
+      "expectedTitle": "Moonlight",
+      "resolvedTitle": "Moonlight",
+      "year": 2016,
+      "posterPath": "/qLnfEmPrDjJfPyyddLJPkXmshkp.jpg",
+      "status": "verified",
+      "note": "keyword_ids=[2231,6270,1196,726,416,970,1721,1013,1803,2394,1946,6733,10683,10180,158718,164296,194226,195624,230701,258533,289844,325835] (rule: any of [10683])"
+    },
+    {
+      "slug": "coming-of-age",
+      "tmdbId": 394117,
+      "mediaType": "movie",
+      "expectedTitle": "The Florida Project",
+      "resolvedTitle": "The Florida Project",
+      "year": 2017,
+      "posterPath": "/5QnDxdJg1fi6uMSkSi4x8tHsltm.jpg",
+      "status": "verified",
+      "note": "keyword_ids=[1196,6054,970,1803,6139,2669,11494,10683,13088,14768,170154,179385,207597,208349,210597,226344,236472,238737,240315,241896,272917,309029] (rule: any of [10683])"
+    },
+    {
+      "slug": "coming-of-age",
+      "tmdbId": 244786,
+      "mediaType": "movie",
+      "expectedTitle": "Whiplash",
+      "resolvedTitle": "Whiplash",
+      "year": 2014,
+      "posterPath": "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+      "status": "flagged",
+      "note": "keyword_ids=[242,1416,4048,1523,2176,1640,2696,33896,164657,170418,176095,200918,202371,206298,207739,212404,236377,251667,268132,309029,324429,325778,325796,325808,336502] (rule: any of [10683])"
+    },
+    {
+      "slug": "coming-of-age",
+      "tmdbId": 391713,
+      "mediaType": "movie",
+      "expectedTitle": "Lady Bird",
+      "resolvedTitle": "Lady Bird",
+      "year": 2017,
+      "posterPath": "/gl66K7zRdtNYGrxyS2YDUP5ASZd.jpg",
+      "status": "verified",
+      "note": "keyword_ids=[6054,11254,10683,10049,11710,10809,12392,14549,33910,34125,157303,165402,172112,187056,240303,240315,240736,252104,281585] (rule: any of [10683])"
+    },
+    {
+      "slug": "neo-noir",
+      "tmdbId": 335984,
+      "mediaType": "movie",
+      "expectedTitle": "Blade Runner 2049",
+      "resolvedTitle": "Blade Runner 2049",
+      "year": 2017,
+      "posterPath": "/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[878,18] (rule: any of [80]); keyword_ids=[2964,803,801,310,4565,9663,12190,12375,12670,14570,178657,218132,220903,233512,243676,277551,301096,325830,370793,375249] (rule: any of [207268])"
+    },
+    {
+      "slug": "neo-noir",
+      "tmdbId": 146233,
+      "mediaType": "movie",
+      "expectedTitle": "Prisoners",
+      "resolvedTitle": "Prisoners",
+      "year": 2013,
+      "posterPath": "/uhviyknTT5cEQXbn6vWIqfM4vGm.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,53,80] (rule: any of [80]); keyword_ids=[904,1930,703,1715,5340,5905,7002,12565,14707,207268,234162,265839,315263,325776] (rule: any of [207268])"
+    },
+    {
+      "slug": "neo-noir",
+      "tmdbId": 1949,
+      "mediaType": "movie",
+      "expectedTitle": "Zodiac",
+      "resolvedTitle": "Zodiac",
+      "year": 2007,
+      "posterPath": "/6YmeO4pB7XTh8P8F960O1uA14JO.jpg",
+      "status": "flagged",
+      "note": "genre_ids=[80,9648,53] (rule: any of [80]); keyword_ids=[918,736,387,818,6149,582,627,703,1228,5340,4399,4950,9826,10714,11727,12193,12570,33457,33722,54012,159743,173103,202399,208992,235210,244530,270813,277050,325763,325775,325817,325818] (rule: any of [207268])"
+    },
+    {
+      "slug": "neo-noir",
+      "tmdbId": 64690,
+      "mediaType": "movie",
+      "expectedTitle": "Drive",
+      "resolvedTitle": "Drive",
+      "year": 2011,
+      "posterPath": "/602vevIURmpDfzbnv5Ubi6wIkQm.jpg",
+      "status": "verified",
+      "note": "genre_ids=[18,53,80] (rule: any of [80]); keyword_ids=[642,3296,5956,11762,9748,10291,10226,11148,12670,14707,14795,159245,161137,161974,167352,181123,181324,207268,263959,273593,325778] (rule: any of [207268])"
+    }
+  ]
+}
