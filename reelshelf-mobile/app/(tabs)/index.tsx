@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
 } from 'react-native-reanimated';
-import { StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
@@ -14,6 +15,7 @@ import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
+import { HomeFriendsActivity } from '@/components/HomeFriendsActivity';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
 import { TrendingCarousel } from '@/components/TrendingCarousel';
@@ -30,6 +32,17 @@ import {
 export default function HomeScreen() {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
+
+  // Pull-to-refresh — Home's other sections are static editorial seed data
+  // with nothing to re-fetch; Friends Activity is the one real, live section,
+  // so refreshing bumps a signal it depends on rather than reloading the
+  // whole screen.
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setRefreshSignal((n) => n + 1);
+  };
 
   return (
     <AtmosphereProvider>
@@ -49,6 +62,9 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             contentContainerStyle={styles.content}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={RS.colors.accent} />
+            }
           >
             {/* 1 ── Welcome greeting + date */}
             <RevealOnMount delay={0}>
@@ -86,6 +102,21 @@ export default function HomeScreen() {
             {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
             <RevealOnMount delay={140}>
               <DailyReel />
+            </RevealOnMount>
+
+            {/* 5.5 ── Friends Activity — deliberate mobile-only enhancement,
+                no live website equivalent (see HomeFriendsActivity.tsx header
+                comment / WEBSITE_HOME_FRIENDS_ACTIVITY_AUDIT.md). Inserted
+                after Daily Reel, before Collection of the Week, per spec —
+                every other existing section keeps its original order. */}
+            <RevealOnMount delay={160}>
+              <View style={styles.section}>
+                <SectionHeader
+                  title="Friends Activity"
+                  subtitle="What people you follow have been watching."
+                />
+                <HomeFriendsActivity refreshSignal={refreshSignal} onRefreshComplete={() => setRefreshing(false)} />
+              </View>
             </RevealOnMount>
 
             {/* 6 ── Trending Today */}

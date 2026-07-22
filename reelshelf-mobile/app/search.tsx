@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
@@ -79,9 +79,18 @@ function CategoryChip({ label, active, onPress }: { label: string; active: boole
   );
 }
 
+const VALID_CATEGORIES = new Set(CATEGORY_CHIPS.map((c) => c.key));
+
 export default function SearchScreen() {
+  // Supports deep-linking straight into a category, e.g. Home's Friends
+  // Activity "Find Friends" button opening Search with Users pre-selected
+  // (/search?category=users) — falls back to 'all' for a normal open or an
+  // unrecognized value.
+  const { category: initialCategory } = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category>('all');
+  const [category, setCategory] = useState<Category>(
+    initialCategory && VALID_CATEGORIES.has(initialCategory as Category) ? (initialCategory as Category) : 'all',
+  );
   const [recent, setRecent] = useState<string[]>([]);
 
   const [movies, setMovies] = useState<SectionState<TmdbSearchResult>>(idleSection());
