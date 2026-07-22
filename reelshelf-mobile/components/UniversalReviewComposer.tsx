@@ -268,6 +268,17 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                       </>
                     )}
                     {mediaType === 'book' && (
+                      // Deliberate mobile-only enhancement: reading format
+                      // (physical/eBook/audiobook) has zero basis on the real
+                      // website — confirmed via full-text search of its
+                      // composer (src/components/reviews/ReviewForm.tsx) and
+                      // its real diary_entries write payload
+                      // (src/lib/reviews.ts), neither of which reference
+                      // physical_book/ebook/audiobook in any form. These
+                      // toggles and their columns exist only in this mobile
+                      // app, built ahead of the website. Not a gap to "fix"
+                      // by removing them — see
+                      // WEBSITE_DIARY_CALENDAR_TV_BOOK_AUDIT.md §3.
                       <>
                         <Toggle label="Physical Book" active={entry.physicalBook} onPress={() => patch({ physicalBook: !entry.physicalBook })} />
                         <Toggle label="Kindle / eBook" active={entry.ebook} onPress={() => patch({ ebook: !entry.ebook })} />
