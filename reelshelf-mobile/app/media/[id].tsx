@@ -21,6 +21,7 @@ import { MediaReviews } from '@/components/MediaReviews';
 import { MediaSynopsis } from '@/components/MediaSynopsis';
 import { MediaWatchProviders } from '@/components/MediaWatchProviders';
 import { RevealOnMount } from '@/components/RevealOnMount';
+import { SeasonEpisodeBrowser } from '@/components/SeasonEpisodeBrowser';
 import { SectionHeader } from '@/components/section-header';
 import {
   SkeletonCastRow,
@@ -37,6 +38,7 @@ import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 
 export default function MediaDetailScreen() {
@@ -246,6 +248,30 @@ export default function MediaDetailScreen() {
                     </View>
                   </RevealOnMount>
                 ) : null}
+
+                {/* ── Season/Episode logging — TV only. Real per-episode
+                    diary logging, matching the real website's own
+                    SeasonBrowser/SeriesReviewPanel feature (confirmed real,
+                    not unused schema headroom — see
+                    WEBSITE_DIARY_CALENDAR_TV_BOOK_AUDIT.md §2). Reuses the
+                    existing Universal Review Composer exactly; no second
+                    composer. ── */}
+                {live.kind === 'tv' && live.details.status === 'success' && (live.details.data?.seasons.length ?? 0) > 0 && (
+                  <RevealOnMount delay={200}>
+                    <View style={styles.section}>
+                      <SectionHeader title="Seasons & Episodes" subtitle="Log a specific episode." />
+                      <SeasonEpisodeBrowser
+                        tvId={parseMediaRouteId(id)?.tmdbId ?? ''}
+                        seriesTitle={title ?? ''}
+                        seriesYear={detail.year || 0}
+                        posterUrl={posterUrl || null}
+                        creator={detail.creator}
+                        genres={detail.genres}
+                        seasons={live.details.data!.seasons}
+                      />
+                    </View>
+                  </RevealOnMount>
+                )}
 
                 {memberCollectionsLoading ? (
                   <View style={styles.section}>

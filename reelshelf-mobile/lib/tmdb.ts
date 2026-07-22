@@ -67,6 +67,9 @@ export interface TmdbDetails {
   rating:         number | null;
   /** TV-only — sourced from created_by, mirrors MediaDetailRecord.creator. */
   creator:        string | null;
+  /** TV-only — real seasons list (season 0/"Specials" excluded), powers the
+   *  episode-level logging Season Browser. Empty for movies/books. */
+  seasons:        { seasonNumber: number; name: string; episodeCount: number }[];
 }
 
 export async function fetchTmdbDetails(kind: TmdbKind, tmdbId: string): Promise<TmdbDetails> {
@@ -79,6 +82,13 @@ export async function fetchTmdbDetails(kind: TmdbKind, tmdbId: string): Promise<
     : null;
   const dateStr = kind === 'movie' ? raw.release_date : raw.first_air_date;
   const year = dateStr ? Number(String(dateStr).slice(0, 4)) : undefined;
+  // Season 0 ("Specials") excluded — matches the real website's SeasonBrowser
+  // (`realSeasons = basicSeasons.filter(s => s.seasonNumber >= 1)`).
+  const seasons = kind === 'tv' && Array.isArray(raw.seasons)
+    ? raw.seasons
+        .filter((s: any) => typeof s.season_number === 'number' && s.season_number >= 1)
+        .map((s: any) => ({ seasonNumber: s.season_number, name: s.name, episodeCount: s.episode_count ?? 0 }))
+    : [];
 
   return {
     year,
@@ -92,7 +102,34 @@ export async function fetchTmdbDetails(kind: TmdbKind, tmdbId: string): Promise<
       ? Math.round(raw.vote_average * 10) / 10
       : null,
     creator,
+    seasons,
   };
+}
+
+// ── TV Season / Episode browsing (episode-level diary logging) ──────────────
+export interface TmdbSeasonSummary {
+  seasonNumber: number;
+  name:         string;
+  episodeCount: number;
+}
+
+export interface TmdbEpisodeSummary {
+  episodeNumber: number;
+  name:          string;
+  airDate:       string | null;
+}
+
+/** Real TMDB /tv/{id}/season/{n} episode list — episode number, name, air
+ *  date only (kept intentionally minimal: no synopses/stills/runtime — this
+ *  is scoped to enabling real logging, not a full season-browsing redesign). */
+export async function fetchTmdbSeasonEpisodes(tvId: string, seasonNumber: number): Promise<TmdbEpisodeSummary[]> {
+  const raw = await tmdbGet<any>(`/tv/${tvId}/season/${seasonNumber}`);
+  const episodes = Array.isArray(raw.episodes) ? raw.episodes : [];
+  return episodes.map((e: any) => ({
+    episodeNumber: e.episode_number,
+    name:          e.name || `Episode ${e.episode_number}`,
+    airDate:       e.air_date ?? null,
+  }));
 }
 
 // ── Images (fallback backdrop only — details already returns the primary one) ─
