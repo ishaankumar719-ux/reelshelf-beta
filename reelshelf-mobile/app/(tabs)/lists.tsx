@@ -11,10 +11,19 @@ import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { createList, fetchUserLists, type ListEditFields, type UserListSummary } from '@/lib/supabase/lists';
+import { createList, fetchSavedLists, fetchUserLists, type ListEditFields, type UserListSummary } from '@/lib/supabase/lists';
 import { getMediaKey } from '@/utils/listKeys';
 
 type Status = 'loading' | 'success' | 'error';
+type ListsTab = 'mine' | 'saved';
+
+// The real website has no "My Lists"/"Saved Lists" tab split — its Lists
+// section (components/profile/UserListsSection.tsx) is titled plainly
+// "Lists" and only ever shows the profile owner's own lists; Saved Lists
+// (list_saves) has no dedicated browsing view on web at all (confirmed —
+// same audit finding as Home's Friends Activity). This tab structure is a
+// deliberate mobile-only enhancement to surface list_saves, which the
+// website's data model already supports but never gave its own screen.
 
 function ListCard({ list, onPress }: { list: UserListSummary; onPress: () => void }) {
   return (
@@ -31,6 +40,7 @@ function ListCard({ list, onPress }: { list: UserListSummary; onPress: () => voi
             </View>
           )}
         </View>
+        {list.ownerName ? <Text style={styles.cardOwner} numberOfLines={1}>by {list.ownerName}</Text> : null}
         {list.description ? <Text style={styles.cardDescription} numberOfLines={2}>{list.description}</Text> : null}
         <View style={styles.cardMetaRow}>
           <View style={styles.cardMetaLeft}>
@@ -50,6 +60,7 @@ function ListCard({ list, onPress }: { list: UserListSummary; onPress: () => voi
 
 export default function ListsScreen() {
   const { user, initializing } = useAuth();
+  const [activeTab, setActiveTab] = useState<ListsTab>('mine');
   const [status, setStatus] = useState<Status>('loading');
   const [lists, setLists] = useState<UserListSummary[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -57,7 +68,8 @@ export default function ListsScreen() {
   const load = useCallback(() => {
     if (!user) return;
     setStatus('loading');
-    fetchUserLists(user.id, true)
+    const fetcher = activeTab === 'mine' ? fetchUserLists(user.id, true) : fetchSavedLists(user.id);
+    fetcher
       .then((data) => {
         setLists(data);
         setStatus('success');
@@ -65,7 +77,7 @@ export default function ListsScreen() {
       .catch(() => {
         setStatus('error');
       });
-  }, [user]);
+  }, [user, activeTab]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -91,19 +103,36 @@ export default function ListsScreen() {
     );
   }
 
+  const switchTab = (tab: ListsTab) => {
+    if (tab === activeTab) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setActiveTab(tab);
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Lists</Text>
-        <Pressable
-          style={styles.newListBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            setEditorOpen(true);
-          }}
-        >
-          <MaterialIcons name="add" size={16} color={RS.button.primaryText} />
-          <Text style={styles.newListLabel}>New List</Text>
+        {activeTab === 'mine' && (
+          <Pressable
+            style={styles.newListBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setEditorOpen(true);
+            }}
+          >
+            <MaterialIcons name="add" size={16} color={RS.button.primaryText} />
+            <Text style={styles.newListLabel}>New List</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <View style={styles.tabRow}>
+        <Pressable style={[styles.tabPill, activeTab === 'mine' && styles.tabPillActive]} onPress={() => switchTab('mine')}>
+          <Text style={[styles.tabLabel, activeTab === 'mine' && styles.tabLabelActive]}>My Lists</Text>
+        </Pressable>
+        <Pressable style={[styles.tabPill, activeTab === 'saved' && styles.tabPillActive]} onPress={() => switchTab('saved')}>
+          <Text style={[styles.tabLabel, activeTab === 'saved' && styles.tabLabelActive]}>Saved Lists</Text>
         </Pressable>
       </View>
 
@@ -115,10 +144,16 @@ export default function ListsScreen() {
         </View>
       ) : lists.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyText}>You haven&apos;t created any lists yet.</Text>
-          <Pressable style={styles.emptyCta} onPress={() => setEditorOpen(true)}>
-            <Text style={styles.emptyCtaLabel}>Create your first list</Text>
-          </Pressable>
+          {activeTab === 'mine' ? (
+            <>
+              <Text style={styles.emptyText}>You haven&apos;t created any lists yet.</Text>
+              <Pressable style={styles.emptyCta} onPress={() => setEditorOpen(true)}>
+                <Text style={styles.emptyCtaLabel}>Create your first list</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.emptyText}>Lists you save from other members will show up here.</Text>
+          )}
         </View>
       ) : (
         <FlatList<UserListSummary>
@@ -154,13 +189,39 @@ const styles = StyleSheet.create({
     justifyContent:    'space-between',
     paddingHorizontal: RS.spacing.md,
     paddingTop:        RS.spacing.sm,
-    paddingBottom:     RS.spacing.md,
+    paddingBottom:     RS.spacing.sm,
   },
   header: {
     fontSize:      RS.typography.display - 8,
     fontWeight:    '700',
     color:         RS.colors.textPrimary,
     letterSpacing: RS.letterSpacing.tight,
+  },
+  tabRow: {
+    flexDirection:     'row',
+    gap:               RS.spacing.xs,
+    paddingHorizontal: RS.spacing.md,
+    paddingBottom:     RS.spacing.md,
+  },
+  tabPill: {
+    borderRadius:      RS.button.radius,
+    borderWidth:       0.5,
+    borderColor:       RS.colors.border,
+    backgroundColor:   RS.colors.elevated,
+    paddingHorizontal: 14,
+    paddingVertical:   7,
+  },
+  tabPillActive: {
+    backgroundColor: RS.button.primaryFill,
+    borderColor:      RS.button.primaryBorder,
+  },
+  tabLabel: {
+    fontSize:   RS.typography.caption,
+    fontWeight: '700',
+    color:      RS.colors.textSecondary,
+  },
+  tabLabelActive: {
+    color: RS.button.primaryText,
   },
   newListBtn: {
     flexDirection:     'row',
@@ -241,6 +302,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     color:         'rgba(251,191,36,0.85)',
+  },
+  cardOwner: {
+    fontSize:   RS.typography.overline,
+    fontWeight: '600',
+    color:      RS.colors.textMuted,
   },
   cardDescription: {
     fontSize: RS.typography.caption + 1,

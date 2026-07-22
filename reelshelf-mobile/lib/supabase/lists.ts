@@ -21,6 +21,16 @@ function toRouteId(mediaType: string, mediaId: string): string {
   return `${prefix}-${bareId}`;
 }
 
+interface RawListRow {
+  id:          string;
+  title:       string;
+  description: string | null;
+  visibility:  string;
+  is_ranked:   boolean;
+  like_count:  number | null;
+  save_count:  number | null;
+}
+
 // ── List summaries (Lists tab / Profile Lists tab+preview) ──────────────────
 export interface UserListSummary {
   id:             string;
@@ -32,6 +42,9 @@ export interface UserListSummary {
   saveCount:      number;
   itemCount:      number;
   previewPosters: string[]; // already resolved via resolveImageUrl
+  /** Only populated by fetchSavedLists — someone else's list, worth showing
+   *  whose it is in a browsing context. Undefined for the owner's own list. */
+  ownerName?:     string | null;
 }
 
 /** isOwnerView=false (viewing someone else's lists) only returns their
@@ -48,9 +61,19 @@ export async function fetchUserLists(userId: string, isOwnerView: boolean): Prom
 
   const { data: lists, error: listsErr } = await query;
   if (listsErr) throw listsErr;
-  if (!lists || lists.length === 0) return [];
+  return attachCoversAndCounts(client, (lists ?? []) as RawListRow[]);
+}
 
-  const listIds = lists.map((l) => l.id as string);
+/** Lists shared by their id, with covers/counts resolved — the common tail
+ *  end of both fetchUserLists and fetchSavedLists. `ownerNameById` is only
+ *  passed by fetchSavedLists (browsing other people's lists). */
+async function attachCoversAndCounts(
+  client: NonNullable<typeof supabase>,
+  lists: RawListRow[],
+  ownerNameById?: Map<string, string | null>,
+): Promise<UserListSummary[]> {
+  if (lists.length === 0) return [];
+  const listIds = lists.map((l) => l.id);
   const { data: items, error: itemsErr } = await client
     .from('user_list_items')
     .select('list_id, poster_url')
@@ -69,16 +92,51 @@ export async function fetchUserLists(userId: string, isOwnerView: boolean): Prom
   }
 
   return lists.map((l) => ({
-    id:             l.id as string,
-    title:          l.title as string,
-    description:    l.description as string | null,
+    id:             l.id,
+    title:          l.title,
+    description:    l.description,
     visibility:     l.visibility as ListVisibility,
-    isRanked:       l.is_ranked as boolean,
-    likeCount:      (l.like_count as number) ?? 0,
-    saveCount:      (l.save_count as number) ?? 0,
-    itemCount:      countByList.get(l.id as string) ?? 0,
-    previewPosters: (itemsByList.get(l.id as string) ?? []).filter(Boolean),
+    isRanked:       l.is_ranked,
+    likeCount:      l.like_count ?? 0,
+    saveCount:      l.save_count ?? 0,
+    itemCount:      countByList.get(l.id) ?? 0,
+    previewPosters: (itemsByList.get(l.id) ?? []).filter(Boolean),
+    ownerName:      ownerNameById?.get(l.id) ?? undefined,
   }));
+}
+
+/** Lists the current user has saved (list_saves), NOT lists they own —
+ *  newest-saved first. A list that's since been made private/deleted simply
+ *  won't come back from the user_lists lookup (RLS + the row being gone),
+ *  so it's naturally dropped here without any extra visibility check needed. */
+export async function fetchSavedLists(userId: string): Promise<UserListSummary[]> {
+  const client = requireClient();
+  const { data: saves, error: savesErr } = await client
+    .from('list_saves')
+    .select('list_id, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (savesErr) throw savesErr;
+  if (!saves || saves.length === 0) return [];
+
+  const listIds = saves.map((s) => s.list_id as string);
+  const { data: lists, error: listsErr } = await client
+    .from('user_lists')
+    .select('id, title, description, visibility, is_ranked, like_count, save_count, user_id, profiles(username, display_name)')
+    .in('id', listIds);
+  if (listsErr) throw listsErr;
+
+  const ownerNameById = new Map<string, string | null>();
+  for (const l of lists ?? []) {
+    const owner = Array.isArray(l.profiles) ? l.profiles[0] : (l.profiles as any);
+    ownerNameById.set(l.id as string, (owner?.display_name || owner?.username) ?? null);
+  }
+
+  // .in() doesn't preserve order — reassemble in save order (newest first).
+  const listById = new Map((lists ?? []).map((l) => [l.id as string, l as RawListRow]));
+  const ordered = listIds.map((id) => listById.get(id)).filter((l): l is RawListRow => !!l);
+
+  return attachCoversAndCounts(client, ordered, ownerNameById);
 }
 
 // ── List detail ──────────────────────────────────────────────────────────────
