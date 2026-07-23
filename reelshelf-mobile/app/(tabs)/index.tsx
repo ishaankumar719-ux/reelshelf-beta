@@ -8,17 +8,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
-import { CollectionsSection } from '@/components/CollectionsSection';
 import { ContinueWatchingCard } from '@/components/continue-watching-card';
 import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
-import { HomeBecauseYouLoved } from '@/components/HomeBecauseYouLoved';
+import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
 import { HomeFriendsActivity } from '@/components/HomeFriendsActivity';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
-import { TrendingCarousel } from '@/components/TrendingCarousel';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { RS } from '@/constants/theme';
@@ -114,30 +112,20 @@ export default function HomeScreen() {
               </View>
             </RevealOnMount>
 
-            {/* 6 ── Trending Today */}
+            {/* 6-10 ── The real website's unified 10-section Home/Discover
+                structure (Trending Today, Because You Loved, New in Cinemas,
+                Trending TV, Trending Books, Hidden Gems, Award Winners,
+                Browse by Genre, Pick Something Random, Collections) —
+                identical shared component to Discover, see
+                components/HomeDiscoverSections.tsx. Replaces the previous
+                separate TrendingCarousel (static seed data) + the 3 static
+                "Because You Loved" rows + CollectionsSection call. Home's
+                own additional real mobile-only sections (Continue Watching,
+                Daily Reel, Friends Activity above; Book of the Week below)
+                are NOT part of the real website's 10 sections and keep
+                their existing positions around this block. */}
             <RevealOnMount delay={180}>
-              <View style={styles.section}>
-                <SectionHeader
-                  title="Trending Today"
-                  subtitle="Stories everyone is talking about."
-                />
-                <TrendingCarousel />
-              </View>
-            </RevealOnMount>
-
-            {/* 7 ── Because You Loved {real anchor title} — real, live, per-user.
-                Replaces the previous 3 static hardcoded rows (Babylon/Dune/
-                The Bear) — see components/HomeBecauseYouLoved.tsx header
-                comment for the real website logic this ports. Renders
-                nothing if the user has no qualifying diary history yet,
-                matching the real website's own fallback exactly. */}
-            <RevealOnMount delay={220}>
-              <HomeBecauseYouLoved refreshSignal={refreshSignal} />
-            </RevealOnMount>
-
-            {/* 10 ── Collections — hand-picked editorial carousel */}
-            <RevealOnMount delay={320}>
-              <CollectionsSection />
+              <HomeDiscoverSections refreshSignal={refreshSignal} />
             </RevealOnMount>
 
             {/* 11 ── Book of the Week */}
