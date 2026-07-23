@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the checked-in template — no real secrets in this one, and every
+# other .env* pattern above would otherwise block it from ever reaching git.
+!.env.example
+!**/.env.example
 
 # vercel
 .vercel
