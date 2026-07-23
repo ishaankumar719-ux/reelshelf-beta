@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedRef, useScrollViewOffset } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { EditProfileModal } from '@/components/EditProfileModal';
@@ -109,6 +109,7 @@ interface ProfileViewProps {
 export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const { user: sessionUser } = useAuth();
   const isOwnProfile = sessionUser?.id === userId;
+  const insets = useSafeAreaInsets();
   // ?edit=1 auto-opens the Edit Profile modal — used by Settings > Edit Profile,
   // which has no dedicated route of its own to link to (EditProfileModal is a
   // modal owned by this screen, not a separate screen).
@@ -429,7 +430,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             </Pressable>
           )}
           {isOwnProfile && (
-            <Pressable style={styles.settingsBtn} onPress={() => router.push('/settings')} hitSlop={8}>
+            <Pressable
+              style={[styles.settingsBtn, { top: insets.top + RS.spacing.sm }]}
+              onPress={() => router.push('/settings')}
+              hitSlop={12}
+            >
               <MaterialIcons name="settings" size={22} color={RS.colors.textPrimary} />
             </Pressable>
           )}
@@ -918,7 +923,15 @@ const styles = StyleSheet.create({
   retryBtn: { marginTop: RS.spacing.md, borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
   retryLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
   backBtn: { paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.xs },
-  settingsBtn: { position: 'absolute', top: RS.spacing.sm, right: RS.spacing.md, zIndex: 10, padding: RS.spacing.xs },
+  // No `top` here on purpose — it's set inline as `insets.top + RS.spacing.sm`.
+  // Verified against Yoga's actual AbsoluteLayout.cpp: an absolutely-positioned
+  // child with an EXPLICIT top/left value is positioned relative to the
+  // parent's BORDER box only, not its padding box — parent padding (which is
+  // exactly how SafeAreaView applies the safe-area inset) is only folded in
+  // for absolute children with NO explicit inset at all. A hardcoded `top`
+  // here would silently sit under the status bar/Dynamic Island despite
+  // SafeAreaView's padding, which is what was actually happening.
+  settingsBtn: { position: 'absolute', right: RS.spacing.md, zIndex: 10, padding: RS.spacing.xs },
   scrollContent: { paddingBottom: RS.tabBar.contentBottomPad },
   // Compacted hero: smaller avatar (88px, matches the website's own size),
   // tighter top/bottom padding — Followers/Following now lives here as one
