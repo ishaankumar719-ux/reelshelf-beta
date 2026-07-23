@@ -305,9 +305,18 @@ function DailyPickHero({ pick, onPress }: { pick: DailyPick; onPress: () => void
 }
 
 // ── Question of the Day ──────────────────────────────────────────────────
+// Was `${color}1A`/`${color}55` — but CAT_COLORS values are already
+// rgba(r,g,b,a) strings, and appending a hex alpha suffix to an rgba()
+// string produces an invalid color (e.g. "rgba(212,175,55,0.95)1A"), not a
+// more-transparent variant of it. That silently broke the tinted background,
+// leaving near-full-opacity colored text with no reliable dark backdrop
+// behind it — hence the low contrast. Fixed by switching to the app's
+// existing solid dark-chip pattern (same tokens as diary.tsx's FilterPill):
+// a flat RS.colors.elevated background + neutral RS.colors.border border,
+// with the category color used only as the text accent.
 function StreakPill({ label, streak, color }: { label: string; streak: number; color: string }) {
   return (
-    <View style={[styles.streakPill, { borderColor: `${color}55`, backgroundColor: `${color}1A` }]}>
+    <View style={styles.streakPill}>
       <Text style={[styles.streakPillLabel, { color }]}>{label} · {streak}-day streak</Text>
     </View>
   );
@@ -478,7 +487,10 @@ const styles = StyleSheet.create({
   headerDate: { fontSize: RS.typography.body, color: RS.colors.textSecondary, fontStyle: 'italic' },
   headerSubtitle: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
   streakRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  streakPill: { borderRadius: RS.badge.pillRadius, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  streakPill: {
+    borderRadius: RS.badge.pillRadius, borderWidth: 0.5, borderColor: RS.colors.border,
+    backgroundColor: RS.colors.elevated, paddingHorizontal: 10, paddingVertical: 4,
+  },
   streakPillLabel: { fontSize: 11, fontWeight: '600', letterSpacing: RS.letterSpacing.normal },
   section: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
@@ -494,8 +506,16 @@ const styles = StyleSheet.create({
   heroMeta: { fontSize: RS.typography.caption, color: 'rgba(255,255,255,0.6)' },
   heroOverview: { fontSize: RS.typography.body, color: 'rgba(255,255,255,0.75)', lineHeight: 20 },
   reasonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  reasonChip: { borderRadius: RS.button.radius, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4 },
-  reasonChipLabel: { fontSize: 11, color: 'rgba(255,255,255,0.85)' },
+  // Was rgba(255,255,255,0.1) — a 10%-opacity tint lets the hero backdrop
+  // art show through almost entirely, so legibility depended on that exact
+  // spot of the artwork staying dark (it often doesn't). Same reliably-opaque
+  // dark-chip token as streakPill above, so it reads clearly regardless of
+  // what's behind it.
+  reasonChip: {
+    borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border,
+    backgroundColor: RS.colors.elevated, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  reasonChipLabel: { fontSize: 11, color: RS.colors.textPrimary },
   rerollBtn: {
     alignSelf: 'flex-start', borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border,
     paddingHorizontal: 14, paddingVertical: 8,
