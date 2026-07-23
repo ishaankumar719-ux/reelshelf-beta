@@ -11,7 +11,7 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
@@ -73,8 +73,17 @@ export default function SettingsScreen() {
     router.replace('/login');
   };
 
+  // Constants.expoConfig reads straight from app.json — correct in Expo Go
+  // (this testing context). Constants.nativeApplicationVersion/
+  // nativeBuildVersion reflect the actual compiled native binary and would
+  // show Expo Go's own container app version here instead of this project's,
+  // so those are deliberately not used until this is a real standalone/dev-
+  // client build. Platform-branched — ios.buildNumber and android.versionCode
+  // are independent values that can diverge (e.g. an Android-only re-submit).
   const appVersion = Constants.expoConfig?.version ?? '—';
-  const buildNumber = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode ?? '—';
+  const buildNumber = Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.buildNumber ?? '—'
+    : Constants.expoConfig?.android?.versionCode?.toString() ?? '—';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
