@@ -7,7 +7,6 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
-import { BecauseYouLovedSection } from '@/components/BecauseYouLovedCarousel';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
 import { CollectionsSection } from '@/components/CollectionsSection';
 import { ContinueWatchingCard } from '@/components/continue-watching-card';
@@ -15,6 +14,7 @@ import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
+import { HomeBecauseYouLoved } from '@/components/HomeBecauseYouLoved';
 import { HomeFriendsActivity } from '@/components/HomeFriendsActivity';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
@@ -22,21 +22,16 @@ import { TrendingCarousel } from '@/components/TrendingCarousel';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { RS } from '@/constants/theme';
-import {
-  bylBabylon,
-  bylDune,
-  bylTheBear,
-  continueWatching,
-} from '@/data/seedHomeContent';
+import { continueWatching } from '@/data/seedHomeContent';
 
 export default function HomeScreen() {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
 
-  // Pull-to-refresh — Home's other sections are static editorial seed data
-  // with nothing to re-fetch; Friends Activity is the one real, live section,
-  // so refreshing bumps a signal it depends on rather than reloading the
-  // whole screen.
+  // Pull-to-refresh — most of Home's sections are static editorial seed data
+  // with nothing to re-fetch; Friends Activity and Because You Loved are the
+  // two real, live sections, so refreshing bumps a signal they both depend
+  // on rather than reloading the whole screen.
   const [refreshing, setRefreshing] = useState(false);
   const [refreshSignal, setRefreshSignal] = useState(0);
   const handleRefresh = () => {
@@ -130,31 +125,14 @@ export default function HomeScreen() {
               </View>
             </RevealOnMount>
 
-            {/* 7 ── Because You Loved: Babylon */}
+            {/* 7 ── Because You Loved {real anchor title} — real, live, per-user.
+                Replaces the previous 3 static hardcoded rows (Babylon/Dune/
+                The Bear) — see components/HomeBecauseYouLoved.tsx header
+                comment for the real website logic this ports. Renders
+                nothing if the user has no qualifying diary history yet,
+                matching the real website's own fallback exactly. */}
             <RevealOnMount delay={220}>
-              <BecauseYouLovedSection
-                title="Babylon"
-                subtitle="Stories about obsession, ambition and sacrifice."
-                items={bylBabylon}
-              />
-            </RevealOnMount>
-
-            {/* 8 ── Because You Loved: Dune */}
-            <RevealOnMount delay={260}>
-              <BecauseYouLovedSection
-                title="Dune"
-                subtitle="Epic worlds built with painstaking detail."
-                items={bylDune}
-              />
-            </RevealOnMount>
-
-            {/* 9 ── Because You Loved: The Bear */}
-            <RevealOnMount delay={300}>
-              <BecauseYouLovedSection
-                title="The Bear"
-                subtitle="Pressure, precision, and people who care too much."
-                items={bylTheBear}
-              />
+              <HomeBecauseYouLoved refreshSignal={refreshSignal} />
             </RevealOnMount>
 
             {/* 10 ── Collections — hand-picked editorial carousel */}

@@ -1,4 +1,4 @@
-import { FlatList, type ListRenderItemInfo, StyleSheet, View } from 'react-native';
+import { FlatList, type ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { PosterCard } from '@/components/poster-card';
@@ -9,13 +9,21 @@ import { getMediaKey } from '@/utils/listKeys';
 
 const ITEM_SEP = RS.spacing.sm;
 
+export interface BecauseYouLovedItem extends SeedCardItem {
+  /** Real generated "why" text for this specific item (generateReasons()[0])
+   *  — matches the website's own per-card reason line (DiscoverClient.tsx's
+   *  `.p-card-reason`). Optional so this component still works for any
+   *  future non-scored caller. */
+  reason?: string;
+}
+
 interface BecauseYouLovedSectionProps {
   /** The title the rec is based on — becomes the section heading (serif) */
   title:    string;
   /** Editorial subtitle below the heading */
   subtitle: string;
   /** Poster cards for this mood group */
-  items:    SeedCardItem[];
+  items:    BecauseYouLovedItem[];
 }
 
 export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLovedSectionProps) {
@@ -27,7 +35,7 @@ export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLov
         subtitle={subtitle}
         titleSerif
       />
-      <FlatList<SeedCardItem>
+      <FlatList<BecauseYouLovedItem>
         data={items}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -36,18 +44,23 @@ export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLov
         contentContainerStyle={styles.list}
         snapToInterval={RS.card.posterWidth + ITEM_SEP}
         decelerationRate="fast"
-        renderItem={({ item }: ListRenderItemInfo<SeedCardItem>) => (
-          <PosterCard
-            title={item.title}
-            year={item.year}
-            mediaType={item.mediaType}
-            posterUrl={item.posterUrl}
-            onPress={() =>
-              router.push(
-                `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
-              )
-            }
-          />
+        renderItem={({ item }: ListRenderItemInfo<BecauseYouLovedItem>) => (
+          <View style={{ width: RS.card.posterWidth }}>
+            <PosterCard
+              title={item.title}
+              year={item.year}
+              mediaType={item.mediaType}
+              posterUrl={item.posterUrl}
+              onPress={() =>
+                router.push(
+                  `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
+                )
+              }
+            />
+            {item.reason ? (
+              <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
+            ) : null}
+          </View>
         )}
         getItemLayout={(_, index) => ({
           length: RS.card.posterWidth,
@@ -65,5 +78,11 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: RS.spacing.md,
+  },
+  reason: {
+    marginTop:  RS.spacing.xs,
+    fontSize:   RS.typography.caption,
+    color:      RS.colors.textMuted,
+    lineHeight: 14,
   },
 });

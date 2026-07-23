@@ -364,3 +364,56 @@ export async function pickBest(ctx: UserContext): Promise<ScoredCandidate | null
   allEligible.sort((a, b) => b.totalScore - a.totalScore);
   return allEligible[0];
 }
+
+/** Same candidate pool + scoring pipeline as pickBest, but returns the top N
+ *  distinct candidates instead of a single winner — powers Home's real
+ *  "Because You Loved…" row (a horizontal list), not just Daily Reel's single
+ *  pick. Deliberately reuses every helper above rather than re-implementing
+ *  candidate fetching/scoring a second time. */
+export async function pickTopN(ctx: UserContext, n: number): Promise<ScoredCandidate[]> {
+  const daySeed = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+
+  const [movieP1, movieP2, tvP1, tvP2, books] = await Promise.all([
+    fetchTmdbPopular('movie', 1), fetchTmdbPopular('movie', 2),
+    fetchTmdbPopular('tv', 1), fetchTmdbPopular('tv', 2),
+    fetchBookCandidates(daySeed),
+  ]);
+
+  const movieCandidates: Candidate[] = [...movieP1, ...movieP2]
+    .filter((m) => !isExcluded('film', m.id, ctx))
+    .map((m) => ({ mediaType: 'film' as const, mediaId: m.id, title: m.title, year: m.year, posterUrl: m.posterUrl, overview: m.overview, genres: m.genres, creator: null, voteAverage: m.voteAverage }));
+
+  const tvCandidates: Candidate[] = [...tvP1, ...tvP2]
+    .filter((t) => !isExcluded('tv', t.id, ctx))
+    .map((t) => ({ mediaType: 'tv' as const, mediaId: t.id, title: t.title, year: t.year, posterUrl: t.posterUrl, overview: t.overview, genres: t.genres, creator: null, voteAverage: t.voteAverage }));
+
+  const bookCandidates: Candidate[] = books
+    .filter((b) => !isExcluded('book', b.id, ctx))
+    .map((b) => ({ mediaType: 'book' as const, mediaId: b.id, title: b.title, year: b.year, posterUrl: b.posterUrl, overview: b.overview, genres: b.genres, creator: b.creator, voteAverage: b.voteAverage }));
+
+  const scoredBooks = bookCandidates.map((c) => scoreCandidate(c, ctx));
+  const preScoredScreen = [...movieCandidates, ...tvCandidates].map((c) => scoreCandidate(c, ctx));
+
+  const eligiblePreScreen = preScoredScreen.filter((c) => c.totalScore > -500);
+  eligiblePreScreen.sort((a, b) => b.totalScore - a.totalScore);
+  const topForCredits = eligiblePreScreen.slice(0, 15);
+
+  const withCredits = await Promise.all(
+    topForCredits.map(async (c) => {
+      const parsed = c.mediaId.startsWith('film-')
+        ? { kind: 'movie' as TmdbKind, tmdbId: c.mediaId.slice(5) }
+        : { kind: 'tv' as TmdbKind, tmdbId: c.mediaId.slice(3) };
+      try {
+        const credits = await fetchTmdbCredits(parsed.kind, parsed.tmdbId);
+        const withCreator: Candidate = { ...c, creator: credits.director };
+        return scoreCandidate(withCreator, ctx);
+      } catch {
+        return c;
+      }
+    }),
+  );
+
+  const allEligible = [...withCredits, ...scoredBooks].filter((c) => c.totalScore > -500);
+  allEligible.sort((a, b) => b.totalScore - a.totalScore);
+  return allEligible.slice(0, n);
+}
