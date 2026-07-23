@@ -14,6 +14,7 @@ import { AccessibilityInfo, Dimensions, StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
 import { useAtmosphere } from '@/contexts/AtmosphereContext';
+import { useSettings } from '@/contexts/SettingsContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const ATMO_H = Math.round(SCREEN_H * 0.38);
@@ -77,6 +78,7 @@ interface Props {
 
 export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
   const { baseColors, overrideColor } = useAtmosphere();
+  const { ambientEffectsEnabled } = useSettings();
 
   // ── Reduce Motion ───────────────────────────────────────────────────────────
   // Keep both a React state (for JSX/effects) and a SharedValue (for worklets)
@@ -175,6 +177,10 @@ export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
   const c1t = toColors[0]   ?? '#1a1020';
   const c2t = toColors[1]   ?? '#0f1a1a';
   const c3t = toColors[2]   ?? toColors[0] ?? '#1a1020';
+
+  // Settings > Appearance > Ambient Effects — checked last, after every hook
+  // above has run unconditionally (Rules of Hooks).
+  if (!ambientEffectsEnabled) return null;
 
   return (
     <View style={[styles.container, dimmed && styles.containerDimmed]} pointerEvents="none">

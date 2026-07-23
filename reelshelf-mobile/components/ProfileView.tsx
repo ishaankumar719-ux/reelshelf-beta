@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
@@ -108,6 +108,10 @@ interface ProfileViewProps {
 export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const { user: sessionUser } = useAuth();
   const isOwnProfile = sessionUser?.id === userId;
+  // ?edit=1 auto-opens the Edit Profile modal — used by Settings > Edit Profile,
+  // which has no dedicated route of its own to link to (EditProfileModal is a
+  // modal owned by this screen, not a separate screen).
+  const params = useLocalSearchParams<{ edit?: string }>();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'not_found'>('loading');
   const [refreshing, setRefreshing] = useState(false);
@@ -118,7 +122,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [rushmoreEditorOpen, setRushmoreEditorOpen] = useState(false);
   const [following, setFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(params.edit === '1');
   const [listEditorOpen, setListEditorOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
@@ -418,6 +422,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
           {showBackButton && (
             <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
               <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
+            </Pressable>
+          )}
+          {isOwnProfile && (
+            <Pressable style={styles.settingsBtn} onPress={() => router.push('/settings')} hitSlop={8}>
+              <MaterialIcons name="settings" size={22} color={RS.colors.textPrimary} />
             </Pressable>
           )}
 
@@ -900,6 +909,7 @@ const styles = StyleSheet.create({
   retryBtn: { marginTop: RS.spacing.md, borderRadius: RS.button.radius, backgroundColor: RS.button.filledBg, paddingHorizontal: RS.button.paddingH, paddingVertical: RS.button.paddingV },
   retryLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.button.filledText },
   backBtn: { paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.xs },
+  settingsBtn: { position: 'absolute', top: RS.spacing.sm, right: RS.spacing.md, zIndex: 10, padding: RS.spacing.xs },
   scrollContent: { paddingBottom: RS.tabBar.contentBottomPad },
   // Compacted hero: smaller avatar (88px, matches the website's own size),
   // tighter top/bottom padding — Followers/Following now lives here as one

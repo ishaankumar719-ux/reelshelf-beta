@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RS } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 
 const RSTheme = {
   ...DarkTheme,
@@ -27,22 +28,27 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <ThemeProvider value={RSTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
-            <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
-            <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
-            {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
-            <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
-            <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
-            <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
-            <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
-            <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
-          </Stack>
-          <StatusBar style="light" />
-        </ThemeProvider>
+        <SettingsProvider>
+          <ThemeProvider value={RSTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
+              <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen name="modal"           options={{ presentation: 'modal', title: 'Modal' }} />
+              {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
+              <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
+              <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
+              <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
+              <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
+              <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen name="settings/index"          options={{ headerShown: false }} />
+              <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen name="settings/delete-account" options={{ headerShown: false }} />
+            </Stack>
+            <StatusBar style="light" />
+          </ThemeProvider>
+        </SettingsProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
