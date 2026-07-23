@@ -198,6 +198,27 @@ export async function updateProfile(userId: string, fields: ProfileEditFields): 
   return { error: null };
 }
 
+// ── Privacy — profiles.is_public. This mobile app's Edit Profile screen does
+// not yet surface this control (verified: no is_public reference anywhere in
+// EditProfileModal.tsx, a pre-existing gap unrelated to Settings), so Settings
+// is currently mobile's only UI for it. Reading/writing the column directly
+// here keeps it a single source of truth regardless of how many screens read it.
+export async function fetchIsPublic(userId: string): Promise<boolean> {
+  const client = requireClient();
+  const { data, error } = await client.from('profiles').select('is_public').eq('id', userId).maybeSingle();
+  if (error) throw error;
+  return data?.is_public ?? true;
+}
+
+export async function updateIsPublic(userId: string, isPublic: boolean): Promise<{ error: string | null }> {
+  const client = requireClient();
+  const { error } = await client
+    .from('profiles')
+    .update({ is_public: isPublic, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  return { error: error ? error.message : null };
+}
+
 // ── Avatar upload — real image upload to the existing public "avatars" bucket ──
 export async function pickAndUploadAvatar(userId: string): Promise<{ url: string | null; error: string | null }> {
   const client = requireClient();
