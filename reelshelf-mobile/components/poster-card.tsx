@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Animated from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -33,6 +34,13 @@ export function PosterCard({
   const badge   = mediaType ? RS.badge[mediaType] : null;
   const initial = title ? title[0].toUpperCase() : '';
 
+  // A URL can be well-formed but still fail to actually load (404, timeout,
+  // transient network drop) — onError catches that and falls back to the
+  // same initial-letter treatment already used for a missing posterUrl,
+  // rather than a blank rectangle.
+  const [broken, setBroken] = useState(false);
+  const showFallback = !posterUrl || broken;
+
   const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
 
   const handlePress = () => {
@@ -50,12 +58,13 @@ export function PosterCard({
       <Animated.View style={[styles.outer, { width, height, borderRadius: RS.card.radius }, animStyle]}>
         {/* Inner: overflow:hidden clips image + gradient to rounded rect */}
         <View style={styles.inner}>
-          {posterUrl ? (
+          {!showFallback ? (
             <Image
-              source={{ uri: posterUrl }}
+              source={{ uri: posterUrl! }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={200}
+              onError={() => setBroken(true)}
             />
           ) : (
             <LinearGradient
@@ -68,7 +77,7 @@ export function PosterCard({
             </LinearGradient>
           )}
 
-          {posterUrl && (
+          {!showFallback && (
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
               start={{ x: 0, y: 0.25 }}

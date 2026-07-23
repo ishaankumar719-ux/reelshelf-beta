@@ -65,16 +65,19 @@ function PagingDots({ count, active }: { count: number; active: number }) {
 
 // ── Single poster visual ───────────────────────────────────────────────────────
 function PosterImage({ item }: { item: SeedCardItem }) {
+  const [broken, setBroken] = useState(false);
+  const showFallback = !item.posterUrl || broken;
   return (
     // posterClip clips image to rounded rect (overflow:hidden).
     // Shadow lives on the PARENT Animated.View (no overflow, so shadow renders on iOS).
     <View style={styles.posterClip}>
-      {item.posterUrl ? (
+      {!showFallback ? (
         <Image
-          source={{ uri: item.posterUrl }}
+          source={{ uri: item.posterUrl! }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={200}
+          onError={() => setBroken(true)}
         />
       ) : (
         <View style={styles.posterFallback} />

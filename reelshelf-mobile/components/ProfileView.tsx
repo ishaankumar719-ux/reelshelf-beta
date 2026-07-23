@@ -123,6 +123,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [following, setFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(params.edit === '1');
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const [listEditorOpen, setListEditorOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
@@ -439,8 +440,13 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
             {/* ── Atmospheric Hero (compact) ───────────────────────────── */}
             <View style={styles.hero}>
               <View style={styles.avatarOuter}>
-                {profile.avatarUrl ? (
-                  <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} contentFit="cover" />
+                {profile.avatarUrl && !avatarBroken ? (
+                  <Image
+                    source={{ uri: profile.avatarUrl }}
+                    style={styles.avatar}
+                    contentFit="cover"
+                    onError={() => setAvatarBroken(true)}
+                  />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
                     <Text style={styles.avatarInitial}>{initial}</Text>

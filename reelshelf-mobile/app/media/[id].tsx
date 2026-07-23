@@ -15,6 +15,7 @@ import { FriendActivity } from '@/components/FriendActivity';
 import { MediaCastCrew } from '@/components/MediaCastCrew';
 import { MediaCrossMediaRow } from '@/components/MediaCrossMediaRow';
 import { MediaHero } from '@/components/MediaHero';
+import { NetworkErrorState } from '@/components/NetworkErrorState';
 import { MediaPosterRow } from '@/components/MediaPosterRow';
 import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
 import { MediaReviews } from '@/components/MediaReviews';
@@ -62,6 +63,11 @@ export default function MediaDetailScreen() {
   const seedDetail = mediaDetails[id];
 
   const heroLoading = !isBook && live.details.status === 'loading';
+  // TMDB details failed to load entirely (network drop, TMDB outage) — the
+  // rest of the screen has nothing real to show without it (previously this
+  // silently fell through to seed-fallback placeholders with no indication
+  // anything had gone wrong, and no way to retry).
+  const detailsError = !isBook && live.details.status === 'error';
   // Cast & Crew depends on `credits` for cast/director/writer/composer, and
   // (TV only) on `details` for the creator field — wait for whichever of the
   // two this title actually needs.
@@ -180,6 +186,8 @@ export default function MediaDetailScreen() {
               <View style={styles.sections}>
                 {heroLoading ? (
                   <SkeletonHero />
+                ) : detailsError ? (
+                  <NetworkErrorState message="Couldn't load this title — check your connection and try again." onRetry={live.retry} />
                 ) : (
                   <MediaHero
                     title={title ?? '—'}

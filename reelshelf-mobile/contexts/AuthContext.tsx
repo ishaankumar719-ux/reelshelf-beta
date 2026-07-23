@@ -1,5 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '@/lib/supabase/client';
 import { completePendingSignupIfAny } from '@/lib/supabase/authFlow';
@@ -22,6 +23,10 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  // Tracks whether we've ever HAD a session, so a SIGNED_OUT transition can
+  // be told apart from "never logged in yet" (cold start) — only the former
+  // is a genuine session-expiry event worth redirecting for.
+  const hadSessionRef = useRef(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -36,14 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(data.session);
       setInitializing(false);
       if (data.session?.user) {
+        hadSessionRef.current = true;
         completePendingSignupIfAny(data.session.user.id).catch(() => {});
       }
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       if (nextSession?.user) {
+        hadSessionRef.current = true;
         completePendingSignupIfAny(nextSession.user.id).catch(() => {});
+      } else if (event === 'SIGNED_OUT' && hadSessionRef.current) {
+        // A previously-valid session just became invalid — either a manual
+        // sign-out (harmless double-navigate to the same place) or a
+        // genuinely expired/revoked refresh token (e.g. password changed
+        // elsewhere, session revoked). Either way, route to sign-in rather
+        // than leaving screens that assumed a logged-in state hanging.
+        hadSessionRef.current = false;
+        router.replace('/login');
       }
     });
 

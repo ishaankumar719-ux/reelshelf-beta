@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -38,7 +38,10 @@ interface MediaHeroProps {
 
 export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHeroProps) {
   const reduceMotion = useReduceMotion();
-  const hasBackdrop = !!detail?.backdropUrl;
+  const [backdropBroken, setBackdropBroken] = useState(false);
+  const [posterBroken, setPosterBroken] = useState(false);
+  const hasBackdrop = !!detail?.backdropUrl && !backdropBroken;
+  const showPoster = !!posterUrl && !posterBroken;
 
   // Poster "settles into place" shortly after the screen appears — a gentle
   // depth cue, distinct from (and nested inside) the whole-screen expand
@@ -75,6 +78,7 @@ export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHe
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             transition={250}
+            onError={() => setBackdropBroken(true)}
           />
           <LinearGradient
             colors={['rgba(7,7,7,0)', 'rgba(7,7,7,0.55)', RS.colors.base]}
@@ -94,12 +98,13 @@ export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHe
           ]}
         >
           <View style={styles.posterInner}>
-            {posterUrl ? (
+            {showPoster ? (
               <Image
-                source={{ uri: posterUrl }}
+                source={{ uri: posterUrl! }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 transition={250}
+                onError={() => setPosterBroken(true)}
               />
             ) : (
               <View style={[StyleSheet.absoluteFill, styles.posterFallback]}>

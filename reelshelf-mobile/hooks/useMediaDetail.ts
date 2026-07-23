@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { fetchCollectionMembershipForMedia, type MediaCollectionMembership } from '@/lib/supabase/collections';
 import type { MediaType } from '@/data/seedHomeContent';
@@ -90,6 +90,9 @@ export interface UseMediaDetailResult {
    *  lib/supabase/collections.ts. Applies to movie/TV/book alike, unlike the
    *  old TMDB-rule-based version this replaced (movie/TV only). */
   collections:     Resource<MediaCollectionMembership[]>;
+  /** Re-runs every resource fetch below — the Retry action behind the
+   *  screen-level NetworkErrorState when details.status === 'error'. */
+  retry: () => void;
 }
 
 /** Orchestrates every live TMDB call the Movie Detail screen needs, one independent
@@ -99,48 +102,53 @@ export function useMediaDetail(routeId: string): UseMediaDetailResult {
   const kind    = parsed?.kind ?? null;
   const tmdbId  = parsed?.tmdbId ?? null;
 
+  // Bumped by retry() — included in every resource's deps below so one
+  // Retry tap re-fires every in-flight/failed fetch together.
+  const [retryToken, setRetryToken] = useState(0);
+  const retry = useCallback(() => setRetryToken((t) => t + 1), []);
+
   const details = useTmdbResource<TmdbDetails>(
     kind && tmdbId ? () => fetchTmdbDetails(kind, tmdbId) : null,
-    [kind, tmdbId],
+    [kind, tmdbId, retryToken],
   );
 
   const needsFallbackBackdrop = kind && tmdbId && details.status === 'success' && !details.data?.backdropUrl;
   const fallbackBackdrop = useTmdbResource<string | null>(
     needsFallbackBackdrop ? () => fetchTmdbFallbackBackdrop(kind, tmdbId) : null,
-    [kind, tmdbId, needsFallbackBackdrop],
+    [kind, tmdbId, needsFallbackBackdrop, retryToken],
   );
 
   const credits = useTmdbResource<TmdbCredits>(
     kind && tmdbId ? () => fetchTmdbCredits(kind, tmdbId) : null,
-    [kind, tmdbId],
+    [kind, tmdbId, retryToken],
   );
 
   const recommendations = useTmdbResource<TmdbRecommendation[]>(
     kind && tmdbId ? () => fetchTmdbRecommendations(kind, tmdbId) : null,
-    [kind, tmdbId],
+    [kind, tmdbId, retryToken],
   );
 
   const watchProviders = useTmdbResource<TmdbWatchProviders>(
     kind && tmdbId ? () => fetchTmdbWatchProviders(kind, tmdbId) : null,
-    [kind, tmdbId],
+    [kind, tmdbId, retryToken],
   );
 
   const videos = useTmdbResource<TmdbVideo[]>(
     kind && tmdbId ? () => fetchTmdbVideos(kind, tmdbId) : null,
-    [kind, tmdbId],
+    [kind, tmdbId, retryToken],
   );
 
   const directorId = kind === 'movie' && credits.status === 'success' ? credits.data?.directorId ?? null : null;
   const moreFromDirector = useTmdbResource<TmdbRecommendation[]>(
     directorId && tmdbId ? () => fetchTmdbMoreFromDirector(directorId, tmdbId) : null,
-    [directorId, tmdbId],
+    [directorId, tmdbId, retryToken],
   );
 
   const identity = deriveMediaIdentity(routeId);
   const collections = useTmdbResource<MediaCollectionMembership[]>(
     identity ? () => fetchCollectionMembershipForMedia(identity.mediaType, identity.rawId) : null,
-    [identity?.mediaType, identity?.rawId],
+    [identity?.mediaType, identity?.rawId, retryToken],
   );
 
-  return { kind, details, credits, recommendations, watchProviders, videos, fallbackBackdrop, moreFromDirector, collections };
+  return { kind, details, credits, recommendations, watchProviders, videos, fallbackBackdrop, moreFromDirector, collections, retry };
 }
