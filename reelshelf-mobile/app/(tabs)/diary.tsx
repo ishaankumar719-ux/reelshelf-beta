@@ -349,10 +349,24 @@ const styles = StyleSheet.create({
     backgroundColor: RS.button.primaryFill,
     borderColor:      RS.button.primaryBorder,
   },
+  // Neither hypothesized cause was present: zero `textDecorationLine`
+  // anywhere in this file (or app-wide), and FilterPill's JSX has no child
+  // View/border element at all — just Pressable > Text, so nothing can sit
+  // absolutely-positioned across the middle of it. The reported "line" was
+  // real but came from this color value: RS.colors.textSecondary is only
+  // 55% opacity, and at fontSize 10 + fontWeight 700 + uppercase + wide
+  // letterSpacing (all four active at once, unique to this label among the
+  // app's other filter chips), the thin anti-aliased strokes of adjacent
+  // bold glyphs visually merge into what reads as a continuous horizontal
+  // line — confirmed by the screenshot, where only the low-opacity inactive
+  // labels showed it and the full-opacity green active labels didn't.
+  // Fixed by raising contrast to RS.colors.textPrimary (92%) — active vs.
+  // inactive is still clearly distinguished by hue (green vs. white), this
+  // only removes the low-opacity condition that was smearing the glyphs.
   filterLabel: {
     fontSize:   RS.typography.overline,
     fontWeight: '700',
-    color:      RS.colors.textSecondary,
+    color:      RS.colors.textPrimary,
     textTransform: 'uppercase',
     letterSpacing: RS.letterSpacing.wide,
   },
