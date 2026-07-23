@@ -60,6 +60,7 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/index"          options={{ headerShown: false }} />
                 <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />
                 <Stack.Screen name="settings/delete-account" options={{ headerShown: false }} />
+                <Stack.Screen name="list-discover"           options={{ headerShown: false }} />
               </Stack>
               <OfflineBanner />
               <StatusBar style="light" />

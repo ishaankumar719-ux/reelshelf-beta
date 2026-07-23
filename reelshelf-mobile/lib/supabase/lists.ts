@@ -139,6 +139,49 @@ export async function fetchSavedLists(userId: string): Promise<UserListSummary[]
   return attachCoversAndCounts(client, ordered, ownerNameById);
 }
 
+// ── Lists Discovery (app/lists/page.tsx + ListsDiscoveryClient.tsx) ─────────
+// Real website behavior ported exactly: one fetch of up to 100 PUBLIC lists,
+// newest first, then the caller sorts the same array client-side per the 3
+// real sort modes (trending_score desc, like_count desc, created_at desc —
+// each with created_at desc as the real tie-breaker for the first two,
+// matching ListsDiscoveryClient.tsx's actual comparator functions exactly).
+export interface DiscoveryListSummary extends UserListSummary {
+  trendingScore: number;
+  createdAt:     string;
+}
+
+interface RawDiscoveryListRow extends RawListRow {
+  user_id:        string;
+  trending_score: number;
+  created_at:     string;
+}
+
+export async function fetchDiscoveryLists(): Promise<DiscoveryListSummary[]> {
+  const client = requireClient();
+  const { data: rawLists, error: listsErr } = await client
+    .from('user_lists')
+    .select('id, title, description, visibility, is_ranked, like_count, save_count, trending_score, created_at, user_id, profiles(username, display_name)')
+    .eq('visibility', 'public')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (listsErr) throw listsErr;
+  if (!rawLists || rawLists.length === 0) return [];
+
+  const ownerNameById = new Map<string, string | null>();
+  for (const l of rawLists) {
+    const owner = Array.isArray((l as any).profiles) ? (l as any).profiles[0] : (l as any).profiles;
+    ownerNameById.set(l.id as string, (owner?.display_name || owner?.username) ?? null);
+  }
+
+  const base = await attachCoversAndCounts(client, rawLists as unknown as RawListRow[], ownerNameById);
+  const extraById = new Map((rawLists as unknown as RawDiscoveryListRow[]).map((l) => [l.id, l]));
+
+  return base.map((summary) => {
+    const extra = extraById.get(summary.id)!;
+    return { ...summary, trendingScore: extra.trending_score ?? 0, createdAt: extra.created_at };
+  });
+}
+
 // ── List detail ──────────────────────────────────────────────────────────────
 export interface ListDetailItem {
   id:        string;
