@@ -20,6 +20,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { ListCoverCollage } from '@/components/lists/ListCoverCollage';
 import { PosterCard } from '@/components/poster-card';
 import { RS } from '@/constants/theme';
+import { trackSearchPerformed } from '@/lib/observability/analytics';
 import { resolveImageUrl } from '@/lib/resolveImageUrl';
 import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbPersonSearchResult } from '@/lib/tmdb';
 import { searchBooks, searchCollections, searchLists, searchUsers,
@@ -133,6 +134,7 @@ export default function SearchScreen() {
     const wantAll = category === 'all';
     const requestId = ++requestIdRef.current;
     const isStale = () => requestIdRef.current !== requestId;
+    trackSearchPerformed(q.length, category);
 
     if (wantAll || category === 'movies') {
       setMovies({ status: 'loading', data: [] });

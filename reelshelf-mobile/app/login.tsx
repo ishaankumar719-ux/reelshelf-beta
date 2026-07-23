@@ -21,6 +21,7 @@ import {
   setProfileUsername,
   validateInviteCode,
 } from '@/lib/supabase/authFlow';
+import { trackLoginCompleted, trackSignupCompleted } from '@/lib/observability/analytics';
 
 type Mode = 'signin' | 'signup';
 
@@ -49,12 +50,13 @@ export default function LoginScreen() {
       setMessage('Supabase is not configured.');
       return;
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       // Surface Supabase's actual error message — don't paper over what really went wrong.
       setMessage(error.message);
       return;
     }
+    if (data.user) trackLoginCompleted(data.user.id);
     router.replace('/(tabs)');
   };
 
@@ -98,6 +100,7 @@ export default function LoginScreen() {
         setMessage(usernameError);
         return;
       }
+      trackSignupCompleted(data.session.user.id);
       router.replace('/(tabs)');
       return;
     }

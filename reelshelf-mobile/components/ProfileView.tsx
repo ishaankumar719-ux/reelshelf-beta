@@ -47,6 +47,7 @@ import {
   type ProfileData, type ProfileStats,
 } from '@/lib/supabase/profile';
 import { fetchMediaTypeTab, fetchReviewsTab, type MediaTypeTabData, type ProfileReviewItem } from '@/lib/supabase/profileMedia';
+import { trackFollowCompleted, trackListCreated, trackProfileOpened } from '@/lib/observability/analytics';
 import { fetchRecentActivity, type ActivityItem } from '@/lib/supabase/recentActivity';
 import { getActivityKey, getMediaKey } from '@/utils/listKeys';
 
@@ -181,6 +182,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         setFollowing(await fetchFollowState(sessionUser.id, userId));
       }
       setStatus('success');
+      trackProfileOpened(userId, isOwnProfile);
     } catch {
       setStatus('error');
     }
@@ -281,7 +283,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     const next = !following;
     setFollowing(next);
     const action = next ? followUser(sessionUser.id, userId) : unfollowUser(sessionUser.id, userId);
-    action.catch(() => setFollowing(!next));
+    action.then(() => { if (next) trackFollowCompleted(userId); }).catch(() => setFollowing(!next));
   };
 
   const openMediaDetail = (routeId: string, title: string, poster: string | null, mediaType: string) => {
@@ -291,6 +293,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const handleCreateList = async (fields: ListEditFields) => {
     if (!sessionUser) return;
     const newId = await createList(sessionUser.id, fields);
+    trackListCreated(newId);
     fetchUserLists(userId, isOwnProfile).then(setLists).catch(() => {});
     router.push(`/list/${newId}`);
   };

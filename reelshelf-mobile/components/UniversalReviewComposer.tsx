@@ -32,6 +32,7 @@ import {
   type ReviewScope,
 } from '@/lib/supabase/diaryComposer';
 import type { MediaType } from '@/data/seedHomeContent';
+import { trackDiaryEntryCreated, trackReviewPublished } from '@/lib/observability/analytics';
 
 export interface UniversalReviewComposerProps {
   visible:   boolean;
@@ -127,6 +128,10 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
     try {
       await saveDiaryEntryFull(user.id, key, core, entry);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      trackDiaryEntryCreated(mediaType, mediaId, key.reviewScope ?? 'title');
+      if (entry.review.trim().length > 0) {
+        trackReviewPublished(mediaType, mediaId, entry.rating != null);
+      }
       onSaved?.(entry);
       onClose();
     } catch (e) {

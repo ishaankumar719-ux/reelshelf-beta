@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RS } from '@/constants/theme';
+import { captureException } from '@/lib/observability/sentry';
 
 interface Props {
   children: React.ReactNode;
@@ -28,7 +29,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (__DEV__) {
       console.error('[ErrorBoundary] caught', error, info.componentStack);
     }
-    // Sentry hook point — wired in the Sentry/PostHog integration task.
+    captureException(error, { componentStack: info.componentStack ?? undefined });
   }
 
   handleRetry = () => {

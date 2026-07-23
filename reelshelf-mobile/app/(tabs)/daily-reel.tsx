@@ -28,6 +28,7 @@ import { type CatAnswerState, useQuestionOfTheDay } from '@/hooks/useQuestionOfT
 import { fetchTodaysStory, type TodaysStory } from '@/lib/supabase/articles';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 import { fetchStaffPicks, type StaffPick } from '@/lib/supabase/staffPicks';
+import { trackDailyReelOpened } from '@/lib/observability/analytics';
 import type { DailyPick } from '@/lib/supabase/dailyPick';
 import type { RotationRow, TriviaCategory, TriviaQuestion } from '@/lib/supabase/trivia';
 import { getMediaKey } from '@/utils/listKeys';
@@ -63,6 +64,10 @@ export default function DailyReelScreen() {
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
+
+  useEffect(() => {
+    trackDailyReelOpened();
+  }, []);
 
   const routeId = pick ? pick.mediaId : '';
   const meta: MediaMeta | null = pick ? {

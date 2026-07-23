@@ -1,6 +1,7 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -9,6 +10,13 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { initAnalytics, trackAppOpened } from '@/lib/observability/analytics';
+import { initSentry } from '@/lib/observability/sentry';
+
+// Runs once at module load, before the first render — both no-op silently
+// without real env credentials (see .env.example).
+initSentry();
+initAnalytics();
 
 const RSTheme = {
   ...DarkTheme,
@@ -27,6 +35,10 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  useEffect(() => {
+    trackAppOpened();
+  }, []);
+
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>

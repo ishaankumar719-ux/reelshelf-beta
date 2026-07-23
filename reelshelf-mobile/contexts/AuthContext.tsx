@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 
 import { supabase } from '@/lib/supabase/client';
 import { completePendingSignupIfAny } from '@/lib/supabase/authFlow';
+import { identifyUser, resetAnalyticsUser } from '@/lib/observability/analytics';
 
 interface AuthContextValue {
   /** True until the initial getSession() resolves — avoids a false "logged out" flash on cold start. */
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitializing(false);
       if (data.session?.user) {
         hadSessionRef.current = true;
+        identifyUser(data.session.user.id);
         completePendingSignupIfAny(data.session.user.id).catch(() => {});
       }
     });
@@ -50,8 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       if (nextSession?.user) {
         hadSessionRef.current = true;
+        identifyUser(nextSession.user.id);
         completePendingSignupIfAny(nextSession.user.id).catch(() => {});
       } else if (event === 'SIGNED_OUT' && hadSessionRef.current) {
+        resetAnalyticsUser();
         // A previously-valid session just became invalid — either a manual
         // sign-out (harmless double-navigate to the same place) or a
         // genuinely expired/revoked refresh token (e.g. password changed
