@@ -66,8 +66,14 @@ export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHe
   const genres  = detail?.genres?.length ? detail.genres.slice(0, 3).join(', ') : null;
   const rating  = typeof detail?.rating === 'number' ? detail.rating : null;
   const author  = mediaType === 'book' ? (detail?.author ?? null) : null;
+  // TV Creator — real, confirmed on the website's own Series Detail meta
+  // line (`{year}{creator ? " · "+creator : ""}`, app/series/[id]/page.tsx).
+  // Already fetched (lib/tmdb.ts's creator field, from TMDB's created_by)
+  // and already shown in Cast & Crew below, but wasn't in the hero meta
+  // line where the real site puts it — added here to match.
+  const creator = mediaType === 'tv' ? (detail?.creator ?? null) : null;
 
-  const metaParts = [year ? String(year) : null, runtime, genres].filter(Boolean) as string[];
+  const metaParts = [year ? String(year) : null, creator, runtime, genres].filter(Boolean) as string[];
 
   return (
     <View style={styles.container}>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -41,6 +42,8 @@ import { getMediaKey } from '@/utils/listKeys';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
+import { fetchRelatedBooks } from '@/lib/relatedBooks';
+import type { PosterRowItem } from '@/components/MediaPosterRow';
 
 export default function MediaDetailScreen() {
   const { id, title, posterUrl, mediaType } = useLocalSearchParams<{
@@ -161,6 +164,26 @@ export default function MediaDetailScreen() {
         posterUrl: item.posterUrl,
       })),
     }));
+
+  // "Related Books" — real, confirmed on the website's own Book Detail
+  // (app/books/[id]/page.tsx's RelatedBooksSection) but book-specific and
+  // NOT part of the movie/TV "More Like This" logic above — see
+  // lib/relatedBooks.ts for the real algorithm this adapts (same-author
+  // priority, then same-genre, live Google Books queries instead of the
+  // website's static local catalog).
+  const [relatedBooks, setRelatedBooks] = useState<PosterRowItem[]>([]);
+  const [relatedBooksLoading, setRelatedBooksLoading] = useState(isBook);
+  useEffect(() => {
+    if (!isBook) return;
+    let cancelled = false;
+    setRelatedBooksLoading(true);
+    fetchRelatedBooks(id, detail.author, detail.genres?.[0] ?? null)
+      .then((items) => { if (!cancelled) setRelatedBooks(items); })
+      .catch(() => { if (!cancelled) setRelatedBooks([]); })
+      .finally(() => { if (!cancelled) setRelatedBooksLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBook, id, detail.author]);
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
@@ -332,6 +355,24 @@ export default function MediaDetailScreen() {
                       <View style={styles.section}>
                         <SectionHeader eyebrow="Related Stories" title="More Like This" />
                         <MediaPosterRow items={moreLikeThisItems} />
+                      </View>
+                    </RevealOnMount>
+                  ) : null
+                )}
+
+                {/* ── Related Books — book-only real section, see the state/effect
+                    above (lib/relatedBooks.ts) for the real algorithm this ports. ── */}
+                {isBook && (
+                  relatedBooksLoading ? (
+                    <View style={styles.section}>
+                      <SectionHeader title="Related Books" subtitle="More reads with a similar mood, author, or shelf energy." />
+                      <SkeletonPosterRow />
+                    </View>
+                  ) : relatedBooks.length > 0 ? (
+                    <RevealOnMount delay={200}>
+                      <View style={styles.section}>
+                        <SectionHeader title="Related Books" subtitle="More reads with a similar mood, author, or shelf energy." />
+                        <MediaPosterRow items={relatedBooks} />
                       </View>
                     </RevealOnMount>
                   ) : null
