@@ -44,6 +44,8 @@ export function FloatingSearchBar() {
   const advancePhrase = useCallback(() => {
     setPhraseIdx(i => (i + 1) % PLACEHOLDERS.length);
     textOpacity.value = reduceMotion ? 1 : withTiming(1, { duration: 280 });
+    // textOpacity is a stable SharedValue ref — safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
   useEffect(() => {
@@ -57,6 +59,8 @@ export function FloatingSearchBar() {
       });
     }, ROTATE_INTERVAL_MS);
     return () => clearInterval(interval);
+    // textOpacity is a stable SharedValue ref — safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion, advancePhrase]);
 
   return (

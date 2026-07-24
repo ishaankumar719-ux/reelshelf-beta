@@ -331,7 +331,7 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
             <Pressable style={styles.previewActionBtn} onPress={handleReplace}>
               <Text style={styles.previewActionLabel}>Replace</Text>
             </Pressable>
-            <Pressable style={styles.previewRemoveBtn} onPress={handleRemove} hitSlop={6}>
+            <Pressable style={styles.previewRemoveBtn} onPress={handleRemove} hitSlop={6} accessibilityRole="button" accessibilityLabel="Remove attachment">
               <MaterialIcons name="close" size={13} color="#fff" />
             </Pressable>
           </View>

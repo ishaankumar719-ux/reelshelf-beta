@@ -370,7 +370,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
           <AmbientAtmosphere scrollY={scrollY} />
           <SafeAreaView style={styles.safeArea} edges={['top']}>
             {showBackButton && (
-              <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+              <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}>
                 <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
               </Pressable>
             )}
@@ -425,7 +425,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
 
         <SafeAreaView style={styles.safeArea} edges={showBackButton ? ['top'] : ['top', 'bottom']}>
           {showBackButton && (
-            <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+            <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}>
               <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
             </Pressable>
           )}

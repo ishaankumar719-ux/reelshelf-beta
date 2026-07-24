@@ -146,7 +146,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
         <View style={styles.sheet}>
           <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
               <MaterialIcons name="close" size={22} color={RS.colors.textSecondary} />
             </Pressable>
             <Text style={styles.headerTitle}>Add Media</Text>

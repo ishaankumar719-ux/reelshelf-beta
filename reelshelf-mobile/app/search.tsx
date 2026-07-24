@@ -307,7 +307,7 @@ export default function SearchScreen() {
               onSubmitEditing={commitSearch}
             />
             {hasQuery && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
                 <MaterialIcons name="close" size={18} color={RS.colors.textMuted} />
               </Pressable>
             )}

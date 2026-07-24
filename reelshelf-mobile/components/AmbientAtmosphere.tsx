@@ -40,6 +40,7 @@ function GrainLayer({ reduceMotion }: { reduceMotion: boolean }) {
           -1,
           true,
         );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
   const layerStyle = useAnimatedStyle(() => ({
@@ -137,6 +138,7 @@ export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
       -1,
       true,
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
   // ── Override color transitions ──────────────────────────────────────────────

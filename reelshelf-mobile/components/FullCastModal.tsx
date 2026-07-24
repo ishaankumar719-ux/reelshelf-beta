@@ -58,7 +58,7 @@ export function FullCastModal({ visible, onClose, cast }: FullCastModalProps) {
           <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
             <Text style={styles.title}>Full Cast</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
               <MaterialIcons name="close" size={22} color={RS.colors.textSecondary} />
             </Pressable>
           </View>

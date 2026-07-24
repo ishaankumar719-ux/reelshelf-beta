@@ -62,7 +62,6 @@ export default function DailyReelScreen() {
   const [story, setStory] = useState<TodaysStory | null>(null);
   const [storyExpanded, setStoryExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [sectionsLoaded, setSectionsLoaded] = useState(false);
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useScrollViewOffset(scrollRef);
@@ -86,17 +85,14 @@ export default function DailyReelScreen() {
     ]);
     setStaffPicks(picks);
     setStory(todaysStory);
-    setSectionsLoaded(true);
   };
 
   useEffect(() => {
     if (user) void loadSections();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    setSectionsLoaded(false);
     await Promise.all([refetch(), loadSections(), qotd.refetch()]);
     setRefreshing(false);
   };

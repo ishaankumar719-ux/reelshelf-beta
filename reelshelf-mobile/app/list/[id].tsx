@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -150,7 +149,7 @@ function DraggableRow({
         </View>
       </Pressable>
       {canRemove && (
-        <Pressable style={styles.removeBtn} onPress={onRemove} hitSlop={8}>
+        <Pressable style={styles.removeBtn} onPress={onRemove} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${item.title} from list`}>
           <MaterialIcons name="close" size={16} color={RS.colors.textMuted} />
         </Pressable>
       )}
@@ -335,7 +334,7 @@ export default function ListDetailScreen() {
   if (status === 'loading') {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <Pressable style={styles.backRow} onPress={() => router.back()}>
+        <Pressable style={styles.backRow} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
         </Pressable>
         <View style={styles.skeletonWrap}>
@@ -353,7 +352,7 @@ export default function ListDetailScreen() {
   if (status === 'not_found' || status === 'error' || !list) {
     return (
       <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-        <Pressable style={styles.backRow} onPress={() => router.back()}>
+        <Pressable style={styles.backRow} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
           <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
         </Pressable>
         <View style={styles.centered}>
@@ -369,7 +368,7 @@ export default function ListDetailScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <Pressable style={styles.backRow} onPress={() => router.back()}>
+      <Pressable style={styles.backRow} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
         <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
       </Pressable>
 

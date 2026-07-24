@@ -85,7 +85,7 @@ export default function ReportBugScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
           <MaterialIcons name="close" size={22} color={RS.colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Report a Bug</Text>
@@ -122,7 +122,7 @@ export default function ReportBugScreen() {
           {screenshotUri ? (
             <View style={styles.screenshotPreviewWrap}>
               <Image source={{ uri: screenshotUri }} style={styles.screenshotPreview} />
-              <Pressable style={styles.removeScreenshotBtn} onPress={() => setScreenshotUri(null)}>
+              <Pressable style={styles.removeScreenshotBtn} onPress={() => setScreenshotUri(null)} accessibilityRole="button" accessibilityLabel="Remove screenshot">
                 <MaterialIcons name="close" size={16} color="#ffffff" />
               </Pressable>
             </View>

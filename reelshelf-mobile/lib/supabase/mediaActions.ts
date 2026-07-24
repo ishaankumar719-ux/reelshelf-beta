@@ -4,7 +4,7 @@
 // is an optimistic local cache layered on top of this; these functions are
 // the actual source of truth.
 import { supabase } from './client';
-import { parseMediaRouteId, type TmdbKind } from '../tmdb';
+import { parseMediaRouteId } from '../tmdb';
 import type { MediaType } from '@/data/seedHomeContent';
 
 /** Route ids are film-<id>/tv-<id>/book-<slug>; the DB's media_type check

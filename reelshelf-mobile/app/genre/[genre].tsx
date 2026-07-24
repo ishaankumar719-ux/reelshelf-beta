@@ -58,7 +58,7 @@ export default function GenreDetailScreen() {
   if (!config) {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}>
           <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
         </Pressable>
         <View style={styles.centered}>
@@ -76,7 +76,7 @@ export default function GenreDetailScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
+      <Pressable style={styles.backBtn} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}>
         <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
       </Pressable>
 

@@ -64,7 +64,7 @@ export function FollowListModal({ visible, onClose, userId, mode }: FollowListMo
           <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
             <Text style={styles.title}>{mode === 'followers' ? 'Followers' : 'Following'}</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
               <MaterialIcons name="close" size={22} color={RS.colors.textSecondary} />
             </Pressable>
           </View>

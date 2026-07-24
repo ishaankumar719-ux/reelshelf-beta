@@ -200,7 +200,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
         <View style={styles.sheet}>
           <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
               <MaterialIcons name="close" size={22} color={RS.colors.textSecondary} />
             </Pressable>
             <Text style={styles.headerTitle}>Mount Rushmore</Text>
@@ -254,6 +254,8 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
                               style={styles.removeBtn}
                               onPress={(e) => { e.stopPropagation(); handleRemove(position); }}
                               hitSlop={8}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Remove ${slot.title}`}
                             >
                               <MaterialIcons name="close" size={12} color="#fff" />
                             </Pressable>

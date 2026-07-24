@@ -194,7 +194,7 @@ export default function MediaDetailScreen() {
         <AmbientAtmosphere scrollY={scrollY} />
 
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
             <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
           </Pressable>

@@ -37,6 +37,8 @@ export function useExpandOnPress(navigate: () => void) {
     scale.value = withTiming(1.02, { duration: 140 }, (finished) => {
       if (finished) runOnJS(navigate)();
     });
+    // opacity/scale are stable SharedValue refs — safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion, navigate]);
 
   const style = useAnimatedStyle(() => ({

@@ -117,29 +117,6 @@ export const RS = {
   },
 } as const;
 
-// ── Backward-compat — ThemedText / ThemedView ──────────────────────────────────
-const tintColorLight = '#0a7ea4';
-const tintColorDark  = RS.colors.accent;
-
-export const Colors = {
-  light: {
-    text:             '#11181C',
-    background:       '#fff',
-    tint:             tintColorLight,
-    icon:             '#687076',
-    tabIconDefault:   '#687076',
-    tabIconSelected:  tintColorLight,
-  },
-  dark: {
-    text:             RS.colors.textPrimary,
-    background:       RS.colors.base,
-    tint:             tintColorDark,
-    icon:             RS.colors.textMuted,
-    tabIconDefault:   RS.colors.textMuted,
-    tabIconSelected:  tintColorDark,
-  },
-};
-
 export const Fonts = Platform.select({
   ios: {
     sans:    'system-ui',

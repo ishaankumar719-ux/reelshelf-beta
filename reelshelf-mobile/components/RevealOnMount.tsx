@@ -47,6 +47,10 @@ export function RevealOnMount({ children, delay = 0 }: RevealOnMountProps) {
     }
 
     return () => { if (t !== null) clearTimeout(t); };
+    // Intentionally run-once-on-mount (plus a reduceMotion flip): delay is a
+    // static per-usage-site stagger constant, not something that should
+    // re-trigger the entrance animation if it somehow changed after mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
   const style = useAnimatedStyle(() => ({

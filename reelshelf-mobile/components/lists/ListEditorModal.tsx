@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
