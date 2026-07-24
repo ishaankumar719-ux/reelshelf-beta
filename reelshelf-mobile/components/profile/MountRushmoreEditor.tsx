@@ -57,6 +57,30 @@ interface MountRushmoreEditorProps {
   onSaved:      (allSlots: MountRushmoreSlot[]) => void;
 }
 
+function SlotThumb({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.slotFallback]}>
+        <MaterialIcons name="image-not-supported" size={20} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
+function ResultThumb({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[styles.resultPoster, styles.slotFallback]}>
+        <MaterialIcons name="add" size={16} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.resultPoster} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
 export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, onSaved }: MountRushmoreEditorProps) {
   const [allSlots, setAllSlots] = useState<MountRushmoreSlot[]>(initialSlots);
   const [dirtyTypes, setDirtyTypes] = useState<Set<RushmoreMediaType>>(new Set());
@@ -225,13 +249,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
                       >
                         {slot ? (
                           <>
-                            {resolvedUri ? (
-                              <Image source={{ uri: resolvedUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                            ) : (
-                              <View style={[StyleSheet.absoluteFill, styles.slotFallback]}>
-                                <MaterialIcons name="image-not-supported" size={20} color={RS.colors.textMuted} />
-                              </View>
-                            )}
+                            <SlotThumb uri={resolvedUri} />
                             <Pressable
                               style={styles.removeBtn}
                               onPress={(e) => { e.stopPropagation(); handleRemove(position); }}
@@ -290,13 +308,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
                               style={styles.resultCard}
                               onPress={() => handleSelect(result)}
                             >
-                              {resolvedUri ? (
-                                <Image source={{ uri: resolvedUri }} style={styles.resultPoster} contentFit="cover" />
-                              ) : (
-                                <View style={[styles.resultPoster, styles.slotFallback]}>
-                                  <MaterialIcons name="add" size={16} color={RS.colors.textMuted} />
-                                </View>
-                              )}
+                              <ResultThumb uri={resolvedUri} />
                               <Text style={styles.resultTitle} numberOfLines={2}>{result.title}</Text>
                               {result.year ? <Text style={styles.resultYear}>{result.year}</Text> : null}
                             </Pressable>

@@ -52,6 +52,18 @@ interface AddListItemsModalProps {
 // Books) — the same searchMovies/searchTv/searchBooks functions already
 // used by the Search screen and Mount Rushmore's editor — rather than
 // building a second search integration.
+function ResultPoster({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[styles.resultPoster, styles.resultPosterFallback]}>
+        <MaterialIcons name="image-not-supported" size={16} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.resultPoster} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
 export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, onAdded }: AddListItemsModalProps) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -188,13 +200,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
                     onPress={() => !already && handleAdd(hit)}
                     disabled={already || addingId === key}
                   >
-                    {resolvedUri ? (
-                      <Image source={{ uri: resolvedUri }} style={styles.resultPoster} contentFit="cover" />
-                    ) : (
-                      <View style={[styles.resultPoster, styles.resultPosterFallback]}>
-                        <MaterialIcons name="image-not-supported" size={16} color={RS.colors.textMuted} />
-                      </View>
-                    )}
+                    <ResultPoster uri={resolvedUri} />
                     {addingId === key ? (
                       <View style={styles.resultOverlay}><ActivityIndicator size="small" color="#fff" /></View>
                     ) : already ? (

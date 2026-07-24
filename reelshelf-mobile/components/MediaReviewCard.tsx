@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -19,14 +20,16 @@ import type { MediaReviewEntry } from '@/lib/supabase/mediaReviews';
 // sections so there is exactly one card implementation, not two.
 export function MediaReviewCard({ entry }: { entry: MediaReviewEntry }) {
   const name = entry.displayName || entry.username || 'ReelShelf Member';
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [attachmentBroken, setAttachmentBroken] = useState(false);
 
   const openProfile = () => router.push(`/profile/${entry.userId}`);
 
   return (
     <View style={styles.card}>
       <Pressable style={styles.headerRow} onPress={openProfile} hitSlop={4}>
-        {entry.avatarUrl ? (
-          <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} contentFit="cover" />
+        {entry.avatarUrl && !avatarBroken ? (
+          <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} contentFit="cover" onError={() => setAvatarBroken(true)} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <MaterialIcons name="person" size={16} color={RS.colors.textMuted} />
@@ -69,9 +72,9 @@ export function MediaReviewCard({ entry }: { entry: MediaReviewEntry }) {
         </View>
       )}
 
-      {entry.attachmentUrl && (
+      {entry.attachmentUrl && !attachmentBroken && (
         <View>
-          <Image source={{ uri: entry.attachmentUrl }} style={styles.attachment} contentFit="cover" />
+          <Image source={{ uri: entry.attachmentUrl }} style={styles.attachment} contentFit="cover" onError={() => setAttachmentBroken(true)} />
           {entry.attachmentType === 'gif' && (
             <View style={styles.gifBadge}>
               <Text style={styles.gifBadgeLabel}>GIF</Text>

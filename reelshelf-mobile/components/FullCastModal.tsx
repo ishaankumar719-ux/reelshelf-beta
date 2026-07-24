@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -20,6 +21,28 @@ interface FullCastModalProps {
 // — `fullCast` is the same response, unsliced), so this modal costs no extra
 // network request. Same bottom-sheet Modal pattern as FollowListModal.tsx —
 // the established precedent for "list of people, each tappable to a profile."
+function CastRow({ item, onPress }: { item: CastMember; onPress: () => void }) {
+  const initial = item.name[0]?.toUpperCase() ?? '';
+  const [broken, setBroken] = useState(false);
+  return (
+    <Pressable style={styles.row} onPress={onPress} disabled={!item.personId}>
+      {item.photoUrl && !broken ? (
+        <Image source={{ uri: item.photoUrl }} style={styles.photo} contentFit="cover" transition={150} onError={() => setBroken(true)} />
+      ) : (
+        <View style={[styles.photo, styles.photoFallback]}>
+          <Text style={styles.photoFallbackLetter}>{initial}</Text>
+        </View>
+      )}
+      <View style={styles.rowMeta}>
+        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        {item.character ? (
+          <Text style={styles.character} numberOfLines={1}>{item.character}</Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
 export function FullCastModal({ visible, onClose, cast }: FullCastModalProps) {
   const handleTap = (personId: number | null | undefined) => {
     if (!personId) return;
@@ -47,30 +70,7 @@ export function FullCastModal({ visible, onClose, cast }: FullCastModalProps) {
               data={cast}
               keyExtractor={(item, index) => getMediaKey('full-cast', `${item.personId ?? item.name}-${index}`)}
               contentContainerStyle={styles.list}
-              renderItem={({ item }) => {
-                const initial = item.name[0]?.toUpperCase() ?? '';
-                return (
-                  <Pressable
-                    style={styles.row}
-                    onPress={() => handleTap(item.personId)}
-                    disabled={!item.personId}
-                  >
-                    {item.photoUrl ? (
-                      <Image source={{ uri: item.photoUrl }} style={styles.photo} contentFit="cover" transition={150} />
-                    ) : (
-                      <View style={[styles.photo, styles.photoFallback]}>
-                        <Text style={styles.photoFallbackLetter}>{initial}</Text>
-                      </View>
-                    )}
-                    <View style={styles.rowMeta}>
-                      <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                      {item.character ? (
-                        <Text style={styles.character} numberOfLines={1}>{item.character}</Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                );
-              }}
+              renderItem={({ item }) => <CastRow item={item} onPress={() => handleTap(item.personId)} />}
             />
           )}
         </View>

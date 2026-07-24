@@ -4,7 +4,7 @@
 // mobile component is likewise rendered identically by both screens, with
 // only the one confirmed real difference applied (Discover's Hidden Gems
 // excludes adult-title matches; Home's copy of the same query doesn't).
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
@@ -45,20 +45,36 @@ function SectionRow({
   fetcher: () => Promise<SectionItem[]>;
 }) {
   const [items, setItems] = useState<SectionItem[] | null>(null);
+  // Kept distinct from "resolved with zero results" (a real, legitimately
+  // hideable outcome for a query like Award Winners this month) — a fetch
+  // rejection (network drop, TMDB/Supabase error) always gets its own state
+  // with a retry, rather than silently collapsing into the same "hide this
+  // section" behavior as genuine emptiness.
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
-    fetcher().then((data) => { if (!cancelled) setItems(data); }).catch(() => { if (!cancelled) setItems([]); });
+    setFailed(false);
+    fetcher().then((data) => { if (!cancelled) setItems(data); }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (items !== null && items.length === 0) return null;
+  useEffect(() => load(), [load]);
+
+  if (!failed && items !== null && items.length === 0) return null;
 
   return (
     <View style={styles.section}>
       <SectionHeader title={title} subtitle={subtitle} />
-      {items === null ? (
+      {failed ? (
+        <View style={styles.errorRow}>
+          <Text style={styles.errorText}>Couldn&apos;t load this row.</Text>
+          <Pressable onPress={load} hitSlop={6}>
+            <Text style={styles.retryLabel}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : items === null ? (
         <ActivityIndicator color={RS.colors.accent} style={styles.loader} />
       ) : (
         <FlatList<SectionItem>
@@ -169,6 +185,15 @@ const styles = StyleSheet.create({
   section: { gap: RS.spacing.xs, marginBottom: RS.spacing.lg },
   list: { paddingHorizontal: RS.spacing.md },
   loader: { marginVertical: RS.spacing.lg },
+  errorRow: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               RS.spacing.sm,
+    paddingHorizontal: RS.spacing.md,
+    paddingVertical:   RS.spacing.md,
+  },
+  errorText: { fontSize: RS.typography.body, color: RS.colors.textMuted },
+  retryLabel: { fontSize: RS.typography.body, fontWeight: '600', color: RS.colors.accent },
   badge: {
     marginTop: RS.spacing.xs, fontSize: RS.typography.caption, color: RS.colors.textSecondary,
   },

@@ -82,6 +82,45 @@ function CategoryChip({ label, active, onPress }: { label: string; active: boole
   );
 }
 
+// Small fallback-aware image wrappers — each result row is rendered from a
+// .map(), so the load-failure flag has to live in its own component rather
+// than a single hook call in SearchScreen.
+function BestMatchThumb({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[styles.listRowThumb, styles.listRowThumbFallback]}>
+        <MaterialIcons name="auto-awesome" size={16} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.listRowThumb} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
+function PersonPhoto({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[styles.personPhoto, styles.listRowThumbFallback]}>
+        <MaterialIcons name="person" size={22} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.personPhoto} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
+function UserAvatar({ uri }: { uri: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!uri || broken) {
+    return (
+      <View style={[styles.userAvatar, styles.listRowThumbFallback]}>
+        <MaterialIcons name="person" size={18} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.userAvatar} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
 const VALID_CATEGORIES = new Set(CATEGORY_CHIPS.map((c) => c.key));
 
 export default function SearchScreen() {
@@ -357,13 +396,7 @@ export default function SearchScreen() {
                   <Text style={styles.sectionTitle}>Best Match</Text>
                   <Pressable style={styles.listRow} onPress={bestMatch.onPress}>
                     <View style={styles.listRowThumbOuter}>
-                      {bestMatch.imageUrl ? (
-                        <Image source={{ uri: bestMatch.imageUrl }} style={styles.listRowThumb} contentFit="cover" />
-                      ) : (
-                        <View style={[styles.listRowThumb, styles.listRowThumbFallback]}>
-                          <MaterialIcons name="auto-awesome" size={16} color={RS.colors.textMuted} />
-                        </View>
-                      )}
+                      <BestMatchThumb uri={bestMatch.imageUrl} />
                     </View>
                     <View style={styles.listRowMeta}>
                       <Text style={styles.listRowTitle}>{bestMatch.title}</Text>
@@ -434,7 +467,7 @@ export default function SearchScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
                     {people.data.map((person, i) => (
                       <Pressable key={getMediaKey('person', `${person.id}-${i}`)} style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
-                        <Image source={{ uri: resolveImageUrl(person.photoUrl, 'profile')! }} style={styles.personPhoto} contentFit="cover" />
+                        <PersonPhoto uri={resolveImageUrl(person.photoUrl, 'profile')} />
                         <Text style={styles.personName} numberOfLines={2}>{person.name}</Text>
                         <Text style={styles.personKnownFor} numberOfLines={1}>{person.knownFor.join(', ')}</Text>
                       </Pressable>
@@ -485,13 +518,7 @@ export default function SearchScreen() {
                   {users.data.map((u, i) => (
                     <Pressable key={getMediaKey('user', `${u.id}-${i}`)} style={styles.listRow} onPress={() => router.push(`/profile/${u.id}`)}>
                       <View style={styles.listRowThumbOuter}>
-                        {u.avatarUrl ? (
-                          <Image source={{ uri: u.avatarUrl }} style={styles.userAvatar} contentFit="cover" />
-                        ) : (
-                          <View style={[styles.userAvatar, styles.listRowThumbFallback]}>
-                            <MaterialIcons name="person" size={18} color={RS.colors.textMuted} />
-                          </View>
-                        )}
+                        <UserAvatar uri={u.avatarUrl} />
                       </View>
                       <View style={styles.listRowMeta}>
                         <Text style={styles.listRowTitle}>{u.displayName || u.username}</Text>

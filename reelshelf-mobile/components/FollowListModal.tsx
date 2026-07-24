@@ -16,6 +16,25 @@ interface FollowListModalProps {
   mode:     'followers' | 'following';
 }
 
+function FollowRow({ item, onPress }: { item: FollowListEntry; onPress: () => void }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <Pressable style={styles.row} onPress={onPress}>
+      {item.avatarUrl && !broken ? (
+        <Image source={{ uri: item.avatarUrl }} style={styles.avatar} contentFit="cover" onError={() => setBroken(true)} />
+      ) : (
+        <View style={[styles.avatar, styles.avatarFallback]}>
+          <MaterialIcons name="person" size={18} color={RS.colors.textMuted} />
+        </View>
+      )}
+      <View style={styles.rowMeta}>
+        <Text style={styles.name}>{item.displayName || item.username || 'ReelShelf Member'}</Text>
+        {item.username ? <Text style={styles.username}>@{item.username}</Text> : null}
+      </View>
+    </Pressable>
+  );
+}
+
 // Makes the Followers/Following stat tiles actually tappable — surfaces the
 // real list of users (both directions of the existing `followers` table),
 // each row tappable into that user's public profile via the same
@@ -61,21 +80,7 @@ export function FollowListModal({ visible, onClose, userId, mode }: FollowListMo
               data={entries}
               keyExtractor={(item) => getMediaKey('user', item.id)}
               contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
-                <Pressable style={styles.row} onPress={() => handleTap(item.id)}>
-                  {item.avatarUrl ? (
-                    <Image source={{ uri: item.avatarUrl }} style={styles.avatar} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarFallback]}>
-                      <MaterialIcons name="person" size={18} color={RS.colors.textMuted} />
-                    </View>
-                  )}
-                  <View style={styles.rowMeta}>
-                    <Text style={styles.name}>{item.displayName || item.username || 'ReelShelf Member'}</Text>
-                    {item.username ? <Text style={styles.username}>@{item.username}</Text> : null}
-                  </View>
-                </Pressable>
-              )}
+              renderItem={({ item }) => <FollowRow item={item} onPress={() => handleTap(item.id)} />}
             />
           )}
         </View>

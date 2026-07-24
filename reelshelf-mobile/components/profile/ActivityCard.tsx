@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -30,10 +31,11 @@ interface ActivityCardProps {
 // data (lib/supabase/recentActivity.ts), just presented as a small card with
 // an icon-badged verb instead of a bare label.
 export function ActivityCard({ kind, verbLabel, detail, title, poster, timeLabel, onPress }: ActivityCardProps) {
+  const [broken, setBroken] = useState(false);
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>
-      {poster ? (
-        <Image source={{ uri: poster }} style={styles.thumb} contentFit="cover" />
+      {poster && !broken ? (
+        <Image source={{ uri: poster }} style={styles.thumb} contentFit="cover" onError={() => setBroken(true)} />
       ) : (
         <View style={[styles.thumb, styles.thumbFallback]} />
       )}

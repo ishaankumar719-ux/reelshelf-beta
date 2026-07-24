@@ -65,6 +65,7 @@ function FilterPill({ label, active, onPress }: { label: string; active: boolean
 }
 
 function DiaryRow({ entry, onEdit }: { entry: DiaryListEntry; onEdit: () => void }) {
+  const [broken, setBroken] = useState(false);
   const handlePress = () => {
     router.push(
       `/media/${entry.routeId}?title=${encodeURIComponent(entry.title)}&posterUrl=${encodeURIComponent(entry.poster ?? '')}&mediaType=${entry.mediaType}`
@@ -91,8 +92,8 @@ function DiaryRow({ entry, onEdit }: { entry: DiaryListEntry; onEdit: () => void
   return (
     <Pressable style={styles.row} onPress={handlePress}>
       <View style={styles.thumbOuter}>
-        {entry.poster ? (
-          <Image source={{ uri: entry.poster }} style={styles.thumb} contentFit="cover" transition={150} />
+        {entry.poster && !broken ? (
+          <Image source={{ uri: entry.poster }} style={styles.thumb} contentFit="cover" transition={150} onError={() => setBroken(true)} />
         ) : (
           <View style={[styles.thumb, styles.thumbFallback]} />
         )}

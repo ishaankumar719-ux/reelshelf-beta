@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,10 +12,11 @@ interface MediaWatchProvidersProps {
 }
 
 function ProviderPill({ provider }: { provider: TmdbProvider }) {
+  const [broken, setBroken] = useState(false);
   return (
     <View style={styles.pill}>
-      {provider.logoUrl ? (
-        <Image source={{ uri: provider.logoUrl }} style={styles.logo} contentFit="cover" transition={150} />
+      {provider.logoUrl && !broken ? (
+        <Image source={{ uri: provider.logoUrl }} style={styles.logo} contentFit="cover" transition={150} onError={() => setBroken(true)} />
       ) : (
         <View style={[styles.logo, styles.logoFallback]} />
       )}

@@ -76,6 +76,7 @@ function DraggableRow({
   dragActiveId, dragFromIndex, dragTargetIdx, onDragStart, onDragUpdate, onDragEnd, onPress, onRemove,
 }: DraggableRowProps) {
   const reduceMotion = useReduceMotion();
+  const [posterBroken, setPosterBroken] = useState(false);
   const dragY = useSharedValue(0);
   const isDragging = dragActiveId === item.id;
 
@@ -131,8 +132,8 @@ function DraggableRow({
       {isRanked && <Text style={styles.rank}>{item.rankOrder}</Text>}
       <Pressable style={styles.itemPressable} onPress={onPress}>
         <View style={styles.thumbOuter}>
-          {item.posterUrl ? (
-            <Image source={{ uri: item.posterUrl }} style={styles.thumb} contentFit="cover" />
+          {item.posterUrl && !posterBroken ? (
+            <Image source={{ uri: item.posterUrl }} style={styles.thumb} contentFit="cover" onError={() => setPosterBroken(true)} />
           ) : (
             <View style={[styles.thumb, styles.thumbFallback]} />
           )}
@@ -174,6 +175,8 @@ export default function ListDetailScreen() {
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const [dragFromIndex, setDragFromIndex] = useState(0);
   const [dragTargetIdx, setDragTargetIdx] = useState(0);
+  const [heroBroken, setHeroBroken] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
 
   const isOwner = !!user && !!list && user.id === list.ownerId;
 
@@ -373,8 +376,8 @@ export default function ListDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* ── Hero: blurred backdrop + cover collage ──────────────────────── */}
         <View style={styles.hero}>
-          {heroPoster ? (
-            <Image source={{ uri: heroPoster }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} />
+          {heroPoster && !heroBroken ? (
+            <Image source={{ uri: heroPoster }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} onError={() => setHeroBroken(true)} />
           ) : null}
           <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill} />
           <View style={styles.heroScrim} />
@@ -405,8 +408,8 @@ export default function ListDetailScreen() {
 
           {/* ── Creator row ──────────────────────────────────────────────── */}
           <Pressable style={styles.creatorRow} onPress={handleOpenCreator}>
-            {list.ownerAvatarUrl ? (
-              <Image source={{ uri: list.ownerAvatarUrl }} style={styles.creatorAvatar} contentFit="cover" />
+            {list.ownerAvatarUrl && !avatarBroken ? (
+              <Image source={{ uri: list.ownerAvatarUrl }} style={styles.creatorAvatar} contentFit="cover" onError={() => setAvatarBroken(true)} />
             ) : (
               <View style={[styles.creatorAvatar, styles.creatorAvatarFallback]}>
                 <Text style={styles.creatorInitial}>{(list.ownerName || '?')[0]?.toUpperCase()}</Text>

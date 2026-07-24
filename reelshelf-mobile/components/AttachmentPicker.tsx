@@ -31,6 +31,37 @@ export interface AttachmentValue {
   type: 'image' | 'gif';
 }
 
+// Shows a broken-image icon (rather than a blank rectangle) if the
+// already-uploaded/selected attachment fails to actually load — the
+// Replace/× actions rendered alongside it (see AttachmentPicker below)
+// remain the real recovery path.
+function GifCell({ gif, onPress }: { gif: GiphyGif; onPress: () => void }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <Pressable style={styles.gifCell} onPress={onPress}>
+      {broken ? (
+        <View style={[styles.gifCellImage, styles.previewImageFallback]}>
+          <MaterialIcons name="broken-image" size={18} color={RS.colors.textMuted} />
+        </View>
+      ) : (
+        <Image source={{ uri: gif.previewUrl }} style={styles.gifCellImage} contentFit="cover" onError={() => setBroken(true)} />
+      )}
+    </Pressable>
+  );
+}
+
+function PreviewImage({ uri }: { uri: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <View style={[styles.previewImage, styles.previewImageFallback]}>
+        <MaterialIcons name="broken-image" size={22} color={RS.colors.textMuted} />
+      </View>
+    );
+  }
+  return <Image source={{ uri }} style={styles.previewImage} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
 interface AttachmentPickerProps {
   value:    AttachmentValue | null;
   onChange: (v: AttachmentValue | null) => void;
@@ -290,7 +321,7 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
     <View>
       {value ? (
         <View style={styles.previewWrap}>
-          <Image source={{ uri: value.url }} style={styles.previewImage} contentFit="cover" />
+          <PreviewImage key={value.url} uri={value.url} />
           {value.type === 'gif' && (
             <View style={styles.gifBadge}>
               <Text style={styles.gifBadgeLabel}>GIF</Text>
@@ -415,11 +446,7 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
                         <ActivityIndicator color={RS.colors.accent} style={styles.gifFooterLoader} />
                       ) : null
                     }
-                    renderItem={({ item }) => (
-                      <Pressable style={styles.gifCell} onPress={() => selectGif(item)}>
-                        <Image source={{ uri: item.previewUrl }} style={styles.gifCellImage} contentFit="cover" />
-                      </Pressable>
-                    )}
+                    renderItem={({ item }) => <GifCell gif={item} onPress={() => selectGif(item)} />}
                   />
                 )}
                 <Text style={styles.giphyAttribution}>Powered by GIPHY</Text>
@@ -464,6 +491,10 @@ const styles = StyleSheet.create({
     width:      '100%',
     height:     160,
     backgroundColor: RS.colors.elevated,
+  },
+  previewImageFallback: {
+    alignItems:     'center',
+    justifyContent: 'center',
   },
   gifBadge: {
     position:          'absolute',

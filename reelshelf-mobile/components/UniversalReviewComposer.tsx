@@ -93,6 +93,7 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
   const [layersOpen, setLayersOpen] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [posterBroken, setPosterBroken] = useState(false);
 
   const key = { mediaId, mediaType, showId, seasonNumber, episodeNumber, reviewScope };
   const core: MediaCoreMeta = { title, posterUrl, year, genres, runtime, voteAverage, director };
@@ -102,6 +103,7 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPosterBroken(false);
     fetchLatestDiaryEntry(user.id, key)
       .then((data) => {
         if (cancelled) return;
@@ -176,8 +178,8 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                 {/* Header card */}
                 <View style={styles.header}>
                   <View style={styles.posterOuter}>
-                    {posterUrl ? (
-                      <Image source={{ uri: posterUrl }} style={styles.poster} contentFit="cover" />
+                    {posterUrl && !posterBroken ? (
+                      <Image source={{ uri: posterUrl }} style={styles.poster} contentFit="cover" onError={() => setPosterBroken(true)} />
                     ) : (
                       <View style={[styles.poster, styles.posterFallback]} />
                     )}

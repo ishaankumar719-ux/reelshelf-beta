@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +29,8 @@ export function DailyReel() {
   const { status, pick, isLoggedIn } = useDailyPick();
 
   const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
+  const [broken, setBroken] = useState(false);
+  useEffect(() => { setBroken(false); }, [pick?.posterUrl]);
 
   if (!isLoggedIn) return null;
   if (status === 'loading' && !pick) {
@@ -62,12 +65,13 @@ export function DailyReel() {
           onPressOut={onPressOut}
           onPress={navigateToPick}
         >
-          {pick.posterUrl ? (
+          {pick.posterUrl && !broken ? (
             <Image
               source={{ uri: pick.posterUrl }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={300}
+              onError={() => setBroken(true)}
             />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.artworkFallback]} />

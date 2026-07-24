@@ -21,10 +21,12 @@ export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [status, setStatus] = useState<Status>('loading');
   const [person, setPerson] = useState<TmdbPersonDetail | null>(null);
+  const [photoBroken, setPhotoBroken] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setStatus('loading');
+    setPhotoBroken(false);
     fetchPersonDetail(id)
       .then((data) => {
         if (cancelled) return;
@@ -56,8 +58,8 @@ export default function PersonDetailScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            {person.photoUrl ? (
-              <Image source={{ uri: person.photoUrl }} style={styles.photo} contentFit="cover" />
+            {person.photoUrl && !photoBroken ? (
+              <Image source={{ uri: person.photoUrl }} style={styles.photo} contentFit="cover" onError={() => setPhotoBroken(true)} />
             ) : (
               <View style={[styles.photo, styles.photoFallback]}>
                 <MaterialIcons name="person" size={48} color={RS.colors.textMuted} />

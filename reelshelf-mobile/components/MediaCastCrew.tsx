@@ -36,6 +36,7 @@ interface MediaCastCrewProps {
 function CastCard({ member }: { member: CastMember }) {
   const initial = member.name[0]?.toUpperCase() ?? '';
   const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
+  const [broken, setBroken] = useState(false);
 
   return (
     <Pressable
@@ -50,12 +51,13 @@ function CastCard({ member }: { member: CastMember }) {
     >
       <Animated.View style={[styles.castItem, animStyle]}>
         <View style={styles.photoOuter}>
-          {member.photoUrl ? (
+          {member.photoUrl && !broken ? (
             <Image
               source={{ uri: member.photoUrl }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={200}
+              onError={() => setBroken(true)}
             />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.photoFallback]}>

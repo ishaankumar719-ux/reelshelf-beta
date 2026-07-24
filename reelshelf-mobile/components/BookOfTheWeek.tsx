@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +23,7 @@ const COVER_H = 240;
 
 export function BookOfTheWeek() {
   const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
+  const [broken, setBroken] = useState(false);
 
   return (
     <View style={styles.section}>
@@ -43,12 +45,13 @@ export function BookOfTheWeek() {
             onPressOut={onPressOut}
             onPress={navigateToBookOfTheWeek}
           >
-            {bookOfTheWeek.posterUrl ? (
+            {bookOfTheWeek.posterUrl && !broken ? (
               <Image
                 source={{ uri: bookOfTheWeek.posterUrl }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 transition={300}
+                onError={() => setBroken(true)}
               />
             ) : (
               <LinearGradient

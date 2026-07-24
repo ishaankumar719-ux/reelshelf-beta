@@ -47,6 +47,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
   const [favSeries, setFavSeries] = useState(profile.favouriteSeries ?? '');
   const [favBook, setFavBook] = useState(profile.favouriteBook ?? '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     setFavSeries(profile.favouriteSeries ?? '');
     setFavBook(profile.favouriteBook ?? '');
     setAvatarUrl(profile.avatarUrl);
+    setAvatarBroken(false);
     setError(null);
   }, [visible, profile]);
 
@@ -75,7 +77,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     setError(null);
     const { url, error: uploadError } = await pickAndUploadAvatar(profile.id);
     if (uploadError) setError(uploadError);
-    if (url) setAvatarUrl(url);
+    if (url) { setAvatarUrl(url); setAvatarBroken(false); }
     setUploadingAvatar(false);
   };
 
@@ -118,8 +120,8 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
               <Text style={styles.headerTitle}>Edit Profile</Text>
 
               <Pressable style={styles.avatarWrap} onPress={handleChangeAvatar} disabled={uploadingAvatar}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
+                {avatarUrl && !avatarBroken ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" onError={() => setAvatarBroken(true)} />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
                     <MaterialIcons name="person" size={36} color={RS.colors.textMuted} />

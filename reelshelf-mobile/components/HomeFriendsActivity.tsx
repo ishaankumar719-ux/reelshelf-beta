@@ -62,6 +62,8 @@ function formatRecency(dateStr: string): string {
 function ActivityCard({ entry }: { entry: HomeActivityEntry }) {
   const { style: animStyle, onPressIn, onPressOut } = usePressLift('lift');
   const ownerLabel = entry.displayName || (entry.username ? `@${entry.username}` : 'ReelShelf Member');
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [posterBroken, setPosterBroken] = useState(false);
 
   const openProfile = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -84,8 +86,8 @@ function ActivityCard({ entry }: { entry: HomeActivityEntry }) {
       <Animated.View style={[styles.card, animStyle]}>
         <View style={styles.cardHeader}>
           <Pressable onPress={openProfile} hitSlop={6} style={styles.avatarRow}>
-            {entry.avatarUrl ? (
-              <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} contentFit="cover" />
+            {entry.avatarUrl && !avatarBroken ? (
+              <Image source={{ uri: entry.avatarUrl }} style={styles.avatar} contentFit="cover" onError={() => setAvatarBroken(true)} />
             ) : (
               <View style={[styles.avatar, styles.avatarFallback]}>
                 <MaterialIcons name="person" size={14} color={RS.colors.textMuted} />
@@ -113,8 +115,8 @@ function ActivityCard({ entry }: { entry: HomeActivityEntry }) {
         ) : (
           <View style={styles.mediaBody}>
             <View style={styles.posterOuter}>
-              {entry.posterUrl ? (
-                <Image source={{ uri: entry.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+              {entry.posterUrl && !posterBroken ? (
+                <Image source={{ uri: entry.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} onError={() => setPosterBroken(true)} />
               ) : (
                 <View style={[StyleSheet.absoluteFill, styles.posterFallback]}>
                   <Text style={styles.posterFallbackLetter}>{entry.title?.[0]?.toUpperCase() ?? '?'}</Text>

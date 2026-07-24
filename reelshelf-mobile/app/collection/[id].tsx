@@ -22,6 +22,7 @@ const THUMB_SIZE = 72;
 function CollectionItem({ item }: { item: CollectionItemCard }) {
   const badgeMap = { film: RS.badge.film, tv: RS.badge.tv, book: RS.badge.book } as const;
   const badge = badgeMap[item.mediaType];
+  const [broken, setBroken] = useState(false);
 
   const navigate = () => router.push(
     `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}&expand=1`
@@ -32,8 +33,8 @@ function CollectionItem({ item }: { item: CollectionItemCard }) {
     <Animated.View style={expandStyle}>
       <Pressable style={styles.itemRow} onPress={trigger}>
         <View style={styles.thumbOuter}>
-          {item.posterUrl ? (
-            <Image source={{ uri: item.posterUrl }} style={styles.thumb} contentFit="cover" transition={200} />
+          {item.posterUrl && !broken ? (
+            <Image source={{ uri: item.posterUrl }} style={styles.thumb} contentFit="cover" transition={200} onError={() => setBroken(true)} />
           ) : (
             <View style={[styles.thumb, styles.thumbFallback]} />
           )}

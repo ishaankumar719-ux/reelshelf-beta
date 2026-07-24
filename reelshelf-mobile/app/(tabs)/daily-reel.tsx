@@ -256,7 +256,7 @@ export default function DailyReelScreen() {
                 <Text style={styles.sectionTitle}>Today&apos;s Story</Text>
                 <View style={styles.storyCard}>
                   {story.coverImage && (
-                    <Image source={{ uri: story.coverImage }} style={styles.storyCover} contentFit="cover" />
+                    <StoryCover key={story.coverImage} uri={story.coverImage} />
                   )}
                   <Text style={styles.storyTitle}>{story.title}</Text>
                   <Text style={styles.storyAuthor}>By {story.author}</Text>
@@ -274,17 +274,26 @@ export default function DailyReelScreen() {
   );
 }
 
+// Falls back to rendering nothing (title/author/body still carry the card)
+// rather than a broken-image icon if the cover fails to load.
+function StoryCover({ uri }: { uri: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return <Image source={{ uri }} style={styles.storyCover} contentFit="cover" onError={() => setBroken(true)} />;
+}
+
 // ── Hero card ─────────────────────────────────────────────────────────────
 function DailyPickHero({ pick, onPress }: { pick: DailyPick; onPress: () => void }) {
   // Same source-side fade+scale press feedback as the two original hero-
   // weight cards (Featured Collection, Book of the Month) — the Daily Pick
   // hero is itself hero-weight, arguably the most natural fit for it.
   const { style, trigger } = useExpandOnPress(onPress);
+  const [broken, setBroken] = useState(false);
   return (
     <Pressable onPress={trigger}>
       <Animated.View style={[styles.hero, style]}>
-        {pick.posterUrl ? (
-          <Image source={{ uri: pick.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {pick.posterUrl && !broken ? (
+          <Image source={{ uri: pick.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" onError={() => setBroken(true)} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.heroFallback]} />
         )}

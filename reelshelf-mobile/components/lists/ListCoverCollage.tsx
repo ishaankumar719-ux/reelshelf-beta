@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StyleSheet, Text, View } from 'react-native';
@@ -60,10 +61,11 @@ export function ListCoverCollage({ items }: ListCoverCollageProps) {
 }
 
 function Cell({ item, style }: { item: ListCoverItem; style?: object }) {
-  if (!item.url) return <EmptyCell style={style} />;
+  const [broken, setBroken] = useState(false);
+  if (!item.url || broken) return <EmptyCell style={style} />;
   return (
     <View style={[styles.cell, style]}>
-      <Image source={{ uri: item.url }} style={StyleSheet.absoluteFill} contentFit="cover" alt={item.alt} />
+      <Image source={{ uri: item.url }} style={StyleSheet.absoluteFill} contentFit="cover" alt={item.alt} onError={() => setBroken(true)} />
     </View>
   );
 }

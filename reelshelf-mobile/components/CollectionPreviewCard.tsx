@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -24,6 +25,26 @@ const STATIC_SLOTS = [
   { rotate:  '7deg', tx: 10,  ty: 3, scale: 0.91, opacity: 0.72, zIndex: 2 },
   { rotate: '-8deg', tx:-10,  ty: 5, scale: 0.86, opacity: 0.55, zIndex: 1 },
 ] as const;
+
+function PosterSlotImage({ posterUrl, initial }: { posterUrl: string | null; initial: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!posterUrl || broken) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.posterFallback]}>
+        <Text style={styles.posterFallbackLetter}>{initial}</Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: posterUrl }}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      transition={200}
+      onError={() => setBroken(true)}
+    />
+  );
+}
 
 function StaticPosterStack({ items }: { items: SeedCardItem[] }) {
   const slots = STATIC_SLOTS.slice(0, Math.min(items.length, STATIC_SLOTS.length));
@@ -53,18 +74,7 @@ function StaticPosterStack({ items }: { items: SeedCardItem[] }) {
             ]}
           >
             <View style={styles.posterClip}>
-              {item.posterUrl ? (
-                <Image
-                  source={{ uri: item.posterUrl }}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  transition={200}
-                />
-              ) : (
-                <View style={[StyleSheet.absoluteFill, styles.posterFallback]}>
-                  <Text style={styles.posterFallbackLetter}>{initial}</Text>
-                </View>
-              )}
+              <PosterSlotImage posterUrl={item.posterUrl} initial={initial} />
             </View>
           </View>
         );

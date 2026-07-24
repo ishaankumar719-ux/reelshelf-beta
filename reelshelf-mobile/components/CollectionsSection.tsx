@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CollectionCard } from '@/components/CollectionCard';
 import { SectionHeader } from '@/components/section-header';
@@ -19,14 +19,22 @@ import type { CollectionCardData } from '@/lib/supabase/collections';
 export function CollectionsSection() {
   const { setOverrideColor } = useAtmosphere();
   const [collection, setCollection] = useState<CollectionCardData | null | undefined>(undefined);
+  // Distinct from "resolved to null" (no live collection this week — a real,
+  // silently-hideable outcome) — the fetch itself rejecting (network drop,
+  // Supabase error) is never conflated with that, since only this state
+  // offers a retry.
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
+    setFailed(false);
     fetchFeaturedCollection()
       .then((data) => { if (!cancelled) setCollection(data); })
-      .catch(() => { if (!cancelled) setCollection(null); });
+      .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   if (collection === null) return null;
 
@@ -34,7 +42,14 @@ export function CollectionsSection() {
     <View style={styles.section}>
       <SectionHeader title="Collection of the Week" subtitle="Hand-picked by ReelShelf." />
       <View style={styles.cardWrapper}>
-        {collection === undefined ? (
+        {failed ? (
+          <View style={styles.errorWrap}>
+            <Text style={styles.errorText}>Couldn&apos;t load this week&apos;s collection.</Text>
+            <Pressable onPress={load} hitSlop={6}>
+              <Text style={styles.retryLabel}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : collection === undefined ? (
           <SkeletonBlock width="100%" height={230} radius={RS.card.radius} />
         ) : (
           <CollectionCard item={collection} onActiveColorChange={setOverrideColor} />
@@ -47,4 +62,23 @@ export function CollectionsSection() {
 const styles = StyleSheet.create({
   section:     { gap: RS.spacing.xs },
   cardWrapper: { paddingHorizontal: RS.spacing.md },
+  errorWrap: {
+    height:          230,
+    borderRadius:    RS.card.radius,
+    borderWidth:     0.5,
+    borderColor:     RS.colors.border,
+    backgroundColor: RS.colors.card,
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             RS.spacing.xs,
+  },
+  errorText: {
+    fontSize: RS.typography.body,
+    color:    RS.colors.textMuted,
+  },
+  retryLabel: {
+    fontSize:   RS.typography.body,
+    fontWeight: '600',
+    color:      RS.colors.accent,
+  },
 });

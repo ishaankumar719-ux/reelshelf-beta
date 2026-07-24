@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -31,6 +32,7 @@ export function ContinueWatchingCard({
   const progressPct = `${Math.round(progress * 100)}%` as `${number}%`;
 
   const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
+  const [broken, setBroken] = useState(false);
 
   return (
     <Pressable
@@ -47,12 +49,13 @@ export function ContinueWatchingCard({
       <Animated.View style={[styles.card, cardAnimStyle]}>
         {/* Thumbnail — larger artwork area */}
         <View style={styles.thumbWrap}>
-          {posterUrl ? (
+          {posterUrl && !broken ? (
             <>
               <Image
                 source={{ uri: posterUrl }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                onError={() => setBroken(true)}
               />
               <View style={styles.playOverlay}>
                 <MaterialIcons name="play-circle-outline" size={34} color="rgba(255,255,255,0.90)" />
