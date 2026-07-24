@@ -17,12 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { MediaPrimaryActions } from '@/components/MediaPrimaryActions';
 import { PosterCard } from '@/components/poster-card';
+import { RevealOnMount } from '@/components/RevealOnMount';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { RS, Fonts } from '@/constants/theme';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailyPick } from '@/hooks/useDailyPick';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { type CatAnswerState, useQuestionOfTheDay } from '@/hooks/useQuestionOfTheDay';
 import { fetchTodaysStory, type TodaysStory } from '@/lib/supabase/articles';
@@ -163,34 +165,36 @@ export default function DailyReelScreen() {
                 <Text style={styles.emptyText}>{error ?? "Couldn't load today's pick."}</Text>
               </View>
             ) : pick ? (
-              <View style={styles.section}>
-                <DailyPickHero pick={pick} onPress={openDetails} />
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                <MediaPrimaryActions
-                  id={routeId}
-                  title={pick.title}
-                  synopsis={pick.overview}
-                  mediaType={pick.mediaType}
-                  posterUrl={pick.posterUrl}
-                  year={pick.year ?? 0}
-                  genres={pick.genres}
-                  runtime={null}
-                  voteAverage={pick.voteAverage}
-                  director={pick.creator}
-                  inShelf={persistence.inShelf}
-                  watched={persistence.watched}
-                  rating={persistence.rating}
-                  review={persistence.review}
-                  error={persistence.error}
-                  onToggleShelf={persistence.toggleShelf}
-                  onToggleWatched={persistence.toggleWatched}
-                  onSaveRating={persistence.saveRating}
-                  onReviewSaved={(entry) => persistence.applyComposerSave({
-                    rating: entry.rating, review: entry.review, containsSpoilers: entry.containsSpoilers,
-                  })}
-                />
-                <RerollButton pick={pick} rerolling={rerolling} onReroll={reroll} />
-              </View>
+              <RevealOnMount>
+                <View style={styles.section}>
+                  <DailyPickHero pick={pick} onPress={openDetails} />
+                  {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                  <MediaPrimaryActions
+                    id={routeId}
+                    title={pick.title}
+                    synopsis={pick.overview}
+                    mediaType={pick.mediaType}
+                    posterUrl={pick.posterUrl}
+                    year={pick.year ?? 0}
+                    genres={pick.genres}
+                    runtime={null}
+                    voteAverage={pick.voteAverage}
+                    director={pick.creator}
+                    inShelf={persistence.inShelf}
+                    watched={persistence.watched}
+                    rating={persistence.rating}
+                    review={persistence.review}
+                    error={persistence.error}
+                    onToggleShelf={persistence.toggleShelf}
+                    onToggleWatched={persistence.toggleWatched}
+                    onSaveRating={persistence.saveRating}
+                    onReviewSaved={(entry) => persistence.applyComposerSave({
+                      rating: entry.rating, review: entry.review, containsSpoilers: entry.containsSpoilers,
+                    })}
+                  />
+                  <RerollButton pick={pick} rerolling={rerolling} onReroll={reroll} />
+                </View>
+              </RevealOnMount>
             ) : null}
 
             {/* ── Question of the Day ──────────────────────────────────────────
@@ -272,34 +276,40 @@ export default function DailyReelScreen() {
 
 // ── Hero card ─────────────────────────────────────────────────────────────
 function DailyPickHero({ pick, onPress }: { pick: DailyPick; onPress: () => void }) {
+  // Same source-side fade+scale press feedback as the two original hero-
+  // weight cards (Featured Collection, Book of the Month) — the Daily Pick
+  // hero is itself hero-weight, arguably the most natural fit for it.
+  const { style, trigger } = useExpandOnPress(onPress);
   return (
-    <Pressable style={styles.hero} onPress={onPress}>
-      {pick.posterUrl ? (
-        <Image source={{ uri: pick.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.heroFallback]} />
-      )}
-      <View style={styles.heroScrim} />
-      <View style={styles.heroContent}>
-        <View style={styles.eyebrowRow}>
-          <Text style={styles.eyebrow}>✨ Your Daily Pick</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeLabel}>{MEDIA_BADGE_LABEL[pick.mediaType]}</Text>
-          </View>
-        </View>
-        <Text style={styles.heroTitle} numberOfLines={2}>{pick.title}</Text>
-        <Text style={styles.heroMeta}>{[pick.year, pick.genres[0], pick.creator].filter(Boolean).join(' · ')}</Text>
-        {pick.overview ? <Text style={styles.heroOverview} numberOfLines={3}>{pick.overview}</Text> : null}
-        {pick.reasons.length > 0 && (
-          <View style={styles.reasonRow}>
-            {pick.reasons.map((reason, i) => (
-              <View key={getMediaKey('reason', `${reason}-${i}`)} style={styles.reasonChip}>
-                <Text style={styles.reasonChipLabel}>{reason}</Text>
-              </View>
-            ))}
-          </View>
+    <Pressable onPress={trigger}>
+      <Animated.View style={[styles.hero, style]}>
+        {pick.posterUrl ? (
+          <Image source={{ uri: pick.posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.heroFallback]} />
         )}
-      </View>
+        <View style={styles.heroScrim} />
+        <View style={styles.heroContent}>
+          <View style={styles.eyebrowRow}>
+            <Text style={styles.eyebrow}>✨ Your Daily Pick</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>{MEDIA_BADGE_LABEL[pick.mediaType]}</Text>
+            </View>
+          </View>
+          <Text style={styles.heroTitle} numberOfLines={2}>{pick.title}</Text>
+          <Text style={styles.heroMeta}>{[pick.year, pick.genres[0], pick.creator].filter(Boolean).join(' · ')}</Text>
+          {pick.overview ? <Text style={styles.heroOverview} numberOfLines={3}>{pick.overview}</Text> : null}
+          {pick.reasons.length > 0 && (
+            <View style={styles.reasonRow}>
+              {pick.reasons.map((reason, i) => (
+                <View key={getMediaKey('reason', `${reason}-${i}`)} style={styles.reasonChip}>
+                  <Text style={styles.reasonChipLabel}>{reason}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </Animated.View>
     </Pressable>
   );
 }

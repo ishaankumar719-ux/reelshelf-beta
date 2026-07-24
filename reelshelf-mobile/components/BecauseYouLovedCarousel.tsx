@@ -1,10 +1,12 @@
 import { FlatList, type ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import Animated from 'react-native-reanimated';
 
 import { PosterCard } from '@/components/poster-card';
 import { SectionHeader } from '@/components/section-header';
 import { RS } from '@/constants/theme';
 import { type SeedCardItem } from '@/data/seedHomeContent';
+import { useExpandOnPress } from '@/hooks/useExpandOnPress';
 import { getMediaKey } from '@/utils/listKeys';
 
 const ITEM_SEP = RS.spacing.sm;
@@ -26,6 +28,30 @@ interface BecauseYouLovedSectionProps {
   items:    BecauseYouLovedItem[];
 }
 
+function Item({ item }: { item: BecauseYouLovedItem }) {
+  // Same source-side fade+scale press feedback as MediaPosterRow — see its
+  // header comment for the full transition rationale.
+  const { style, trigger } = useExpandOnPress(() =>
+    router.push(
+      `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
+    ),
+  );
+  return (
+    <Animated.View style={[{ width: RS.card.posterWidth }, style]}>
+      <PosterCard
+        title={item.title}
+        year={item.year}
+        mediaType={item.mediaType}
+        posterUrl={item.posterUrl}
+        onPress={trigger}
+      />
+      {item.reason ? (
+        <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
+      ) : null}
+    </Animated.View>
+  );
+}
+
 export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLovedSectionProps) {
   return (
     <View style={styles.section}>
@@ -44,24 +70,7 @@ export function BecauseYouLovedSection({ title, subtitle, items }: BecauseYouLov
         contentContainerStyle={styles.list}
         snapToInterval={RS.card.posterWidth + ITEM_SEP}
         decelerationRate="fast"
-        renderItem={({ item }: ListRenderItemInfo<BecauseYouLovedItem>) => (
-          <View style={{ width: RS.card.posterWidth }}>
-            <PosterCard
-              title={item.title}
-              year={item.year}
-              mediaType={item.mediaType}
-              posterUrl={item.posterUrl}
-              onPress={() =>
-                router.push(
-                  `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
-                )
-              }
-            />
-            {item.reason ? (
-              <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
-            ) : null}
-          </View>
-        )}
+        renderItem={({ item }: ListRenderItemInfo<BecauseYouLovedItem>) => <Item item={item} />}
         getItemLayout={(_, index) => ({
           length: RS.card.posterWidth,
           offset: (RS.card.posterWidth + ITEM_SEP) * index,
