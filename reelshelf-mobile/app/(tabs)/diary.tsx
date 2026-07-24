@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SignInPrompt } from '@/components/SignInPrompt';
@@ -203,6 +203,17 @@ export default function DiaryScreen() {
     return groups;
   }, [filteredEntries]);
 
+  // SectionList (virtualized) rather than ScrollView+map — a diary can grow
+  // to hundreds of entries over time, well past the ~6-item threshold where
+  // an unvirtualized list becomes a real scroll-performance cost.
+  const sections = useMemo(
+    () =>
+      TIME_GROUPS
+        .map((label) => ({ title: label, data: groupedEntries[label] }))
+        .filter((s) => s.data.length > 0),
+    [groupedEntries],
+  );
+
   if (initializing) {
     return <SafeAreaView style={styles.root} edges={['top']} />;
   }
@@ -266,29 +277,21 @@ export default function DiaryScreen() {
           <Text style={styles.emptyText}>No entries match this filter yet.</Text>
         </View>
       ) : (
-        <ScrollView
+        <SectionList
+          sections={sections}
+          keyExtractor={(entry, i) =>
+            getActivityKey('diary', entry.mediaType, entry.routeId, `${entry.watchedDate}-${entry.reviewScope}-${entry.seasonNumber ?? ''}-${entry.episodeNumber ?? ''}`, i)
+          }
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadEntries(true)} tintColor={RS.colors.accent} />}
-        >
-          {TIME_GROUPS.map((groupLabel) => {
-            const groupEntries = groupedEntries[groupLabel];
-            if (groupEntries.length === 0) return null;
-            return (
-              <View key={groupLabel} style={styles.group}>
-                <Text style={styles.groupLabel}>
-                  {groupLabel} · {groupEntries.length} {groupEntries.length === 1 ? 'entry' : 'entries'}
-                </Text>
-                {groupEntries.map((entry, i) => (
-                  <DiaryRow
-                    key={getActivityKey('diary', entry.mediaType, entry.routeId, `${entry.watchedDate}-${entry.reviewScope}-${entry.seasonNumber ?? ''}-${entry.episodeNumber ?? ''}`, i)}
-                    entry={entry}
-                    onEdit={() => setEditingEntry(entry)}
-                  />
-                ))}
-              </View>
-            );
-          })}
-        </ScrollView>
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.groupLabel}>
+              {section.title} · {section.data.length} {section.data.length === 1 ? 'entry' : 'entries'}
+            </Text>
+          )}
+          renderItem={({ item }) => <DiaryRow entry={item} onEdit={() => setEditingEntry(item)} />}
+          renderSectionFooter={() => <View style={styles.group} />}
+        />
       )}
 
       {editingEntry ? (

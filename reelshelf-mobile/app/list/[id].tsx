@@ -494,6 +494,15 @@ export default function ListDetailScreen() {
               {isOwner && list.isRanked && (
                 <Text style={styles.reorderHint}>Hold the grip to drag and reorder</Text>
               )}
+              {/* Deliberate exception to the app's FlatList-for-lists->6-items
+                  rule: DraggableRow's reorder preview (the neighbor-shift
+                  animation above) needs every row live and position-aware of
+                  the others simultaneously, which virtualization is
+                  fundamentally at odds with — FlatList unmounts off-screen
+                  rows. A real reorderable-FlatList would need a new native
+                  drag-list dependency, out of scope here. List items are
+                  human-curated (a "Top 100" is a realistic ceiling), not an
+                  unbounded feed like Diary, so the tradeoff is intentional. */}
               <View>
                 {items.map((item, index) => (
                   <DraggableRow

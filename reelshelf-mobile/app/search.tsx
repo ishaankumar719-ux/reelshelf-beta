@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -410,49 +411,64 @@ export default function SearchScreen() {
               {(category === 'all' || category === 'movies') && movies.data.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Movies</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                    {movies.data.map((item, i) => (
-                      <View key={getMediaKey('film', `${item.id}-${i}`)}>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.posterRow}
+                    data={movies.data}
+                    keyExtractor={(item, i) => getMediaKey('film', `${item.id}-${i}`)}
+                    renderItem={({ item }) => (
+                      <View>
                         <PosterCard title={item.title} year={item.year} mediaType="film" posterUrl={resolveImageUrl(item.posterUrl)}
                           onPress={() => openMedia(item.id, item.title, item.posterUrl, 'film')} />
                         {typeof item.rating === 'number' && (
                           <View style={styles.ratingPill}><Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text></View>
                         )}
                       </View>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               )}
 
               {(category === 'all' || category === 'tv') && tv.data.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>TV</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                    {tv.data.map((item, i) => (
-                      <View key={getMediaKey('tv', `${item.id}-${i}`)}>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.posterRow}
+                    data={tv.data}
+                    keyExtractor={(item, i) => getMediaKey('tv', `${item.id}-${i}`)}
+                    renderItem={({ item }) => (
+                      <View>
                         <PosterCard title={item.title} year={item.year} mediaType="tv" posterUrl={resolveImageUrl(item.posterUrl)}
                           onPress={() => openMedia(item.id, item.title, item.posterUrl, 'tv')} />
                         {typeof item.rating === 'number' && (
                           <View style={styles.ratingPill}><Text style={styles.ratingPillText}>{item.rating.toFixed(1)}</Text></View>
                         )}
                       </View>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               )}
 
               {(category === 'all' || category === 'books') && books.data.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Books</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                    {books.data.map((item, i) => (
-                      <View key={getMediaKey('book', `${item.id}-${i}`)} style={styles.bookCard}>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.posterRow}
+                    data={books.data}
+                    keyExtractor={(item, i) => getMediaKey('book', `${item.id}-${i}`)}
+                    renderItem={({ item }) => (
+                      <View style={styles.bookCard}>
                         <PosterCard title={item.title} year={item.year} mediaType="book" posterUrl={resolveImageUrl(item.posterUrl)}
                           onPress={() => openMedia(item.id, item.title, item.posterUrl, 'book')} />
                         {item.author ? <Text style={styles.bookAuthor} numberOfLines={1}>{item.author}</Text> : null}
                       </View>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               )}
 
@@ -464,15 +480,20 @@ export default function SearchScreen() {
               {(category === 'all' || category === 'people') && people.data.length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>People</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                    {people.data.map((person, i) => (
-                      <Pressable key={getMediaKey('person', `${person.id}-${i}`)} style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.posterRow}
+                    data={people.data}
+                    keyExtractor={(person, i) => getMediaKey('person', `${person.id}-${i}`)}
+                    renderItem={({ item: person }) => (
+                      <Pressable style={styles.personCard} onPress={() => router.push(`/person/${person.id}`)}>
                         <PersonPhoto uri={resolveImageUrl(person.photoUrl, 'profile')} />
                         <Text style={styles.personName} numberOfLines={2}>{person.name}</Text>
                         <Text style={styles.personKnownFor} numberOfLines={1}>{person.knownFor.join(', ')}</Text>
                       </Pressable>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               )}
 

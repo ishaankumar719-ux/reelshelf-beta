@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterCard } from '@/components/poster-card';
@@ -103,54 +103,66 @@ export default function GenreDetailScreen() {
             {movies.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Films</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                  {movies.map((item, i) => (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.posterRow}
+                  data={movies}
+                  keyExtractor={(item, i) => getMediaKey('film', `${item.id}-${i}`)}
+                  renderItem={({ item }) => (
                     <PosterCard
-                      key={getMediaKey('film', `${item.id}-${i}`)}
                       title={item.title}
                       year={item.year}
                       mediaType="film"
                       posterUrl={resolveImageUrl(item.posterUrl)}
                       onPress={() => openMediaDetail(item.id, item.title, item.posterUrl, 'film')}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                />
               </View>
             )}
 
             {tv.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>TV Shows</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                  {tv.map((item, i) => (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.posterRow}
+                  data={tv}
+                  keyExtractor={(item, i) => getMediaKey('tv', `${item.id}-${i}`)}
+                  renderItem={({ item }) => (
                     <PosterCard
-                      key={getMediaKey('tv', `${item.id}-${i}`)}
                       title={item.title}
                       year={item.year}
                       mediaType="tv"
                       posterUrl={resolveImageUrl(item.posterUrl)}
                       onPress={() => openMediaDetail(item.id, item.title, item.posterUrl, 'tv')}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                />
               </View>
             )}
 
             {genreBooks.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Books</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posterRow}>
-                  {genreBooks.map((book, i) => (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.posterRow}
+                  data={genreBooks}
+                  keyExtractor={(book, i) => getMediaKey('book', `${book.id}-${i}`)}
+                  renderItem={({ item: book }) => (
                     <PosterCard
-                      key={getMediaKey('book', `${book.id}-${i}`)}
                       title={book.title}
                       year={Number(book.year)}
                       mediaType="book"
                       posterUrl={null}
                       onPress={() => openMediaDetail(`book-${book.id}`, book.title, null, 'book')}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                />
               </View>
             )}
           </>

@@ -12,7 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { SignInPrompt } from '@/components/SignInPrompt';
@@ -262,11 +262,14 @@ export function HomeFriendsActivity({ refreshSignal, onRefreshComplete }: HomeFr
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {entries.map((entry, i) => (
-        <ActivityCard key={getActivityKey(entry.activityType, entry.mediaType, entry.routeId ?? entry.listId ?? entry.userId, entry.createdAt, i)} entry={entry} />
-      ))}
-    </ScrollView>
+    <FlatList
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.row}
+      data={entries}
+      keyExtractor={(entry, i) => getActivityKey(entry.activityType, entry.mediaType, entry.routeId ?? entry.listId ?? entry.userId, entry.createdAt, i)}
+      renderItem={({ item }) => <ActivityCard entry={item} />}
+    />
   );
 }
 
