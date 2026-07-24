@@ -1,17 +1,14 @@
+import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { RS } from '@/constants/theme';
-import { Motion } from '@/constants/motion';
 import type { MediaType } from '@/data/seedHomeContent';
+import { usePressLift } from '@/hooks/usePressLift';
 
 interface ContinueWatchingCardProps {
   id?:        string;
@@ -33,21 +30,15 @@ export function ContinueWatchingCard({
 }: ContinueWatchingCardProps = {}) {
   const progressPct = `${Math.round(progress * 100)}%` as `${number}%`;
 
-  const cardScale = useSharedValue<number>(1);
-  const cardAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-  }));
+  const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
 
   return (
     <Pressable
-      onPressIn={() => {
-        cardScale.value = withSpring(Motion.lift.depressScale, { damping: 18, stiffness: 260, mass: 0.8 });
-      }}
-      onPressOut={() => {
-        cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
-      }}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       onPress={() => {
         if (!id || !title || !mediaType) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         router.push(
           `/media/${id}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`
         );

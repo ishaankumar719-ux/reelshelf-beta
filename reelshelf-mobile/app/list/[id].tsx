@@ -29,6 +29,7 @@ import { ListEditorModal } from '@/components/lists/ListEditorModal';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import {
   deleteList, fetchListDetail, fetchListEngagementState, likeList, removeListItem,
   reorderListItems, saveList, unlikeList, unsaveList, updateList,
@@ -74,6 +75,7 @@ function DraggableRow({
   item, index, total, isRanked, canReorder, canRemove,
   dragActiveId, dragFromIndex, dragTargetIdx, onDragStart, onDragUpdate, onDragEnd, onPress, onRemove,
 }: DraggableRowProps) {
+  const reduceMotion = useReduceMotion();
   const dragY = useSharedValue(0);
   const isDragging = dragActiveId === item.id;
 
@@ -87,7 +89,7 @@ function DraggableRow({
       runOnJS(onDragUpdate)(e.translationY);
     })
     .onEnd(() => {
-      dragY.value = withSpring(0, { damping: 24, stiffness: 260, mass: 0.7 });
+      dragY.value = reduceMotion ? 0 : withSpring(0, { damping: 24, stiffness: 260, mass: 0.7 });
       runOnJS(onDragEnd)();
     });
 
@@ -108,11 +110,12 @@ function DraggableRow({
     if (isDragging) {
       return { transform: [{ translateY: dragY.value }], zIndex: 10 };
     }
+    const target = shiftDirection * ROW_HEIGHT;
     return {
-      transform: [{ translateY: withSpring(shiftDirection * ROW_HEIGHT, { damping: 24, stiffness: 260, mass: 0.7 }) }],
+      transform: [{ translateY: reduceMotion ? target : withSpring(target, { damping: 24, stiffness: 260, mass: 0.7 }) }],
       zIndex: 0,
     };
-  }, [isDragging, dragY, shiftDirection]);
+  }, [isDragging, dragY, shiftDirection, reduceMotion]);
 
   const badge = TYPE_BADGE[item.mediaType] ?? TYPE_BADGE.film;
 

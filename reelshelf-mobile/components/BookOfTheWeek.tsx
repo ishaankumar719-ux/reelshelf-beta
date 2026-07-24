@@ -1,19 +1,17 @@
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { RS, Fonts } from '@/constants/theme';
-import { Motion } from '@/constants/motion';
 import { SectionHeader } from '@/components/section-header';
 import { bookOfTheWeek } from '@/data/seedHomeContent';
+import { usePressLift } from '@/hooks/usePressLift';
 
 function navigateToBookOfTheWeek() {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   router.push(
     `/media/${bookOfTheWeek.id}?title=${encodeURIComponent(bookOfTheWeek.title)}&posterUrl=${encodeURIComponent(bookOfTheWeek.posterUrl ?? '')}&mediaType=${bookOfTheWeek.mediaType}`
   );
@@ -23,10 +21,7 @@ const COVER_W = Dimensions.get('window').width - 2 * RS.spacing.md;
 const COVER_H = 240;
 
 export function BookOfTheWeek() {
-  const cardScale = useSharedValue<number>(1);
-  const cardAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-  }));
+  const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
 
   return (
     <View style={styles.section}>
@@ -44,12 +39,8 @@ export function BookOfTheWeek() {
         >
           <Pressable
             style={styles.coverInner}
-            onPressIn={() => {
-              cardScale.value = withSpring(Motion.lift.depressScale, { damping: 18, stiffness: 260, mass: 0.8 });
-            }}
-            onPressOut={() => {
-              cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
-            }}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
             onPress={navigateToBookOfTheWeek}
           >
             {bookOfTheWeek.posterUrl ? (

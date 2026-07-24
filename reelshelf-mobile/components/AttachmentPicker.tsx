@@ -337,7 +337,7 @@ export function AttachmentPicker({ value, onChange, onUploadingChange }: Attachm
       )}
 
       {/* Image source action sheet — Choose from Photos / Take Photo / Cancel */}
-      <Modal visible={imageSheetOpen} transparent animationType="fade" onRequestClose={() => setImageSheetOpen(false)}>
+      <Modal visible={imageSheetOpen} transparent animationType="slide" onRequestClose={() => setImageSheetOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setImageSheetOpen(false)}>
           <Pressable style={styles.actionSheet} onPress={(e) => e.stopPropagation()}>
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />

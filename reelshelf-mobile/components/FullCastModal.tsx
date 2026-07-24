@@ -1,4 +1,5 @@
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -22,6 +23,7 @@ interface FullCastModalProps {
 export function FullCastModal({ visible, onClose, cast }: FullCastModalProps) {
   const handleTap = (personId: number | null | undefined) => {
     if (!personId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onClose();
     router.push(`/person/${personId}`);
   };

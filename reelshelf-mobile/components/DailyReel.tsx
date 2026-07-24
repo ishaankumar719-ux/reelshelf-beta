@@ -1,16 +1,13 @@
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { RS, Fonts } from '@/constants/theme';
-import { Motion } from '@/constants/motion';
 import { useDailyPick } from '@/hooks/useDailyPick';
+import { usePressLift } from '@/hooks/usePressLift';
 import { SkeletonBlock } from '@/components/Skeleton';
 
 const SCREEN_W  = Dimensions.get('window').width;
@@ -30,10 +27,7 @@ const MEDIA_BADGE_LABEL: Record<'film' | 'tv' | 'book', string> = {
 export function DailyReel() {
   const { status, pick, isLoggedIn } = useDailyPick();
 
-  const cardScale = useSharedValue<number>(1);
-  const cardAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-  }));
+  const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
 
   if (!isLoggedIn) return null;
   if (status === 'loading' && !pick) {
@@ -48,6 +42,7 @@ export function DailyReel() {
   const badge = MEDIA_BADGE_LABEL[pick.mediaType];
 
   const navigateToPick = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     router.push(
       `/media/${pick.mediaId}?title=${encodeURIComponent(pick.title)}&posterUrl=${encodeURIComponent(pick.posterUrl ?? '')}&mediaType=${pick.mediaType}`,
     );
@@ -63,12 +58,8 @@ export function DailyReel() {
       >
         <Pressable
           style={styles.artworkInner}
-          onPressIn={() => {
-            cardScale.value = withSpring(Motion.lift.depressScale, { damping: 18, stiffness: 260, mass: 0.8 });
-          }}
-          onPressOut={() => {
-            cardScale.value = withSpring(1, { damping: 14, stiffness: 200, mass: 0.8 });
-          }}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
           onPress={navigateToPick}
         >
           {pick.posterUrl ? (

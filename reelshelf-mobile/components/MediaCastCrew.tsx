@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -40,7 +41,11 @@ function CastCard({ member }: { member: CastMember }) {
     <Pressable
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      onPress={() => member.personId && router.push(`/person/${member.personId}`)}
+      onPress={() => {
+        if (!member.personId) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        router.push(`/person/${member.personId}`);
+      }}
       disabled={!member.personId}
     >
       <Animated.View style={[styles.castItem, animStyle]}>

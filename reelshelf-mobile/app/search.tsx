@@ -26,6 +26,7 @@ import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbP
 import { searchBooks, searchCollections, searchLists, searchUsers,
   type BookSearchResult, type CollectionSearchResult, type ListSearchResult, type UserSearchResult } from '@/lib/search';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '@/lib/recentSearches';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { getMediaKey } from '@/utils/listKeys';
 
 type Category = 'all' | 'movies' | 'tv' | 'books' | 'people' | 'collections' | 'lists' | 'users';
@@ -64,10 +65,11 @@ interface BestMatchPreview {
 // mount/unmount pop underneath the fade, matching the app's calm/non-bouncy
 // motion convention (timing, not spring, for an opacity crossfade).
 function CategoryChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const reduceMotion = useReduceMotion();
   const activeOpacity = useSharedValue(active ? 1 : 0);
   useEffect(() => {
-    activeOpacity.value = withTiming(active ? 1 : 0, { duration: 180 });
-  }, [active, activeOpacity]);
+    activeOpacity.value = reduceMotion ? (active ? 1 : 0) : withTiming(active ? 1 : 0, { duration: 180 });
+  }, [active, activeOpacity, reduceMotion]);
   const activeFillStyle = useAnimatedStyle(() => ({ opacity: activeOpacity.value }));
 
   return (

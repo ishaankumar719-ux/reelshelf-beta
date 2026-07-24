@@ -138,9 +138,13 @@ function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
 
   const commitSwipe = useCallback((dir: 1 | -1) => {
     onAdvance(dir);
-    entryScale.value = 0.92;
-    entryScale.value = withSpring(1, { damping: 14, stiffness: 180 });
-  }, [onAdvance, entryScale]);
+    if (reduceMotion) {
+      entryScale.value = 1;
+    } else {
+      entryScale.value = 0.92;
+      entryScale.value = withSpring(1, { damping: 14, stiffness: 180 });
+    }
+  }, [onAdvance, entryScale, reduceMotion]);
 
   // Root cause of the swallowed-tap bug: Gesture.Pan().minDistance(4) requires
   // 4px of movement before the gesture even ACTIVATES — a true near-zero-
@@ -181,12 +185,22 @@ function FannedDeck({ items, activeIndex, onAdvance }: DeckProps) {
       if (isSwipe) {
         // Committed swipe: fly the card off-screen, then advance index
         const dir: 1 | -1 = dx < 0 ? 1 : -1;    // left drag = advance (1), right drag = back (-1)
-        const exitX = dir > 0 ? -SCREEN_W * 1.4 : SCREEN_W * 1.4;
-        dragX.value = withTiming(exitX, { duration: EXIT_MS }, () => {
+        if (reduceMotion) {
           dragX.value = 0;
           dragY.value = 0;
           runOnJS(commitSwipe)(dir);
-        });
+        } else {
+          const exitX = dir > 0 ? -SCREEN_W * 1.4 : SCREEN_W * 1.4;
+          dragX.value = withTiming(exitX, { duration: EXIT_MS }, () => {
+            dragX.value = 0;
+            dragY.value = 0;
+            runOnJS(commitSwipe)(dir);
+          });
+        }
+      } else if (reduceMotion) {
+        // Didn't reach threshold → snap back to resting position
+        dragX.value = 0;
+        dragY.value = 0;
       } else {
         // Didn't reach threshold → spring back to resting position
         dragX.value = withSpring(0, { damping: 18, stiffness: 220 });

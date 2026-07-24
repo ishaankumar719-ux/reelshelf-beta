@@ -43,17 +43,21 @@ export function FloatingSearchBar() {
 
   const advancePhrase = useCallback(() => {
     setPhraseIdx(i => (i + 1) % PLACEHOLDERS.length);
-    textOpacity.value = withTiming(1, { duration: 280 });
-  }, []);
+    textOpacity.value = reduceMotion ? 1 : withTiming(1, { duration: 280 });
+  }, [reduceMotion]);
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (reduceMotion) {
+        advancePhrase();
+        return;
+      }
       textOpacity.value = withTiming(0, { duration: 230 }, (finished) => {
         if (finished) runOnJS(advancePhrase)();
       });
     }, ROTATE_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [reduceMotion, advancePhrase]);
 
   return (
     <View style={styles.wrapper}>
