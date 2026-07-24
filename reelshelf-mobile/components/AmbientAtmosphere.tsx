@@ -15,6 +15,7 @@ import type { SharedValue } from 'react-native-reanimated';
 
 import { useAtmosphere } from '@/contexts/AtmosphereContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { RS } from '@/constants/theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const ATMO_H = Math.round(SCREEN_H * 0.38);
@@ -248,6 +249,6 @@ const styles = StyleSheet.create({
     opacity: 0.65,   // darker variant for Discover screen
   },
   blackOverlay: {
-    backgroundColor: '#070707',
+    backgroundColor: RS.colors.base,
   },
 });

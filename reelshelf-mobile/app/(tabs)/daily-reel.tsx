@@ -394,7 +394,7 @@ function QuestionOfTheDaySection({
             ? catStates[cat].isCorrect === true ? '✓' : catStates[cat].isCorrect === false ? '✗' : '·'
             : null;
           const glyphColor = catStates[cat].isCorrect === true
-            ? '#1d9e75' : catStates[cat].isCorrect === false ? '#ef4444' : RS.colors.textMuted;
+            ? RS.colors.accent : catStates[cat].isCorrect === false ? '#ef4444' : RS.colors.textMuted;
           return (
             <Pressable
               key={getMediaKey('trivia-cat', cat)}
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eyebrow: { fontSize: RS.typography.overline, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
   badge: { borderRadius: RS.badge.pillRadius, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 8, paddingVertical: 2 },
-  badgeLabel: { fontSize: 9, fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 },
+  badgeLabel: { fontSize: RS.typography.micro, fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 },
   heroTitle: { fontSize: RS.typography.heading + 4, fontWeight: '700', color: '#fff', letterSpacing: RS.letterSpacing.tight },
   heroMeta: { fontSize: RS.typography.caption, color: 'rgba(255,255,255,0.6)' },
   heroOverview: { fontSize: RS.typography.body, color: 'rgba(255,255,255,0.75)', lineHeight: 20 },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   revealPanelCorrect: { borderColor: 'rgba(29,158,117,0.35)', backgroundColor: 'rgba(29,158,117,0.08)' },
   revealPanelWrong: { borderColor: 'rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.08)' },
   revealTitle: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.textSecondary },
-  revealTitleCorrect: { color: '#1d9e75' },
+  revealTitleCorrect: { color: RS.colors.accent },
   revealTitleWrong: { color: '#ef4444' },
   revealXp: { fontSize: RS.typography.caption, fontWeight: '400', color: RS.colors.textMuted },
   revealExplanation: { fontSize: RS.typography.caption, color: RS.colors.textSecondary, lineHeight: 17 },

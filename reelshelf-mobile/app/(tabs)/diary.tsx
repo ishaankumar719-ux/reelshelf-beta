@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical:   1,
   },
   scopeBadgeLabel: {
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     fontWeight:    '700',
     color:         RS.colors.accent,
     letterSpacing: 0.3,

@@ -239,5 +239,5 @@ const styles = StyleSheet.create({
   resultPosterFallback: { backgroundColor: RS.colors.elevated, alignItems: 'center', justifyContent: 'center' },
   resultOverlay: { position: 'absolute', top: 0, left: 0, right: 0, aspectRatio: 2 / 3, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 8 },
   resultTitle: { fontSize: 10, fontWeight: '600', color: RS.colors.textPrimary },
-  resultSubtitle: { fontSize: 9, color: RS.colors.textMuted },
+  resultSubtitle: { fontSize: RS.typography.micro, color: RS.colors.textMuted },
 });

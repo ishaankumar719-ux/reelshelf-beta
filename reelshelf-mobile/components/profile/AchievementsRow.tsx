@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   rarity: {
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     color:         RS.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: RS.letterSpacing.wide,

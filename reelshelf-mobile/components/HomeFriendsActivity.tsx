@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   rating: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.accent },
   cinemaBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 4, backgroundColor: RS.colors.accentGlow, paddingHorizontal: 5, paddingVertical: 1 },
   cinemaBadgeLabel: { fontSize: 8, fontWeight: '700', color: RS.colors.accent, textTransform: 'uppercase' },
-  rewatchBadge: { fontSize: 9, fontWeight: '600', color: RS.colors.textMuted },
+  rewatchBadge: { fontSize: RS.typography.micro, fontWeight: '600', color: RS.colors.textMuted },
   reviewText: { fontSize: RS.typography.overline + 1, color: RS.colors.textSecondary, lineHeight: 13 },
   listBody: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: RS.spacing.xs },
   listTitle: { flex: 1, fontSize: RS.typography.caption + 1, fontWeight: '600', color: RS.colors.textPrimary, lineHeight: 16 },

@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor:  RS.colors.border,
   },
   emptyLabel: {
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     fontWeight:    '700',
     color:         'rgba(255,255,255,0.32)',
     textTransform: 'uppercase',

@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     paddingVertical:   2,
   },
   gifBadgeLabel: {
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     fontWeight:    '700',
     letterSpacing: 0.5,
     color:         '#fff',
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     textAlign:     'right',
     paddingHorizontal: RS.spacing.md,
     paddingBottom: RS.spacing.sm,
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     color:         RS.colors.textMuted,
   },
 });

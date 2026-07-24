@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     paddingVertical:   1,
   },
   loggedBadgeLabel: {
-    fontSize:   9,
+    fontSize:   RS.typography.micro,
     fontWeight: '700',
     color:      RS.colors.accent,
   },

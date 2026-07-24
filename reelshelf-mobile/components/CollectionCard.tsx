@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     backgroundColor: RS.colors.textPrimary,
   },
   count: {
-    fontSize:      9,
+    fontSize:      RS.typography.micro,
     fontWeight:    '600',
     color:         'rgba(255,255,255,0.42)',
     textTransform: 'uppercase',

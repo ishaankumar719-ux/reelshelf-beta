@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.lg, gap: RS.spacing.sm },
   badgeRow: { flexDirection: 'row', gap: RS.spacing.xs, flexWrap: 'wrap' },
   metaBadge: { borderRadius: 5, borderWidth: 0.5, borderColor: RS.colors.border, paddingHorizontal: 9, paddingVertical: 3, backgroundColor: RS.colors.elevated },
-  metaBadgeLabel: { fontSize: 9, fontWeight: '700', letterSpacing: RS.letterSpacing.wide, textTransform: 'uppercase', color: RS.colors.textMuted },
+  metaBadgeLabel: { fontSize: RS.typography.micro, fontWeight: '700', letterSpacing: RS.letterSpacing.wide, textTransform: 'uppercase', color: RS.colors.textMuted },
   metaBadgeRanked: { borderColor: 'rgba(251,191,36,0.3)' },
   metaBadgeLabelRanked: { color: 'rgba(251,191,36,0.88)' },
   metaBadgePrivate: { borderColor: 'rgba(248,113,113,0.25)' },
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   creatorAvatar: { width: 32, height: 32, borderRadius: 16 },
   creatorAvatarFallback: { backgroundColor: RS.colors.elevated, alignItems: 'center', justifyContent: 'center' },
   creatorInitial: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.textMuted },
-  curatedByLabel: { fontSize: 9, fontWeight: '700', letterSpacing: RS.letterSpacing.wide, textTransform: 'uppercase', color: RS.colors.textMuted },
+  curatedByLabel: { fontSize: RS.typography.micro, fontWeight: '700', letterSpacing: RS.letterSpacing.wide, textTransform: 'uppercase', color: RS.colors.textMuted },
   creatorName: { fontSize: RS.typography.body, fontWeight: '600', color: RS.colors.textPrimary, marginTop: 1 },
   description: { fontSize: RS.typography.body, color: RS.colors.textSecondary, lineHeight: 21, marginTop: RS.spacing.xs },
   readMore: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textMuted, marginTop: 4 },
@@ -594,8 +594,12 @@ const styles = StyleSheet.create({
   ownerControls: { flexDirection: 'row', gap: RS.spacing.xs, flexWrap: 'wrap', marginTop: RS.spacing.sm },
   ownerBtn: { borderRadius: RS.button.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, paddingHorizontal: 14, paddingVertical: 8 },
   ownerBtnLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
-  ownerBtnPrimary: { backgroundColor: RS.button.filledBg, borderWidth: 0 },
-  ownerBtnPrimaryLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.button.filledText },
+  // Deliberately NOT filled — matches its sibling owner-control buttons
+  // (Edit settings, Delete). The list's one filled button is emptyCta below,
+  // shown only when the list has no items yet; keeping "+ Add media" outlined
+  // avoids two simultaneously-visible filled buttons doing the same action.
+  ownerBtnPrimary: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill },
+  ownerBtnPrimaryLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.button.primaryText },
   deleteBtn: { marginLeft: 'auto', borderRadius: RS.button.radius, paddingHorizontal: 14, paddingVertical: 8 },
   deleteLabel: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textMuted },
   divider: { height: 0.5, backgroundColor: RS.colors.border, marginVertical: RS.spacing.md },

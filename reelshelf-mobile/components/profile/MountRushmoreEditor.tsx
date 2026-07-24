@@ -360,6 +360,6 @@ const styles = StyleSheet.create({
   resultCard: { width: '31%', gap: 4 },
   resultPoster: { width: '100%', aspectRatio: 2 / 3, borderRadius: 8 },
   resultTitle: { fontSize: 10, fontWeight: '600', color: RS.colors.textPrimary },
-  resultYear: { fontSize: 9, color: RS.colors.textMuted },
+  resultYear: { fontSize: RS.typography.micro, color: RS.colors.textMuted },
   errorText: { fontSize: RS.typography.caption + 1, color: '#f87171', marginTop: RS.spacing.md, textAlign: 'center' },
 });

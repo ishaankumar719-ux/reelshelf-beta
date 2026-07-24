@@ -29,6 +29,10 @@ export const RS = {
     body:       14,
     caption:    11,
     overline:   10,
+    // Task D design-system audit: independently hand-typed as a raw `9` in
+    // ~20 places for badge/pill/meta labels — a real, established size that
+    // was never promoted to a token. Named rather than left scattered.
+    micro:       9,
   },
   spacing: {
     xs:   4,

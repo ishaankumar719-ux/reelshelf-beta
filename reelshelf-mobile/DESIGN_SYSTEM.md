@@ -16,7 +16,7 @@
 
 **Quiet confidence.** Motion is present but never draws attention to itself. All animations are subtle — "alive without being obvious."
 
-**One filled button per screen.** Home screen has exactly one solid-filled primary button: "View Today's Pick" on DailyReel. Everything else is outlined or text-only.
+**One filled button per screen.** Home screen has exactly one solid-filled primary button: "View Today's Pick" on DailyReel. Everything else is outlined or text-only. (List Detail's owner-controls row had a filled "+ Add media" pill that could render simultaneously with an identical-purpose filled empty-state CTA — fixed in the design-system consistency audit by making the owner-controls button outlined, matching its "Edit settings"/"Delete" siblings.)
 
 **Serif for editorial moments only.** `ui-serif` (New York on iOS) reserved for: DailyReel title, EditorialHeadline, BookOfTheWeek title, BYL anchor titles. Everything else is sans-serif.
 
@@ -84,7 +84,7 @@ Font families in `Fonts` (`constants/theme.ts`):
 
 **Serif rule:** Only 4 editorial moments use serif — DailyReel card title, EditorialHeadline, BookOfTheWeek card title, BYL anchor titles (via `titleSerif` prop on SectionHeader).
 
-Typography scale (unchanged from Sprint 3):
+Typography scale (unchanged from Sprint 3, `micro` added in the motion/design-system consistency sprint):
 
 | Token        | Size | Usage |
 |--------------|------|-------|
@@ -94,6 +94,7 @@ Typography scale (unchanged from Sprint 3):
 | `body`       | 14   | Description copy, button labels |
 | `caption`    | 11   | Metadata, badges, reason tagline |
 | `overline`   | 10   | Eyebrow labels |
+| `micro`      | 9    | Badge/pill/meta labels smaller than overline (tab bar labels, rarity tags, stat labels, cinema/GIF badges) — promoted from a raw `9` hand-typed identically in ~20 places to a named token during the design-system consistency audit |
 
 ---
 

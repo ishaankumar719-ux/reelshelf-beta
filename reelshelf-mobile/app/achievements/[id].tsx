@@ -104,5 +104,5 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 30 },
   name: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textPrimary, textAlign: 'center', lineHeight: 14 },
-  rarity: { fontSize: 9, color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
+  rarity: { fontSize: RS.typography.micro, color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
 });

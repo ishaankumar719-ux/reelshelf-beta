@@ -87,7 +87,7 @@ export default function TabLayout() {
           elevation:        16,
         },
         tabBarLabelStyle: {
-          fontSize:   9,
+          fontSize:   RS.typography.micro,
           fontWeight: '600',
           marginTop:  -2,
         },
