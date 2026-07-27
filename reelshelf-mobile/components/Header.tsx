@@ -20,7 +20,9 @@ export function Header() {
         </Pressable>
         <Pressable
           hitSlop={10}
-          onPress={() => console.log('[Sprint 3] Notifications pressed — no-op')}
+          accessibilityRole="button"
+          accessibilityLabel="Activity"
+          onPress={() => router.push('/activity')}
         >
           <MaterialIcons name="notifications-none" size={24} color={RS.colors.textSecondary} />
         </Pressable>

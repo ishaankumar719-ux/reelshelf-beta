@@ -42,7 +42,7 @@ import { buildUserContext, generateReasons, pickTopN } from '@/lib/recommendatio
 import { fetchBecauseYouLovedAnchor } from '@/lib/supabase/becauseYouLoved';
 
 interface HomeBecauseYouLovedProps {
-  /** Bump to force a re-fetch — Home's pull-to-refresh, same pattern as HomeFriendsActivity. */
+  /** Bump to force a re-fetch — Home's pull-to-refresh. */
   refreshSignal?: number;
 }
 

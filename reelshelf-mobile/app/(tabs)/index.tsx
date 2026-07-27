@@ -14,7 +14,6 @@ import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
 import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
-import { HomeFriendsActivity } from '@/components/HomeFriendsActivity';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SectionHeader } from '@/components/section-header';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
@@ -27,14 +26,17 @@ export default function HomeScreen() {
   const scrollY   = useScrollViewOffset(scrollRef);
 
   // Pull-to-refresh — most of Home's sections are static editorial seed data
-  // with nothing to re-fetch; Friends Activity and Because You Loved are the
-  // two real, live sections, so refreshing bumps a signal they both depend
-  // on rather than reloading the whole screen.
+  // with nothing to re-fetch; Because You Loved (inside HomeDiscoverSections)
+  // is the one real, live section, so refreshing bumps a signal it depends
+  // on rather than reloading the whole screen. Its own re-fetch is fire-
+  // and-forget (no completion callback to await), so the spinner clears on
+  // a short fixed delay rather than hanging indefinitely.
   const [refreshing, setRefreshing] = useState(false);
   const [refreshSignal, setRefreshSignal] = useState(0);
   const handleRefresh = () => {
     setRefreshing(true);
     setRefreshSignal((n) => n + 1);
+    setTimeout(() => setRefreshing(false), 600);
   };
 
   return (
@@ -97,21 +99,6 @@ export default function HomeScreen() {
               <DailyReel />
             </RevealOnMount>
 
-            {/* 5.5 ── Friends Activity — deliberate mobile-only enhancement,
-                no live website equivalent (see HomeFriendsActivity.tsx header
-                comment / WEBSITE_HOME_FRIENDS_ACTIVITY_AUDIT.md). Inserted
-                after Daily Reel, before Collection of the Week, per spec —
-                every other existing section keeps its original order. */}
-            <RevealOnMount delay={160}>
-              <View style={styles.section}>
-                <SectionHeader
-                  title="Friends Activity"
-                  subtitle="What people you follow have been watching."
-                />
-                <HomeFriendsActivity refreshSignal={refreshSignal} onRefreshComplete={() => setRefreshing(false)} />
-              </View>
-            </RevealOnMount>
-
             {/* 6-10 ── The real website's unified 10-section Home/Discover
                 structure (Trending Today, Because You Loved, New in Cinemas,
                 Trending TV, Trending Books, Hidden Gems, Award Winners,
@@ -121,9 +108,13 @@ export default function HomeScreen() {
                 separate TrendingCarousel (static seed data) + the 3 static
                 "Because You Loved" rows + CollectionsSection call. Home's
                 own additional real mobile-only sections (Continue Watching,
-                Daily Reel, Friends Activity above; Book of the Week below)
-                are NOT part of the real website's 10 sections and keep
-                their existing positions around this block. */}
+                Daily Reel above; Book of the Week below) are NOT part of
+                the real website's 10 sections and keep their existing
+                positions around this block. (Friends Activity — previously
+                here — was removed: the new dedicated Activity screen's
+                Following tab, reached via Header's bell icon, is now the
+                sole place for this, with the real scoring/anti-clustering
+                algorithm this rail never had.) */}
             <RevealOnMount delay={180}>
               <HomeDiscoverSections refreshSignal={refreshSignal} />
             </RevealOnMount>
