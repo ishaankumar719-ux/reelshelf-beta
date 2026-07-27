@@ -34,8 +34,12 @@ import { SpoilerBlur } from '@/components/SpoilerBlur';
 import { RS } from '@/constants/theme';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBadgeCelebration } from '@/contexts/BadgeCelebrationContext';
 import { mediaDetails } from '@/data/mediaDetails';
-import { fetchEarnedBadges, type EarnedBadge } from '@/lib/supabase/badges';
+import {
+  computeTotalXP, evaluateAndSyncBadges, fetchEarnedBadges, getTier,
+  type EarnedBadge, type LevelTier,
+} from '@/lib/supabase/badges';
 import { fetchCurrentlyEnjoying, type CurrentlyEnjoyingData } from '@/lib/supabase/currentlyEnjoying';
 import { fetchDiaryEntries, type DiaryListEntry } from '@/lib/supabase/diary';
 import { createList, fetchUserLists, type ListEditFields, type UserListSummary } from '@/lib/supabase/lists';
@@ -108,6 +112,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const { user: sessionUser } = useAuth();
+  const { celebrateNewBadges } = useBadgeCelebration();
   const isOwnProfile = sessionUser?.id === userId;
   const insets = useSafeAreaInsets();
   // ?edit=1 auto-opens the Edit Profile modal — used by Settings > Edit Profile,
@@ -134,6 +139,10 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
 
   const [badges, setBadges] = useState<EarnedBadge[] | null>(null);
   const [badgesStatus, setBadgesStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  // Mobile-only XP/tier display (real formula, ported from the website's
+  // lib/supabase/badges.ts — see WEBSITE_ACHIEVEMENTS_AUDIT.md §3).
+  const [totalXP, setTotalXP] = useState(0);
+  const [tier, setTier] = useState<LevelTier>('Collector');
 
   const [enjoying, setEnjoying] = useState<CurrentlyEnjoyingData | null>(null);
   const [enjoyingStatus, setEnjoyingStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -202,12 +211,27 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const loadBadges = useCallback(async () => {
     setBadgesStatus('loading');
     try {
-      setBadges(await fetchEarnedBadges(userId));
+      // Own profile: evaluate + sync first (one of this app's 3 evaluation-
+      // trigger moments — see lib/supabase/badges.ts's header comment),
+      // celebrating any genuine new unlock. Someone else's profile: read-
+      // only, matching the real website's own owner-only sync gating.
+      if (isOwnProfile) {
+        const result = await evaluateAndSyncBadges(userId);
+        setBadges(result.allEarned);
+        setTotalXP(result.totalXP);
+        setTier(result.tier);
+        celebrateNewBadges(result.newlyUnlocked);
+      } else {
+        const earned = await fetchEarnedBadges(userId);
+        setBadges(earned);
+        setTotalXP(computeTotalXP(earned));
+        setTier(getTier(computeTotalXP(earned)));
+      }
       setBadgesStatus('success');
     } catch {
       setBadgesStatus('error');
     }
-  }, [userId]);
+  }, [userId, isOwnProfile, celebrateNewBadges]);
 
   const loadEnjoying = useCallback(async () => {
     setEnjoyingStatus('loading');
@@ -284,7 +308,16 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
     const next = !following;
     setFollowing(next);
     const action = next ? followUser(sessionUser.id, userId) : unfollowUser(sessionUser.id, userId);
-    action.then(() => { if (next) trackFollowCompleted(userId); }).catch(() => setFollowing(!next));
+    action
+      .then(() => {
+        if (next) trackFollowCompleted(userId);
+        // Mobile-only: one of the 3 evaluation-trigger moments (see
+        // lib/supabase/badges.ts's header comment) — a follow action is the
+        // one most likely to be stale by the time this session's own
+        // profile/app-open checks run again.
+        evaluateAndSyncBadges(sessionUser.id).then((result) => celebrateNewBadges(result.newlyUnlocked)).catch(() => {});
+      })
+      .catch(() => setFollowing(!next));
   };
 
   const openMediaDetail = (routeId: string, title: string, poster: string | null, mediaType: string) => {
@@ -623,7 +656,11 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                     </View>
                   </View>
 
-                  {/* ── Achievements — 3-4 card preview + View All ── */}
+                  {/* ── Achievements — 3-4 card preview + View All ──
+                      XP/tier line is a mobile-only addition — real formula
+                      ported from the website's lib/supabase/badges.ts
+                      (computeTotalXP/getTier), which computes it but never
+                      displays it anywhere (see WEBSITE_ACHIEVEMENTS_AUDIT.md §3). */}
                   <View style={styles.overviewSubsection}>
                     <View style={styles.sectionHeaderRow}>
                       <Text style={styles.subheading}>Achievements</Text>
@@ -633,6 +670,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                         </Pressable>
                       )}
                     </View>
+                    {(badges?.length ?? 0) > 0 && (
+                      <View style={styles.tierRow}>
+                        <View style={styles.tierPill}>
+                          <Text style={styles.tierPillLabel}>{tier}</Text>
+                        </View>
+                        <Text style={styles.xpText}>{totalXP} XP</Text>
+                      </View>
+                    )}
                     <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} limit={4} />
                   </View>
 
@@ -972,6 +1017,10 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   editSmallLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
   subheading: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: RS.spacing.sm },
+  tierRow: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.xs },
+  tierPill: { borderRadius: RS.badge.pillRadius, backgroundColor: RS.colors.elevated, paddingHorizontal: RS.spacing.sm, paddingVertical: 3 },
+  tierPillLabel: { fontSize: RS.typography.micro, fontWeight: '700', color: RS.colors.accent, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
+  xpText: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textMuted },
   posterRow: { gap: RS.spacing.sm, paddingVertical: RS.spacing.xs },
   ratingPill: {
     position: 'absolute', top: RS.spacing.xs, right: RS.spacing.xs,

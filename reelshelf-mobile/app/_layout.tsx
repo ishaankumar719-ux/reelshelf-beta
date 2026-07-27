@@ -7,7 +7,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { RS } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { BadgeCelebrationProvider } from '@/contexts/BadgeCelebrationContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { AppOpenBadgeSync } from '@/components/achievements/AppOpenBadgeSync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { initAnalytics, trackAppOpened } from '@/lib/observability/analytics';
@@ -44,27 +46,30 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <SettingsProvider>
-            <ThemeProvider value={RSTheme}>
-              <Stack>
-                <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
-                <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
-                <Stack.Screen name="activity"         options={{ headerShown: false }} />
-                {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
-                <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
-                <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
-                <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
-                <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
-                <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
-                <Stack.Screen name="settings/index"          options={{ headerShown: false }} />
-                <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />
-                <Stack.Screen name="settings/delete-account" options={{ headerShown: false }} />
-                <Stack.Screen name="list-discover"           options={{ headerShown: false }} />
-              </Stack>
-              <OfflineBanner />
-              <StatusBar style="light" />
-            </ThemeProvider>
+            <BadgeCelebrationProvider>
+              <AppOpenBadgeSync />
+              <ThemeProvider value={RSTheme}>
+                <Stack>
+                  <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
+                  <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="activity"         options={{ headerShown: false }} />
+                  {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
+                  <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
+                  <Stack.Screen name="collection/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="profile/[id]"    options={{ headerShown: false }} />
+                  <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
+                  <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
+                  <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="settings/index"          options={{ headerShown: false }} />
+                  <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="settings/delete-account" options={{ headerShown: false }} />
+                  <Stack.Screen name="list-discover"           options={{ headerShown: false }} />
+                </Stack>
+                <OfflineBanner />
+                <StatusBar style="light" />
+              </ThemeProvider>
+            </BadgeCelebrationProvider>
           </SettingsProvider>
         </AuthProvider>
       </GestureHandlerRootView>

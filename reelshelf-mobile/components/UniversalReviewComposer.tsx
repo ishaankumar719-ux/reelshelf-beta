@@ -23,6 +23,7 @@ import { RatingSlider } from '@/components/RatingSlider';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBadgeCelebration } from '@/contexts/BadgeCelebrationContext';
 import {
   emptyDiaryEntry,
   fetchLatestDiaryEntry,
@@ -31,6 +32,7 @@ import {
   type MediaCoreMeta,
   type ReviewScope,
 } from '@/lib/supabase/diaryComposer';
+import { evaluateAndSyncBadges } from '@/lib/supabase/badges';
 import type { MediaType } from '@/data/seedHomeContent';
 import { trackDiaryEntryCreated, trackReviewPublished } from '@/lib/observability/analytics';
 
@@ -86,6 +88,7 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
   } = props;
 
   const { user } = useAuth();
+  const { celebrateNewBadges } = useBadgeCelebration();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +137,12 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
       if (entry.review.trim().length > 0) {
         trackReviewPublished(mediaType, mediaId, entry.rating != null);
       }
+      // Mobile-only: evaluate badges right after a diary write, one of the
+      // "sensible mobile-native moments" this app checks at (see
+      // lib/supabase/badges.ts's header comment) — fire-and-forget so the
+      // composer closes immediately; the celebration modal (if any) surfaces
+      // afterward via the global BadgeCelebrationProvider.
+      evaluateAndSyncBadges(user.id).then((result) => celebrateNewBadges(result.newlyUnlocked)).catch(() => {});
       onSaved?.(entry);
       onClose();
     } catch (e) {
