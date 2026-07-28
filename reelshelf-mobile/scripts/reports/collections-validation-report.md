@@ -1,6 +1,6 @@
 # Collections Validation Report
 
-Generated: 2026-07-21T19:47:31.611Z
+Generated: 2026-07-28T16:51:39.136Z
 
 ## A24 company id verification
 
@@ -19,22 +19,21 @@ Confirmed via TMDB `/search/company?query=A24` (a second, unrelated company also
 
 | Collection | Type | Verified | Flagged | Unverified |
 |---|---|---|---|---|
-| Best A24 Films | studio | 7 | 3 | 0 |
+| Best of A24 | studio | 7 | 3 | 0 |
 | Under 90 Minutes | runtime | 1 | 3 | 0 |
 | Mind-Bending Stories | genre | 4 | 0 | 0 |
 | True Crime Essentials | genre | 3 | 1 | 0 |
 | Space Adventures | genre | 2 | 2 | 0 |
 | Perfect Sunday Stories | genre | 4 | 0 | 0 |
-| Greatest Horror | genre | 3 | 1 | 0 |
-| Best Mind-Bending Films | genre | 4 | 0 | 0 |
-| Perfect Sunday Watches | genre | 4 | 0 | 0 |
-| Oscar Winners | awards | 0 | 4 | 0 |
 | Coming of Age | curated | 3 | 1 | 0 |
-| Neo-Noir | curated | 2 | 2 | 0 |
+| One Season Masterpieces | curated | 4 | 0 | 0 |
+| One Night Thrillers | genre | 4 | 0 | 0 |
+| Mind-Bending Television | genre | 4 | 0 | 0 |
+| Crime Drama Essentials | genre | 4 | 0 | 0 |
 
 ## Item detail
 
-### Best A24 Films (`best-a24-films`)
+### Best of A24 (`best-a24-films`)
 
 - ✅ **Everything Everywhere All at Once** (2022, tmdb id 545611) — `verified` — production_companies includes id 41077 (A24)
 - 🚩 **Hereditary** (2018, tmdb id 493922) — `flagged` — production_companies does NOT include id 41077 (A24) — TMDB's production_companies field reflects producers, not distributors, so a real A24-DISTRIBUTED title can legitimately fail this specific check (confirmed for Hereditary/Midsommar/Lady Bird — all real A24 films with no A24 entry in this field). Not independently verifiable via this field alone.
@@ -82,34 +81,6 @@ Confirmed via TMDB `/search/company?query=A24` (a second, unrelated company also
 - ✅ **Her** (2013, tmdb id 152601) — `verified` — genre_ids=[10749,878,18] (rule: any of [18])
 - ✅ **Nomadland** (2021, tmdb id 581734) — `verified` — genre_ids=[18] (rule: any of [18])
 
-### Greatest Horror (`greatest-horror`)
-
-- ✅ **Hereditary** (2018, tmdb id 493922) — `verified` — genre_ids=[27,9648,53] (rule: any of [27])
-- ✅ **Get Out** (2017, tmdb id 419430) — `verified` — genre_ids=[9648,53,27] (rule: any of [27])
-- ✅ **Midsommar** (2019, tmdb id 530385) — `verified` — genre_ids=[27,18,9648] (rule: any of [27])
-- 🚩 **The Lighthouse** (2019, tmdb id 503919) — `flagged` — genre_ids=[18,14,53] (rule: any of [27])
-
-### Best Mind-Bending Films (`best-mind-bending-films`)
-
-- ✅ **Inception** (2010, tmdb id 27205) — `verified` — genre_ids=[28,878,12] (rule: any of [878,53])
-- ✅ **Arrival** (2016, tmdb id 329865) — `verified` — genre_ids=[18,878,9648] (rule: any of [878,53])
-- ✅ **Fight Club** (1999, tmdb id 550) — `verified` — genre_ids=[18,53] (rule: any of [878,53])
-- ✅ **Mulholland Drive** (2001, tmdb id 1018) — `verified` — genre_ids=[53,18,9648] (rule: any of [878,53])
-
-### Perfect Sunday Watches (`perfect-sunday-watches`)
-
-- ✅ **Marriage Story** (2019, tmdb id 492188) — `verified` — genre_ids=[18] (rule: any of [18])
-- ✅ **Her** (2013, tmdb id 152601) — `verified` — genre_ids=[10749,878,18] (rule: any of [18])
-- ✅ **Moonlight** (2016, tmdb id 376867) — `verified` — genre_ids=[18] (rule: any of [18])
-- ✅ **Nomadland** (2021, tmdb id 581734) — `verified` — genre_ids=[18] (rule: any of [18])
-
-### Oscar Winners (`oscar-winners`)
-
-- 🚩 **Parasite** (2019, tmdb id 496243) — `flagged` — No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified.
-- 🚩 **Moonlight** (2016, tmdb id 376867) — `flagged` — No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified.
-- 🚩 **Nomadland** (2021, tmdb id 581734) — `flagged` — No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified.
-- 🚩 **Whiplash** (2014, tmdb id 244786) — `flagged` — No verified awards data source available in this project (confirmed in an earlier audit) — flagged pending manual curation, not silently treated as verified.
-
 ### Coming of Age (`coming-of-age`)
 
 - ✅ **Moonlight** (2016, tmdb id 376867) — `verified` — keyword_ids=[2231,6270,1196,726,416,970,1721,1013,1803,2394,1946,6733,10683,10180,158718,164296,194226,195624,230701,258533,289844,325835] (rule: any of [10683])
@@ -117,9 +88,30 @@ Confirmed via TMDB `/search/company?query=A24` (a second, unrelated company also
 - 🚩 **Whiplash** (2014, tmdb id 244786) — `flagged` — keyword_ids=[242,1416,4048,1523,2176,1640,2696,33896,164657,170418,176095,200918,202371,206298,207739,212404,236377,251667,268132,309029,324429,325778,325796,325808,336502] (rule: any of [10683])
 - ✅ **Lady Bird** (2017, tmdb id 391713) — `verified` — keyword_ids=[6054,11254,10683,10049,11710,10809,12392,14549,33910,34125,157303,165402,172112,187056,240303,240315,240736,252104,281585] (rule: any of [10683])
 
-### Neo-Noir (`neo-noir`)
+### One Season Masterpieces (`one-season-wonders`)
 
-- 🚩 **Blade Runner 2049** (2017, tmdb id 335984) — `flagged` — genre_ids=[878,18] (rule: any of [80]); keyword_ids=[2964,803,801,310,4565,9663,12190,12375,12670,14570,178657,218132,220903,233512,243676,277551,301096,325830,370793,375249] (rule: any of [207268])
-- ✅ **Prisoners** (2013, tmdb id 146233) — `verified` — genre_ids=[18,53,80] (rule: any of [80]); keyword_ids=[904,1930,703,1715,5340,5905,7002,12565,14707,207268,234162,265839,315263,325776] (rule: any of [207268])
-- 🚩 **Zodiac** (2007, tmdb id 1949) — `flagged` — genre_ids=[80,9648,53] (rule: any of [80]); keyword_ids=[918,736,387,818,6149,582,627,703,1228,5340,4399,4950,9826,10714,11727,12193,12570,33457,33722,54012,159743,173103,202399,208992,235210,244530,270813,277050,325763,325775,325817,325818] (rule: any of [207268])
-- ✅ **Drive** (2011, tmdb id 64690) — `verified` — genre_ids=[18,53,80] (rule: any of [80]); keyword_ids=[642,3296,5956,11762,9748,10291,10226,11148,12670,14707,14795,159245,161137,161974,167352,181123,181324,207268,263959,273593,325778] (rule: any of [207268])
+- ✅ **Chernobyl** (2019, tmdb id 87108) — `verified` — vote_average=8.72 vote_count=8088 number_of_seasons=1 (real site's rule is only vote_average>=8.0 & vote_count>=300 — no season filter; number_of_seasons===1 checked here as an additional editorial-intent constraint, not part of the live query itself)
+- ✅ **The Queen's Gambit** (2020, tmdb id 87739) — `verified` — vote_average=8.429 vote_count=5610 number_of_seasons=1 (real site's rule is only vote_average>=8.0 & vote_count>=300 — no season filter; number_of_seasons===1 checked here as an additional editorial-intent constraint, not part of the live query itself)
+- ✅ **Band of Brothers** (2001, tmdb id 4613) — `verified` — vote_average=8.593 vote_count=4264 number_of_seasons=1 (real site's rule is only vote_average>=8.0 & vote_count>=300 — no season filter; number_of_seasons===1 checked here as an additional editorial-intent constraint, not part of the live query itself)
+- ✅ **Mare of Easttown** (2021, tmdb id 115004) — `verified` — vote_average=8.177 vote_count=1708 number_of_seasons=1 (real site's rule is only vote_average>=8.0 & vote_count>=300 — no season filter; number_of_seasons===1 checked here as an additional editorial-intent constraint, not part of the live query itself)
+
+### One Night Thrillers (`one-night-thrillers`)
+
+- ✅ **Nightcrawler** (2014, tmdb id 242582) — `verified` — genre_ids=[80,18,53] (rule: any of [53]); runtime=118 (rule: <= 120)
+- ✅ **Searching** (2018, tmdb id 489999) — `verified` — genre_ids=[18,9648,53] (rule: any of [53]); runtime=102 (rule: <= 120)
+- ✅ **Wind River** (2017, tmdb id 395834) — `verified` — genre_ids=[80,9648,53] (rule: any of [53]); runtime=107 (rule: <= 120)
+- ✅ **10 Cloverfield Lane** (2016, tmdb id 333371) — `verified` — genre_ids=[53,878,18,27] (rule: any of [53]); runtime=104 (rule: <= 120)
+
+### Mind-Bending Television (`mind-bending-tv`)
+
+- ✅ **Dark** (2017, tmdb id 70523) — `verified` — genre_ids=[80,18,10765,9648] (rule: any of [10765,9648])
+- ✅ **Severance** (2022, tmdb id 95396) — `verified` — genre_ids=[18,9648,10765] (rule: any of [10765,9648])
+- ✅ **Westworld** (2016, tmdb id 63247) — `verified` — genre_ids=[10765,37] (rule: any of [10765,9648])
+- ✅ **Black Mirror** (2011, tmdb id 42009) — `verified` — genre_ids=[10765,18,9648] (rule: any of [10765,9648])
+
+### Crime Drama Essentials (`crime-drama-tv`)
+
+- ✅ **True Detective** (2014, tmdb id 46648) — `verified` — genre_ids=[18,9648] (rule: any of [80,18])
+- ✅ **MINDHUNTER** (2017, tmdb id 67744) — `verified` — genre_ids=[18,80] (rule: any of [80,18])
+- ✅ **The Wire** (2002, tmdb id 1438) — `verified` — genre_ids=[80,18] (rule: any of [80,18])
+- ✅ **Better Call Saul** (2015, tmdb id 60059) — `verified` — genre_ids=[80,18] (rule: any of [80,18])

@@ -50,30 +50,35 @@ const SHOULD_WRITE = process.argv.includes('--write');
 const A24_COMPANY_ID = 41077;
 
 // TMDB's stable well-known genre ids (movie).
+// (HORROR: 27 removed along with the greatest-horror collection itself in
+// the 2026-07-28 reconciliation pass — see COLLECTIONS below.)
 const GENRE = {
   ADVENTURE: 12,
   CRIME: 80,
   DRAMA: 18,
-  HORROR: 27,
   SCIENCE_FICTION: 878,
   THRILLER: 53,
 } as const;
 
-// Keyword ids for these two collections (coming-of-age, neo-noir) — verified
-// individually via TMDB's /keyword/{id} endpoint before use, rather than
-// trusted from the source list:
-//   10683 -> confirmed "coming of age" (matches lib/discoverCollections.ts's
-//            existing with_keywords=10683 query — that one was right).
-//   6564  -> confirmed "terminal illness", NOT "neo-noir". The existing
-//            lib/discoverCollections.ts neo-noir TMDB query
-//            (with_keywords=6564) has been using the WRONG keyword id — a
-//            live bug in that file, out of scope to fix here (schema/data
-//            task only), but flagged in the validation report for
-//            visibility. The real "neo-noir" keyword, confirmed via
-//            /search/keyword?query=neo-noir, is 207268 — used below instead.
+// TMDB's TV genre ids — a separate namespace from movie genre ids. CRIME/DRAMA
+// happen to share numeric ids with the movie list above, but SCIFI_FANTASY and
+// MYSTERY do not exist as movie genres at all, so this is kept as its own
+// const rather than merged into GENRE, to avoid implying a shared id space.
+const TV_GENRE = {
+  CRIME: 80,
+  DRAMA: 18,
+  SCIFI_FANTASY: 10765,
+  MYSTERY: 9648,
+} as const;
+
+// Keyword id for coming-of-age — verified individually via TMDB's
+// /keyword/{id} endpoint before use, rather than trusted from the source
+// list: 10683 -> confirmed "coming of age" (matches lib/discoverCollections.ts's
+// existing with_keywords=10683 query — that one was right).
+// (neo-noir's keyword constant removed along with the neo-noir collection
+// itself in the 2026-07-28 reconciliation pass — see COLLECTIONS below.)
 const KEYWORD = {
   COMING_OF_AGE: 10683,
-  NEO_NOIR: 207268,
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -97,6 +102,10 @@ interface CollectionSpec {
   isFeatured: boolean;
   sortOrder: number;
   items: ItemSpec[];
+  /** Overrides verificationSourceFor(collectionType) when the generic per-type
+   *  message doesn't accurately describe this specific collection's rule
+   *  (e.g. a numeric-fields check that isn't really a "keyword" check). */
+  verificationSourceOverride?: string;
 }
 
 interface ItemResult {
@@ -159,10 +168,49 @@ function checkKeyword(data: any, keywordIds: number[]): { pass: boolean; note: s
   return { pass, note: `keyword_ids=[${ids.join(',')}] (rule: any of [${keywordIds}])` };
 }
 
+// "one-season-wonders" ("One Season Masterpieces"): the real website's TMDB
+// query for this collection (lib/discoverCollections.ts, slug
+// "one-season-wonders") is `vote_average.gte=8.0&vote_count.gte=300` on
+// /discover/tv — it does NOT actually filter by number_of_seasons anywhere,
+// despite the editorial name. This is a name/logic mismatch in the live site,
+// analogous to the neo-noir keyword bug below — flagged, not fixed (out of
+// scope; this is a mobile data-only task). To honor BOTH the real technical
+// gate (vote_average/vote_count, which is what actually determines what the
+// live site would show) AND the collection's stated editorial intent, every
+// item selected below also happens to be a genuine single-season/limited
+// series, rather than picking an arbitrary multi-season show (e.g. Breaking
+// Bad) that the live query's literal logic would technically admit.
+function checkOneSeasonQuality(data: any): { pass: boolean; note: string } {
+  const voteAverage = data.vote_average ?? 0;
+  const voteCount = data.vote_count ?? 0;
+  const numberOfSeasons = data.number_of_seasons ?? null;
+  const passesRealQuery = voteAverage >= 8.0 && voteCount >= 300;
+  const isSingleSeason = numberOfSeasons === 1;
+  return {
+    pass: passesRealQuery && isSingleSeason,
+    note: `vote_average=${voteAverage} vote_count=${voteCount} number_of_seasons=${numberOfSeasons ?? 'null'} `
+      + `(real site's rule is only vote_average>=8.0 & vote_count>=300 — no season filter; `
+      + `number_of_seasons===1 checked here as an additional editorial-intent constraint, not part of the live query itself)`,
+  };
+}
+
+// "one-night-thrillers": real query is /discover/movie with_genres=53 (Thriller)
+// AND runtime<=120, vote_average>=7.0, vote_count>=200 — a genre+runtime
+// combination, unlike the other single-field genre checks above.
+function checkThrillerUnder120(data: any): { pass: boolean; note: string } {
+  const genre = checkGenre(data, [GENRE.THRILLER]);
+  const runtime = checkRuntime(data, 120);
+  return { pass: genre.pass && runtime.pass, note: `${genre.note}; ${runtime.note}` };
+}
+
 // ── Collections (the reusable source list — extend this, not the logic above) ─
 const COLLECTIONS: CollectionSpec[] = [
   {
-    slug: 'best-a24-films', title: 'Best A24 Films', collectionType: 'studio', isFeatured: true, sortOrder: 0,
+    // Title corrected to match the real live website exactly (was "Best A24
+    // Films" — the real title, confirmed against the live site, is "Best of
+    // A24"). Slug intentionally left unchanged (mobile-internal id, no
+    // real-parity requirement on the slug itself).
+    slug: 'best-a24-films', title: 'Best of A24', collectionType: 'studio', isFeatured: true, sortOrder: 0,
     description: 'Fearless cinema from A24.',
     items: [
       // Poor Things intentionally removed — confirmed Searchlight Pictures, not A24.
@@ -234,50 +282,6 @@ const COLLECTIONS: CollectionSpec[] = [
     ],
   },
   {
-    slug: 'greatest-horror', title: 'Greatest Horror', collectionType: 'genre', isFeatured: true, sortOrder: 6,
-    description: 'Films that stay with you long after you close your eyes.',
-    items: [
-      { tmdbId: 493922, mediaType: 'movie', expectedTitle: 'Hereditary' },
-      { tmdbId: 419430, mediaType: 'movie', expectedTitle: 'Get Out' },
-      { tmdbId: 530385, mediaType: 'movie', expectedTitle: 'Midsommar' },
-      // Was 575264 in the old static seed — that id is actually Mission:
-      // Impossible - Dead Reckoning Part One, not The Lighthouse. Corrected here.
-      { tmdbId: 503919, mediaType: 'movie', expectedTitle: 'The Lighthouse' },
-    ],
-  },
-  {
-    slug: 'best-mind-bending-films', title: 'Best Mind-Bending Films', collectionType: 'genre', isFeatured: true, sortOrder: 7,
-    description: 'Curated picks that question reality.',
-    items: [
-      { tmdbId: 27205, mediaType: 'movie', expectedTitle: 'Inception' },
-      { tmdbId: 329865, mediaType: 'movie', expectedTitle: 'Arrival' },
-      { tmdbId: 550, mediaType: 'movie', expectedTitle: 'Fight Club' },
-      { tmdbId: 1018, mediaType: 'movie', expectedTitle: 'Mulholland Drive' },
-    ],
-  },
-  {
-    slug: 'perfect-sunday-watches', title: 'Perfect Sunday Watches', collectionType: 'genre', isFeatured: true, sortOrder: 8,
-    description: 'Unwind with stories built for quiet afternoons.',
-    items: [
-      { tmdbId: 492188, mediaType: 'movie', expectedTitle: 'Marriage Story' },
-      { tmdbId: 152601, mediaType: 'movie', expectedTitle: 'Her' },
-      { tmdbId: 376867, mediaType: 'movie', expectedTitle: 'Moonlight' },
-      // Was 752623 in the old static seed — that id is actually "The Lost City", not Nomadland. Corrected here.
-      { tmdbId: 581734, mediaType: 'movie', expectedTitle: 'Nomadland' },
-    ],
-  },
-  {
-    slug: 'oscar-winners', title: 'Oscar Winners', collectionType: 'awards', isFeatured: true, sortOrder: 9,
-    description: "The films the Academy couldn't ignore.",
-    items: [
-      { tmdbId: 496243, mediaType: 'movie', expectedTitle: 'Parasite' },
-      { tmdbId: 376867, mediaType: 'movie', expectedTitle: 'Moonlight' },
-      // Was 752623 in the old static seed — that id is actually "The Lost City", not Nomadland. Corrected here.
-      { tmdbId: 581734, mediaType: 'movie', expectedTitle: 'Nomadland' },
-      { tmdbId: 244786, mediaType: 'movie', expectedTitle: 'Whiplash' },
-    ],
-  },
-  {
     slug: 'coming-of-age', title: 'Coming of Age', collectionType: 'curated', isFeatured: true, sortOrder: 10,
     description: 'The films that understand what it felt like to grow up.',
     items: [
@@ -288,16 +292,58 @@ const COLLECTIONS: CollectionSpec[] = [
       { tmdbId: 391713, mediaType: 'movie', expectedTitle: 'Lady Bird' },
     ],
   },
+  // ── Greatest Horror, Best Mind-Bending Films, Perfect Sunday Watches,
+  // Oscar Winners, and Neo-Noir REMOVED (2026-07-28 real-collection-set
+  // reconciliation pass) — confirmed not part of the real, currently-live
+  // website's collection set. Oscar Winners' rows/items were left in the DB
+  // (is_archived=true) since its data was already honestly flagged
+  // "unverified, no awards data source" rather than deleted outright; the
+  // other four were hard-deleted (no comparable flagged-for-a-reason status).
+  // See reelshelf-mobile/COLLECTIONS_RECONCILIATION.md for the full record.
+  //
+  // ── 4 real collections added, confirmed live on the real website via
+  // lib/discoverCollections.ts (COLLECTION_DEFS) — sourced with real,
+  // individually-verified TMDB data below, same discipline as everything
+  // above (id/title sanity check + a real, checkable field per item).
   {
-    slug: 'neo-noir', title: 'Neo-Noir', collectionType: 'curated', isFeatured: true, sortOrder: 11,
-    description: 'Sleek, shadowed, morally complicated.',
+    slug: 'one-season-wonders', title: 'One Season Masterpieces', collectionType: 'curated', isFeatured: true, sortOrder: 11,
+    description: 'Television that perfected itself and never needed more.',
+    verificationSourceOverride: 'TMDB vote_average/vote_count/number_of_seasons fields (see checkOneSeasonQuality — the real site\'s own query has no season-count filter at all; that constraint is applied here only as additional editorial curation, not because the live query enforces it)',
     items: [
-      { tmdbId: 335984, mediaType: 'movie', expectedTitle: 'Blade Runner 2049' },
-      { tmdbId: 146233, mediaType: 'movie', expectedTitle: 'Prisoners' },
-      // Was 929 in the old static seed — that id is actually "Godzilla", not Zodiac. Corrected here.
-      { tmdbId: 1949, mediaType: 'movie', expectedTitle: 'Zodiac' },
-      // Was 79218 in the old static seed — that id is actually "Ice Age: A Mammoth Christmas", not Drive. Corrected here.
-      { tmdbId: 64690, mediaType: 'movie', expectedTitle: 'Drive' },
+      { tmdbId: 87108, mediaType: 'tv', expectedTitle: 'Chernobyl' },
+      { tmdbId: 87739, mediaType: 'tv', expectedTitle: "The Queen's Gambit" },
+      { tmdbId: 4613, mediaType: 'tv', expectedTitle: 'Band of Brothers' },
+      { tmdbId: 115004, mediaType: 'tv', expectedTitle: 'Mare of Easttown' },
+    ],
+  },
+  {
+    slug: 'one-night-thrillers', title: 'One Night Thrillers', collectionType: 'genre', isFeatured: true, sortOrder: 12,
+    description: "Tight, tense, and over before midnight — thrillers under two hours.",
+    items: [
+      { tmdbId: 242582, mediaType: 'movie', expectedTitle: 'Nightcrawler' },
+      { tmdbId: 489999, mediaType: 'movie', expectedTitle: 'Searching' },
+      { tmdbId: 395834, mediaType: 'movie', expectedTitle: 'Wind River' },
+      { tmdbId: 333371, mediaType: 'movie', expectedTitle: '10 Cloverfield Lane' },
+    ],
+  },
+  {
+    slug: 'mind-bending-tv', title: 'Mind-Bending Television', collectionType: 'genre', isFeatured: true, sortOrder: 13,
+    description: 'Shows that warp reality, bend perception, and refuse to let you go.',
+    items: [
+      { tmdbId: 70523, mediaType: 'tv', expectedTitle: 'Dark' },
+      { tmdbId: 95396, mediaType: 'tv', expectedTitle: 'Severance' },
+      { tmdbId: 63247, mediaType: 'tv', expectedTitle: 'Westworld' },
+      { tmdbId: 42009, mediaType: 'tv', expectedTitle: 'Black Mirror' },
+    ],
+  },
+  {
+    slug: 'crime-drama-tv', title: 'Crime Drama Essentials', collectionType: 'genre', isFeatured: true, sortOrder: 14,
+    description: 'Morally complex, brilliantly written crime television at its finest.',
+    items: [
+      { tmdbId: 46648, mediaType: 'tv', expectedTitle: 'True Detective' },
+      { tmdbId: 67744, mediaType: 'tv', expectedTitle: 'Mindhunter' },
+      { tmdbId: 1438, mediaType: 'tv', expectedTitle: 'The Wire' },
+      { tmdbId: 60059, mediaType: 'tv', expectedTitle: 'Better Call Saul' },
     ],
   },
 ];
@@ -366,7 +412,6 @@ async function verifyItem(spec: CollectionSpec, item: ItemSpec): Promise<ItemRes
     case 'genre': {
       switch (spec.slug) {
         case 'mind-bending-stories':
-        case 'best-mind-bending-films':
           check = checkGenre(data, [GENRE.SCIENCE_FICTION, GENRE.THRILLER]);
           break;
         case 'true-crime-essentials':
@@ -376,11 +421,16 @@ async function verifyItem(spec: CollectionSpec, item: ItemSpec): Promise<ItemRes
           check = checkGenre(data, [], [GENRE.SCIENCE_FICTION, GENRE.ADVENTURE]);
           break;
         case 'perfect-sunday-stories':
-        case 'perfect-sunday-watches':
           check = checkGenre(data, [GENRE.DRAMA]);
           break;
-        case 'greatest-horror':
-          check = checkGenre(data, [GENRE.HORROR]);
+        case 'one-night-thrillers':
+          check = checkThrillerUnder120(data);
+          break;
+        case 'mind-bending-tv':
+          check = checkGenre(data, [TV_GENRE.SCIFI_FANTASY, TV_GENRE.MYSTERY]);
+          break;
+        case 'crime-drama-tv':
+          check = checkGenre(data, [TV_GENRE.CRIME, TV_GENRE.DRAMA]);
           break;
         default:
           check = { pass: false, note: `No genre rule defined for slug "${spec.slug}" — add one before trusting this collection.` };
@@ -392,12 +442,9 @@ async function verifyItem(spec: CollectionSpec, item: ItemSpec): Promise<ItemRes
         case 'coming-of-age':
           check = checkKeyword(data, [KEYWORD.COMING_OF_AGE]);
           break;
-        case 'neo-noir': {
-          const genre = checkGenre(data, [GENRE.CRIME]);
-          const keyword = checkKeyword(data, [KEYWORD.NEO_NOIR]);
-          check = { pass: genre.pass && keyword.pass, note: `${genre.note}; ${keyword.note}` };
+        case 'one-season-wonders':
+          check = checkOneSeasonQuality(data);
           break;
-        }
         default:
           check = { pass: false, note: `No curated rule defined for slug "${spec.slug}" — add one before trusting this collection.` };
       }
@@ -479,7 +526,7 @@ async function run() {
     dataIntegrityFindings,
     collections: COLLECTIONS.map((spec) => ({
       slug: spec.slug, title: spec.title, collectionType: spec.collectionType,
-      verificationSource: verificationSourceFor(spec.collectionType),
+      verificationSource: spec.verificationSourceOverride ?? verificationSourceFor(spec.collectionType),
       summary: summary[spec.slug],
     })),
     items: allResults,
@@ -548,7 +595,7 @@ async function run() {
         subtitle: spec.subtitle ?? null,
         description: spec.description,
         collection_type: spec.collectionType,
-        verification_source: verificationSourceFor(spec.collectionType),
+        verification_source: spec.verificationSourceOverride ?? verificationSourceFor(spec.collectionType),
         verified_at: new Date().toISOString(),
         is_featured: spec.isFeatured,
         sort_order: spec.sortOrder,
