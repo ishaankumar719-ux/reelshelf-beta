@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -32,7 +32,11 @@ function inviteErrorMessage(reason: string | undefined): string {
 }
 
 export default function LoginScreen() {
-  const [mode, setMode] = useState<Mode>('signin');
+  // Lets callers (e.g. Guest Home's sign-up CTA) land directly in the
+  // sign-up half of this screen instead of the default sign-in half —
+  // both modes already existed here, this just adds an entry-point param.
+  const { mode: initialMode } = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState<Mode>(initialMode === 'signup' ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');

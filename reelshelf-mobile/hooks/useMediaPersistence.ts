@@ -67,12 +67,14 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     setError(null);
 
     (async () => {
-      // 1. Paint instantly from the local optimistic cache.
+      // 1. Paint instantly from the local optimistic cache — namespaced by
+      // userId (or the 'guest' bucket), so this can never paint a different
+      // account's cached state, even for an instant.
       const [cachedShelf, cachedWatched, cachedRating, cachedReview] = await Promise.all([
-        mediaStorage.getShelfState(id),
-        mediaStorage.getWatchedState(id),
-        mediaStorage.getRating(id),
-        mediaStorage.getReview(id),
+        mediaStorage.getShelfState(userId, id),
+        mediaStorage.getWatchedState(userId, id),
+        mediaStorage.getRating(userId, id),
+        mediaStorage.getReview(userId, id),
       ]);
       if (cancelled) return;
       setInShelf(cachedShelf);
@@ -101,10 +103,10 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
         setContainsSpoilers(realDiary.containsSpoilers);
 
         await Promise.all([
-          mediaStorage.setShelfState(id, realShelf),
-          mediaStorage.setWatchedState(id, realDiary.watched),
-          mediaStorage.setRating(id, realDiary.rating),
-          mediaStorage.setReview(id, realDiary.review),
+          mediaStorage.setShelfState(userId, id, realShelf),
+          mediaStorage.setWatchedState(userId, id, realDiary.watched),
+          mediaStorage.setRating(userId, id, realDiary.rating),
+          mediaStorage.setReview(userId, id, realDiary.review),
         ]);
       } catch {
         // Reconciliation failure — keep showing the optimistic cache rather
@@ -118,7 +120,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   const toggleShelf = useCallback(() => {
     const next = !inShelf;
     setInShelf(next);
-    mediaStorage.setShelfState(id, next).catch(() => {});
+    mediaStorage.setShelfState(userId, id, next).catch(() => {});
     setError(null);
 
     if (!userId || !meta) return;
@@ -126,7 +128,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     action.catch((e) => {
       // Roll back on failure.
       setInShelf(!next);
-      mediaStorage.setShelfState(id, !next).catch(() => {});
+      mediaStorage.setShelfState(userId, id, !next).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not update your shelf.');
     });
   }, [id, inShelf, meta, userId]);
@@ -135,13 +137,13 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     const next = !watched;
     const prevDiary = diaryRef.current;
     setWatched(next);
-    mediaStorage.setWatchedState(id, next).catch(() => {});
+    mediaStorage.setWatchedState(userId, id, next).catch(() => {});
     setError(null);
 
     if (!userId || !meta) return;
     setWatchedRemote(userId, meta, next, prevDiary).catch((e) => {
       setWatched(!next);
-      mediaStorage.setWatchedState(id, !next).catch(() => {});
+      mediaStorage.setWatchedState(userId, id, !next).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not update Watched.');
     });
   }, [id, meta, userId, watched]);
@@ -151,14 +153,14 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     const prevDiary = diaryRef.current;
     setRatingState(value);
     diaryRef.current = { ...diaryRef.current, watched: true, rating: value };
-    mediaStorage.setRating(id, value).catch(() => {});
+    mediaStorage.setRating(userId, id, value).catch(() => {});
     setError(null);
 
     if (!userId || !meta) return;
     saveDiaryRating(userId, meta, value, prevDiary).catch((e) => {
       setRatingState(prevRating);
       diaryRef.current = prevDiary;
-      mediaStorage.setRating(id, prevRating).catch(() => {});
+      mediaStorage.setRating(userId, id, prevRating).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not save your rating.');
     });
   }, [id, meta, rating, userId]);
@@ -168,14 +170,14 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     const prevDiary = diaryRef.current;
     setReviewState(text);
     diaryRef.current = { ...diaryRef.current, watched: true, review: text };
-    mediaStorage.setReview(id, text).catch(() => {});
+    mediaStorage.setReview(userId, id, text).catch(() => {});
     setError(null);
 
     if (!userId || !meta) return;
     saveDiaryReview(userId, meta, text, prevDiary).catch((e) => {
       setReviewState(prevReview);
       diaryRef.current = prevDiary;
-      mediaStorage.setReview(id, prevReview).catch(() => {});
+      mediaStorage.setReview(userId, id, prevReview).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not save your review.');
     });
   }, [id, meta, review, userId]);
@@ -187,10 +189,10 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     setReviewState(fields.review);
     setContainsSpoilers(fields.containsSpoilers);
     diaryRef.current = { watched: true, rating: nextRating, review: fields.review, containsSpoilers: fields.containsSpoilers };
-    mediaStorage.setWatchedState(id, true).catch(() => {});
-    mediaStorage.setRating(id, nextRating).catch(() => {});
-    mediaStorage.setReview(id, fields.review).catch(() => {});
-  }, [id]);
+    mediaStorage.setWatchedState(userId, id, true).catch(() => {});
+    mediaStorage.setRating(userId, id, nextRating).catch(() => {});
+    mediaStorage.setReview(userId, id, fields.review).catch(() => {});
+  }, [id, userId]);
 
   return {
     loaded, inShelf, watched, rating, review, containsSpoilers, error,

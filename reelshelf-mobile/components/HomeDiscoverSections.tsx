@@ -159,14 +159,30 @@ interface HomeDiscoverSectionsProps {
   excludeAdultContent?: boolean;
   /** Bump to re-fetch every live section — Home's pull-to-refresh. */
   refreshSignal?: number;
+  /** Whether "Because You Loved" (the one genuinely personalized row in this
+   *  shared section list — real website gates its equivalent the same way,
+   *  see DiscoverClient.tsx's `isLoggedIn && show("recs")`) should be
+   *  included at all. Defaults to true so Discover — which doesn't (and per
+   *  this task's scope, doesn't need to) pass this prop — keeps its exact
+   *  prior behavior unchanged; only Home's guest branch explicitly passes
+   *  false, guaranteeing the row is never even mounted for guests rather
+   *  than relying on its own internal auth check alone. */
+  isAuthenticated?: boolean;
+  /** Optional mobile-only guest sign-up card, rendered after "New in
+   *  Cinemas" when provided. Undefined for every caller except Home's guest
+   *  branch — Discover never passes this, so its layout is unaffected. */
+  guestCTA?: React.ReactNode;
 }
 
-export function HomeDiscoverSections({ excludeAdultContent = false, refreshSignal }: HomeDiscoverSectionsProps) {
+export function HomeDiscoverSections({
+  excludeAdultContent = false, refreshSignal, isAuthenticated = true, guestCTA,
+}: HomeDiscoverSectionsProps) {
   return (
     <>
       <SectionRow title="Trending Today" subtitle="Stories everyone is talking about." fetcher={fetchTrendingToday} />
-      <HomeBecauseYouLoved refreshSignal={refreshSignal} />
+      {isAuthenticated && <HomeBecauseYouLoved refreshSignal={refreshSignal} />}
       <SectionRow title="New in Cinemas" subtitle="Coming soon and just released." fetcher={fetchNewInCinemas} />
+      {guestCTA}
       <SectionRow title="Trending TV" subtitle="Television everyone's watching." fetcher={fetchTrendingTv} />
       <SectionRow title="Trending Books" subtitle="What the community is reading." fetcher={fetchTrendingBooks} />
       <SectionRow title="Hidden Gems" subtitle="Highly rated, still under the radar." fetcher={() => fetchHiddenGems(excludeAdultContent)} />

@@ -56,10 +56,15 @@ export function WelcomeBlock() {
     );
   }
 
+  // Guest copy: the real website has no equivalent greeting text anywhere
+  // (confirmed — Home/Discover share one component with no header greeting
+  // at all), so "Welcome to ReelShelf." is a deliberate mobile-only guest
+  // greeting rather than a ported real string — never a name, never the
+  // signed-in phrasing.
   return (
     <View style={styles.container}>
       <Text style={styles.greeting}>
-        Good {getTimeOfDay()}{name ? `, ${name}` : ''}.
+        {user ? `Good ${getTimeOfDay()}${name ? `, ${name}` : ''}.` : 'Welcome to ReelShelf.'}
       </Text>
       <Text style={styles.date}>{getDisplayDate()}</Text>
     </View>
