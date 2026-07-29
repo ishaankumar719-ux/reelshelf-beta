@@ -181,6 +181,11 @@ export default function LoginScreen() {
                 placeholder="••••••••"
                 placeholderTextColor={RS.colors.textMuted}
               />
+              {mode === 'signin' && (
+                <Pressable onPress={() => router.push('/forgot-password')} hitSlop={6} style={styles.forgotPasswordBtn}>
+                  <Text style={styles.forgotPasswordLabel}>Forgot password?</Text>
+                </Pressable>
+              )}
             </View>
 
             {mode === 'signup' && (
@@ -307,6 +312,15 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: RS.typography.overline,
     color:    RS.colors.textMuted,
+  },
+  forgotPasswordBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 2,
+  },
+  forgotPasswordLabel: {
+    fontSize:   RS.typography.caption,
+    fontWeight: '600',
+    color:      RS.colors.textMuted,
   },
   error: {
     fontSize:   RS.typography.caption + 1,

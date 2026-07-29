@@ -52,6 +52,8 @@ export default function RootLayout() {
                 <Stack>
                   <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
                   <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="forgot-password" options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="reset-password"  options={{ headerShown: false, presentation: 'modal', gestureEnabled: false }} />
                   <Stack.Screen name="activity"         options={{ headerShown: false }} />
                   {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
                   <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />
