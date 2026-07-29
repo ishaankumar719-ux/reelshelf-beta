@@ -193,13 +193,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // fresh instance (see RECOVERY_FLAG_KEY's comment above).
     recoveryModeRef.current = true;
     await AsyncStorage.setItem(RECOVERY_FLAG_KEY, '1').catch(() => {});
-    const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-    if (error) {
+    try {
+      // setSession() decodes the JWT internally and can throw synchronously
+      // on a malformed token, not just return a Supabase {error} result —
+      // confirmed via a real crash in the sibling email-verification flow's
+      // identical call, not theoretical. Must be caught here too.
+      const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (error) {
+        recoveryModeRef.current = false;
+        await AsyncStorage.removeItem(RECOVERY_FLAG_KEY).catch(() => {});
+        return { error: error.message };
+      }
+      return { error: null };
+    } catch (e) {
       recoveryModeRef.current = false;
       await AsyncStorage.removeItem(RECOVERY_FLAG_KEY).catch(() => {});
-      return { error: error.message };
+      return { error: e instanceof Error ? e.message : 'This link is no longer valid.' };
     }
-    return { error: null };
   };
 
   const endRecoverySession = async (): Promise<void> => {

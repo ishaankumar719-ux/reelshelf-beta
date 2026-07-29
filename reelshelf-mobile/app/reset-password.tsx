@@ -161,7 +161,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.centered}>
           <Text style={styles.expiredTitle}>Link no longer valid</Text>
           <Text style={styles.expiredMessage}>{expiredMessage}</Text>
-          <Pressable style={styles.submitBtn} onPress={handleRequestNewEmail}>
+          <Pressable style={styles.submitBtn} onPress={handleRequestNewEmail} accessibilityRole="button" accessibilityLabel="Request a new email">
             <Text style={styles.submitLabel}>Request a new email</Text>
           </Pressable>
         </View>
@@ -175,7 +175,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.centered}>
           <Text style={styles.expiredTitle}>Password updated</Text>
           <Text style={styles.expiredMessage}>You can now sign in with your new password.</Text>
-          <Pressable style={styles.submitBtn} onPress={handleContinueToSignIn}>
+          <Pressable style={styles.submitBtn} onPress={handleContinueToSignIn} accessibilityRole="button" accessibilityLabel="Continue to Sign In">
             <Text style={styles.submitLabel}>Continue to Sign In</Text>
           </Pressable>
         </View>
@@ -194,7 +194,7 @@ export default function ResetPasswordScreen() {
 
           <View style={styles.form}>
             <View style={styles.field}>
-              <Text style={styles.label}>New Password</Text>
+              <Text style={styles.label} nativeID="label-new-password">New Password</Text>
               <View style={styles.passwordRow}>
                 <TextInput
                   style={styles.passwordInput}
@@ -204,15 +204,23 @@ export default function ResetPasswordScreen() {
                   placeholder="••••••••"
                   placeholderTextColor={RS.colors.textMuted}
                   editable={!submitting}
+                  accessibilityLabel="New Password"
+                  accessibilityLabelledBy="label-new-password"
                 />
-                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8} style={styles.eyeBtn}>
-                  <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={RS.colors.textMuted} />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  style={styles.eyeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={RS.colors.textSecondary} />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label} nativeID="label-confirm-new-password">Confirm Password</Text>
               <View style={styles.passwordRow}>
                 <TextInput
                   style={styles.passwordInput}
@@ -222,19 +230,30 @@ export default function ResetPasswordScreen() {
                   placeholder="••••••••"
                   placeholderTextColor={RS.colors.textMuted}
                   editable={!submitting}
+                  accessibilityLabel="Confirm Password"
+                  accessibilityLabelledBy="label-confirm-new-password"
                 />
-                <Pressable onPress={() => setShowConfirm((v) => !v)} hitSlop={8} style={styles.eyeBtn}>
-                  <MaterialIcons name={showConfirm ? 'visibility-off' : 'visibility'} size={20} color={RS.colors.textMuted} />
+                <Pressable
+                  onPress={() => setShowConfirm((v) => !v)}
+                  hitSlop={8}
+                  style={styles.eyeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'}
+                >
+                  <MaterialIcons name={showConfirm ? 'visibility-off' : 'visibility'} size={20} color={RS.colors.textSecondary} />
                 </Pressable>
               </View>
             </View>
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text> : null}
 
             <Pressable
               style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Update Password"
+              accessibilityState={{ disabled: submitting, busy: submitting }}
             >
               {submitting ? (
                 <ActivityIndicator color={RS.button.filledText} />

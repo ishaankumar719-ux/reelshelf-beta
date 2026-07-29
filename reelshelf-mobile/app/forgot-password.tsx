@@ -57,16 +57,16 @@ export default function ForgotPasswordScreen() {
           </View>
 
           {sent ? (
-            <View style={styles.successCard}>
+            <View style={styles.successCard} accessibilityLiveRegion="polite">
               <Text style={styles.successText}>{NEUTRAL_SUCCESS_MESSAGE}</Text>
-              <Pressable style={styles.linkBtn} onPress={() => router.back()}>
+              <Pressable style={styles.linkBtn} onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Back to Sign In">
                 <Text style={styles.linkBtnLabel}>Back to Sign In</Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.form}>
               <View style={styles.field}>
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label} nativeID="label-fp-email">Email</Text>
                 <TextInput
                   style={styles.input}
                   value={email}
@@ -77,15 +77,20 @@ export default function ForgotPasswordScreen() {
                   placeholder="you@example.com"
                   placeholderTextColor={RS.colors.textMuted}
                   editable={!loading}
+                  accessibilityLabel="Email"
+                  accessibilityLabelledBy="label-fp-email"
                 />
               </View>
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text> : null}
 
               <Pressable
                 style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
                 onPress={handleSend}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Send Reset Link"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? (
                   <ActivityIndicator color={RS.button.filledText} />

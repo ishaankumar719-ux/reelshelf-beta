@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,9 +14,10 @@ import {
   View,
 } from 'react-native';
 
+import { AvatarPicker } from '@/components/profile/AvatarPicker';
+import { GenreMultiSelect } from '@/components/profile/GenreMultiSelect';
 import { RS } from '@/constants/theme';
-import { pickAndUploadAvatar, updateProfile, type ProfileData } from '@/lib/supabase/profile';
-import { getMediaKey } from '@/utils/listKeys';
+import { updateProfile, type ProfileData } from '@/lib/supabase/profile';
 
 interface EditProfileModalProps {
   visible:  boolean;
@@ -32,11 +31,6 @@ interface EditProfileModalProps {
 // than a review.
 const BIO_MAX = 240;
 
-const GENRE_OPTIONS = [
-  'Drama', 'Comedy', 'Horror', 'Sci-Fi', 'Animation', 'Thriller',
-  'Romance', 'Action', 'Documentary', 'Fantasy', 'Mystery', 'Adventure', 'Crime',
-] as const;
-
 export function EditProfileModal({ visible, onClose, onSaved, profile }: EditProfileModalProps) {
   const [displayName, setDisplayName] = useState(profile.displayName ?? '');
   const [username, setUsername] = useState(profile.username ?? '');
@@ -47,8 +41,6 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
   const [favSeries, setFavSeries] = useState(profile.favouriteSeries ?? '');
   const [favBook, setFavBook] = useState(profile.favouriteBook ?? '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
-  const [avatarBroken, setAvatarBroken] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,22 +55,11 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     setFavSeries(profile.favouriteSeries ?? '');
     setFavBook(profile.favouriteBook ?? '');
     setAvatarUrl(profile.avatarUrl);
-    setAvatarBroken(false);
     setError(null);
   }, [visible, profile]);
 
   const toggleGenre = (genre: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setGenres((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]));
-  };
-
-  const handleChangeAvatar = async () => {
-    setUploadingAvatar(true);
-    setError(null);
-    const { url, error: uploadError } = await pickAndUploadAvatar(profile.id);
-    if (uploadError) setError(uploadError);
-    if (url) { setAvatarUrl(url); setAvatarBroken(false); }
-    setUploadingAvatar(false);
   };
 
   const handleSave = async () => {
@@ -119,22 +100,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
               <Text style={styles.headerTitle}>Edit Profile</Text>
 
-              <Pressable style={styles.avatarWrap} onPress={handleChangeAvatar} disabled={uploadingAvatar}>
-                {avatarUrl && !avatarBroken ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" onError={() => setAvatarBroken(true)} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarFallback]}>
-                    <MaterialIcons name="person" size={36} color={RS.colors.textMuted} />
-                  </View>
-                )}
-                <View style={styles.avatarEditBadge}>
-                  {uploadingAvatar ? (
-                    <ActivityIndicator size="small" color={RS.colors.textPrimary} />
-                  ) : (
-                    <MaterialIcons name="camera-alt" size={14} color={RS.colors.textPrimary} />
-                  )}
-                </View>
-              </Pressable>
+              <AvatarPicker userId={profile.id} avatarUrl={avatarUrl} onChange={setAvatarUrl} onError={setError} />
 
               <View style={styles.field}>
                 <Text style={styles.label}>Display Name</Text>
@@ -186,16 +152,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
 
               <View style={styles.field}>
                 <Text style={styles.label}>Favourite Genres</Text>
-                <View style={styles.genreGrid}>
-                  {GENRE_OPTIONS.map((genre) => {
-                    const active = genres.includes(genre);
-                    return (
-                      <Pressable key={getMediaKey('edit-genre', genre)} style={[styles.genreChip, active && styles.genreChipActive]} onPress={() => toggleGenre(genre)}>
-                        <Text style={[styles.genreLabel, active && styles.genreLabelActive]}>{genre}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <GenreMultiSelect selected={genres} onToggle={toggleGenre} />
               </View>
 
               <View style={styles.field}>
@@ -266,33 +223,6 @@ const styles = StyleSheet.create({
     textAlign:     'center',
     marginBottom:  RS.spacing.xs,
   },
-  avatarWrap: {
-    alignSelf: 'center',
-    marginBottom: RS.spacing.sm,
-  },
-  avatar: {
-    width:        88,
-    height:       88,
-    borderRadius: 44,
-  },
-  avatarFallback: {
-    backgroundColor: RS.colors.elevated,
-    alignItems:      'center',
-    justifyContent:  'center',
-  },
-  avatarEditBadge: {
-    position:        'absolute',
-    right:            0,
-    bottom:           0,
-    width:            28,
-    height:           28,
-    borderRadius:     14,
-    backgroundColor:  RS.colors.accent,
-    alignItems:       'center',
-    justifyContent:   'center',
-    borderWidth:      2,
-    borderColor:      RS.colors.card,
-  },
   field: {
     gap: RS.spacing.xs,
   },
@@ -322,32 +252,6 @@ const styles = StyleSheet.create({
   bioInput: {
     minHeight:         70,
     textAlignVertical: 'top',
-  },
-  genreGrid: {
-    flexDirection: 'row',
-    flexWrap:      'wrap',
-    gap:           RS.spacing.xs + 2,
-  },
-  genreChip: {
-    borderRadius:      RS.button.radius,
-    borderWidth:       0.5,
-    borderColor:       RS.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical:   7,
-    backgroundColor:   RS.colors.elevated,
-  },
-  genreChipActive: {
-    borderColor:     RS.button.primaryBorder,
-    backgroundColor: RS.button.primaryFill,
-    borderWidth:     1,
-  },
-  genreLabel: {
-    fontSize:   RS.typography.caption,
-    fontWeight: '600',
-    color:      RS.colors.textSecondary,
-  },
-  genreLabelActive: {
-    color: RS.button.primaryText,
   },
   errorText: {
     fontSize: RS.typography.caption + 1,

@@ -12,6 +12,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import { AppOpenBadgeSync } from '@/components/achievements/AppOpenBadgeSync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { OnboardingGate } from '@/components/OnboardingGate';
 import { initAnalytics, trackAppOpened } from '@/lib/observability/analytics';
 import { initSentry } from '@/lib/observability/sentry';
 
@@ -48,12 +49,16 @@ export default function RootLayout() {
           <SettingsProvider>
             <BadgeCelebrationProvider>
               <AppOpenBadgeSync />
+              <OnboardingGate />
               <ThemeProvider value={RSTheme}>
                 <Stack>
                   <Stack.Screen name="(tabs)"          options={{ headerShown: false }} />
                   <Stack.Screen name="login"           options={{ headerShown: false, presentation: 'modal' }} />
                   <Stack.Screen name="forgot-password" options={{ headerShown: false, presentation: 'modal' }} />
                   <Stack.Screen name="reset-password"  options={{ headerShown: false, presentation: 'modal', gestureEnabled: false }} />
+                  <Stack.Screen name="verify-pending"  options={{ headerShown: false, presentation: 'modal' }} />
+                  <Stack.Screen name="verify-email"    options={{ headerShown: false, presentation: 'modal', gestureEnabled: false }} />
+                  <Stack.Screen name="onboarding"      options={{ headerShown: false, gestureEnabled: false }} />
                   <Stack.Screen name="activity"         options={{ headerShown: false }} />
                   {/* Placeholder screens — minimal, no extra content beyond nav + title/poster */}
                   <Stack.Screen name="media/[id]"      options={{ headerShown: false }} />

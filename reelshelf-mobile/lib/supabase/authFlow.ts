@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { supabase } from './client';
 
-const PENDING_KEY = 'reelshelf:pendingSignup';
+const PENDING_KEY_PREFIX = 'reelshelf:pendingSignup:';
 
 interface PendingSignup {
   inviteCode: string;
@@ -23,17 +23,28 @@ interface PendingSignup {
 // a session exists. Stash the intent so it can be completed the moment a
 // session appears (confirmed via email, then any future login), regardless
 // of how/where the user confirmed.
-async function stashPendingSignup(data: PendingSignup): Promise<void> {
-  await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(data));
+//
+// Keyed by the signing-up user's own id (available on data.user even when
+// data.session is null — Supabase returns the created user immediately,
+// confirmation only gates the session). Was a single global, unkeyed
+// key: on a shared device, if User A signed up pending confirmation and
+// never confirmed, and a DIFFERENT user then signed in normally,
+// completePendingSignupIfAny would have applied User A's invite code and
+// chosen username to User B's profile — a real cross-account data
+// corruption path, not hypothetical, found during the account-isolation
+// audit. Namespacing by user id and checking the id matches before applying
+// closes it.
+async function stashPendingSignup(userId: string, data: PendingSignup): Promise<void> {
+  await AsyncStorage.setItem(`${PENDING_KEY_PREFIX}${userId}`, JSON.stringify(data));
 }
 
-async function getPendingSignup(): Promise<PendingSignup | null> {
-  const raw = await AsyncStorage.getItem(PENDING_KEY);
+async function getPendingSignup(userId: string): Promise<PendingSignup | null> {
+  const raw = await AsyncStorage.getItem(`${PENDING_KEY_PREFIX}${userId}`);
   return raw ? (JSON.parse(raw) as PendingSignup) : null;
 }
 
-async function clearPendingSignup(): Promise<void> {
-  await AsyncStorage.removeItem(PENDING_KEY);
+async function clearPendingSignup(userId: string): Promise<void> {
+  await AsyncStorage.removeItem(`${PENDING_KEY_PREFIX}${userId}`);
 }
 
 export type InviteValidationReason = 'invalid' | 'expired' | 'used' | 'not_configured';
@@ -68,16 +79,16 @@ export async function setProfileUsername(userId: string, username: string): Prom
   return { error: null };
 }
 
-/** Call with { inviteCode, username } when signUp() returns no session (confirmation pending). */
-export async function deferSignupCompletion(data: PendingSignup): Promise<void> {
-  await stashPendingSignup(data);
+/** Call with the just-created user's id when signUp() returns no session (confirmation pending). */
+export async function deferSignupCompletion(userId: string, data: PendingSignup): Promise<void> {
+  await stashPendingSignup(userId, data);
 }
 
-/** Call whenever a session becomes available (cold start, login, or post-confirmation) — no-ops if nothing is pending. */
+/** Call whenever a session becomes available (cold start, login, or post-confirmation) — no-ops if nothing is pending FOR THIS SPECIFIC USER. */
 export async function completePendingSignupIfAny(userId: string): Promise<void> {
-  const pending = await getPendingSignup();
+  const pending = await getPendingSignup(userId);
   if (!pending) return;
   await claimInviteCode(pending.inviteCode, userId);
   await setProfileUsername(userId, pending.username);
-  await clearPendingSignup();
+  await clearPendingSignup(userId);
 }
