@@ -7,17 +7,20 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RS } from '@/constants/theme';
 
 interface Props {
-  message?: string;
-  onRetry:  () => void;
-  compact?: boolean;
+  message?:    string;
+  onRetry:     () => void;
+  /** Defaults to "Retry" — pass e.g. "Go Back" for cases where re-fetching
+   *  can't help (nothing was ever fetched), so the action isn't misleading. */
+  actionLabel?: string;
+  compact?:    boolean;
 }
 
-export function NetworkErrorState({ message = "Couldn't load this — check your connection and try again.", onRetry, compact }: Props) {
+export function NetworkErrorState({ message = "Couldn't load this — check your connection and try again.", onRetry, actionLabel = 'Retry', compact }: Props) {
   return (
     <View style={[styles.container, compact && styles.containerCompact]}>
       <Text style={styles.message}>{message}</Text>
-      <Pressable style={styles.retryBtn} onPress={onRetry}>
-        <Text style={styles.retryLabel}>Retry</Text>
+      <Pressable style={styles.retryBtn} onPress={onRetry} accessibilityRole="button" accessibilityLabel={actionLabel}>
+        <Text style={styles.retryLabel}>{actionLabel}</Text>
       </Pressable>
     </View>
   );

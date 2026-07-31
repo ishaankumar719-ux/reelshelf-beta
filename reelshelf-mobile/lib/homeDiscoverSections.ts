@@ -4,6 +4,7 @@
 // handled separately in recommendationEngine.ts/becauseYouLoved.ts). Exact
 // TMDB paths quoted from the real source, not guessed.
 import { supabase } from './supabase/client';
+import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 import {
   fetchTmdbCollectionByPath,
@@ -29,7 +30,7 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 async function tmdbRaw(path: string): Promise<any[]> {
   if (!TMDB_KEY) return [];
   const sep = path.includes('?') ? '&' : '?';
-  const res = await fetch(`${TMDB_BASE}${path}${sep}api_key=${TMDB_KEY}&language=en-US`);
+  const res = await fetchWithTimeout(`${TMDB_BASE}${path}${sep}api_key=${TMDB_KEY}&language=en-US`);
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data.results) ? data.results : [];
@@ -231,7 +232,7 @@ export async function fetchRandomPick(
 ): Promise<SectionItem | null> {
   if (kind === 'book') {
     const query = 'bestselling fiction';
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&orderBy=relevance`);
+    const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&orderBy=relevance`);
     if (!res.ok) return null;
     const data = await res.json();
     const items = (Array.isArray(data.items) ? data.items : []).filter((it: any) => it.id && it.volumeInfo?.title && `book-${it.id}` !== excludeId);

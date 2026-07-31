@@ -43,7 +43,15 @@
       ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ReelShelf uses your photo library to set your profile photo and attach images to reviews.",
+          "cameraPermission": "ReelShelf uses your camera to take a photo for your profile or attach to a review.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

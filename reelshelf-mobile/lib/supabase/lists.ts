@@ -338,7 +338,10 @@ export async function addListItem(listId: string, item: AddListItemInput): Promi
     rank_order: (count ?? 0) + 1,
     author:     item.author ?? null,
   });
-  if (error) throw error;
+  // 23505 = unique_violation (list_id,media_type,media_id — already in this
+  // list) — treat as success, matching the idempotent-insert pattern used
+  // elsewhere in this file (likeList/saveList).
+  if (error && (error as { code?: string }).code !== '23505') throw error;
 }
 
 /** Removes an item, then renumbers the remaining items' rank_order to stay

@@ -12,6 +12,7 @@
 // user's timezone) mobile and web may show different "today's picks" for the
 // same account. This is accepted, not treated as a bug — see the task RETURN.
 import { supabase } from './client';
+import { fetchWithTimeout } from '../fetchWithTimeout';
 import { resolveImageUrl } from '../resolveImageUrl';
 import {
   buildUserContext, generateReasons, pickBest, scoreCandidate,
@@ -75,7 +76,7 @@ async function resolveCandidateDetail(mediaType: PickMediaType, mediaId: string)
   }
   // Books: fetch directly by Google Books volume id (cheap, single lookup).
   const volumeId = mediaId.startsWith('book-') ? mediaId.slice(5) : mediaId;
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes/${volumeId}`);
+  const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes/${volumeId}`);
   if (!res.ok) return null;
   const item = await res.json();
   const info = item.volumeInfo;

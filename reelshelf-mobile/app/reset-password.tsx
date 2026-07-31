@@ -52,7 +52,7 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    async function handleUrl(url: string) {
+    async function handleUrl(url: string, fromInitialUrl: boolean) {
       const result = parseRecoveryTokensFromUrl(url);
       if (cancelled) return;
 
@@ -62,9 +62,18 @@ export default function ResetPasswordScreen() {
         return;
       }
       if (result.status === 'none') {
-        // No token in this URL at all — nothing to process yet (could be a
-        // warm-start 'url' event for an unrelated link). Only treat as
-        // expired if we're still 'checking' once getInitialURL settles.
+        // No token in this URL at all. A live 'url' event with no token
+        // could be a warm-start deep link for something else entirely —
+        // ignored here, not this screen's concern. But getInitialURL is
+        // THIS screen's own launch URL — if that has no token, there is
+        // nothing left to wait for, so it must resolve to 'expired'
+        // instead of leaving status stuck on 'checking' forever (this
+        // screen also has gestureEnabled: false, so a stuck spinner here
+        // previously left no way out at all).
+        if (fromInitialUrl) {
+          setExpiredMessage('This reset link is no longer valid. Request a new one below.');
+          setStatus('expired');
+        }
         return;
       }
 
@@ -88,13 +97,13 @@ export default function ResetPasswordScreen() {
     Linking.getInitialURL().then((url) => {
       if (cancelled) return;
       if (url) {
-        handleUrl(url);
+        handleUrl(url, true);
       } else {
         setStatus('expired'); // reached with no link at all
       }
     });
 
-    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url, false));
 
     return () => {
       cancelled = true;

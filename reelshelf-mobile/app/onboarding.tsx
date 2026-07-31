@@ -281,6 +281,7 @@ function FollowStep({ userId }: { userId: string }) {
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [followBusy, setFollowBusy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (query.trim().length < 2) { setResults([]); return; }
@@ -296,6 +297,7 @@ function FollowStep({ userId }: { userId: string }) {
   }, [query, userId]);
 
   const handleToggleFollow = async (targetId: string) => {
+    if (followBusy.has(targetId)) return; // functional guard — prevents follow/unfollow firing out of order
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const isFollowing = following.has(targetId);
     setFollowing((prev) => {
@@ -303,6 +305,7 @@ function FollowStep({ userId }: { userId: string }) {
       if (isFollowing) next.delete(targetId); else next.add(targetId);
       return next;
     });
+    setFollowBusy((prev) => new Set(prev).add(targetId));
     try {
       if (isFollowing) await unfollowUser(userId, targetId);
       else await followUser(userId, targetId);
@@ -311,6 +314,12 @@ function FollowStep({ userId }: { userId: string }) {
       setFollowing((prev) => {
         const next = new Set(prev);
         if (isFollowing) next.add(targetId); else next.delete(targetId);
+        return next;
+      });
+    } finally {
+      setFollowBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
         return next;
       });
     }
@@ -352,11 +361,12 @@ function FollowStep({ userId }: { userId: string }) {
                 <Text style={styles.userHandle}>@{u.username}</Text>
               </View>
               <Pressable
-                style={[styles.followBtn, isFollowing && styles.followBtnActive]}
+                style={[styles.followBtn, isFollowing && styles.followBtnActive, followBusy.has(u.id) && { opacity: 0.6 }]}
                 onPress={() => handleToggleFollow(u.id)}
+                disabled={followBusy.has(u.id)}
                 accessibilityRole="button"
                 accessibilityLabel={isFollowing ? `Following ${u.displayName || u.username}` : `Follow ${u.displayName || u.username}`}
-                accessibilityState={{ selected: isFollowing }}
+                accessibilityState={{ selected: isFollowing, disabled: followBusy.has(u.id), busy: followBusy.has(u.id) }}
               >
                 <Text style={[styles.followBtnLabel, isFollowing && styles.followBtnLabelActive]}>
                   {isFollowing ? 'Following' : 'Follow'}

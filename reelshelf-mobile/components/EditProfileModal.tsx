@@ -63,6 +63,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
   };
 
   const handleSave = async () => {
+    if (saving) return; // functional guard, not just the disabled prop below
     if (!displayName.trim()) {
       setError('Display name is required.');
       return;

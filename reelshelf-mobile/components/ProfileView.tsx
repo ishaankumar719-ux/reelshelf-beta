@@ -128,6 +128,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const [rushmoreActiveTab, setRushmoreActiveTab] = useState<RushmoreMediaType>('movie');
   const [rushmoreEditorOpen, setRushmoreEditorOpen] = useState(false);
   const [following, setFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(params.edit === '1');
   const [avatarBroken, setAvatarBroken] = useState(false);
@@ -304,9 +305,15 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
       router.push('/login');
       return;
     }
+    // Functional in-flight guard — without this, a rapid double-tap could
+    // fire unfollow() before the first follow() insert has committed (or
+    // vice versa), leaving the DB in whichever order the two requests
+    // happen to resolve, out of sync with the already-flipped UI state.
+    if (followBusy) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const next = !following;
     setFollowing(next);
+    setFollowBusy(true);
     const action = next ? followUser(sessionUser.id, userId) : unfollowUser(sessionUser.id, userId);
     action
       .then(() => {
@@ -317,7 +324,8 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
         // profile/app-open checks run again.
         evaluateAndSyncBadges(sessionUser.id).then((result) => celebrateNewBadges(result.newlyUnlocked)).catch(() => {});
       })
-      .catch(() => setFollowing(!next));
+      .catch(() => setFollowing(!next))
+      .finally(() => setFollowBusy(false));
   };
 
   const openMediaDetail = (routeId: string, title: string, poster: string | null, mediaType: string) => {
@@ -536,7 +544,14 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   <Text style={styles.editLabel}>Edit Profile</Text>
                 </Pressable>
               ) : (
-                <Pressable style={[styles.editBtn, following && styles.followingBtn]} onPress={handleToggleFollow}>
+                <Pressable
+                  style={[styles.editBtn, following && styles.followingBtn, followBusy && { opacity: 0.6 }]}
+                  onPress={handleToggleFollow}
+                  disabled={followBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel={following ? 'Unfollow' : 'Follow'}
+                  accessibilityState={{ disabled: followBusy, busy: followBusy }}
+                >
                   <Text style={[styles.editLabel, following && styles.followingLabel]}>{following ? 'Following' : 'Follow'}</Text>
                 </Pressable>
               )}

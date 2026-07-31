@@ -8,6 +8,7 @@
 // this introduces (documented there, not hidden here).
 import { supabase } from './supabase/client';
 import { fetchTmdbCredits, fetchTmdbPopular, type TmdbKind } from './tmdb';
+import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 
 export type PickMediaType = 'film' | 'tv' | 'book';
@@ -277,7 +278,7 @@ interface RawGoogleBook {
 
 async function fetchBookCandidates(seed: number): Promise<RawGoogleBook[]> {
   const query = BOOK_QUERY_ROTATION[seed % BOOK_QUERY_ROTATION.length];
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&orderBy=relevance`);
+  const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&orderBy=relevance`);
   if (!res.ok) return [];
   const data = await res.json();
   const items = Array.isArray(data.items) ? data.items : [];

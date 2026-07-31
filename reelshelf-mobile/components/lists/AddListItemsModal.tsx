@@ -119,6 +119,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
 
   const handleAdd = async (hit: SearchHit) => {
     const key = getMediaKey(hit.mediaType, hit.mediaId);
+    if (addingId === key) return; // functional guard, not just the disabled prop below
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setAddingId(key);
     try {

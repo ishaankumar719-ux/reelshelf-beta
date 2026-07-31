@@ -61,6 +61,17 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   // (e.g. saving a rating must preserve whatever review is already there).
   const diaryRef = useRef<DiaryEntryState>({ watched: false, rating: 0, review: '', containsSpoilers: false });
 
+  // Per-field monotonic sequence numbers — guard against an out-of-order
+  // network response (e.g. a slow first tap's rollback resolving AFTER a
+  // second rapid re-tap already moved state forward) clobbering newer
+  // optimistic state with stale data. Each toggle/save bumps its field's
+  // counter; a resolving call only applies its rollback if it's still the
+  // most recent write for that field.
+  const shelfSeqRef = useRef(0);
+  const watchedSeqRef = useRef(0);
+  const ratingSeqRef = useRef(0);
+  const reviewSeqRef = useRef(0);
+
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
@@ -119,6 +130,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
 
   const toggleShelf = useCallback(() => {
     const next = !inShelf;
+    const seq = ++shelfSeqRef.current;
     setInShelf(next);
     mediaStorage.setShelfState(userId, id, next).catch(() => {});
     setError(null);
@@ -126,7 +138,10 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
     if (!userId || !meta) return;
     const action = next ? addToShelf(userId, meta) : removeFromShelf(userId, meta);
     action.catch((e) => {
-      // Roll back on failure.
+      // Roll back on failure — but only if no newer toggle has since
+      // superseded this one (out-of-order network responses must not
+      // clobber a more recent optimistic state).
+      if (shelfSeqRef.current !== seq) return;
       setInShelf(!next);
       mediaStorage.setShelfState(userId, id, !next).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not update your shelf.');
@@ -136,12 +151,14 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   const toggleWatched = useCallback(() => {
     const next = !watched;
     const prevDiary = diaryRef.current;
+    const seq = ++watchedSeqRef.current;
     setWatched(next);
     mediaStorage.setWatchedState(userId, id, next).catch(() => {});
     setError(null);
 
     if (!userId || !meta) return;
     setWatchedRemote(userId, meta, next, prevDiary).catch((e) => {
+      if (watchedSeqRef.current !== seq) return;
       setWatched(!next);
       mediaStorage.setWatchedState(userId, id, !next).catch(() => {});
       setError(e instanceof Error ? e.message : 'Could not update Watched.');
@@ -151,6 +168,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   const saveRating = useCallback((value: number) => {
     const prevRating = rating;
     const prevDiary = diaryRef.current;
+    const seq = ++ratingSeqRef.current;
     setRatingState(value);
     diaryRef.current = { ...diaryRef.current, watched: true, rating: value };
     mediaStorage.setRating(userId, id, value).catch(() => {});
@@ -158,6 +176,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
 
     if (!userId || !meta) return;
     saveDiaryRating(userId, meta, value, prevDiary).catch((e) => {
+      if (ratingSeqRef.current !== seq) return;
       setRatingState(prevRating);
       diaryRef.current = prevDiary;
       mediaStorage.setRating(userId, id, prevRating).catch(() => {});
@@ -168,6 +187,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
   const saveReview = useCallback((text: string) => {
     const prevReview = review;
     const prevDiary = diaryRef.current;
+    const seq = ++reviewSeqRef.current;
     setReviewState(text);
     diaryRef.current = { ...diaryRef.current, watched: true, review: text };
     mediaStorage.setReview(userId, id, text).catch(() => {});
@@ -175,6 +195,7 @@ export function useMediaPersistence(id: string, meta: MediaMeta | null, userId: 
 
     if (!userId || !meta) return;
     saveDiaryReview(userId, meta, text, prevDiary).catch((e) => {
+      if (reviewSeqRef.current !== seq) return;
       setReviewState(prevReview);
       diaryRef.current = prevDiary;
       mediaStorage.setReview(userId, id, prevReview).catch(() => {});

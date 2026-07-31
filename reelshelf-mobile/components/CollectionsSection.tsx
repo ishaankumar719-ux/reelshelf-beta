@@ -16,7 +16,7 @@ import type { CollectionCardData } from '@/lib/supabase/collections';
 // seed array. No outer carousel, no card-to-card swipe — the inner poster
 // strip inside CollectionCard remains swipeable for browsing that
 // collection's items.
-export function CollectionsSection() {
+export function CollectionsSection({ refreshSignal }: { refreshSignal?: number } = {}) {
   const { setOverrideColor } = useAtmosphere();
   const [collection, setCollection] = useState<CollectionCardData | null | undefined>(undefined);
   // Distinct from "resolved to null" (no live collection this week — a real,
@@ -32,7 +32,11 @@ export function CollectionsSection() {
       .then((data) => { if (!cancelled) setCollection(data); })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
-  }, []);
+    // refreshSignal is deliberately in deps though unused in the body — its
+    // only job is to force a new `load` identity so the effect below
+    // refires on Home's pull-to-refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
 
   useEffect(() => load(), [load]);
 

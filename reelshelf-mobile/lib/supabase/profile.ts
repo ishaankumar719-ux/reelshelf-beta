@@ -115,7 +115,9 @@ export async function fetchFollowState(viewerId: string, targetId: string): Prom
 export async function followUser(viewerId: string, targetId: string): Promise<void> {
   const client = requireClient();
   const { error } = await client.from('followers').insert({ follower_id: viewerId, following_id: targetId });
-  if (error) throw error;
+  // 23505 = unique_violation (already following) — treat as success, matching
+  // the idempotent-insert pattern used for list_likes/list_saves/diary_entry_likes.
+  if (error && (error as { code?: string }).code !== '23505') throw error;
 }
 
 export async function unfollowUser(viewerId: string, targetId: string): Promise<void> {

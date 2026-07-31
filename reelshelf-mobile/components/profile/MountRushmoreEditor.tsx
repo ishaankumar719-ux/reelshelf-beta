@@ -176,6 +176,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
   };
 
   const handleSave = async () => {
+    if (saving) return; // functional guard, not just the disabled prop below
     setSaving(true);
     setError(null);
     try {

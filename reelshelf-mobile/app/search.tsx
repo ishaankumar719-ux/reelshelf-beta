@@ -27,6 +27,7 @@ import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbP
 import { searchBooks, searchCollections, searchLists, searchUsers,
   type BookSearchResult, type CollectionSearchResult, type ListSearchResult, type UserSearchResult } from '@/lib/search';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '@/lib/recentSearches';
+import { useAuth } from '@/contexts/AuthContext';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { getMediaKey } from '@/utils/listKeys';
 
@@ -130,6 +131,7 @@ export default function SearchScreen() {
   // (/search?category=users) — falls back to 'all' for a normal open or an
   // unrecognized value.
   const { category: initialCategory } = useLocalSearchParams<{ category?: string }>();
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<Category>(
     initialCategory && VALID_CATEGORIES.has(initialCategory as Category) ? (initialCategory as Category) : 'all',
@@ -154,8 +156,8 @@ export default function SearchScreen() {
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    getRecentSearches().then(setRecent);
-  }, []);
+    getRecentSearches(user?.id ?? null).then(setRecent);
+  }, [user?.id]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -224,7 +226,7 @@ export default function SearchScreen() {
 
   const commitSearch = async () => {
     if (!query.trim()) return;
-    setRecent(await addRecentSearch(query));
+    setRecent(await addRecentSearch(user?.id ?? null, query));
   };
 
   const handleTapRecentOrTrending = (q: string) => {
@@ -337,7 +339,7 @@ export default function SearchScreen() {
                 <View style={styles.section}>
                   <View style={styles.sectionHeaderRow}>
                     <Text style={styles.sectionTitle}>Recent Searches</Text>
-                    <Pressable onPress={() => clearRecentSearches().then(() => setRecent([]))} hitSlop={8}>
+                    <Pressable onPress={() => clearRecentSearches(user?.id ?? null).then(() => setRecent([]))} hitSlop={8}>
                       <Text style={styles.clearLabel}>Clear</Text>
                     </Pressable>
                   </View>

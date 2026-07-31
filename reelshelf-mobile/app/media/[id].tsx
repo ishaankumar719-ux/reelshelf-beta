@@ -71,6 +71,14 @@ export default function MediaDetailScreen() {
   // silently fell through to seed-fallback placeholders with no indication
   // anything had gone wrong, and no way to retry).
   const detailsError = !isBook && live.details.status === 'error';
+  // A book-kind route id (parseMediaRouteId didn't recognize it as film/tv)
+  // with no title param at all — there is no live TMDB fetch to fall back
+  // on for books, so if the id also isn't in the local seed set, there is
+  // truly nothing to render. Reachable only via a malformed/hand-typed/
+  // corrupted deep link — every real in-app navigation to this screen
+  // always passes `title`. Without this, the screen below silently renders
+  // with an empty hero and no content sections instead of a clear state.
+  const unresolvableBook = isBook && !title && !seedDetail;
   // Cast & Crew depends on `credits` for cast/director/writer/composer, and
   // (TV only) on `details` for the creator field — wait for whichever of the
   // two this title actually needs.
@@ -207,7 +215,13 @@ export default function MediaDetailScreen() {
           >
             <ExpandEntrance active>
               <View style={styles.sections}>
-                {heroLoading ? (
+                {unresolvableBook ? (
+                  <NetworkErrorState
+                    message="This title isn't available."
+                    onRetry={() => router.back()}
+                    actionLabel="Go Back"
+                  />
+                ) : heroLoading ? (
                   <SkeletonHero />
                 ) : detailsError ? (
                   <NetworkErrorState message="Couldn't load this title — check your connection and try again." onRetry={live.retry} />

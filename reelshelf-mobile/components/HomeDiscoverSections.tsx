@@ -38,11 +38,12 @@ function openMedia(item: SectionItem) {
 // except Because You Loved (its own component), Browse by Genre, Pick
 // Something Random, and Collections (all structurally different). ─────────
 function SectionRow({
-  title, subtitle, fetcher,
+  title, subtitle, fetcher, refreshSignal,
 }: {
   title: string;
   subtitle: string;
   fetcher: () => Promise<SectionItem[]>;
+  refreshSignal?: number;
 }) {
   const [items, setItems] = useState<SectionItem[] | null>(null);
   // Kept distinct from "resolved with zero results" (a real, legitimately
@@ -58,7 +59,7 @@ function SectionRow({
     fetcher().then((data) => { if (!cancelled) setItems(data); }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshSignal]);
 
   useEffect(() => load(), [load]);
 
@@ -179,20 +180,20 @@ export function HomeDiscoverSections({
 }: HomeDiscoverSectionsProps) {
   return (
     <>
-      <SectionRow title="Trending Today" subtitle="Stories everyone is talking about." fetcher={fetchTrendingToday} />
+      <SectionRow title="Trending Today" subtitle="Stories everyone is talking about." fetcher={fetchTrendingToday} refreshSignal={refreshSignal} />
       {isAuthenticated && <HomeBecauseYouLoved refreshSignal={refreshSignal} />}
-      <SectionRow title="New in Cinemas" subtitle="Coming soon and just released." fetcher={fetchNewInCinemas} />
+      <SectionRow title="New in Cinemas" subtitle="Coming soon and just released." fetcher={fetchNewInCinemas} refreshSignal={refreshSignal} />
       {guestCTA}
-      <SectionRow title="Trending TV" subtitle="Television everyone's watching." fetcher={fetchTrendingTv} />
-      <SectionRow title="Trending Books" subtitle="What the community is reading." fetcher={fetchTrendingBooks} />
-      <SectionRow title="Hidden Gems" subtitle="Highly rated, still under the radar." fetcher={() => fetchHiddenGems(excludeAdultContent)} />
-      <SectionRow title="Award Winners" subtitle="Recognised by the industry, remembered by us." fetcher={fetchAwardWinners} />
+      <SectionRow title="Trending TV" subtitle="Television everyone's watching." fetcher={fetchTrendingTv} refreshSignal={refreshSignal} />
+      <SectionRow title="Trending Books" subtitle="What the community is reading." fetcher={fetchTrendingBooks} refreshSignal={refreshSignal} />
+      <SectionRow title="Hidden Gems" subtitle="Highly rated, still under the radar." fetcher={() => fetchHiddenGems(excludeAdultContent)} refreshSignal={refreshSignal} />
+      <SectionRow title="Award Winners" subtitle="Recognised by the industry, remembered by us." fetcher={fetchAwardWinners} refreshSignal={refreshSignal} />
       <View style={styles.section}>
         <SectionHeader title="Browse by Genre" subtitle="Explore by mood, theme, or taste." />
         <GenreChipsRow />
       </View>
       <RandomPickRow />
-      <CollectionsSection />
+      <CollectionsSection refreshSignal={refreshSignal} />
     </>
   );
 }

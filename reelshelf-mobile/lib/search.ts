@@ -2,6 +2,7 @@
 // same one already used by scripts/generate-seed-data.ts), and Supabase
 // (collections, user_lists, profiles) — all respecting existing RLS, no new
 // policies.
+import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
 import { searchCollections as searchCollectionsReal, type CollectionCardData } from './supabase/collections';
@@ -23,7 +24,7 @@ export interface BookSearchResult {
  *  two books sharing a title (reprints, unrelated books, etc.) both in the
  *  React key and in the route id persisted downstream via toDbMediaId. */
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
-  const res = await fetch(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
+  const res = await fetchWithTimeout(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
   if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
   const data = await res.json();
   const items = Array.isArray(data.items) ? data.items : [];

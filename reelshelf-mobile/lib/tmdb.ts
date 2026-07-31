@@ -9,6 +9,8 @@
 // `book-<slug>`. Books have no TMDB equivalent — parseMediaRouteId returns
 // null for them, and callers must fall back to local seed data.
 
+import { fetchWithTimeout } from './fetchWithTimeout';
+
 const TMDB_KEY  = process.env.EXPO_PUBLIC_TMDB_API_KEY;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
@@ -43,7 +45,7 @@ async function tmdbGet<T>(path: string, params: Record<string, string> = {}): Pr
     throw new Error('EXPO_PUBLIC_TMDB_API_KEY is not set');
   }
   const query = new URLSearchParams({ api_key: TMDB_KEY, ...params }).toString();
-  const res = await fetch(`${TMDB_BASE}${path}?${query}`);
+  const res = await fetchWithTimeout(`${TMDB_BASE}${path}?${query}`);
   if (!res.ok) {
     throw new Error(`TMDB ${path} failed: ${res.status}`);
   }
@@ -352,7 +354,7 @@ export interface CollectionDiscoverItem {
 export async function fetchTmdbCollectionByPath(tmdbPath: string, tmdbMediaType: 'movie' | 'tv'): Promise<CollectionDiscoverItem[]> {
   if (!TMDB_KEY) throw new Error('EXPO_PUBLIC_TMDB_API_KEY is not set');
   const sep = tmdbPath.includes('?') ? '&' : '?';
-  const res = await fetch(`${TMDB_BASE}${tmdbPath}${sep}api_key=${TMDB_KEY}`);
+  const res = await fetchWithTimeout(`${TMDB_BASE}${tmdbPath}${sep}api_key=${TMDB_KEY}`);
   if (!res.ok) throw new Error(`TMDB ${tmdbPath} failed: ${res.status}`);
   const data = await res.json();
   const results = Array.isArray(data.results) ? data.results : [];

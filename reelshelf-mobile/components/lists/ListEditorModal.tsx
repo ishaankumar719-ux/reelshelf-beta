@@ -58,6 +58,7 @@ export function ListEditorModal({ visible, onClose, initial, onSave }: ListEdito
   }, [visible, initial]);
 
   const handleSave = async () => {
+    if (saving) return; // functional guard, not just the disabled prop below
     if (!title.trim()) {
       setError('Title is required.');
       return;

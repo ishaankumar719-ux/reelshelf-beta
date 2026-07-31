@@ -6,6 +6,7 @@
 // improvement beyond website parity (the website never cleans up orphaned
 // files) — see deleteReviewAttachment below.
 import { supabase } from './client';
+import { fetchWithTimeout } from '../fetchWithTimeout';
 
 const BUCKET = 'review-attachments'; // plural — the ONE real, live bucket (confirmed
 // live via storage.buckets: 10MB limit + MIME allowlist match this bucket exactly).
@@ -147,7 +148,7 @@ export async function fetchGiphyGifs(
 
   let res: Response;
   try {
-    res = await fetch(endpoint, { signal });
+    res = await fetchWithTimeout(endpoint, { signal });
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') throw e; // let the caller's abort check see this
     // React Native's fetch throws a plain TypeError ("Network request failed")

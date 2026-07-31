@@ -67,6 +67,7 @@ export default function RootLayout() {
                   <Stack.Screen name="person/[id]"     options={{ headerShown: false }} />
                   <Stack.Screen name="list/[id]"       options={{ headerShown: false }} />
                   <Stack.Screen name="achievements/[id]" options={{ headerShown: false }} />
+                  <Stack.Screen name="genre/[genre]"     options={{ headerShown: false }} />
                   <Stack.Screen name="search"          options={{ headerShown: false, presentation: 'modal' }} />
                   <Stack.Screen name="settings/index"          options={{ headerShown: false }} />
                   <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />

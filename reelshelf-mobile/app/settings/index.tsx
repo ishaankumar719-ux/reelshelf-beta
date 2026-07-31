@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { RS } from '@/constants/theme';
+import { SignInPrompt } from '@/components/SignInPrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { fetchIsPublic, updateIsPublic } from '@/lib/supabase/profile';
@@ -52,7 +53,7 @@ function Row({
 }
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
+  const { user, initializing, signOut } = useAuth();
   const { ambientEffectsEnabled, setAmbientEffectsEnabled } = useSettings();
   const [isPublic, setIsPublic] = useState<boolean | null>(null);
 
@@ -84,6 +85,32 @@ export default function SettingsScreen() {
   const buildNumber = Platform.OS === 'ios'
     ? Constants.expoConfig?.ios?.buildNumber ?? '—'
     : Constants.expoConfig?.android?.versionCode?.toString() ?? '—';
+
+  // Every account-management row below (Log Out, Edit Profile, Delete
+  // Account, Public Profile) assumes a signed-in user — this screen is
+  // normally only reached from the (authenticated) Profile tab, but a
+  // direct/deep link could land a guest here with no real account to act
+  // on. Without this, the Public Profile toggle spun forever (its fetch
+  // effect early-returns on `!user`) and every action below was a no-op.
+  if (initializing) {
+    return <SafeAreaView style={styles.safe} edges={['top']} />;
+  }
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}>
+            <MaterialIcons name="arrow-back" size={22} color={RS.colors.textPrimary} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={styles.content}>
+          <SignInPrompt message="Sign in to manage your settings." />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
