@@ -1,16 +1,29 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { NotificationsSheet } from '@/components/notifications/NotificationsSheet';
 import { RS } from '@/constants/theme';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export function Header() {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { unreadCount, markAllRead } = useNotifications();
+
+  const handleOpenNotifications = () => {
+    setNotificationsOpen(true);
+    // Opening the sheet marks everything read immediately — matches the
+    // real website's NotificationsBell.tsx handleToggle exactly.
+    markAllRead();
+  };
+
   return (
     <View style={styles.header}>
       {/* Left: wordmark only — minimal Sprint 3 nav */}
       <Text style={styles.wordmark}>ReelShelf</Text>
 
-      {/* Right: search icon, notification bell, avatar — visual-only, no-op */}
+      {/* Right: search icon, notification bell, avatar */}
       <View style={styles.right}>
         <Pressable
           hitSlop={10}
@@ -20,11 +33,17 @@ export function Header() {
         </Pressable>
         <Pressable
           hitSlop={10}
+          style={styles.bellWrap}
           accessibilityRole="button"
-          accessibilityLabel="Activity"
-          onPress={() => router.push('/activity')}
+          accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          onPress={handleOpenNotifications}
         >
           <MaterialIcons name="notifications-none" size={24} color={RS.colors.textSecondary} />
+          {unreadCount > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          ) : null}
         </Pressable>
         <Pressable
           hitSlop={10}
@@ -34,6 +53,8 @@ export function Header() {
           <MaterialIcons name="person" size={18} color={RS.colors.textSecondary} />
         </Pressable>
       </View>
+
+      <NotificationsSheet visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
     </View>
   );
 }
@@ -57,6 +78,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems:    'center',
     gap:           RS.spacing.md,
+  },
+  bellWrap: {
+    position: 'relative',
+  },
+  badge: {
+    position:        'absolute',
+    top:              -4,
+    right:            -6,
+    minWidth:         16,
+    height:           16,
+    borderRadius:     8,
+    paddingHorizontal: 3,
+    backgroundColor: RS.colors.textPrimary,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  badgeLabel: {
+    fontSize:   9,
+    fontWeight: '700',
+    color:      RS.colors.base,
   },
   avatar: {
     width:           32,

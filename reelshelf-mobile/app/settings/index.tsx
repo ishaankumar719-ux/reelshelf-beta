@@ -19,7 +19,15 @@ import { RS } from '@/constants/theme';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import {
+  getLocalPushToken,
+  isPushOptedIn,
+  registerForPushNotificationsAsync,
+  setLocalPushToken,
+  setPushOptedIn,
+} from '@/lib/pushNotifications';
 import { fetchIsPublic, updateIsPublic } from '@/lib/supabase/profile';
+import { deletePushToken, upsertPushToken } from '@/lib/supabase/pushTokens';
 
 const WEBSITE_URL = 'https://reelshelf.app';
 // Confirmed via full-text search of app/, components/, src/ — the real
@@ -56,10 +64,14 @@ export default function SettingsScreen() {
   const { user, initializing, signOut } = useAuth();
   const { ambientEffectsEnabled, setAmbientEffectsEnabled } = useSettings();
   const [isPublic, setIsPublic] = useState<boolean | null>(null);
+  const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     fetchIsPublic(user.id).then(setIsPublic).catch(() => setIsPublic(true));
+    isPushOptedIn(user.id).then(setPushEnabled).catch(() => setPushEnabled(false));
   }, [user]);
 
   const handleTogglePublic = async (next: boolean) => {
@@ -67,6 +79,42 @@ export default function SettingsScreen() {
     setIsPublic(next); // optimistic — single source of truth is the DB column itself
     const { error } = await updateIsPublic(user.id, next);
     if (error) setIsPublic(!next); // revert on failure
+  };
+
+  const handleTogglePush = async (next: boolean) => {
+    if (!user || pushBusy) return;
+    setPushBusy(true);
+    setPushError(null);
+
+    if (!next) {
+      const existingToken = await getLocalPushToken(user.id);
+      if (existingToken) await deletePushToken(user.id, existingToken).catch(() => {});
+      await setLocalPushToken(user.id, null);
+      await setPushOptedIn(user.id, false);
+      setPushEnabled(false);
+      setPushBusy(false);
+      return;
+    }
+
+    // Real OS permission prompt happens here, only from this explicit tap —
+    // never on app launch (see PushNotificationsSync.tsx, which only ever
+    // silently RE-checks an already-granted permission).
+    const { token, platform, error } = await registerForPushNotificationsAsync();
+    if (!token || !platform) {
+      setPushError(error ?? 'Could not enable push notifications.');
+      setPushBusy(false);
+      return;
+    }
+    const { error: upsertError } = await upsertPushToken(user.id, token, platform);
+    if (upsertError) {
+      setPushError(upsertError);
+      setPushBusy(false);
+      return;
+    }
+    await setLocalPushToken(user.id, token);
+    await setPushOptedIn(user.id, true);
+    setPushEnabled(true);
+    setPushBusy(false);
   };
 
   const handleLogOut = async () => {
@@ -137,6 +185,18 @@ export default function SettingsScreen() {
               isPublic === null
                 ? <ActivityIndicator size="small" color={RS.colors.textMuted} />
                 : <Switch value={isPublic} onValueChange={handleTogglePublic} trackColor={{ true: RS.colors.accent }} />
+            }
+          />
+        </Section>
+
+        <Section title="Notifications">
+          <Row
+            label="Push Notifications"
+            sublabel={pushError ?? 'Get notified about new followers, likes, and comments — even when the app is closed.'}
+            right={
+              pushEnabled === null || pushBusy
+                ? <ActivityIndicator size="small" color={RS.colors.textMuted} />
+                : <Switch value={pushEnabled} onValueChange={handleTogglePush} trackColor={{ true: RS.colors.accent }} />
             }
           />
         </Section>

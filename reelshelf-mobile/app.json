@@ -51,7 +51,8 @@
           "cameraPermission": "ReelShelf uses your camera to take a photo for your profile or attach to a review.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
