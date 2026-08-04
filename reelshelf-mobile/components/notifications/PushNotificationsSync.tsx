@@ -54,11 +54,23 @@ export function PushNotificationsSync() {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as
-        | { type?: ReelShelfNotificationType; actorId?: string; mediaRouteId?: string | null; mediaType?: string | null; mediaTitle?: string | null; mediaPoster?: string | null }
+        | { type?: string; actorId?: string; mediaRouteId?: string | null; mediaType?: string | null; mediaTitle?: string | null; mediaPoster?: string | null; collectionSlug?: string }
         | undefined;
-      if (!data?.type || !data.actorId) return;
+      if (!data?.type) return;
+
+      // Collection of the Week announcement — a broadcast, push-only type
+      // that never appears in the 7-type in-app bell (see
+      // send-push-notification's collection_announcement request shape),
+      // so it's handled here directly rather than through
+      // getNotificationDestination, which is scoped to the bell's real types.
+      if (data.type === 'collection_of_the_week' && data.collectionSlug) {
+        router.push(`/collection/${data.collectionSlug}` as Parameters<typeof router.push>[0]);
+        return;
+      }
+
+      if (!data.actorId) return;
       const destination = getNotificationDestination({
-        type: data.type,
+        type: data.type as ReelShelfNotificationType,
         actorId: data.actorId,
         mediaRouteId: data.mediaRouteId ?? null,
         mediaType: (data.mediaType as never) ?? null,
