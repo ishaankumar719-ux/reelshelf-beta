@@ -72,7 +72,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     setError(null);
     const { error: saveError } = await updateProfile(profile.id, {
       displayName: displayName.trim(),
-      username: username.trim().toLowerCase(),
+      username: username.trim(),
       bio: bio.trim(),
       websiteUrl: websiteUrl.trim(),
       favouriteGenres: genres,
@@ -113,7 +113,7 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
                 <TextInput
                   style={styles.input}
                   value={username}
-                  onChangeText={(t) => setUsername(t.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  onChangeText={(t) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, ''))}
                   placeholder="username"
                   placeholderTextColor={RS.colors.textMuted}
                   autoCapitalize="none"
