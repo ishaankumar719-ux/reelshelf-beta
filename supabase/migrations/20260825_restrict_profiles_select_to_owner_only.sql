@@ -1,0 +1,13 @@
+-- Final step of the profiles.email exposure fix: public.profiles' base table
+-- is no longer cross-user-readable at all. public.public_profiles (added
+-- earlier this fix) is now the sole cross-user surface, and every real
+-- cross-user call site on both mobile and the website was confirmed
+-- repointed to it before this migration was applied (commit 13881df,
+-- confirmed deployed live on reelshelf-beta.vercel.app before running this).
+--
+-- "Public can view shared profiles" (qual: username IS NOT NULL, unrestricted
+-- columns -- this is what exposed email to any caller) is dropped entirely.
+-- "Users can view own profile" (auth.uid() = id) is untouched and remains
+-- the only SELECT policy -- every user can still read their own full row,
+-- including their own email, exactly as before.
+drop policy if exists "Public can view shared profiles" on public.profiles;
