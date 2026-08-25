@@ -41,7 +41,7 @@ async function attachProfiles(rows: CommentRow[]): Promise<ActivityComment[]> {
   const client = requireClient();
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
   const { data: profiles } = await client
-    .from('profiles')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', userIds);
 

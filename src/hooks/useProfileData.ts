@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { normalizeUsername } from "@/lib/profile"
-import { DIARY_SELECT, PROFILE_SELECT } from "@/lib/queries"
+import { DIARY_SELECT, PUBLIC_PROFILE_SELECT } from "@/lib/queries"
 import type {
   ActivityItem,
   MediaShelfItem,
@@ -125,10 +125,10 @@ export function useProfileData(username: string): {
         data: { user },
       } = await supabase.auth.getUser()
 
-      console.log("[PROFILE QUERY] select string:", PROFILE_SELECT)
+      console.log("[PROFILE QUERY] select string:", PUBLIC_PROFILE_SELECT)
       const { data: profileRow, error: profileError } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT)
+        .from("public_profiles")
+        .select(PUBLIC_PROFILE_SELECT)
         .eq("username", normalized)
         .maybeSingle()
 

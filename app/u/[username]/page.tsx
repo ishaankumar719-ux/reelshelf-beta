@@ -234,7 +234,7 @@ export default async function PublicProfilePage({
   } = await supabase.auth.getUser()
 
   const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select(
       "id, username, display_name, bio, avatar_url, is_public, website_url, favourite_film, favourite_series, favourite_book, created_at"
     )

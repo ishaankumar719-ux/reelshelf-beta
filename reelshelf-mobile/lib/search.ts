@@ -143,7 +143,7 @@ export interface UserSearchResult {
 export async function searchUsers(query: string): Promise<UserSearchResult[]> {
   const client = requireClient();
   const { data, error } = await client
-    .from('profiles')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .not('username', 'is', null)
     .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)

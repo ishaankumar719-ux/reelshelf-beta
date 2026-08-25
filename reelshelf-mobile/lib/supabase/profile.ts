@@ -31,15 +31,24 @@ function requireClient() {
   return supabase;
 }
 
-export async function fetchProfile(userId: string): Promise<ProfileData | null> {
-  const client = requireClient();
-  const { data, error } = await client
-    .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, website_url, favourite_film, favourite_series, favourite_book, favourite_genres, created_at')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
+const PROFILE_COLUMNS =
+  'id, username, display_name, avatar_url, bio, website_url, favourite_film, favourite_series, favourite_book, favourite_genres, created_at';
+
+type ProfileRowShape = {
+  id:               string;
+  username:         string | null;
+  display_name:     string | null;
+  avatar_url:       string | null;
+  bio:              string | null;
+  website_url:      string | null;
+  favourite_film:   string | null;
+  favourite_series: string | null;
+  favourite_book:   string | null;
+  favourite_genres: string[] | null;
+  created_at:       string;
+};
+
+function mapProfileRow(data: ProfileRowShape): ProfileData {
   return {
     id:              data.id,
     username:        data.username,
@@ -53,6 +62,40 @@ export async function fetchProfile(userId: string): Promise<ProfileData | null> 
     favouriteGenres: data.favourite_genres ?? [],
     createdAt:       data.created_at,
   };
+}
+
+/** The CURRENT session's own profile — deliberately stays on the base
+ *  `profiles` table, never `public_profiles`. Onboarding and WelcomeBlock
+ *  call this before the user may have chosen a username yet, and
+ *  public_profiles filters out any row where username is null — repointing
+ *  this one would silently break onboarding's baseline prefill for exactly
+ *  the users who need it. */
+export async function fetchOwnProfile(userId: string): Promise<ProfileData | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return mapProfileRow(data as ProfileRowShape);
+}
+
+/** Any OTHER user's profile — reads from public_profiles (structurally no
+ *  email, no rows without a username set). Callers must already know
+ *  they're not fetching the current session's own profile; use
+ *  fetchOwnProfile for that instead. */
+export async function fetchPublicProfile(userId: string): Promise<ProfileData | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('public_profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return mapProfileRow(data as ProfileRowShape);
 }
 
 /** Distinct-media_id count (rewatch-safe — multiple diary_entries rows for
@@ -141,7 +184,7 @@ async function resolveProfilesFor(ids: string[]): Promise<FollowListEntry[]> {
   if (ids.length === 0) return [];
   const client = requireClient();
   const { data, error } = await client
-    .from('profiles')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', ids);
   if (error) throw error;

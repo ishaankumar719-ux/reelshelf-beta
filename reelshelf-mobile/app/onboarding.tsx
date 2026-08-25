@@ -20,7 +20,7 @@ import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { completeOnboarding } from '@/lib/supabase/onboarding';
 import {
-  fetchProfile, followUser, unfollowUser, updateProfile,
+  fetchOwnProfile, followUser, unfollowUser, updateProfile,
   type ProfileData,
 } from '@/lib/supabase/profile';
 import { searchUsers, type UserSearchResult } from '@/lib/search';
@@ -71,7 +71,7 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    fetchProfile(user.id).then((p) => {
+    fetchOwnProfile(user.id).then((p) => {
       if (cancelled || !p) return;
       setBaseline(p);
       setGenres(p.favouriteGenres);

@@ -47,7 +47,7 @@ import {
   fetchMountRushmore, type MountRushmoreSlot, type RushmoreMediaType,
 } from '@/lib/supabase/mountRushmore';
 import {
-  fetchFollowState, fetchProfile, fetchStats, followUser, unfollowUser,
+  fetchFollowState, fetchOwnProfile, fetchPublicProfile, fetchStats, followUser, unfollowUser,
   type ProfileData, type ProfileStats,
 } from '@/lib/supabase/profile';
 import { fetchMediaTypeTab, fetchReviewsTab, type MediaTypeTabData, type ProfileReviewItem } from '@/lib/supabase/profileMedia';
@@ -177,7 +177,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
   const loadCore = useCallback(async () => {
     setStatus('loading');
     try {
-      const profileData = await fetchProfile(userId);
+      const profileData = await (isOwnProfile ? fetchOwnProfile(userId) : fetchPublicProfile(userId));
       if (!profileData) {
         setStatus('not_found');
         return;

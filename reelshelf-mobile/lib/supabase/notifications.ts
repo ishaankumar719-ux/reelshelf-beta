@@ -196,7 +196,7 @@ export async function fetchNotifications(userId: string): Promise<ReelShelfNotif
   ));
 
   const [profilesRes, diaryRes] = await Promise.all([
-    client.from('profiles').select('id, username, display_name, avatar_url').in('id', actorIds),
+    client.from('public_profiles').select('id, username, display_name, avatar_url').in('id', actorIds),
     diaryIds.length > 0
       ? client.from('diary_entries').select('id, media_id, media_type, title, poster, rating').in('id', diaryIds)
       : Promise.resolve({ data: [] as DiaryRow[] }),

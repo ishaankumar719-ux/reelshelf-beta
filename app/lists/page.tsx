@@ -66,7 +66,7 @@ export default async function ListsDiscoveryPage() {
       .in("list_id", listIds)
       .order("rank_order", { ascending: true }),
     supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name")
       .in("id", userIds),
     currentUserId

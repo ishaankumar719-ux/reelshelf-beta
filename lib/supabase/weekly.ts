@@ -227,7 +227,7 @@ export async function syncAndLoadWeeklyChallenges() {
       .gte("created_at", weekStartTimestamp)
       .lt("created_at", weekEndTimestamp),
     client
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .not("username", "is", null),
   ]);

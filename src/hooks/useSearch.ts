@@ -94,7 +94,7 @@ async function searchProfiles(query: string): Promise<SearchResult[]> {
   if (!client) return []
 
   const { data } = await client
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url")
     .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
     .not("username", "is", null)

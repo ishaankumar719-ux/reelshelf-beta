@@ -398,7 +398,7 @@ export async function getNotifications() {
 
   const [profilesRes, diaryRes] = await Promise.all([
     client
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .in("id", actorIds),
     diaryEntryIds.length > 0

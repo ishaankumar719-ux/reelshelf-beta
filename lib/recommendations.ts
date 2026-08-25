@@ -332,7 +332,7 @@ export async function getProfileSimilarUsers(
   if (topUserIds.length === 0) return []
 
   const { data: profiles } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url")
     .in("id", topUserIds)
     .eq("is_public", true)

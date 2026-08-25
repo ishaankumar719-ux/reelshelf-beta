@@ -119,7 +119,7 @@ async function fetchProfiles(
 ): Promise<Map<string, ProfileRow>> {
   if (userIds.length === 0) return new Map()
   const { data } = await client
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url, is_public")
     .in("id", userIds)
   return new Map((data ?? []).map((p) => [p.id, p as ProfileRow]))
@@ -274,7 +274,7 @@ export async function fetchFriendsForShow(
   const allUserIds = Array.from(new Set(entries.map((e) => e.user_id)))
 
   const { data: profiles } = await client
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url, is_public")
     .in("id", allUserIds)
 

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchProfile, type ProfileData } from '@/lib/supabase/profile';
+import { fetchOwnProfile, type ProfileData } from '@/lib/supabase/profile';
 
 function getTimeOfDay(): string {
   const h = new Date().getHours();
@@ -38,7 +38,7 @@ export function WelcomeBlock() {
     let cancelled = false;
     setProfile(null);
     setProfileLoading(true);
-    fetchProfile(user.id)
+    fetchOwnProfile(user.id)
       .then((p) => { if (!cancelled) setProfile(p); })
       .finally(() => { if (!cancelled) setProfileLoading(false); });
     return () => { cancelled = true; };

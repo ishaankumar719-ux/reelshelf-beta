@@ -3,7 +3,7 @@ import type { MediaType } from "./media";
 import type { UserProfile } from "./profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getFollowCounts } from "./follows";
-import { DIARY_SELECT, PROFILE_SELECT } from "./queries";
+import { DIARY_SELECT, PUBLIC_PROFILE_SELECT } from "./queries";
 import type { ReviewLayers } from "../types/diary";
 
 export type PublicDiaryEntry = {
@@ -203,10 +203,10 @@ export async function getPublicProfileByUsername(
 ): Promise<PublicProfileData | null> {
   const normalizedUsername = username.trim().toLowerCase();
 
-  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
+  console.log("[PROFILE QUERY] select string:", PUBLIC_PROFILE_SELECT);
   const { data: profileRow, error: profileError } = await supabase
-    .from("profiles")
-    .select(PROFILE_SELECT)
+    .from("public_profiles")
+    .select(PUBLIC_PROFILE_SELECT)
     .eq("username", normalizedUsername)
     .maybeSingle();
 
@@ -306,10 +306,10 @@ export async function getPublicProfileByUsername(
 export async function getDiscoverProfiles(
   supabase: SupabaseClient
 ): Promise<DiscoverProfileCardData[]> {
-  console.log("[PROFILE QUERY] select string:", PROFILE_SELECT);
+  console.log("[PROFILE QUERY] select string:", PUBLIC_PROFILE_SELECT);
   const { data: profileRows, error: profileError } = await supabase
-    .from("profiles")
-    .select(PROFILE_SELECT)
+    .from("public_profiles")
+    .select(PUBLIC_PROFILE_SELECT)
     .not("username", "is", null)
     .eq("is_public", true)
     .order("updated_at", { ascending: false })

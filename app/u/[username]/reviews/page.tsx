@@ -167,7 +167,7 @@ export default async function ReviewsPage({ params }: { params: Promise<{ userna
   if (!supabase) notFound()
 
   const { data: profileData } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url, is_public")
     .eq("username", username.toLowerCase())
     .single()

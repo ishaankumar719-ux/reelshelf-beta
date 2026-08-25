@@ -85,7 +85,7 @@ export default async function FilmsPage({ params }: { params: Promise<{ username
   if (!supabase) notFound()
 
   const { data: profileData } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, is_public")
     .eq("username", username.toLowerCase())
     .single()

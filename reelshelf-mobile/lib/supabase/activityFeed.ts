@@ -526,7 +526,7 @@ export async function fetchFollowingActivityFeed(userId: string, limit = 30): Pr
       .order('created_at', { ascending: false })
       .limit(fetchLimit),
     client
-      .from('profiles')
+      .from('public_profiles')
       .select('id, username, display_name, avatar_url')
       .in('id', followedIds),
   ]);

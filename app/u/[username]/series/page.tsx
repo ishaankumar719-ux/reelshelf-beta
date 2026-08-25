@@ -84,7 +84,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ usernam
   if (!supabase) notFound()
 
   const { data: profileData } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, is_public")
     .eq("username", username.toLowerCase())
     .single()

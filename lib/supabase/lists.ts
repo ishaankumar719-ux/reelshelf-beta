@@ -151,7 +151,7 @@ export async function fetchListWithItems(
       .eq("list_id", listId)
       .order("rank_order", { ascending: true }),
     supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .eq("id", list.user_id)
       .single(),
@@ -286,7 +286,7 @@ export async function fetchRecentPublicLists(
       .in("list_id", listIds)
       .order("rank_order", { ascending: true }),
     supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name")
       .in("id", userIds),
   ])

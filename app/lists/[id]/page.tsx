@@ -250,7 +250,7 @@ export default function ListDetailPage() {
         .eq("list_id", listId)
         .order("rank_order", { ascending: true }),
       supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("username, display_name, avatar_url")
         .eq("id", listData.user_id)
         .single(),

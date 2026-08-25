@@ -14,7 +14,7 @@ export default async function FollowersPage({ params }: { params: Promise<{ user
   if (!supabase) notFound()
 
   const { data: profileData } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, username, display_name, avatar_url, is_public")
     .eq("username", username.toLowerCase())
     .single()
@@ -42,7 +42,7 @@ export default async function FollowersPage({ params }: { params: Promise<{ user
   let followers: UserRowData[] = []
   if (followerIds.length > 0) {
     const { data: profileRows } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .in("id", followerIds)
     followers = ((profileRows ?? []) as ProfileRow[]).map((p) => ({

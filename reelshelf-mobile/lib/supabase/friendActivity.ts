@@ -54,7 +54,7 @@ export async function fetchFriendActivity(
 
   const entryUserIds = entries.map((e) => e.user_id as string);
   const { data: profiles, error: profilesErr } = await client
-    .from('profiles')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', entryUserIds);
   if (profilesErr) throw profilesErr;

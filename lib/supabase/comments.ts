@@ -62,7 +62,7 @@ async function attachProfiles(commentRows: CommentRow[]): Promise<PublicComment[
 
   if (client && userIds.length > 0) {
     const { data: profileRows } = await client
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .in("id", userIds);
 

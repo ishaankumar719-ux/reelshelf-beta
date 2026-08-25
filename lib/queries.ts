@@ -50,3 +50,12 @@ export const PROFILE_SELECT =
   "id, email, username, display_name, avatar_url, bio, " +
   "favourite_film, favourite_series, favourite_book, " +
   "website_url, is_public, created_at, updated_at"
+
+// Cross-user profile reads only — pairs with .from("public_profiles"), never
+// .from("profiles") (see migration: add_public_profiles_safe_view). Same
+// columns as PROFILE_SELECT minus email, which the view itself structurally
+// excludes. Own-user reads stay on .from("profiles") with PROFILE_SELECT.
+export const PUBLIC_PROFILE_SELECT =
+  "id, username, display_name, avatar_url, bio, " +
+  "favourite_film, favourite_series, favourite_book, favourite_genres, " +
+  "website_url, is_public, created_at, updated_at"

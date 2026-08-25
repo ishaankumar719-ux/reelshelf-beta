@@ -237,7 +237,7 @@ export async function getPeopleToFollow(limit = 6) {
       .select("following_id")
       .eq("follower_id", currentUserId),
     client
-      .from("profiles")
+      .from("public_profiles")
       .select(
         "id, username, display_name, avatar_url, bio, favourite_film, updated_at"
       )
@@ -474,7 +474,7 @@ export async function getFriendsActivity(userId?: string | null): Promise<Friend
         .order("saved_at", { ascending: false })
         .limit(24),
       client
-        .from("profiles")
+        .from("public_profiles")
         .select("id, username, display_name, avatar_url")
         .in("id", followedIds),
     ]);

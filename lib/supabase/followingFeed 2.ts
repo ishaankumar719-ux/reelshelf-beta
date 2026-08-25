@@ -56,7 +56,7 @@ export async function fetchFollowingFeed(
       .order("created_at", { ascending: false })
       .limit(limit),
     client
-      .from("profiles")
+      .from("public_profiles")
       .select("id, username, display_name, avatar_url")
       .in("id", followedIds),
   ])

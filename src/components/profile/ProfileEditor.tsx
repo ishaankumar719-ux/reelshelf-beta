@@ -288,7 +288,7 @@ export default function ProfileEditor({ userId }: ProfileEditorProps) {
     const timeoutId = window.setTimeout(async () => {
       setUsernameStatus("checking")
       const { data, error } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("id")
         .eq("username", normalized)
         .neq("id", userId)

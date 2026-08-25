@@ -65,7 +65,7 @@ async function attachProfiles(client: NonNullable<typeof supabase>, rows: RawRev
   if (rows.length === 0) return [];
   const userIds = rows.map((r) => r.user_id);
   const { data: profiles, error } = await client
-    .from('profiles')
+    .from('public_profiles')
     .select('id, username, display_name, avatar_url')
     .in('id', userIds);
   if (error) throw error;
