@@ -28,8 +28,9 @@ type Mode = 'signin' | 'signup';
 
 function inviteErrorMessage(reason: string | undefined): string {
   if (reason === 'expired') return 'This invite code has expired.';
-  if (reason === 'used') return 'This invite code has already been claimed.';
-  return 'Invalid invite code. Check with whoever sent you the invite.';
+  if (reason === 'used') return 'This invite code has reached its maximum number of uses.';
+  if (reason === 'network_error') return 'Couldn’t check your invite code — check your connection and try again.';
+  return 'This invite code isn’t valid.';
 }
 
 const EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

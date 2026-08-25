@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,6 +17,7 @@ import {
 
 import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { GenreMultiSelect } from '@/components/profile/GenreMultiSelect';
+import { KeyboardDismissButton } from '@/components/KeyboardDismissButton';
 import { RS } from '@/constants/theme';
 import { updateProfile, type ProfileData } from '@/lib/supabase/profile';
 
@@ -94,11 +96,18 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.sheet}
+            onPress={(e) => { e.stopPropagation(); Keyboard.dismiss(); }}
+          >
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
             <View style={styles.grabber} />
 
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+            >
               <Text style={styles.headerTitle}>Edit Profile</Text>
 
               <AvatarPicker userId={profile.id} avatarUrl={avatarUrl} onChange={setAvatarUrl} onError={setError} />
@@ -124,7 +133,10 @@ export function EditProfileModal({ visible, onClose, onSaved, profile }: EditPro
               <View style={styles.field}>
                 <View style={styles.labelRow}>
                   <Text style={styles.label}>Bio</Text>
-                  <Text style={styles.counter}>{bio.length} / {BIO_MAX}</Text>
+                  <View style={styles.labelRowEnd}>
+                    <Text style={styles.counter}>{bio.length} / {BIO_MAX}</Text>
+                    <KeyboardDismissButton />
+                  </View>
                 </View>
                 <TextInput
                   style={[styles.input, styles.bioInput]}
@@ -230,6 +242,12 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
+    alignItems:     'center',
+  },
+  labelRowEnd: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           RS.spacing.sm,
   },
   label: {
     fontSize:      RS.typography.caption,

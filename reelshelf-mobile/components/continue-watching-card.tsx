@@ -34,17 +34,19 @@ export function ContinueWatchingCard({
   const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
   const [broken, setBroken] = useState(false);
 
+  const handlePress = () => {
+    if (!id || !title || !mediaType) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    router.push(
+      `/media/${id}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`
+    );
+  };
+
   return (
     <Pressable
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      onPress={() => {
-        if (!id || !title || !mediaType) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-        router.push(
-          `/media/${id}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`
-        );
-      }}
+      onPress={handlePress}
     >
       <Animated.View style={[styles.card, cardAnimStyle]}>
         {/* Thumbnail — larger artwork area */}
@@ -95,7 +97,7 @@ export function ContinueWatchingCard({
             {title && (
               <Pressable
                 style={({ pressed }) => [styles.resumeBtn, pressed && styles.resumePressed]}
-                onPress={() => console.log('[Sprint 4] Resume pressed — no-op')}
+                onPress={handlePress}
               >
                 <Text style={styles.resumeLabel}>Resume →</Text>
               </Pressable>

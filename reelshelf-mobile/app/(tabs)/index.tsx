@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
-import { ContinueWatchingCard } from '@/components/continue-watching-card';
+import { ContinueWatchingSection } from '@/components/ContinueWatchingSection';
 import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
@@ -16,12 +16,10 @@ import { FloatingSearchBar } from '@/components/FloatingSearchBar';
 import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
 import { HomeSignUpCTA } from '@/components/HomeSignUpCTA';
 import { RevealOnMount } from '@/components/RevealOnMount';
-import { SectionHeader } from '@/components/section-header';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { RS } from '@/constants/theme';
-import { continueWatching } from '@/data/seedHomeContent';
 
 export default function HomeScreen() {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -87,22 +85,14 @@ export default function HomeScreen() {
                 <FloatingSearchBar />
               </RevealOnMount>
 
-              {/* 4 ── Continue Watching — personalized, signed-in only */}
+              {/* 4 ── Continue Watching — real, per-user data (see
+                  components/ContinueWatchingSection.tsx, reuses the same
+                  fetchCurrentlyEnjoying() query Profile's Currently Enjoying
+                  shelf already uses); renders nothing of its own accord when
+                  the user has no qualifying title, so no wrapping View/
+                  SectionHeader is needed here. */}
               <RevealOnMount delay={100}>
-                <View style={styles.section}>
-                  <SectionHeader
-                    title="Continue Watching"
-                    subtitle="Pick up where you left off."
-                  />
-                  <ContinueWatchingCard
-                    id={continueWatching.id}
-                    title={continueWatching.title}
-                    subtitle={continueWatching.subtitle}
-                    mediaType={continueWatching.mediaType}
-                    progress={continueWatching.progress}
-                    posterUrl={continueWatching.posterUrl}
-                  />
-                </View>
+                <ContinueWatchingSection refreshSignal={refreshSignal} />
               </RevealOnMount>
 
               {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
@@ -200,8 +190,5 @@ const styles = StyleSheet.create({
   content: {
     gap:           RS.spacing.xxxl,
     paddingBottom: RS.tabBar.contentBottomPad,  // floating tab bar is position:absolute — must pad manually
-  },
-  section: {
-    gap: RS.spacing.sm,
   },
 });

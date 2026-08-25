@@ -10,6 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "app.reelshelf",
       "buildNumber": "1"
     },
     "android": {
@@ -57,6 +58,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2798f56c-61b1-4651-ac6d-d55e3203b16f"
+      }
     }
   }
 }

@@ -47,12 +47,37 @@ async function clearPendingSignup(userId: string): Promise<void> {
   await AsyncStorage.removeItem(`${PENDING_KEY_PREFIX}${userId}`);
 }
 
-export type InviteValidationReason = 'invalid' | 'expired' | 'used' | 'not_configured';
+export type InviteValidationReason = 'invalid' | 'expired' | 'used' | 'not_configured' | 'network_error';
 
+// A failed RPC call (network drop, timeout, transient Supabase error) and a
+// genuinely invalid code both used to collapse into the same `reason:
+// 'invalid'` — meaning a real connectivity problem could show the user
+// "This invite code isn't valid." even though the code they typed was
+// correct. `error` (the RPC/transport itself failing, `data` null) is now
+// kept distinct from `data.valid === false` (the RPC ran fine and the
+// server genuinely said no, with its own real reason).
 export async function validateInviteCode(code: string): Promise<{ valid: boolean; reason?: InviteValidationReason }> {
   if (!supabase) return { valid: false, reason: 'not_configured' };
   const { data, error } = await supabase.rpc('validate_beta_invite', { p_code: code });
-  if (error || !data?.valid) {
+
+  if (__DEV__) {
+    console.log('[invite] validate_beta_invite', {
+      normalizedCode: code,
+      hasData: !!data,
+      valid: data?.valid ?? null,
+      reason: data?.reason ?? null,
+      errorCode: error?.code ?? null,
+      errorMessage: error?.message ?? null,
+    });
+  }
+
+  if (error) {
+    // The RPC itself failed to run (network/timeout/config) — never
+    // reported as "invalid", which would blame the code the user typed for
+    // a problem that had nothing to do with it.
+    return { valid: false, reason: 'network_error' };
+  }
+  if (!data?.valid) {
     return { valid: false, reason: (data?.reason as InviteValidationReason) ?? 'invalid' };
   }
   return { valid: true };
