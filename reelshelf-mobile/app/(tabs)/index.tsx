@@ -14,6 +14,7 @@ import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
 import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
+import { HomeFriendsActivityPreview } from '@/components/HomeFriendsActivityPreview';
 import { HomeSignUpCTA } from '@/components/HomeSignUpCTA';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
@@ -95,12 +96,25 @@ export default function HomeScreen() {
                 <ContinueWatchingSection refreshSignal={refreshSignal} />
               </RevealOnMount>
 
-              {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
+              {/* 5 ── Friends Activity preview — compact teaser for the
+                  dedicated Activity screen's real "Following" feed (same
+                  fetchFollowingActivityFeed call, capped to 3 rows here).
+                  Renders its own empty-state fallback (Find Friends / Invite
+                  Friends) when the user follows nobody or has no data yet —
+                  never null, unlike Continue Watching/Daily Reel above.
+                  Authenticated tree only — absent from the guest branch
+                  below, matching Because You Loved. See
+                  components/HomeFriendsActivityPreview.tsx. */}
+              <RevealOnMount delay={120}>
+                <HomeFriendsActivityPreview />
+              </RevealOnMount>
+
+              {/* 6 ── Daily Reel — signature recommendation, ONE filled button */}
               <RevealOnMount delay={140}>
                 <DailyReel />
               </RevealOnMount>
 
-              {/* 6-10 ── The real website's unified 10-section Home/Discover
+              {/* 7-11 ── The real website's unified 10-section Home/Discover
                   structure (Trending Today, Because You Loved, New in Cinemas,
                   Trending TV, Trending Books, Hidden Gems, Award Winners,
                   Browse by Genre, Pick Something Random, Collections) —
@@ -110,12 +124,10 @@ export default function HomeScreen() {
                   here via the default isAuthenticated=true, excluded
                   entirely (not just internally-hidden) in the guest branch
                   below. Home's own additional real mobile-only sections
-                  (Continue Watching, Daily Reel above; Book of the Week
-                  below) are NOT part of the real website's 10 sections and
-                  keep their existing positions around this block. (Friends
-                  Activity — previously here — was removed: the new
-                  dedicated Activity screen's Following tab, reached via
-                  Header's bell icon, is now the sole place for this.) */}
+                  (Continue Watching, Friends Activity preview, Daily Reel
+                  above; Book of the Week below) are NOT part of the real
+                  website's 10 sections and keep their existing positions
+                  around this block. */}
               <RevealOnMount delay={180}>
                 <HomeDiscoverSections refreshSignal={refreshSignal} />
               </RevealOnMount>
