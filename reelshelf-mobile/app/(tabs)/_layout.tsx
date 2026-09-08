@@ -108,7 +108,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="daily-reel"
         options={{
-          title: 'Daily Reel',
+          title: 'Daily Pick',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="film.fill" color={color} focused={focused} />
           ),

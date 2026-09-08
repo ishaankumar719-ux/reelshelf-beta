@@ -16,6 +16,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import { useAtmosphere } from '@/contexts/AtmosphereContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { RS } from '@/constants/theme';
+import type { EasterEgg } from '@/lib/easterEggs';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const ATMO_H = Math.round(SCREEN_H * 0.38);
@@ -76,9 +77,56 @@ interface Props {
   scrollY: SharedValue<number>;
   /** When true, renders at 65% opacity for a darker ambient feel (e.g. Discover screen). */
   dimmed?:  boolean;
+  easterEgg?: EasterEgg | null;
 }
 
-export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
+const EGG_PARTICLES = Array.from({ length: 32 }, (_, i) => ({
+  left: (((i * 31 + 7) % 97) / 97) * SCREEN_W,
+  top:  ((i * 47 + 11) % 89) / 89 * ATMO_H,
+  size: 1 + (i % 3),
+}));
+
+function EasterEggLayer({ egg, reduceMotion }: { egg: EasterEgg; reduceMotion: boolean }) {
+  const drift = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      drift.value = 0;
+      return;
+    }
+    drift.value = withRepeat(withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.quad) }), -1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: reduceMotion ? 0.48 : 0.25 + drift.value * 0.22,
+    transform: [{ translateY: reduceMotion ? 0 : drift.value * -10 }],
+  }));
+  const color = egg === 'spice' ? 'rgba(238,164,65,0.88)' : egg === 'codeRain' ? 'rgba(44,214,130,0.72)' : 'rgba(255,255,255,0.88)';
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
+      {EGG_PARTICLES.map((particle, index) => (
+        <View
+          key={`${egg}-${index}`}
+          style={[
+            styles.eggParticle,
+            {
+              left: particle.left,
+              top: particle.top,
+              width: egg === 'codeRain' ? 1 : particle.size,
+              height: egg === 'codeRain' ? 8 + (index % 4) * 4 : particle.size,
+              borderRadius: particle.size,
+              backgroundColor: color,
+            },
+          ]}
+        />
+      ))}
+    </Animated.View>
+  );
+}
+
+export function AmbientAtmosphere({ scrollY, dimmed = false, easterEgg = null }: Props) {
   const { baseColors, overrideColor } = useAtmosphere();
   const { ambientEffectsEnabled } = useSettings();
 
@@ -229,6 +277,9 @@ export function AmbientAtmosphere({ scrollY, dimmed = false }: Props) {
       {/* ── Grain ─────────────────────────────────────────────────────── */}
       <GrainLayer reduceMotion={reduceMotion} />
 
+      {/* ── Hand-picked title detail ──────────────────────────────────── */}
+      {easterEgg ? <EasterEggLayer egg={easterEgg} reduceMotion={reduceMotion} /> : null}
+
       {/* ── Scroll-driven black overlay — atmosphere disappears as you scroll ── */}
       <Animated.View
         style={[StyleSheet.absoluteFill, styles.blackOverlay, scrollFadeStyle]}
@@ -252,5 +303,8 @@ const styles = StyleSheet.create({
   },
   blackOverlay: {
     backgroundColor: RS.colors.base,
+  },
+  eggParticle: {
+    position: 'absolute',
   },
 });

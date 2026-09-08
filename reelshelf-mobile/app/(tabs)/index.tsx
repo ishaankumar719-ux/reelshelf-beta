@@ -14,7 +14,7 @@ import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
 import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
-import { HomeFriendsActivityPreview } from '@/components/HomeFriendsActivityPreview';
+import { HomeFriendsActivityCarousel } from '@/components/HomeFriendsActivityCarousel';
 import { HomeSignUpCTA } from '@/components/HomeSignUpCTA';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
@@ -92,24 +92,28 @@ export default function HomeScreen() {
                   shelf already uses); renders nothing of its own accord when
                   the user has no qualifying title, so no wrapping View/
                   SectionHeader is needed here. */}
-              <RevealOnMount delay={100}>
-                <ContinueWatchingSection refreshSignal={refreshSignal} />
-              </RevealOnMount>
+              {/* This section deliberately manages its own empty state. Keeping
+                  it outside the animation wrapper prevents a blank animated
+                  View from leaving an extra gap when there is nothing to resume. */}
+              <ContinueWatchingSection refreshSignal={refreshSignal} />
 
-              {/* 5 ── Friends Activity preview — compact teaser for the
-                  dedicated Activity screen's real "Following" feed (same
-                  fetchFollowingActivityFeed call, capped to 3 rows here).
+              {/* 5 ── Friends Activity carousel — horizontal, swipeable
+                  teaser for the dedicated Activity screen's real "Following"
+                  feed (same fetchFollowingActivityFeed call, capped to 10
+                  here). Each item is the real, unmodified ActivityCard —
+                  poster, reaction tray, inline expand-to-comment, replies,
+                  attachments, all already working on the Activity screen.
                   Renders its own empty-state fallback (Find Friends / Invite
                   Friends) when the user follows nobody or has no data yet —
                   never null, unlike Continue Watching/Daily Reel above.
                   Authenticated tree only — absent from the guest branch
                   below, matching Because You Loved. See
-                  components/HomeFriendsActivityPreview.tsx. */}
+                  components/HomeFriendsActivityCarousel.tsx. */}
               <RevealOnMount delay={120}>
-                <HomeFriendsActivityPreview />
+                <HomeFriendsActivityCarousel />
               </RevealOnMount>
 
-              {/* 6 ── Daily Reel — signature recommendation, ONE filled button */}
+              {/* 6 ── Daily Pick — signature recommendation, ONE filled button */}
               <RevealOnMount delay={140}>
                 <DailyReel />
               </RevealOnMount>
@@ -124,7 +128,7 @@ export default function HomeScreen() {
                   here via the default isAuthenticated=true, excluded
                   entirely (not just internally-hidden) in the guest branch
                   below. Home's own additional real mobile-only sections
-                  (Continue Watching, Friends Activity preview, Daily Reel
+                  (Continue Watching, Friends Activity carousel, Daily Reel
                   above; Book of the Week below) are NOT part of the real
                   website's 10 sections and keep their existing positions
                   around this block. */}
@@ -200,7 +204,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',   // let atmosphere gradient show through top content
   },
   content: {
-    gap:           RS.spacing.xxxl,
+    // Home is editorial, but 72px between every block made the opening feel
+    // unfinished before a tester reached the first useful content.
+    gap:           RS.spacing.xl,
     paddingBottom: RS.tabBar.contentBottomPad,  // floating tab bar is position:absolute — must pad manually
   },
 });

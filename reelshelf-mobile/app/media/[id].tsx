@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
@@ -39,6 +39,7 @@ import type { MediaType, SeedCardItem, SeedCollectionItem } from '@/data/seedHom
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
+import { getEasterEgg } from '@/lib/easterEggs';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
@@ -195,18 +196,25 @@ export default function MediaDetailScreen() {
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
+  const insets    = useSafeAreaInsets();
 
   return (
     <AtmosphereProvider initialBaseColors={detail.dominantColors}>
       <View style={styles.screen}>
-        <AmbientAtmosphere scrollY={scrollY} />
+        <AmbientAtmosphere scrollY={scrollY} easterEgg={getEasterEgg(id, title ?? '')} />
+
+        <Pressable
+          style={[styles.backButton, { top: insets.top + RS.spacing.sm }]}
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
+          <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
+        </Pressable>
 
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
-            <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
-            <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
-          </Pressable>
-
           <Animated.ScrollView
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
@@ -227,14 +235,18 @@ export default function MediaDetailScreen() {
                   <NetworkErrorState message="Couldn't load this title — check your connection and try again." onRetry={live.retry} />
                 ) : (
                   <MediaHero
+                    id={id}
                     title={title ?? '—'}
                     year={detail.year || undefined}
                     mediaType={resolvedMediaType}
                     posterUrl={posterUrl || null}
                     detail={detail}
+                    ratingRefreshKey={persistence.rating}
                   />
                 )}
 
+                {!detailsError && !unresolvableBook && (
+                  <>
                 <RevealOnMount delay={60}>
                   <MediaPrimaryActions
                     id={id}
@@ -450,6 +462,8 @@ export default function MediaDetailScreen() {
                     Detail (full-file read + repo-wide grep, zero matches).
                     MediaTrivia.tsx/MediaAwards.tsx remain in the codebase,
                     just unrendered, in case real data is sourced later. */}
+                  </>
+                )}
               </View>
             </ExpandEntrance>
           </Animated.ScrollView>
@@ -470,7 +484,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position:       'absolute',
-    top:            RS.spacing.sm,
     left:           RS.spacing.md,
     zIndex:         10,
     width:          36,

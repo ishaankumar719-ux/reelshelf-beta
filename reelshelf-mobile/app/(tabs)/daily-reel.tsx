@@ -114,7 +114,7 @@ export default function DailyReelScreen() {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={styles.centered}>
-          <SignInPrompt message="Sign in to see your Daily Reel — one story, chosen for you every day." />
+          <SignInPrompt message="Sign in to see your Daily Pick — one story, chosen for you every day." />
         </View>
       </SafeAreaView>
     );
@@ -133,7 +133,7 @@ export default function DailyReelScreen() {
           >
             {/* ── Header ────────────────────────────────────────────────────── */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Daily Reel</Text>
+              <Text style={styles.headerTitle}>Daily Pick</Text>
               <Text style={styles.headerDate}>{todayLabel()}</Text>
               <Text style={styles.headerSubtitle}>One story, chosen for you today.</Text>
               {qotd.progress && (

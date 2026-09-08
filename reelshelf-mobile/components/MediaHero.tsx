@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, RS } from '@/constants/theme';
+import { useCommunityRating } from '@/hooks/useCommunityRating';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 import type { MediaType } from '@/data/seedHomeContent';
 import type { MediaDetailRecord } from '@/data/mediaDetails';
@@ -29,14 +30,16 @@ function formatRuntime(minutes: number | null): string | null {
 }
 
 interface MediaHeroProps {
+  id:         string;
   title:      string;
   year?:      number;
   mediaType:  MediaType;
   posterUrl:  string | null;
   detail?:    MediaDetailRecord;
+  ratingRefreshKey?: number;
 }
 
-export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHeroProps) {
+export function MediaHero({ id, title, year, mediaType, posterUrl, detail, ratingRefreshKey }: MediaHeroProps) {
   const reduceMotion = useReduceMotion();
   const [backdropBroken, setBackdropBroken] = useState(false);
   const [posterBroken, setPosterBroken] = useState(false);
@@ -65,6 +68,7 @@ export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHe
   const runtime = formatRuntime(detail?.runtimeMinutes ?? null);
   const genres  = detail?.genres?.length ? detail.genres.slice(0, 3).join(', ') : null;
   const rating  = typeof detail?.rating === 'number' ? detail.rating : null;
+  const communityRating = useCommunityRating(id, mediaType, ratingRefreshKey);
   const author  = mediaType === 'book' ? (detail?.author ?? null) : null;
   // TV Creator — real, confirmed on the website's own Series Detail meta
   // line (`{year}{creator ? " · "+creator : ""}`, app/series/[id]/page.tsx).
@@ -128,8 +132,12 @@ export function MediaHero({ title, year, mediaType, posterUrl, detail }: MediaHe
           {metaParts.length > 0 ? (
             <Text style={styles.metaLine} numberOfLines={1}>{metaParts.join(' · ')}</Text>
           ) : null}
-          {rating !== null ? (
-            <Text style={styles.rating}>ReelShelf {rating.toFixed(1)}</Text>
+          {communityRating ? (
+            <Text style={styles.rating}>
+              ReelShelf {communityRating.average.toFixed(1)} · {communityRating.count} {communityRating.count === 1 ? 'rating' : 'ratings'}
+            </Text>
+          ) : rating !== null ? (
+            <Text style={styles.rating}>TMDB {rating.toFixed(1)}</Text>
           ) : null}
         </View>
       </View>

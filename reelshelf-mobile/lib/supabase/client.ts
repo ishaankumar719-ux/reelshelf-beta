@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,6 +18,10 @@ export function isSupabaseConfigured(): boolean {
 // queries, RPCs, storage) in a single shared timeout, rejecting a hung
 // request so existing .catch()/rollback logic runs like any other failure.
 const REQUEST_TIMEOUT_MS = 15000;
+// Expo renders the web route once in Node before the browser takes over.
+// AsyncStorage for web needs `window`, so do not restore a session during
+// that server pass. The browser and native apps keep their normal storage.
+const isWebServerRender = Platform.OS === 'web' && typeof window === 'undefined';
 
 function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
@@ -39,9 +44,9 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
 export const supabase: SupabaseClient | null = isSupabaseConfigured()
   ? createClient(supabaseUrl!, supabaseAnonKey!, {
       auth: {
-        storage: AsyncStorage,
-        autoRefreshToken: true,
-        persistSession: true,
+        ...(isWebServerRender ? {} : { storage: AsyncStorage }),
+        autoRefreshToken: !isWebServerRender,
+        persistSession: !isWebServerRender,
         detectSessionInUrl: false,
       },
       global: {

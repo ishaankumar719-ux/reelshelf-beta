@@ -679,11 +679,16 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   <View style={styles.overviewSubsection}>
                     <View style={styles.sectionHeaderRow}>
                       <Text style={styles.subheading}>Achievements</Text>
-                      {(badges?.length ?? 0) > 0 && (
-                        <Pressable onPress={() => router.push(`/achievements/${userId}`)}>
-                          <Text style={styles.editSmallLabel}>View All</Text>
+                      <View style={styles.headerActions}>
+                        <Pressable onPress={() => router.push('/leaderboard')}>
+                          <Text style={styles.editSmallLabel}>Leaderboard</Text>
                         </Pressable>
-                      )}
+                        {(badges?.length ?? 0) > 0 && (
+                          <Pressable onPress={() => router.push(`/achievements/${userId}`)}>
+                            <Text style={styles.editSmallLabel}>View All</Text>
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
                     {(badges?.length ?? 0) > 0 && (
                       <View style={styles.tierRow}>
@@ -1029,6 +1034,7 @@ const styles = StyleSheet.create({
   // title is a bare <Text> or a sectionHeaderRow (title + "See All"/"Edit").
   overviewSubsection: { gap: RS.spacing.sm },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   editSmallLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
   subheading: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: RS.spacing.sm },
