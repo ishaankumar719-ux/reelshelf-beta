@@ -141,6 +141,29 @@ export async function fetchTmdbFallbackBackdrop(kind: TmdbKind, tmdbId: string):
   return first?.file_path ? `${TMDB_IMG_BACKDROP}${first.file_path}` : null;
 }
 
+export interface TmdbImageOption {
+  url: string;
+  type: 'poster' | 'backdrop';
+}
+
+/** Artwork choices for a review's own presentation. This deliberately keeps
+ * the title's canonical poster unchanged for everyone else. */
+export async function fetchTmdbReviewArtwork(kind: TmdbKind, tmdbId: string): Promise<TmdbImageOption[]> {
+  const raw = await tmdbGet<any>(`/${kind}/${tmdbId}/images`);
+  const posters = Array.isArray(raw.posters) ? raw.posters : [];
+  const backdrops = Array.isArray(raw.backdrops) ? raw.backdrops : [];
+  return [
+    ...posters.slice(0, 12).filter((image: any) => image.file_path).map((image: any) => ({
+      url: `${TMDB_IMG_POSTER}${image.file_path}`,
+      type: 'poster' as const,
+    })),
+    ...backdrops.slice(0, 8).filter((image: any) => image.file_path).map((image: any) => ({
+      url: `${TMDB_IMG_BACKDROP}${image.file_path}`,
+      type: 'backdrop' as const,
+    })),
+  ];
+}
+
 // ── Credits ───────────────────────────────────────────────────────────────────
 export interface TmdbCastMember {
   personId:  number | null;

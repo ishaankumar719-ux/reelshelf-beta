@@ -5,6 +5,7 @@ import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,7 +20,9 @@ import { Image } from 'expo-image';
 
 import { AttachmentPicker, type AttachmentValue } from '@/components/AttachmentPicker';
 import { DecimalSlider } from '@/components/DecimalSlider';
+import { KeyboardDismissButton } from '@/components/KeyboardDismissButton';
 import { RatingSlider } from '@/components/RatingSlider';
+import { ReviewCoverPicker } from '@/components/ReviewCoverPicker';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -166,7 +169,10 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.sheet}
+            onPress={(e) => { e.stopPropagation(); Keyboard.dismiss(); }}
+          >
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
             <View style={styles.grabber} />
 
@@ -182,6 +188,7 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
               <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
               >
                 {/* Header card */}
@@ -237,7 +244,10 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
 
                 {/* Review text */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Review</Text>
+                  <View style={styles.fieldLabelRow}>
+                    <Text style={styles.fieldLabel}>Review</Text>
+                    <KeyboardDismissButton />
+                  </View>
                   <TextInput
                     style={styles.reviewInput}
                     value={entry.review}
@@ -245,6 +255,16 @@ export function UniversalReviewComposer(props: UniversalReviewComposerProps) {
                     placeholder={reviewPlaceholder}
                     placeholderTextColor={RS.colors.textMuted}
                     multiline
+                  />
+                </View>
+
+                <View style={styles.field}>
+                  <ReviewCoverPicker
+                    mediaId={mediaId}
+                    defaultPosterUrl={posterUrl}
+                    value={{ url: entry.reviewCoverUrl, source: entry.reviewCoverSource }}
+                    onChange={({ url, source }) => patch({ reviewCoverUrl: url, reviewCoverSource: source })}
+                    onUploadingChange={setAttachmentUploading}
                   />
                 </View>
 
@@ -459,6 +479,11 @@ const styles = StyleSheet.create({
     color:         RS.colors.textMuted,
     letterSpacing: RS.letterSpacing.wide,
     textTransform: 'uppercase',
+  },
+  fieldLabelRow: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
   },
   dateBtn: {
     flexDirection:     'row',

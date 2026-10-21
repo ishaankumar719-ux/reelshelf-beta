@@ -13,6 +13,7 @@ export type ReviewScope = 'title' | 'show' | 'season' | 'episode';
 // allowing it (untouched, no migration): zero website code path ever
 // produces 'link', so mobile now matches that exactly and never writes it.
 export type AttachmentType = 'image' | 'gif';
+export type ReviewCoverSource = 'default' | 'tmdb_poster' | 'tmdb_backdrop' | 'upload';
 
 export interface DiaryScopeKey {
   mediaId:       string;   // route id, e.g. "film-693134"
@@ -51,6 +52,8 @@ export interface DiaryEntryFull {
   audiobook:               boolean;
   attachmentUrl:           string | null;
   attachmentType:          AttachmentType | null;
+  reviewCoverUrl:          string | null;
+  reviewCoverSource:       ReviewCoverSource;
   // Movie/TV layers (existing columns)
   scoreRating:             number | null;
   cinematographyRating:    number | null;
@@ -76,6 +79,7 @@ export function emptyDiaryEntry(): DiaryEntryFull {
     watchedLive: false, bingeWatched: false, reread: false,
     physicalBook: false, ebook: false, audiobook: false,
     attachmentUrl: null, attachmentType: null,
+    reviewCoverUrl: null, reviewCoverSource: 'default',
     scoreRating: null, cinematographyRating: null, writingRating: null, performancesRating: null,
     directionRating: null, rewatchabilityRating: null, emotionalImpactRating: null, entertainmentRating: null,
     layerCharacters: null, layerPlot: null, layerPacing: null, layerWorldbuilding: null,
@@ -95,7 +99,7 @@ function numOrNull(v: unknown): number | null {
 
 const DIARY_ROW_SELECT = `rating, review, watched_date, favourite, rewatch, contains_spoilers,
   watched_in_cinema, watched_live, binge_watched, reread, physical_book, ebook, audiobook,
-  attachment_url, attachment_type, score_rating, cinematography_rating, writing_rating,
+  attachment_url, attachment_type, review_cover_url, review_cover_source, score_rating, cinematography_rating, writing_rating,
   performances_rating, direction_rating, rewatchability_rating, emotional_impact_rating,
   entertainment_rating, layer_characters, layer_plot, layer_pacing, layer_worldbuilding,
   layer_themes, layer_rereadability`;
@@ -137,6 +141,8 @@ export async function fetchLatestDiaryEntry(userId: string, key: DiaryScopeKey):
     audiobook:              data.audiobook,
     attachmentUrl:          data.attachment_url,
     attachmentType:         data.attachment_type as AttachmentType | null,
+    reviewCoverUrl:         data.review_cover_url ?? null,
+    reviewCoverSource:      (data.review_cover_source as ReviewCoverSource | null) ?? 'default',
     scoreRating:            numOrNull(data.score_rating),
     cinematographyRating:   numOrNull(data.cinematography_rating),
     writingRating:          numOrNull(data.writing_rating),
@@ -203,6 +209,8 @@ export async function saveDiaryEntryFull(
       audiobook:         entry.audiobook,
       attachment_url:    entry.attachmentUrl,
       attachment_type:   entry.attachmentType,
+      review_cover_url: entry.reviewCoverUrl,
+      review_cover_source: entry.reviewCoverSource,
       score_rating:            entry.scoreRating,
       cinematography_rating:   entry.cinematographyRating,
       writing_rating:          entry.writingRating,

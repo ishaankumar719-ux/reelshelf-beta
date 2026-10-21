@@ -26,9 +26,11 @@ export interface MediaReviewEntry {
   watchedInCinema:  boolean;
   attachmentUrl:    string | null;
   attachmentType:   AttachmentType | null;
+  reviewCoverUrl:   string | null;
+  reviewCoverSource: 'default' | 'tmdb_poster' | 'tmdb_backdrop' | 'upload' | null;
 }
 
-const REVIEW_ROW_SELECT = 'user_id, rating, review, watched_date, favourite, rewatch, contains_spoilers, watched_in_cinema, attachment_url, attachment_type';
+const REVIEW_ROW_SELECT = 'user_id, rating, review, watched_date, favourite, rewatch, contains_spoilers, watched_in_cinema, attachment_url, attachment_type, review_cover_url, review_cover_source';
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase is not configured');
@@ -46,6 +48,8 @@ interface RawReviewRow {
   watched_in_cinema: boolean;
   attachment_url:    string | null;
   attachment_type:   AttachmentType | null;
+  review_cover_url: string | null;
+  review_cover_source: 'default' | 'tmdb_poster' | 'tmdb_backdrop' | 'upload' | null;
 }
 
 /** Keeps only the most recent reviewed row per user — a user who's logged a
@@ -93,6 +97,8 @@ async function attachProfiles(client: NonNullable<typeof supabase>, rows: RawRev
         watchedInCinema:  r.watched_in_cinema,
         attachmentUrl:    r.attachment_url,
         attachmentType:   r.attachment_type,
+        reviewCoverUrl:   r.review_cover_url ?? null,
+        reviewCoverSource: r.review_cover_source ?? null,
       };
     });
 }
