@@ -28,8 +28,12 @@ import {
 } from '@/lib/pushNotifications';
 import { fetchIsPublic, updateIsPublic } from '@/lib/supabase/profile';
 import { deletePushToken, upsertPushToken } from '@/lib/supabase/pushTokens';
+import { fetchNotificationPreferences, updateFollowingActivityPreference } from '@/lib/supabase/notificationPreferences';
+import { webHost, webUrl } from '@/lib/webUrl';
 
-const WEBSITE_URL = 'https://reelshelf.app';
+// Null until EXPO_PUBLIC_WEB_URL is set; the About row is hidden until then.
+const WEBSITE_URL = webUrl();
+const WEBSITE_HOST = webHost();
 // Confirmed via full-text search of app/, components/, src/ — the real
 // website has no Privacy Policy page, no Terms of Service page, and no
 // public support/contact email anywhere in its source. Nothing to link to;
@@ -67,11 +71,15 @@ export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [followingActivity, setFollowingActivity] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) return;
     fetchIsPublic(user.id).then(setIsPublic).catch(() => setIsPublic(true));
     isPushOptedIn(user.id).then(setPushEnabled).catch(() => setPushEnabled(false));
+    fetchNotificationPreferences(user.id)
+      .then((preferences) => setFollowingActivity(preferences.followingActivity))
+      .catch(() => setFollowingActivity(true));
   }, [user]);
 
   const handleTogglePublic = async (next: boolean) => {
@@ -79,6 +87,17 @@ export default function SettingsScreen() {
     setIsPublic(next); // optimistic — single source of truth is the DB column itself
     const { error } = await updateIsPublic(user.id, next);
     if (error) setIsPublic(!next); // revert on failure
+  };
+
+  const handleToggleFollowingActivity = async (next: boolean) => {
+    if (!user || followingActivity === null) return;
+    const previous = followingActivity;
+    setFollowingActivity(next);
+    try {
+      await updateFollowingActivityPreference(user.id, next);
+    } catch {
+      setFollowingActivity(previous);
+    }
   };
 
   const handleTogglePush = async (next: boolean) => {
@@ -199,6 +218,15 @@ export default function SettingsScreen() {
                 : <Switch value={pushEnabled} onValueChange={handleTogglePush} trackColor={{ true: RS.colors.accent }} />
             }
           />
+          <Row
+            label="Following Activity"
+            sublabel="Alerts when people you follow log or review something."
+            right={
+              followingActivity === null
+                ? <ActivityIndicator size="small" color={RS.colors.textMuted} />
+                : <Switch value={followingActivity} onValueChange={handleToggleFollowingActivity} trackColor={{ true: RS.colors.accent }} />
+            }
+          />
         </Section>
 
         <Section title="Appearance">
@@ -215,7 +243,9 @@ export default function SettingsScreen() {
 
         <Section title="About">
           <Row label="Version" sublabel={`${appVersion} (${buildNumber})`} />
-          <Row label="reelshelf.app" onPress={() => Linking.openURL(WEBSITE_URL).catch(() => {})} />
+          {WEBSITE_URL && WEBSITE_HOST && (
+            <Row label={WEBSITE_HOST} onPress={() => Linking.openURL(WEBSITE_URL).catch(() => {})} />
+          )}
           <View style={styles.ackBlock}>
             <Text style={styles.ackTitle}>Acknowledgements</Text>
             <Text style={styles.ackText}>
