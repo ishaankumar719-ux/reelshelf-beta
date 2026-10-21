@@ -197,11 +197,12 @@ export default function MediaDetailScreen() {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
   const insets    = useSafeAreaInsets();
+  const easterEgg = getEasterEgg(id, title ?? '', resolvedMediaType);
 
   return (
     <AtmosphereProvider initialBaseColors={detail.dominantColors}>
       <View style={styles.screen}>
-        <AmbientAtmosphere scrollY={scrollY} easterEgg={getEasterEgg(id, title ?? '')} />
+        <AmbientAtmosphere scrollY={scrollY} easterEgg={easterEgg} />
 
         <Pressable
           style={[styles.backButton, { top: insets.top + RS.spacing.sm }]}
@@ -242,6 +243,7 @@ export default function MediaDetailScreen() {
                     posterUrl={posterUrl || null}
                     detail={detail}
                     ratingRefreshKey={persistence.rating}
+                    easterEgg={easterEgg}
                   />
                 )}
 
