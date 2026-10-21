@@ -26,6 +26,26 @@ export interface SectionItem {
 
 const TMDB_KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
+const openLibraryCover = (isbn: string) => `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+
+// These are complete local detail records, so Random Book can always open a
+// useful detail screen even when Google Books is slow, unavailable, or
+// returns a title that cannot be enriched again after navigation.
+const RELIABLE_RANDOM_BOOKS: SectionItem[] = [
+  { id: 'book-normal-people', title: 'Normal People', year: 2018, posterUrl: openLibraryCover('9780571334650'), mediaType: 'book' },
+  { id: 'book-midnight-library', title: 'The Midnight Library', year: 2020, posterUrl: openLibraryCover('9780525559474'), mediaType: 'book' },
+  { id: 'book-a-little-life', title: 'A Little Life', year: 2015, posterUrl: openLibraryCover('9780385539258'), mediaType: 'book' },
+  { id: 'book-fourth-wing', title: 'Fourth Wing', year: 2023, posterUrl: openLibraryCover('9781649374042'), mediaType: 'book' },
+  { id: 'book-the-road', title: 'The Road', year: 2006, posterUrl: openLibraryCover('9780307387899'), mediaType: 'book' },
+  { id: 'book-lincoln-bardo', title: 'Lincoln in the Bardo', year: 2017, posterUrl: openLibraryCover('9780812995343'), mediaType: 'book' },
+  { id: 'book-remains-of-the-day', title: 'The Remains of the Day', year: 1989, posterUrl: openLibraryCover('9780679731721'), mediaType: 'book' },
+];
+
+function pickReliableBook(excludeId: string | null): SectionItem | null {
+  const eligible = RELIABLE_RANDOM_BOOKS.filter((book) => book.id !== excludeId);
+  if (eligible.length === 0) return null;
+  return eligible[Math.floor(Math.random() * eligible.length)];
+}
 
 async function tmdbRaw(path: string): Promise<any[]> {
   if (!TMDB_KEY) return [];
@@ -231,17 +251,7 @@ export async function fetchRandomPick(
   excludeId: string | null,
 ): Promise<SectionItem | null> {
   if (kind === 'book') {
-    const query = 'bestselling fiction';
-    const res = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20&orderBy=relevance`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const items = (Array.isArray(data.items) ? data.items : []).filter((it: any) => it.id && it.volumeInfo?.title && `book-${it.id}` !== excludeId);
-    if (items.length === 0) return null;
-    const pick = items[Math.floor(Math.random() * items.length)];
-    return {
-      id: `book-${pick.id}`, title: pick.volumeInfo.title, year: yearOf(pick.volumeInfo.publishedDate),
-      posterUrl: resolveImageUrl(pick.volumeInfo.imageLinks?.thumbnail ?? null, 'poster'), mediaType: 'book',
-    };
+    return pickReliableBook(excludeId);
   }
 
   const path = kind === 'film'

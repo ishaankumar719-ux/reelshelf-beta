@@ -6,6 +6,7 @@ import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
 import { searchCollections as searchCollectionsReal, type CollectionCardData } from './supabase/collections';
+import { localBooks } from '@/data/localBooks';
 
 const GBOOKS = 'https://www.googleapis.com/books/v1/volumes';
 
@@ -17,6 +18,69 @@ export interface BookSearchResult {
   posterUrl: string | null;
 }
 
+type OfflineBook = Omit<BookSearchResult, 'id'> & {
+  slug: string;
+  searchTerms?: string[];
+};
+
+const openLibraryCover = (isbn: string) => `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+
+// Google Books is a convenience, not a reason for Books search to go blank.
+// These are the fan-canon titles that power our first hidden-moment rollout.
+const OFFLINE_CULT_BOOKS: OfflineBook[] = [
+  { slug: 'the-hunger-games', title: 'The Hunger Games', author: 'Suzanne Collins', year: 2008, posterUrl: openLibraryCover('9780439023481'), searchTerms: ['hunger games'] },
+  { slug: 'catching-fire', title: 'Catching Fire', author: 'Suzanne Collins', year: 2009, posterUrl: openLibraryCover('9780439023498'), searchTerms: ['hunger games'] },
+  { slug: 'mockingjay', title: 'Mockingjay', author: 'Suzanne Collins', year: 2010, posterUrl: openLibraryCover('9780439023511'), searchTerms: ['hunger games'] },
+  { slug: 'the-ballad-of-songbirds-and-snakes', title: 'The Ballad of Songbirds and Snakes', author: 'Suzanne Collins', year: 2020, posterUrl: openLibraryCover('9781338635171'), searchTerms: ['hunger games'] },
+  { slug: 'harry-potter-philosophers-stone', title: "Harry Potter and the Philosopher's Stone", author: 'J. K. Rowling', year: 1997, posterUrl: openLibraryCover('9780747532699'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-chamber-secrets', title: 'Harry Potter and the Chamber of Secrets', author: 'J. K. Rowling', year: 1998, posterUrl: openLibraryCover('9780747538493'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-prisoner-azkaban', title: 'Harry Potter and the Prisoner of Azkaban', author: 'J. K. Rowling', year: 1999, posterUrl: openLibraryCover('9780747546290'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-goblet-fire', title: 'Harry Potter and the Goblet of Fire', author: 'J. K. Rowling', year: 2000, posterUrl: openLibraryCover('9780747546245'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-order-phoenix', title: 'Harry Potter and the Order of the Phoenix', author: 'J. K. Rowling', year: 2003, posterUrl: openLibraryCover('9780747551003'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-half-blood-prince', title: 'Harry Potter and the Half-Blood Prince', author: 'J. K. Rowling', year: 2005, posterUrl: openLibraryCover('9780747581086'), searchTerms: ['harry potter'] },
+  { slug: 'harry-potter-deathly-hallows', title: 'Harry Potter and the Deathly Hallows', author: 'J. K. Rowling', year: 2007, posterUrl: openLibraryCover('9780545010221'), searchTerms: ['harry potter'] },
+  { slug: 'the-fellowship-of-the-ring', title: 'The Fellowship of the Ring', author: 'J. R. R. Tolkien', year: 1954, posterUrl: openLibraryCover('9780261103573'), searchTerms: ['lord of the rings', 'lotr'] },
+  { slug: 'the-two-towers', title: 'The Two Towers', author: 'J. R. R. Tolkien', year: 1954, posterUrl: openLibraryCover('9780261102361'), searchTerms: ['lord of the rings', 'lotr'] },
+  { slug: 'the-return-of-the-king', title: 'The Return of the King', author: 'J. R. R. Tolkien', year: 1955, posterUrl: openLibraryCover('9780261102378'), searchTerms: ['lord of the rings', 'lotr'] },
+  { slug: 'the-hobbit', title: 'The Hobbit', author: 'J. R. R. Tolkien', year: 1937, posterUrl: openLibraryCover('9780261103283'), searchTerms: ['lord of the rings', 'lotr'] },
+  { slug: 'a-game-of-thrones', title: 'A Game of Thrones', author: 'George R. R. Martin', year: 1996, posterUrl: openLibraryCover('9780553103540'), searchTerms: ['game of thrones', 'a song of ice and fire'] },
+  { slug: 'a-clash-of-kings', title: 'A Clash of Kings', author: 'George R. R. Martin', year: 1998, posterUrl: openLibraryCover('9780553108033'), searchTerms: ['game of thrones', 'a song of ice and fire'] },
+  { slug: 'a-storm-of-swords', title: 'A Storm of Swords', author: 'George R. R. Martin', year: 2000, posterUrl: openLibraryCover('9780553106633'), searchTerms: ['game of thrones', 'a song of ice and fire'] },
+  { slug: 'fourth-wing', title: 'Fourth Wing', author: 'Rebecca Yarros', year: 2023, posterUrl: openLibraryCover('9781649374042'), searchTerms: ['the empyrean'] },
+  { slug: 'iron-flame', title: 'Iron Flame', author: 'Rebecca Yarros', year: 2023, posterUrl: openLibraryCover('9781649374172'), searchTerms: ['the empyrean'] },
+  { slug: 'the-lightning-thief', title: 'The Lightning Thief', author: 'Rick Riordan', year: 2005, posterUrl: openLibraryCover('9780786856299'), searchTerms: ['percy jackson'] },
+  { slug: 'the-sea-of-monsters', title: 'The Sea of Monsters', author: 'Rick Riordan', year: 2006, posterUrl: openLibraryCover('9780786856862'), searchTerms: ['percy jackson'] },
+  { slug: 'the-titans-curse', title: "The Titan's Curse", author: 'Rick Riordan', year: 2007, posterUrl: openLibraryCover('9781423101451'), searchTerms: ['percy jackson'] },
+  { slug: 'twilight', title: 'Twilight', author: 'Stephenie Meyer', year: 2005, posterUrl: openLibraryCover('9780316015844'), searchTerms: ['twilight saga'] },
+  { slug: 'new-moon', title: 'New Moon', author: 'Stephenie Meyer', year: 2006, posterUrl: openLibraryCover('9780316024969'), searchTerms: ['twilight saga'] },
+  { slug: 'eclipse', title: 'Eclipse', author: 'Stephenie Meyer', year: 2007, posterUrl: openLibraryCover('9780316027656'), searchTerms: ['twilight saga'] },
+  { slug: 'breaking-dawn', title: 'Breaking Dawn', author: 'Stephenie Meyer', year: 2008, posterUrl: openLibraryCover('9780316067928'), searchTerms: ['twilight saga'] },
+  { slug: 'coraline', title: 'Coraline', author: 'Neil Gaiman', year: 2002, posterUrl: openLibraryCover('9780061139376') },
+  { slug: 'the-shining', title: 'The Shining', author: 'Stephen King', year: 1977, posterUrl: openLibraryCover('9780307743657') },
+  { slug: 'the-handmaids-tale', title: "The Handmaid's Tale", author: 'Margaret Atwood', year: 1985, posterUrl: openLibraryCover('9780385490818') },
+  { slug: 'the-song-of-achilles', title: 'The Song of Achilles', author: 'Madeline Miller', year: 2011, posterUrl: openLibraryCover('9780062060624') },
+  { slug: 'circe', title: 'Circe', author: 'Madeline Miller', year: 2018, posterUrl: openLibraryCover('9780316556347') },
+];
+
+function normalized(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function searchOfflineBooks(query: string): BookSearchResult[] {
+  const needle = normalized(query);
+  const local: OfflineBook[] = localBooks.map((book) => ({
+    slug: book.id,
+    title: book.title,
+    author: book.author,
+    year: Number(book.year),
+    posterUrl: book.cover,
+  }));
+
+  return [...OFFLINE_CULT_BOOKS, ...local]
+    .filter((book) => normalized(`${book.title} ${book.author ?? ''} ${book.searchTerms?.join(' ') ?? ''}`).includes(needle))
+    .map((book) => ({ ...book, id: `book-local-${book.slug}` }));
+}
+
 /** Google Books' /volumes response gives each item a top-level `id` — the
  *  real, globally-unique volume id (confirmed against this app's own
  *  scripts/generate-seed-data.ts, which reads the same field: `item.id`).
@@ -24,23 +88,30 @@ export interface BookSearchResult {
  *  two books sharing a title (reprints, unrelated books, etc.) both in the
  *  React key and in the route id persisted downstream via toDbMediaId. */
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
-  const res = await fetchWithTimeout(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
-  if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
-  const data = await res.json();
-  const items = Array.isArray(data.items) ? data.items : [];
-  return items
-    .filter((item: any) => item.id && item.volumeInfo?.title)
-    .map((item: any) => {
-      const info = item.volumeInfo;
-      const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
-      return {
-        id:        `book-${item.id}`,
-        title:     info.title,
-        author:    Array.isArray(info.authors) ? info.authors[0] : null,
-        year:      Number.isNaN(year) ? undefined : year,
-        posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
-      } as BookSearchResult;
-    });
+  try {
+    const res = await fetchWithTimeout(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
+    if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const results: BookSearchResult[] = items
+      .filter((item: any) => item.id && item.volumeInfo?.title)
+      .map((item: any) => {
+        const info = item.volumeInfo;
+        const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
+        return {
+          id:        `book-${item.id}`,
+          title:     info.title,
+          author:    Array.isArray(info.authors) ? info.authors[0] : null,
+          year:      Number.isNaN(year) ? undefined : year,
+          posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
+        } as BookSearchResult;
+      });
+    const fallback = searchOfflineBooks(query);
+    const seenTitles = new Set(fallback.map((book) => normalized(book.title)));
+    return [...fallback, ...results.filter((book) => !seenTitles.has(normalized(book.title)))].slice(0, 15);
+  } catch {
+    return searchOfflineBooks(query);
+  }
 }
 
 // ── Collections (real collections/collection_items tables) ──────────────────
