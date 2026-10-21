@@ -18,6 +18,7 @@ import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import type { DiaryEntryFull } from '@/lib/supabase/diaryComposer';
 import type { MediaType } from '@/data/seedHomeContent';
+import { BETA_LINE } from '@/lib/webUrl';
 
 interface MediaPrimaryActionsProps {
   id:              string;
@@ -42,10 +43,15 @@ interface MediaPrimaryActionsProps {
   onReviewSaved:   (entry: DiaryEntryFull) => void;
 }
 
-// Placeholder deep-link format for future universal-link work — this URL does
-// not resolve to anything real yet, it only documents the intended shape.
-function reelShelfShareUrl(id: string): string {
-  return `https://reelshelf.app/media/${id}`;
+// Text-only on purpose: the website splits titles across /movies, /tv and
+// /books with their own id formats, so there is no single web page to link
+// to from a mobile media id yet. Add a link here once that mapping exists.
+function buildMediaShareMessage(title: string, year: number, synopsis: string | undefined): string {
+  return [
+    `${title}${year ? ` (${year})` : ''}, on ReelShelf`,
+    synopsis,
+    BETA_LINE,
+  ].filter(Boolean).join('\n\n');
 }
 
 // Discover Phase 3 established the pattern this reuses: glass-surface pill,
@@ -114,11 +120,9 @@ export function MediaPrimaryActions({
 
   const share = () => {
     haptic();
-    const url = reelShelfShareUrl(id);
     Share.share({
       title,
-      message: `${title}${synopsis ? `\n\n${synopsis}` : ''}\n\n${url}`,
-      url, // iOS-only field; harmless no-op on Android
+      message: buildMediaShareMessage(title, year, synopsis),
     }).catch(() => {});
   };
 

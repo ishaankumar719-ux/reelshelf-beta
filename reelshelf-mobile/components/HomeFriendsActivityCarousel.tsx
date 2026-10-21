@@ -9,6 +9,7 @@ import { SkeletonBlock } from '@/components/Skeleton';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchFollowingActivityFeed, type ActivityEvent } from '@/lib/supabase/activityFeed';
+import { webUrl } from '@/lib/webUrl';
 
 const PREVIEW_LIMIT = 10;
 const ITEM_SEP = RS.spacing.sm;
@@ -22,10 +23,6 @@ const ITEM_SEP = RS.spacing.sm;
 // peeks in from the edge.
 const CARD_W = Dimensions.get('window').width - 2 * RS.spacing.md - RS.spacing.md;
 
-// Same canonical share link as the component this replaces — see
-// HomeFriendsActivityPreview.tsx's own header comment for why this literal
-// (not a shared constant) is the correct, established value.
-const INVITE_URL = 'https://reelshelf.app';
 
 // Horizontal, swipeable carousel of the real "Following" feed — each item is
 // the exact, unmodified ActivityCard component already used on the full
@@ -67,10 +64,13 @@ export function HomeFriendsActivityCarousel() {
 
   const openInviteFriends = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const inviteUrl = webUrl();
     Share.share({
       title:   'Join me on ReelShelf',
-      message: `Come track and share what you're watching and reading with me on ReelShelf — ${INVITE_URL}`,
-      url:     INVITE_URL, // iOS-only field; harmless no-op on Android
+      message: inviteUrl
+        ? `Come track and share what you're watching and reading with me on ReelShelf: ${inviteUrl}`
+        : `Come track and share what you're watching and reading with me on ReelShelf. It's in private beta on iPhone, so ask me for an invite code.`,
+      ...(inviteUrl ? { url: inviteUrl } : {}), // iOS-only field; harmless no-op on Android
     }).catch(() => {});
   };
 

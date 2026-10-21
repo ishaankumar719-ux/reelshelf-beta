@@ -35,16 +35,25 @@ import {
   type ListDetail, type ListDetailItem, type ListEditFields,
 } from '@/lib/supabase/lists';
 import { getMediaKey } from '@/utils/listKeys';
+import { BETA_LINE, webUrl } from '@/lib/webUrl';
 
 type Status = 'loading' | 'success' | 'error' | 'not_found';
 
 const ROW_HEIGHT = 78; // fixed row height (incl. vertical padding) — required for the drag-index math below
 
-// Placeholder deep-link format, matching the exact convention Movie Detail's
-// share already established (`reelShelfShareUrl` in MediaPrimaryActions.tsx)
-// — documents the intended shape, does not resolve to anything real yet.
-function reelShelfListShareUrl(id: string): string {
-  return `https://reelshelf.app/lists/${id}`;
+// Share text for a list: title, curator, then the items in order, so the
+// message is useful on its own while no website is deployed. The web link
+// (the site's /lists/[id] page) is appended only once EXPO_PUBLIC_WEB_URL is set.
+function buildListShareMessage(list: ListDetail, items: ListDetailItem[], url: string | null): string {
+  const curator = list.ownerUsername || list.ownerName;
+  const header = curator ? `${list.title}, a list by ${curator} on ReelShelf` : `${list.title}, a list on ReelShelf`;
+  const lines = items.map((item, idx) => `${list.isRanked ? item.rankOrder : idx + 1}. ${item.title}${item.year ? ` (${item.year})` : ''}`);
+  return [
+    header,
+    list.description,
+    lines.join('\n'),
+    url ?? BETA_LINE,
+  ].filter(Boolean).join('\n\n');
 }
 
 const TYPE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
@@ -212,11 +221,11 @@ export default function ListDetailScreen() {
   const handleShare = () => {
     if (!list) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const url = reelShelfListShareUrl(list.id);
+    const url = webUrl(`/lists/${list.id}`);
     Share.share({
       title: list.title,
-      message: `${list.title}${list.description ? `\n\n${list.description}` : ''}\n\n${url}`,
-      url,
+      message: buildListShareMessage(list, items, url),
+      ...(url ? { url } : {}),
     }).catch(() => {});
   };
 
