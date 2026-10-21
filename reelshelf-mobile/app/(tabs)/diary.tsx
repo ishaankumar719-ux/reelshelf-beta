@@ -95,7 +95,9 @@ function DiaryRow({ entry, onEdit }: { entry: DiaryListEntry; onEdit: () => void
         {entry.poster && !broken ? (
           <Image source={{ uri: entry.poster }} style={styles.thumb} contentFit="cover" transition={150} onError={() => setBroken(true)} />
         ) : (
-          <View style={[styles.thumb, styles.thumbFallback]} />
+          <View style={[styles.thumb, styles.thumbFallback]}>
+            <Text style={styles.thumbFallbackLabel}>{entry.title[0]?.toUpperCase() ?? 'R'}</Text>
+          </View>
         )}
       </View>
       <View style={styles.rowMeta}>
@@ -243,12 +245,11 @@ export default function DiaryScreen() {
             <FilterPill label="Series" active={mediaFilter === 'tv'} onPress={() => setMediaFilter('tv')} />
             <FilterPill label="Books" active={mediaFilter === 'book'} onPress={() => setMediaFilter('book')} />
           </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            <FilterPill label="All" active={venueFilter === 'all'} onPress={() => setVenueFilter('all')} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterRow, styles.filterRowLast]}>
+            <FilterPill label="All places" active={venueFilter === 'all'} onPress={() => setVenueFilter('all')} />
             <FilterPill label="Cinema" active={venueFilter === 'cinema'} onPress={() => setVenueFilter('cinema')} />
             <FilterPill label="Home" active={venueFilter === 'home'} onPress={() => setVenueFilter('home')} />
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterRow, styles.filterRowLast]}>
+            <View style={styles.filterDivider} />
             <FilterPill label="Recent" active={sortFilter === 'recent'} onPress={() => setSortFilter('recent')} />
             <FilterPill label="Favourites" active={sortFilter === 'favourites'} onPress={() => setSortFilter('favourites')} />
             <FilterPill label="Highest Rated" active={sortFilter === 'highest-rated'} onPress={() => setSortFilter('highest-rated')} />
@@ -267,6 +268,13 @@ export default function DiaryScreen() {
               </View>
             </View>
           ))}
+        </View>
+      ) : status === 'error' ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>Couldn&apos;t load your diary.</Text>
+          <Pressable style={styles.retryBtn} onPress={() => loadEntries()}>
+            <Text style={styles.retryLabel}>Retry</Text>
+          </Pressable>
         </View>
       ) : isEmpty ? (
         <View style={styles.centered}>
@@ -321,6 +329,16 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
     paddingHorizontal: RS.spacing.lg,
+    gap:            RS.spacing.md,
+  },
+  retryBtn: {
+    paddingHorizontal: RS.spacing.md,
+    paddingVertical:   RS.spacing.xs,
+  },
+  retryLabel: {
+    fontSize:   RS.typography.body,
+    fontWeight: '600',
+    color:      RS.colors.accent,
   },
   header: {
     fontSize:          RS.typography.display - 8,
@@ -340,6 +358,12 @@ const styles = StyleSheet.create({
   },
   filterRowLast: {
     paddingBottom: RS.spacing.sm,
+  },
+  filterDivider: {
+    width:            1,
+    height:           20,
+    backgroundColor:  RS.colors.border,
+    marginHorizontal: 2,
   },
   filterPill: {
     borderRadius:      RS.button.radius,
@@ -422,7 +446,14 @@ const styles = StyleSheet.create({
     height: 84,
   },
   thumbFallback: {
-    backgroundColor: RS.colors.card,
+    alignItems:       'center',
+    justifyContent:   'center',
+    backgroundColor:  RS.colors.card,
+  },
+  thumbFallbackLabel: {
+    fontSize:   24,
+    fontWeight: '700',
+    color:      RS.colors.textMuted,
   },
   rowMeta: {
     flex: 1,

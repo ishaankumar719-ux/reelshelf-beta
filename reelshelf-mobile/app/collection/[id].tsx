@@ -4,7 +4,7 @@
 // individually-verified list per collection, not a live TMDB discover query
 // re-deriving the collection's rule (that's what this screen did before;
 // replaced entirely now that the real table is the source of truth).
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Animated from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -65,7 +65,7 @@ export default function CollectionDetailScreen() {
   const [status, setStatus] = useState<Status>('loading');
   const [collection, setCollection] = useState<CollectionCardData | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
     setStatus('loading');
     fetchCollectionBySlug(id)
@@ -78,6 +78,8 @@ export default function CollectionDetailScreen() {
       .catch(() => { if (!cancelled) setStatus('error'); });
     return () => { cancelled = true; };
   }, [id]);
+
+  useEffect(() => load(), [load]);
 
   if (status === 'not-found') {
     return (
@@ -111,6 +113,9 @@ export default function CollectionDetailScreen() {
         ) : status === 'error' ? (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>Couldn&apos;t load this collection.</Text>
+            <Pressable style={styles.retryBtn} onPress={load}>
+              <Text style={styles.retryLabel}>Retry</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList<CollectionItemCard>
@@ -265,10 +270,20 @@ const styles = StyleSheet.create({
     flex:           1,
     alignItems:     'center',
     justifyContent: 'center',
+    gap:            RS.spacing.md,
   },
   emptyText: {
     fontSize: RS.typography.body,
     color:    RS.colors.textMuted,
+  },
+  retryBtn: {
+    paddingHorizontal: RS.spacing.md,
+    paddingVertical:   RS.spacing.xs,
+  },
+  retryLabel: {
+    fontSize:   RS.typography.body,
+    fontWeight: '600',
+    color:      RS.colors.accent,
   },
   emptyInlineText: {
     fontSize:          RS.typography.body,
