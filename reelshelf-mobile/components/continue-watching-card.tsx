@@ -26,10 +26,18 @@ export function ContinueWatchingCard({
   title,
   subtitle,
   mediaType,
-  progress = 0.4,
+  progress,
   posterUrl,
 }: ContinueWatchingCardProps = {}) {
-  const progressPct = `${Math.round(progress * 100)}%` as `${number}%`;
+  // No default here on purpose — the schema has no real per-title progress
+  // signal (see lib/supabase/currentlyEnjoying.ts's own header comment), and
+  // this card's one real caller (ContinueWatchingSection.tsx) never passes
+  // one. A hardcoded fallback here would silently render a fake, identical
+  // percentage for every user, which is exactly what
+  // components/profile/CurrentlyEnjoyingShelf.tsx deliberately avoids for
+  // the same data. The bar below only renders when a real value is given.
+  const hasProgress = typeof progress === 'number';
+  const progressPct = hasProgress ? (`${Math.round(progress * 100)}%` as `${number}%`) : undefined;
 
   const { style: cardAnimStyle, onPressIn, onPressOut } = usePressLift('depress');
   const [broken, setBroken] = useState(false);
@@ -89,10 +97,12 @@ export function ContinueWatchingCard({
               </>
             )}
 
-            {/* Progress bar with accent glow */}
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: progressPct }]} />
-            </View>
+            {/* Progress bar with accent glow — only when a real value exists */}
+            {hasProgress ? (
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: progressPct }]} />
+              </View>
+            ) : null}
 
             {title && (
               <Pressable

@@ -43,11 +43,6 @@ interface SeedFeaturedItem extends SeedCardItem {
   reason: string;
 }
 
-interface SeedContinueItem extends SeedCardItem {
-  progress: number;
-  subtitle: string;
-}
-
 interface SeedDailyReelItem extends SeedCardItem {
   description: string;
   reason: string;
@@ -306,13 +301,6 @@ async function main() {
     inception, dunePt2, shogun, parasite, poorThings, eeaao, succession,
   ];
 
-  const continueWatching: SeedContinueItem = {
-    ...theBear,
-    id:       'continue-the-bear-s3',
-    progress:  0.55,
-    subtitle:  'Season 3 · Episode 1',
-  };
-
   const becauseYouLoved: SeedCardItem[] = [
     laLaLand, whiplash, ouatih, birdman, fabelmans, pachinko_book, mulholland,
   ];
@@ -433,12 +421,6 @@ export interface SeedFeaturedItem extends SeedCardItem {
   reason: string;
 }
 
-export interface SeedContinueItem extends SeedCardItem {
-  /** 0–1 viewing/reading progress */
-  progress: number;
-  subtitle: string;
-}
-
 /** Daily Reel pick — the signature recommendation; supersedes FeaturedToday. */
 export interface SeedDailyReelItem extends SeedCardItem {
   /** Editorial body copy about the pick (1–2 sentences). */
@@ -479,9 +461,6 @@ export const featuredCards: SeedCardItem[] = ${JSON.stringify(featuredCards, nul
 
 // ── Trending Today ────────────────────────────────────────────────────────────
 export const trendingToday: SeedCardItem[] = ${JSON.stringify(trendingToday, null, 2)};
-
-// ── Continue Watching (static example — replace with user state in Phase 4) ──
-export const continueWatching: SeedContinueItem = ${JSON.stringify(continueWatching, null, 2)};
 
 // ── Because You Loved (static example anchored to "Babylon") ─────────────────
 // Anchor title and list become personalized in Phase 4.
