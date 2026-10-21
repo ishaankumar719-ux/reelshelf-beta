@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.reelshelf",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "versionCode": 1,
@@ -64,6 +67,12 @@
       "eas": {
         "projectId": "2798f56c-61b1-4651-ac6d-d55e3203b16f"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2798f56c-61b1-4651-ac6d-d55e3203b16f"
     }
   }
 }
