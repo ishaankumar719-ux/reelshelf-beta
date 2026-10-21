@@ -151,6 +151,35 @@ export default function DailyReelScreen() {
               )}
             </View>
 
+            {/* Keep the daily game above the recommendation. It is a repeat-use
+                action, while the Daily Pick is a longer browse experience. */}
+            {qotd.status !== 'idle' && (
+              <View style={styles.section}>
+                <View style={styles.qotdHeading}>
+                  <View>
+                    <Text style={styles.sectionTitle}>Question of the Day</Text>
+                    <Text style={styles.qotdLead}>Play today&apos;s film, TV and book quiz.</Text>
+                  </View>
+                  <Text style={styles.qotdBadge}>PLAY</Text>
+                </View>
+                {qotd.status === 'loading' ? (
+                  <SkeletonBlock width="100%" height={140} radius={RS.card.radius} />
+                ) : qotd.status === 'error' ? (
+                  <Text style={styles.emptyText}>{qotd.error ?? "Couldn't load today's question."}</Text>
+                ) : (
+                  <QuestionOfTheDaySection
+                    rotation={qotd.rotation}
+                    questions={qotd.questions}
+                    catStates={qotd.catStates}
+                    activeCategory={qotd.activeCategory}
+                    onSelectCategory={qotd.selectCategory}
+                    onSubmitAnswer={qotd.submitAnswer}
+                    today={qotd.today}
+                  />
+                )}
+              </View>
+            )}
+
             {/* ── Daily Pick ────────────────────────────────────────────────── */}
             {status === 'loading' && !pick ? (
               <View style={styles.section}>
@@ -192,33 +221,6 @@ export default function DailyReelScreen() {
                 </View>
               </RevealOnMount>
             ) : null}
-
-            {/* ── Question of the Day ──────────────────────────────────────────
-                Community-response aggregate ("X% got this right") is now real,
-                via the get_trivia_correct_percentage RPC (SECURITY DEFINER) —
-                see lib/supabase/trivia.ts. RLS still blocks a direct SELECT
-                across other users' trivia_answers rows; the RPC returns only
-                the computed aggregate, never raw rows. */}
-            {qotd.status !== 'idle' && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Question of the Day</Text>
-                {qotd.status === 'loading' ? (
-                  <SkeletonBlock width="100%" height={140} radius={RS.card.radius} />
-                ) : qotd.status === 'error' ? (
-                  <Text style={styles.emptyText}>{qotd.error ?? "Couldn't load today's question."}</Text>
-                ) : (
-                  <QuestionOfTheDaySection
-                    rotation={qotd.rotation}
-                    questions={qotd.questions}
-                    catStates={qotd.catStates}
-                    activeCategory={qotd.activeCategory}
-                    onSelectCategory={qotd.selectCategory}
-                    onSubmitAnswer={qotd.submitAnswer}
-                    today={qotd.today}
-                  />
-                )}
-              </View>
-            )}
 
             {/* ── Today's Staff Picks ───────────────────────────────────────── */}
             {staffPicks === null ? (
@@ -549,6 +551,9 @@ const styles = StyleSheet.create({
   readMore: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.accent, marginTop: 2 },
   // ── Question of the Day ──────────────────────────────────────────────────
   qotdCard: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.md, gap: RS.spacing.sm },
+  qotdHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: RS.spacing.sm },
+  qotdLead: { fontSize: RS.typography.caption, color: RS.colors.textMuted, marginTop: 2 },
+  qotdBadge: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, color: RS.colors.accent },
   catPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catPill: {
     flexDirection: 'row', alignItems: 'center', borderRadius: RS.button.radius,

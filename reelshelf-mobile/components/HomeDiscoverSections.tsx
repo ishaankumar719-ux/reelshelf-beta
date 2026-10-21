@@ -115,7 +115,7 @@ const RANDOM_BUTTONS: { type: SectionMediaType; idle: string; loading: string }[
   { type: 'book', idle: '📚 Random Book', loading: 'Finding a book…' },
 ];
 
-function RandomPickRow() {
+export function RandomPickRow() {
   const [loading, setLoading] = useState<SectionMediaType | null>(null);
   const [lastIds, setLastIds] = useState<Partial<Record<SectionMediaType, string>>>({});
 
