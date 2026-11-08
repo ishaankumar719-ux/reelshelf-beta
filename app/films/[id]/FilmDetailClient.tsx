@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import CastSection, { type CastMember } from "../../../components/detail/CastSection";
+import FranchiseCommunityLink from "@/components/detail/FranchiseCommunityLink";
 import ShareButton from "../../../components/detail/ShareButton";
 import { createClient as createSupabaseClient } from "../../../lib/supabase/client";
 import { useDiaryLog } from "../../../hooks/useDiaryLog";
@@ -743,6 +744,7 @@ export default function FilmDetailClient({
         {topCast.length > 0 && <CastSection cast={topCast} />}
 
         {/* ── Reviews ─────────────────────────────────────────────────── */}
+        <FranchiseCommunityLink type="film" id={String(film.id)} />
         <MediaReviewsSection
           mediaIds={[`tmdb-${film.id}`, `${slugify(film.title)}-${year}`]}
           mediaType="movie"
