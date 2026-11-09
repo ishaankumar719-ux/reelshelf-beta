@@ -42,6 +42,7 @@ import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { goBackOrDiscover } from '@/hooks/useCommunityNavigation';
+import { useTabBarClearance } from '@/hooks/useTabBarClearance';
 import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 import { fetchRelatedBooks } from '@/lib/relatedBooks';
@@ -58,6 +59,7 @@ export default function MediaDetailScreen() {
 
   const live = useMediaDetail(id);
   const insets = useSafeAreaInsets();
+  const bottomPad = useTabBarClearance(RS.spacing.xl);
   const { user } = useAuth();
   const isBook = live.kind === null;
   const resolvedMediaType = (mediaType as MediaType) ?? 'film';
@@ -209,7 +211,8 @@ export default function MediaDetailScreen() {
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
+            scrollIndicatorInsets={{ bottom: bottomPad }}
           >
             <ExpandEntrance active>
               <View style={styles.sections}>

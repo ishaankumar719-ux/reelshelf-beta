@@ -109,11 +109,12 @@ export const RS = {
   },
   // Sprint 4: floating tab bar geometry
   tabBar: {
+    contentHeight:     56,   // icons + labels; the bottom safe-area inset is added on top
     floatingHeight:    64,
     floatingMarginH:   16,
     floatingMarginB:   16,
     floatingRadius:    32,
-    contentBottomPad:  96,   // scroll paddingBottom when tab bar is position:absolute
+    contentBottomPad:  112,  // scroll paddingBottom under the docked tab bar (56 + 34pt home indicator + 22pt clearance); screens that can read the real bar height should use useTabBarClearance()
   },
 } as const;
 

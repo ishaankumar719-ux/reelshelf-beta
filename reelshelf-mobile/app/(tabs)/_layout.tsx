@@ -2,6 +2,7 @@ import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -40,25 +41,29 @@ const iconStyles = StyleSheet.create({
   },
 });
 
-// ── Floating glass background — clips to pill shape via container borderRadius ─
+// ── Docked glass background — runs to the bottom edge, home-indicator area
+// included, so nothing scrolling underneath shows through below the bar. ─────
 function TabBarBackground() {
   return (
-    <BlurView
-      tint="dark"
-      intensity={RS.blur.tabBar}
-      style={[StyleSheet.absoluteFill, tabBgStyles.blur]}
-    />
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView tint="dark" intensity={RS.blur.tabBar} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, tabBgStyles.scrim]} />
+    </View>
   );
 }
 
 const tabBgStyles = StyleSheet.create({
-  blur: {
-    // BorderRadius on BlurView matches the container — clips the blur to pill shape on iOS
-    borderRadius: RS.tabBar.floatingRadius,
+  scrim: {
+    // Keeps posters from reading through the blur.
+    backgroundColor: 'rgba(7,7,7,0.72)',
   },
 });
 
 export default function TabLayout() {
+  // Bottom inset is applied exactly once: as padding under the icons. The bar
+  // itself sits at bottom: 0, so its background covers the home indicator.
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -68,23 +73,19 @@ export default function TabLayout() {
         tabBarButton:            HapticTab,
         tabBarBackground:        TabBarBackground,
         tabBarStyle: {
-          // Sprint 4: floating pill — detached from screen edges
+          // Docked to the bottom edge. Absolute so content scrolls under the
+          // glass; screens pad by the reported tab bar height.
           position:        'absolute',
-          bottom:           RS.tabBar.floatingMarginB,
-          left:             RS.tabBar.floatingMarginH,
-          right:            RS.tabBar.floatingMarginH,
-          height:           RS.tabBar.floatingHeight,
-          borderRadius:     RS.tabBar.floatingRadius,
-          // Transparent — BlurView provides the surface
+          bottom:           0,
+          left:             0,
+          right:            0,
+          height:           RS.tabBar.contentHeight + insets.bottom,
+          paddingBottom:    insets.bottom,
+          // Transparent — BlurView + scrim provide the surface
           backgroundColor: 'transparent',
-          // No top border — tonal glass separation does the work
-          borderTopWidth:   0,
-          // Shadow for depth (no overflow:hidden so shadow renders on iOS)
-          shadowColor:      '#000',
-          shadowOffset:     { width: 0, height: 8 },
-          shadowOpacity:    0.28,
-          shadowRadius:     20,
-          elevation:        16,
+          borderTopWidth:   StyleSheet.hairlineWidth,
+          borderTopColor:   RS.colors.border,
+          elevation:        0,
         },
         tabBarLabelStyle: {
           fontSize:   RS.typography.micro,

@@ -17,6 +17,7 @@ import {
   type FranchiseMediaType,
 } from '@/data/franchiseCommunities';
 import { goBackOrDiscover, useStackBase } from '@/hooks/useCommunityNavigation';
+import { useTabBarClearance } from '@/hooks/useTabBarClearance';
 import { fetchFilmBackdrop, fetchFranchiseTitleImage } from '@/lib/franchiseImages';
 
 const shelves: { type: FranchiseMediaType; label: string }[] = [
@@ -66,6 +67,7 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
   const [backdrop, setBackdrop] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const base = useStackBase();
+  const bottomPad = useTabBarClearance();
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +117,11 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
+        scrollIndicatorInsets={{ bottom: bottomPad }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.hero}>
           {backdrop ? (
             <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
@@ -205,8 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: RS.colors.base,
   },
   content: {
-    // Clears the floating tab bar when the hub is inside the Discover tab.
-    paddingBottom: RS.tabBar.contentBottomPad,
+    // paddingBottom comes from useTabBarClearance() (tab bar height, or the inset outside the tabs).
     gap: RS.spacing.lg,
   },
   missing: {
