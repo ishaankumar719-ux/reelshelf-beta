@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { hungerGamesCommunity } from "@/lib/franchiseCommunities"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { DiscoverItem, CollectionCard, HeroCard } from "@/lib/discoverTypes"
@@ -1236,6 +1237,9 @@ export default function DiscoverClient({
               <button className="disc-btn-ghost" onClick={scrollToCollections}>
                 📚 Browse Collections
               </button>
+              <Link href={`/community/${hungerGamesCommunity.slug}`} className="disc-btn-ghost">
+                Explore {hungerGamesCommunity.name}
+              </Link>
             </div>
           </div>
 

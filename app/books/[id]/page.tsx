@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AddToDiaryButton from "../../../components/AddToDiaryButton";
 import AddToWatchlistButton from "../../../components/AddToWatchlistButton";
+import FranchiseCommunityLink from "@/components/detail/FranchiseCommunityLink";
 import ShareButton from "../../../components/detail/ShareButton";
 import BecauseYouLikedRow from "../../../components/BecauseYouLikedRow";
 import MediaReviewsSection from "../../../components/reviews/MediaReviewsSection";
@@ -766,6 +767,7 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
         </div>
       </section>
 
+      <FranchiseCommunityLink type="book" id={workId} />
       <MediaReviewsSection
         mediaIds={[workId]}
         mediaType="book"
@@ -1099,6 +1101,7 @@ export default async function BookDetailPage({
         currentGenres={[book.genre]}
         title={`Because you liked ${book.title}`}
       />
+      <FranchiseCommunityLink type="book" id={book.id} />
       <MediaReviewsSection
         mediaIds={[book.id]}
         mediaType="book"
