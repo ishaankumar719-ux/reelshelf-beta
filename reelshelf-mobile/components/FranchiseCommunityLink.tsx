@@ -1,6 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, RS } from '@/constants/theme';
@@ -9,8 +8,8 @@ import {
   hungerGamesCommunity,
   type FranchiseCommunity,
 } from '@/data/franchiseCommunities';
+import { useOpenCommunity } from '@/hooks/useCommunityNavigation';
 
-const open = (community: FranchiseCommunity) => router.push(`/community/${community.slug}`);
 // "The Hunger Games" → "Explore the Hunger Games community", not "the The …".
 const exploreLabel = (name: string) => `Explore the ${name.replace(/^The /, '')} community`;
 
@@ -19,11 +18,12 @@ const exploreLabel = (name: string) => `Explore the ${name.replace(/^The /, '')}
  *  FranchiseCommunityLink. */
 export function FranchiseCommunityLink({ routeId }: { routeId: string }) {
   const community = getFranchiseCommunityForRouteId(routeId);
+  const openCommunity = useOpenCommunity();
   if (!community) return null;
 
   return (
     <Pressable
-      onPress={() => open(community)}
+      onPress={() => openCommunity(community.slug)}
       accessibilityRole="link"
       accessibilityLabel={exploreLabel(community.name)}
       style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
@@ -36,9 +36,10 @@ export function FranchiseCommunityLink({ routeId }: { routeId: string }) {
 
 /** Discover-screen entry card for the featured franchise hub. */
 export function FranchiseCommunityCard({ community = hungerGamesCommunity }: { community?: FranchiseCommunity }) {
+  const openCommunity = useOpenCommunity();
   return (
     <Pressable
-      onPress={() => open(community)}
+      onPress={() => openCommunity(community.slug)}
       accessibilityRole="link"
       accessibilityLabel={`${community.name} community`}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}

@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
@@ -41,6 +41,7 @@ import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import { goBackOrDiscover } from '@/hooks/useCommunityNavigation';
 import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
 import { fetchRelatedBooks } from '@/lib/relatedBooks';
@@ -56,6 +57,7 @@ export default function MediaDetailScreen() {
   }>();
 
   const live = useMediaDetail(id);
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isBook = live.kind === null;
   const resolvedMediaType = (mediaType as MediaType) ?? 'film';
@@ -203,11 +205,6 @@ export default function MediaDetailScreen() {
         <AmbientAtmosphere scrollY={scrollY} />
 
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
-            <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
-            <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
-          </Pressable>
-
           <Animated.ScrollView
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
@@ -457,6 +454,20 @@ export default function MediaDetailScreen() {
             </ExpandEntrance>
           </Animated.ScrollView>
         </SafeAreaView>
+
+        {/* Pinned below the status bar / Dynamic Island and rendered last so
+            no scroll content sits above it. (Absolute inside the top-edge
+            SafeAreaView put it under the status bar, which made taps miss.) */}
+        <Pressable
+          style={[styles.backButton, { top: insets.top + RS.spacing.sm }]}
+          onPress={goBackOrDiscover}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
+          <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
+        </Pressable>
       </View>
     </AtmosphereProvider>
   );
@@ -473,7 +484,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position:       'absolute',
-    top:            RS.spacing.sm,
     left:           RS.spacing.md,
     zIndex:         10,
     width:          36,

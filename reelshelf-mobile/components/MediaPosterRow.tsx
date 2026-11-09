@@ -23,9 +23,12 @@ export interface PosterRowItem {
 
 interface MediaPosterRowProps {
   items: PosterRowItem[];
+  /** Route prefix for the detail screen, e.g. "/discover" to open titles
+   *  inside the Discover tab's stack. Defaults to the root /media route. */
+  hrefBase?: string;
 }
 
-function Item({ item }: { item: PosterRowItem }) {
+function Item({ item, hrefBase = '' }: { item: PosterRowItem; hrefBase?: string }) {
   // Same source-side fade+scale press feedback as the two original
   // hero-weight cards (Featured Collection, Book of the Month) and
   // Mount Rushmore's grid — the destination screen already mounts with a
@@ -33,7 +36,7 @@ function Item({ item }: { item: PosterRowItem }) {
   // this just makes the press itself feel consistent everywhere too.
   const { style, trigger } = useExpandOnPress(() =>
     router.push(
-      `/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
+      `${hrefBase}/media/${item.id}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.posterUrl ?? '')}&mediaType=${item.mediaType}`
     ),
   );
   return (
@@ -53,7 +56,7 @@ function Item({ item }: { item: PosterRowItem }) {
 // "more like this" style section on the Movie Detail screen — Because You
 // Liked This, More from this Director, collection-sibling rows, Related
 // Books, and the (currently empty) editorially-curated cross-media row.
-export function MediaPosterRow({ items }: MediaPosterRowProps) {
+export function MediaPosterRow({ items, hrefBase }: MediaPosterRowProps) {
   if (items.length === 0) return null;
 
   return (
@@ -64,7 +67,7 @@ export function MediaPosterRow({ items }: MediaPosterRowProps) {
       keyExtractor={(item) => getMediaKey(item.mediaType, item.id)}
       ItemSeparatorComponent={() => <View style={{ width: ITEM_SEP }} />}
       contentContainerStyle={styles.list}
-      renderItem={({ item }: ListRenderItemInfo<PosterRowItem>) => <Item item={item} />}
+      renderItem={({ item }: ListRenderItemInfo<PosterRowItem>) => <Item item={item} hrefBase={hrefBase} />}
     />
   );
 }

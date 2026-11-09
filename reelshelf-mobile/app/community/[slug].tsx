@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MediaPosterRow, type PosterRowItem } from '@/components/MediaPosterRow';
 import { SectionHeader } from '@/components/section-header';
@@ -16,6 +16,7 @@ import {
   type FranchiseCommunity,
   type FranchiseMediaType,
 } from '@/data/franchiseCommunities';
+import { goBackOrDiscover, useStackBase } from '@/hooks/useCommunityNavigation';
 import { fetchFilmBackdrop, fetchFranchiseTitleImage } from '@/lib/franchiseImages';
 
 const shelves: { type: FranchiseMediaType; label: string }[] = [
@@ -24,9 +25,9 @@ const shelves: { type: FranchiseMediaType; label: string }[] = [
   { type: 'series', label: 'Series' },
 ];
 
-function openMedia(routeId: string, title: string, posterUrl: string | null, mediaType: string) {
+function openMedia(base: string, routeId: string, title: string, posterUrl: string | null, mediaType: string) {
   router.push(
-    `/media/${routeId}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`,
+    `${base}/media/${routeId}?title=${encodeURIComponent(title)}&posterUrl=${encodeURIComponent(posterUrl ?? '')}&mediaType=${mediaType}`,
   );
 }
 
@@ -46,11 +47,11 @@ export default function CommunityScreen() {
   return <CommunityHub community={community} />;
 }
 
-function BackButton() {
+function BackButton({ top }: { top?: number }) {
   return (
     <Pressable
-      style={styles.backBtn}
-      onPress={() => router.back()}
+      style={[styles.backBtn, top !== undefined && { position: 'absolute', top, zIndex: 10 }]}
+      onPress={goBackOrDiscover}
       accessibilityRole="button"
       accessibilityLabel="Go back"
       hitSlop={8}
@@ -63,6 +64,8 @@ function BackButton() {
 function CommunityHub({ community }: { community: FranchiseCommunity }) {
   const [images, setImages] = useState<Record<string, string | null>>({});
   const [backdrop, setBackdrop] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const base = useStackBase();
 
   useEffect(() => {
     let cancelled = false;
@@ -122,9 +125,8 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
             locations={[0, 0.55, 1]}
             style={StyleSheet.absoluteFill}
           />
-          <SafeAreaView edges={['top']}>
-            <BackButton />
-          </SafeAreaView>
+          {/* Keeps the hero copy clear of the pinned back button. */}
+          <View style={{ height: insets.top + 52 }} />
 
           <View style={styles.heroBody}>
             <Text style={styles.eyebrow}>{`FRANCHISE COMMUNITY · ${counts.toUpperCase()}`}</Text>
@@ -142,7 +144,7 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
                       accessibilityRole="link"
                       onPress={() => {
                         const id = toMediaRouteId('book', featuredBook.id);
-                        openMedia(id, featuredBook.title, images[id] ?? null, 'book');
+                        openMedia(base, id, featuredBook.title, images[id] ?? null, 'book');
                       }}
                     >
                       <Text style={styles.ctaPrimaryText}>View the book</Text>
@@ -154,7 +156,7 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
                       accessibilityRole="link"
                       onPress={() => {
                         const id = toMediaRouteId('film', featuredFilm.id);
-                        openMedia(id, featuredFilm.title, images[id] ?? null, 'film');
+                        openMedia(base, id, featuredFilm.title, images[id] ?? null, 'film');
                       }}
                     >
                       <Text style={styles.ctaSecondaryText}>View the film</Text>
@@ -186,10 +188,13 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
             <View style={styles.shelfHeader}>
               <SectionHeader title={row.label} subtitle={`${row.items.length} titles`} />
             </View>
-            <MediaPosterRow items={row.items} />
+            <MediaPosterRow items={row.items} hrefBase={base} />
           </View>
         ))}
       </ScrollView>
+
+      {/* Pinned, so it stays tappable after scrolling down the shelves. */}
+      <BackButton top={insets.top + RS.spacing.xs} />
     </View>
   );
 }
@@ -200,7 +205,8 @@ const styles = StyleSheet.create({
     backgroundColor: RS.colors.base,
   },
   content: {
-    paddingBottom: RS.spacing.xxl,
+    // Clears the floating tab bar when the hub is inside the Discover tab.
+    paddingBottom: RS.tabBar.contentBottomPad,
     gap: RS.spacing.lg,
   },
   missing: {
@@ -212,6 +218,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     marginLeft: RS.spacing.sm,
+    borderRadius: 22,
+    backgroundColor: 'rgba(7,7,7,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
