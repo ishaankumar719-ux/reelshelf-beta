@@ -9,6 +9,7 @@ import {
   type FranchiseCommunity,
 } from '@/data/franchiseCommunities';
 import { useOpenCommunity } from '@/hooks/useCommunityNavigation';
+import { getResolvedFranchiseBook } from '@/lib/franchiseBookIds';
 
 // "The Hunger Games" → "Explore the Hunger Games community", not "the The …".
 const exploreLabel = (name: string) => `Explore the ${name.replace(/^The /, '')} community`;
@@ -17,7 +18,10 @@ const exploreLabel = (name: string) => `Explore the ${name.replace(/^The /, '')}
  *  Renders nothing for titles outside a community — mirrors the website's
  *  FranchiseCommunityLink. */
 export function FranchiseCommunityLink({ routeId }: { routeId: string }) {
-  const community = getFranchiseCommunityForRouteId(routeId);
+  const resolvedBook = getResolvedFranchiseBook(routeId);
+  const community =
+    getFranchiseCommunityForRouteId(routeId) ??
+    (resolvedBook ? getFranchiseCommunityForRouteId(`book-${resolvedBook.id}`) : undefined);
   const openCommunity = useOpenCommunity();
   if (!community) return null;
 

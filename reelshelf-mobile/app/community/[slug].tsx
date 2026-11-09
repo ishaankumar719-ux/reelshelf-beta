@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { MediaPosterRow, type PosterRowItem } from '@/components/MediaPosterRow';
 import { SectionHeader } from '@/components/section-header';
+import { TOP_BAR_HEIGHT, TopScrim } from '@/components/TopScrim';
 import { Fonts, RS } from '@/constants/theme';
 import {
   getFranchiseCommunity,
@@ -18,6 +19,7 @@ import {
 } from '@/data/franchiseCommunities';
 import { goBackOrDiscover, useStackBase } from '@/hooks/useCommunityNavigation';
 import { useTabBarClearance } from '@/hooks/useTabBarClearance';
+import { resolveFranchiseBookRouteId } from '@/lib/franchiseBookIds';
 import { fetchFilmBackdrop, fetchFranchiseTitleImage } from '@/lib/franchiseImages';
 
 const shelves: { type: FranchiseMediaType; label: string }[] = [
@@ -65,6 +67,8 @@ function BackButton({ top }: { top?: number }) {
 function CommunityHub({ community }: { community: FranchiseCommunity }) {
   const [images, setImages] = useState<Record<string, string | null>>({});
   const [backdrop, setBackdrop] = useState<string | null>(null);
+  // Open Library id → Google Books route id (the id Search and the diary use).
+  const [bookRoutes, setBookRoutes] = useState<Record<string, string>>({});
   const insets = useSafeAreaInsets();
   const base = useStackBase();
   const bottomPad = useTabBarClearance();
@@ -78,6 +82,13 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
           if (!cancelled) setImages((prev) => ({ ...prev, [toMediaRouteId(title.type, title.id)]: url }));
         });
     });
+    community.titles
+      .filter((title) => title.type === 'book')
+      .forEach((book) => {
+        resolveFranchiseBookRouteId(book).then((routeId) => {
+          if (!cancelled && routeId) setBookRoutes((prev) => ({ ...prev, [book.id]: routeId }));
+        });
+      });
     if (community.featured) {
       fetchFilmBackdrop(community.featured.filmId).then((url) => {
         if (!cancelled) setBackdrop(url);
@@ -96,18 +107,18 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
           items: community.titles
             .filter((title) => title.type === type)
             .map<PosterRowItem>((title) => {
-              const id = toMediaRouteId(title.type, title.id);
+              const catalogueId = toMediaRouteId(title.type, title.id);
               return {
-                id,
+                id: (type === 'book' && bookRoutes[title.id]) || catalogueId,
                 title: shortLabel(title.title, community.name),
                 year: title.year,
-                posterUrl: images[id] ?? null,
+                posterUrl: images[catalogueId] ?? null,
                 mediaType: type === 'series' ? 'tv' : type,
               };
             }),
         }))
         .filter((row) => row.items.length > 0),
-    [community, images],
+    [community, images, bookRoutes],
   );
 
   const counts = rows.map((row) => `${row.items.length} ${row.label.toLowerCase()}`).join(' · ');
@@ -132,7 +143,7 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
             style={StyleSheet.absoluteFill}
           />
           {/* Keeps the hero copy clear of the pinned back button. */}
-          <View style={{ height: insets.top + 52 }} />
+          <View style={{ height: insets.top + TOP_BAR_HEIGHT }} />
 
           <View style={styles.heroBody}>
             <Text style={styles.eyebrow}>{`FRANCHISE COMMUNITY · ${counts.toUpperCase()}`}</Text>
@@ -149,8 +160,9 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
                       style={[styles.cta, styles.ctaPrimary]}
                       accessibilityRole="link"
                       onPress={() => {
-                        const id = toMediaRouteId('book', featuredBook.id);
-                        openMedia(base, id, featuredBook.title, images[id] ?? null, 'book');
+                        const catalogueId = toMediaRouteId('book', featuredBook.id);
+                        const id = bookRoutes[featuredBook.id] ?? catalogueId;
+                        openMedia(base, id, featuredBook.title, images[catalogueId] ?? null, 'book');
                       }}
                     >
                       <Text style={styles.ctaPrimaryText}>View the book</Text>
@@ -198,6 +210,8 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
           </View>
         ))}
       </ScrollView>
+
+      <TopScrim />
 
       {/* Pinned, so it stays tappable after scrolling down the shelves. */}
       <BackButton top={insets.top + RS.spacing.xs} />

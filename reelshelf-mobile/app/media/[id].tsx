@@ -26,6 +26,7 @@ import { MediaWatchProviders } from '@/components/MediaWatchProviders';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { SeasonEpisodeBrowser } from '@/components/SeasonEpisodeBrowser';
 import { SectionHeader } from '@/components/section-header';
+import { TopScrim } from '@/components/TopScrim';
 import {
   SkeletonCastRow,
   SkeletonHero,
@@ -457,6 +458,8 @@ export default function MediaDetailScreen() {
             </ExpandEntrance>
           </Animated.ScrollView>
         </SafeAreaView>
+
+        <TopScrim />
 
         {/* Pinned below the status bar / Dynamic Island and rendered last so
             no scroll content sits above it. (Absolute inside the top-edge

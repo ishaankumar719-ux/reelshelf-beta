@@ -152,7 +152,8 @@ const styles = StyleSheet.create({
     gap:               RS.spacing.md,
   },
   infoRowNoBackdrop: {
-    paddingTop: RS.spacing.lg,
+    // Clears the pinned back arrow (TopScrim's TOP_BAR_HEIGHT) on book pages.
+    paddingTop: RS.spacing.xxl,
     alignItems: 'flex-start',
   },
   posterOuter: {
