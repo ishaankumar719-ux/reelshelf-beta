@@ -3,7 +3,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedRef, useScrollViewOffset } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MediaPosterRow, type PosterRowItem } from '@/components/MediaPosterRow';
@@ -72,6 +73,8 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
   const insets = useSafeAreaInsets();
   const base = useStackBase();
   const bottomPad = useTabBarClearance();
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollViewOffset(scrollRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +131,9 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
 
   return (
     <View style={styles.root}>
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
+        scrollEventThrottle={16}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         scrollIndicatorInsets={{ bottom: bottomPad }}
         showsVerticalScrollIndicator={false}
@@ -209,9 +214,9 @@ function CommunityHub({ community }: { community: FranchiseCommunity }) {
             <MediaPosterRow items={row.items} hrefBase={base} />
           </View>
         ))}
-      </ScrollView>
+      </Animated.ScrollView>
 
-      <TopScrim />
+      <TopScrim scrollY={scrollY} />
 
       {/* Pinned, so it stays tappable after scrolling down the shelves. */}
       <BackButton top={insets.top + RS.spacing.xs} />

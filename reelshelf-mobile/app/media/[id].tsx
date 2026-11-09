@@ -459,7 +459,7 @@ export default function MediaDetailScreen() {
           </Animated.ScrollView>
         </SafeAreaView>
 
-        <TopScrim />
+        <TopScrim scrollY={scrollY} />
 
         {/* Pinned below the status bar / Dynamic Island and rendered last so
             no scroll content sits above it. (Absolute inside the top-edge
