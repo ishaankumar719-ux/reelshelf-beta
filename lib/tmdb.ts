@@ -12,6 +12,7 @@ export type TMDBMovieDetails = {
   release_date: string;
   runtime: number | null;
   poster_path: string | null;
+  backdrop_path?: string | null;
   credits?: {
     crew?: Array<{
       job: string;

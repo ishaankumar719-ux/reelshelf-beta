@@ -34,7 +34,7 @@ export default function CommunityTitleCard({ href, title, label, year, imageUrl,
         ) : (
           <div className="flex h-full w-full flex-col justify-end bg-linear-to-b from-[#3a1d12] via-[#1c1110] to-[#0b0809] p-3">
             <span className="font-sans text-[10px] font-semibold tracking-widest text-amber-200/70 uppercase">{kind}</span>
-            <span className="mt-1 line-clamp-4 text-base leading-tight text-white/90">{label}</span>
+            <span className="mt-1 line-clamp-4 text-sm leading-tight text-white/90">{label}</span>
           </div>
         )}
       </div>

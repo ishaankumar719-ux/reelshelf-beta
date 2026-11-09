@@ -13,6 +13,7 @@ type FranchiseCommunity = {
   description: string;
   titles: FranchiseTitle[];
   discussion: { title: string; prompt: string };
+  featured?: { title: string; tagline: string; bookId: string; filmId: string };
 };
 
 export const hungerGamesCommunity: FranchiseCommunity = {
@@ -32,6 +33,12 @@ export const hungerGamesCommunity: FranchiseCommunity = {
     { id: "695721", title: "The Hunger Games: The Ballad of Songbirds & Snakes", year: 2023, type: "film" },
     { id: "1300968", title: "The Hunger Games: Sunrise on the Reaping", year: 2026, type: "film" },
   ],
+  featured: {
+    title: "Sunrise on the Reaping",
+    tagline: "Return to the 50th Hunger Games, decades before Katniss, on the page and on screen.",
+    bookId: "OL43426400W",
+    filmId: "1300968",
+  },
   discussion: {
     title: "What did the Hunger Games books make you feel that the films didn’t?",
     prompt: "Pick a character, scene or detail that stayed with you, and think about what changed when it moved from page to screen.",
