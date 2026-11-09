@@ -11,6 +11,8 @@ import {
 } from '@/data/franchiseCommunities';
 
 const open = (community: FranchiseCommunity) => router.push(`/community/${community.slug}`);
+// "The Hunger Games" → "Explore the Hunger Games community", not "the The …".
+const exploreLabel = (name: string) => `Explore the ${name.replace(/^The /, '')} community`;
 
 /** Pill on a book/film detail screen that leads back to its franchise hub.
  *  Renders nothing for titles outside a community — mirrors the website's
@@ -23,10 +25,10 @@ export function FranchiseCommunityLink({ routeId }: { routeId: string }) {
     <Pressable
       onPress={() => open(community)}
       accessibilityRole="link"
-      accessibilityLabel={`Explore the ${community.name} community`}
+      accessibilityLabel={exploreLabel(community.name)}
       style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
     >
-      <Text style={styles.pillText}>Explore the {community.name} community</Text>
+      <Text style={styles.pillText}>{exploreLabel(community.name)}</Text>
       <MaterialIcons name="arrow-forward" size={16} color={RS.colors.textPrimary} />
     </Pressable>
   );
