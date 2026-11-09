@@ -13,6 +13,7 @@ import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { CollectionPreviewCard } from '@/components/CollectionPreviewCard';
 import { ExpandEntrance } from '@/components/ExpandEntrance';
 import { FriendActivity } from '@/components/FriendActivity';
+import { FranchiseCommunityLink } from '@/components/FranchiseCommunityLink';
 import { MediaCastCrew } from '@/components/MediaCastCrew';
 import { MediaCrossMediaRow } from '@/components/MediaCrossMediaRow';
 import { MediaHero } from '@/components/MediaHero';
@@ -270,6 +271,8 @@ export default function MediaDetailScreen() {
                     <MediaSynopsis synopsis={detail.synopsis} />
                   </RevealOnMount>
                 ) : null}
+
+                <FranchiseCommunityLink routeId={id} />
 
                 {castCrewLoading ? (
                   <View style={styles.section}>

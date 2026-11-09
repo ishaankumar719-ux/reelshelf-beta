@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { DiscoverHero } from '@/components/DiscoverHero';
 import { FilterChips } from '@/components/FilterChips';
+import { FranchiseCommunityCard } from '@/components/FranchiseCommunityLink';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
 import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
 import { RevealOnMount } from '@/components/RevealOnMount';
@@ -50,6 +51,10 @@ export default function DiscoverScreen() {
 
             <RevealOnMount delay={80}>
               <FilterChips />
+            </RevealOnMount>
+
+            <RevealOnMount delay={100}>
+              <FranchiseCommunityCard />
             </RevealOnMount>
 
             <RevealOnMount delay={120}>
