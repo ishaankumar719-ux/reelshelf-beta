@@ -46,17 +46,22 @@ import { goBackOrDiscover } from '@/hooks/useCommunityNavigation';
 import { useTabBarClearance } from '@/hooks/useTabBarClearance';
 import { parseMediaRouteId } from '@/lib/tmdb';
 import type { MediaMeta } from '@/lib/supabase/mediaActions';
+import { canonicalBookRouteId } from '@/lib/bookIdentity';
 import { fetchRelatedBooks } from '@/lib/relatedBooks';
 import type { PosterRowItem } from '@/components/MediaPosterRow';
 
 export default function MediaDetailScreen() {
-  const { id, title, posterUrl, mediaType } = useLocalSearchParams<{
+  const { id: routeId, title, posterUrl, mediaType } = useLocalSearchParams<{
     id:        string;
     title:     string;
     posterUrl: string;
     mediaType: string;
     expand?:   string;
   }>();
+  // A retired Open Library id for a franchise book (e.g. from an older list
+  // item) opens, and logs to, the same diary row as the catalogue book.
+  // Purely local — no lookup, so it can't change with network state.
+  const id = canonicalBookRouteId(routeId);
 
   const live = useMediaDetail(id);
   const insets = useSafeAreaInsets();

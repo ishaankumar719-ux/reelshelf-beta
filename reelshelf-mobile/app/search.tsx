@@ -24,7 +24,7 @@ import { RS } from '@/constants/theme';
 import { trackSearchPerformed } from '@/lib/observability/analytics';
 import { resolveImageUrl } from '@/lib/resolveImageUrl';
 import { searchMovies, searchTv, searchPeople, type TmdbSearchResult, type TmdbPersonSearchResult } from '@/lib/tmdb';
-import { searchBooks, searchCollections, searchLists, searchUsers,
+import { isBookSearchRateLimited, searchBooks, searchCollections, searchLists, searchUsers,
   type BookSearchResult, type CollectionSearchResult, type ListSearchResult, type UserSearchResult } from '@/lib/search';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '@/lib/recentSearches';
 import { useAuth } from '@/contexts/AuthContext';
@@ -141,6 +141,8 @@ export default function SearchScreen() {
   const [movies, setMovies] = useState<SectionState<TmdbSearchResult>>(idleSection());
   const [tv, setTv] = useState<SectionState<TmdbSearchResult>>(idleSection());
   const [books, setBooks] = useState<SectionState<BookSearchResult>>(idleSection());
+  // Google Books answered 429 — say "busy", never "no books found".
+  const [booksRateLimited, setBooksRateLimited] = useState(false);
   const [people, setPeople] = useState<SectionState<TmdbPersonSearchResult>>(idleSection());
   const [collections, setCollections] = useState<SectionState<CollectionSearchResult>>(idleSection());
   const [lists, setLists] = useState<SectionState<ListSearchResult>>(idleSection());
@@ -194,9 +196,14 @@ export default function SearchScreen() {
     }
     if (wantAll || category === 'books') {
       setBooks({ status: 'loading', data: [] });
+      setBooksRateLimited(false);
       searchBooks(q)
         .then((data) => { if (!isStale()) setBooks({ status: 'success', data }); })
-        .catch(() => { if (!isStale()) setBooks({ status: 'error', data: [] }); });
+        .catch((e) => {
+          if (isStale()) return;
+          setBooksRateLimited(isBookSearchRateLimited(e));
+          setBooks({ status: 'error', data: [] });
+        });
     }
     if (wantAll || category === 'people') {
       setPeople({ status: 'loading', data: [] });
@@ -253,6 +260,7 @@ export default function SearchScreen() {
     : [category];
   const relevantErrorSections = relevantErrorKeys.map((k) => asyncSectionsByCategory[k]);
   const allAttemptedErrored = relevantErrorSections.length > 0 && relevantErrorSections.every((s) => s.status === 'error');
+  const booksBusy = booksRateLimited && books.status === 'error' && (category === 'all' || category === 'books');
 
   // Best Match — no cross-category relevance signal exists (each source API
   // only ranks within its own category), so this is an honest, deterministic
@@ -380,6 +388,14 @@ export default function SearchScreen() {
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={RS.colors.accent} />
             </View>
+          ) : allSettled && !anyResults && booksBusy ? (
+            <View style={styles.centered}>
+              <MaterialIcons name="hourglass-empty" size={28} color={RS.colors.textMuted} />
+              <Text style={styles.emptyText}>Book search is busy right now. Try again in a minute.</Text>
+              <Pressable style={styles.retryBtn} onPress={() => runSearch(query.trim())}>
+                <Text style={styles.retryLabel}>Retry</Text>
+              </Pressable>
+            </View>
           ) : allSettled && !anyResults && allAttemptedErrored ? (
             <View style={styles.centered}>
               <MaterialIcons name="cloud-off" size={28} color={RS.colors.textMuted} />
@@ -451,6 +467,17 @@ export default function SearchScreen() {
                       </View>
                     )}
                   />
+                </View>
+              )}
+
+              {booksBusy && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Books</Text>
+                  <Pressable style={styles.inlineNotice} onPress={() => runSearch(query.trim())} accessibilityRole="button">
+                    <Text style={styles.inlineNoticeText}>
+                      Book search is busy right now. <Text style={styles.inlineNoticeAction}>Tap to retry</Text>
+                    </Text>
+                  </Pressable>
                 </View>
               )}
 
@@ -599,6 +626,9 @@ const styles = StyleSheet.create({
   loadingWrap: { paddingVertical: RS.spacing.xl, alignItems: 'center' },
   centered: { paddingVertical: RS.spacing.xl, alignItems: 'center', paddingHorizontal: RS.spacing.lg },
   emptyText: { fontSize: RS.typography.body, color: RS.colors.textMuted, textAlign: 'center' },
+  inlineNotice: { paddingVertical: RS.spacing.xs },
+  inlineNoticeText: { fontSize: RS.typography.body, color: RS.colors.textMuted },
+  inlineNoticeAction: { color: RS.colors.accent },
   section: { paddingHorizontal: RS.spacing.md, gap: RS.spacing.sm },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },

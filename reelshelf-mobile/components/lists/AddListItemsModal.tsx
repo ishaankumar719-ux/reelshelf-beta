@@ -15,7 +15,7 @@ import {
 
 import { RS } from '@/constants/theme';
 import { resolveImageUrl } from '@/lib/resolveImageUrl';
-import { searchBooks } from '@/lib/search';
+import { isBookSearchRateLimited, searchBooks } from '@/lib/search';
 import { toDbMediaId } from '@/lib/supabase/mediaActions';
 import { addListItem, type ListMediaType } from '@/lib/supabase/lists';
 import { searchMovies, searchTv } from '@/lib/tmdb';
@@ -69,6 +69,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [results, setResults] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
+  const [booksBusy, setBooksBusy] = useState(false); // Google Books 429
   const [addingId, setAddingId] = useState<string | null>(null);
   const existingSet = new Set(existingMediaIds);
 
@@ -85,6 +86,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
     if (q.length < 2) { setResults([]); setSearching(false); return; }
     let cancelled = false;
     setSearching(true);
+    setBooksBusy(false);
     const timeoutId = setTimeout(async () => {
       try {
         const tasks: Promise<SearchHit[]>[] = [];
@@ -104,7 +106,12 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
           tasks.push(searchBooks(q).then((r) => r.map((b) => ({
             mediaType: 'book' as const, mediaId: toDbMediaId(b.id), title: b.title,
             subtitle: b.author, posterUrl: b.posterUrl, year: b.year ? String(b.year) : null,
-          }))));
+          })), (e) => {
+            // Keep film/TV hits when only Google Books is throttling us.
+            if (!isBookSearchRateLimited(e)) throw e;
+            if (!cancelled) setBooksBusy(true);
+            return [];
+          }));
         }
         const settled = await Promise.all(tasks);
         if (!cancelled) setResults(settled.flat());
@@ -187,7 +194,7 @@ export function AddListItemsModal({ visible, onClose, listId, existingMediaIds, 
           ) : searching ? (
             <ActivityIndicator color={RS.colors.accent} style={{ marginTop: RS.spacing.lg }} />
           ) : results.length === 0 ? (
-            <Text style={styles.hintText}>No results for &quot;{query}&quot;</Text>
+            <Text style={styles.hintText}>{booksBusy ? 'Book search is busy right now. Try again in a minute.' : `No results for "${query}"`}</Text>
           ) : (
             <View style={styles.resultsGrid}>
               {results.map((hit, i) => {

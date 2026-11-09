@@ -22,7 +22,7 @@ import {
   type MountRushmoreSlot,
   type RushmoreMediaType,
 } from '@/lib/supabase/mountRushmore';
-import { searchBooks } from '@/lib/search';
+import { isBookSearchRateLimited, searchBooks } from '@/lib/search';
 import { searchMovies, searchTv } from '@/lib/tmdb';
 import { getMediaKey } from '@/utils/listKeys';
 
@@ -89,6 +89,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [searching, setSearching] = useState(false);
+  const [booksBusy, setBooksBusy] = useState(false); // Google Books 429
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,9 +123,9 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
           const r = await searchBooks(query);
           mapped = r.map((b) => ({ mediaId: toDbMediaId(b.id), title: b.title, year: b.year ? String(b.year) : null, posterUrl: b.posterUrl }));
         }
-        if (!cancelled) setResults(mapped);
-      } catch {
-        if (!cancelled) setResults([]);
+        if (!cancelled) { setResults(mapped); setBooksBusy(false); }
+      } catch (e) {
+        if (!cancelled) { setResults([]); setBooksBusy(isBookSearchRateLimited(e)); }
       } finally {
         if (!cancelled) setSearching(false);
       }
@@ -300,7 +301,7 @@ export function MountRushmoreEditor({ visible, onClose, initialSlots, userId, on
                     ) : searching ? (
                       <ActivityIndicator color={RS.colors.accent} style={{ marginTop: RS.spacing.md }} />
                     ) : results.length === 0 ? (
-                      <Text style={styles.searchHint}>No results for &quot;{query}&quot;</Text>
+                      <Text style={styles.searchHint}>{booksBusy ? 'Book search is busy right now. Try again in a minute.' : `No results for "${query}"`}</Text>
                     ) : (
                       <View style={styles.resultsGrid}>
                         {results.map((result, i) => {

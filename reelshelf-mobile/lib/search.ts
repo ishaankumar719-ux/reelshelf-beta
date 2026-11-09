@@ -1,46 +1,105 @@
-// Universal Search — non-TMDB data sources: Google Books (public endpoint,
-// same one already used by scripts/generate-seed-data.ts), and Supabase
+// Universal Search — non-TMDB data sources: Google Books (via the
+// books-search Edge Function when deployed, else the public endpoint), and Supabase
 // (collections, user_lists, profiles) — all respecting existing RLS, no new
 // policies.
+import { canonicalBookRouteId } from './bookIdentity';
 import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
 import { searchCollections as searchCollectionsReal, type CollectionCardData } from './supabase/collections';
 
 const GBOOKS = 'https://www.googleapis.com/books/v1/volumes';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export interface BookSearchResult {
-  id:        string; // route id, e.g. "book-<real Google Books volumeId>"
+  id:        string; // route id: "book-<Google volume id>", or "book-<OL work id>" for a verified franchise edition
   title:     string;
   author:    string | null;
   year:      number | undefined;
   posterUrl: string | null;
 }
 
+/** Book search failed. `rateLimited` (HTTP 429) means Google Books is
+ *  throttling us — callers should say "try again shortly", never "no books". */
+export class BookSearchError extends Error {
+  readonly status: number | null;
+  constructor(status: number | null, message: string) {
+    super(message);
+    this.name = 'BookSearchError';
+    this.status = status;
+  }
+  get rateLimited() { return this.status === 429; }
+}
+
+export function isBookSearchRateLimited(error: unknown): boolean {
+  return error instanceof BookSearchError && error.rateLimited;
+}
+
+// Server-side lookup: the books-search Supabase Edge Function adds the
+// Google Books API key (a Supabase secret, never shipped in the app). Until
+// it's deployed and the key is set, it answers 404/503 and the app falls back
+// to Google's keyless endpoint, which has a much lower shared quota.
+let proxyUnavailable = false;
+
+async function fetchVolumes(query: string): Promise<any> {
+  const params = `q=${encodeURIComponent(query)}&maxResults=15`;
+  let res: Response | null = null;
+
+  if (!proxyUnavailable && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      res = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/books-search?${params}`, {
+        headers: { apikey: SUPABASE_ANON_KEY },
+      });
+      if (res.status === 404 || res.status === 503) {
+        proxyUnavailable = true; // not deployed / no key configured
+        res = null;
+      } else if (res.status >= 500) {
+        res = null; // proxy hiccup — try Google directly this time
+      }
+    } catch {
+      res = null; // proxy unreachable — try Google directly
+    }
+  }
+
+  if (!res) {
+    try {
+      res = await fetchWithTimeout(`${GBOOKS}?${params}`);
+    } catch (e) {
+      throw new BookSearchError(null, `Google Books search failed: ${(e as Error).message}`);
+    }
+  }
+  if (!res.ok) throw new BookSearchError(res.status, `Google Books search failed: ${res.status}`);
+  return res.json();
+}
+
 /** Google Books' /volumes response gives each item a top-level `id` — the
- *  real, globally-unique volume id (confirmed against this app's own
- *  scripts/generate-seed-data.ts, which reads the same field: `item.id`).
- *  Previously this used a slugified title instead, which collided for any
- *  two books sharing a title (reprints, unrelated books, etc.) both in the
- *  React key and in the route id persisted downstream via toDbMediaId. */
+ *  real, globally-unique volume id. A verified edition of a catalogued
+ *  franchise book (lib/bookIdentity.ts) is returned under that book's one
+ *  stable id instead, so every edition and every search order logs to the
+ *  same diary row. Duplicate editions collapse to the first one. */
 export async function searchBooks(query: string): Promise<BookSearchResult[]> {
-  const res = await fetchWithTimeout(`${GBOOKS}?q=${encodeURIComponent(query)}&maxResults=15`);
-  if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
-  const data = await res.json();
+  const data = await fetchVolumes(query);
   const items = Array.isArray(data.items) ? data.items : [];
-  return items
-    .filter((item: any) => item.id && item.volumeInfo?.title)
-    .map((item: any) => {
-      const info = item.volumeInfo;
-      const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
-      return {
-        id:        `book-${item.id}`,
-        title:     info.title,
-        author:    Array.isArray(info.authors) ? info.authors[0] : null,
-        year:      Number.isNaN(year) ? undefined : year,
-        posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
-      } as BookSearchResult;
+  const seen = new Set<string>();
+  const results: BookSearchResult[] = [];
+  for (const item of items) {
+    const info = item?.volumeInfo;
+    if (!item?.id || !info?.title) continue;
+    const authors: string[] = Array.isArray(info.authors) ? info.authors : [];
+    const id = canonicalBookRouteId(`book-${item.id}`, { title: info.title, subtitle: info.subtitle, authors });
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
+    results.push({
+      id,
+      title:     info.title,
+      author:    authors[0] ?? null,
+      year:      Number.isNaN(year) ? undefined : year,
+      posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
     });
+  }
+  return results;
 }
 
 // ── Collections (real collections/collection_items tables) ──────────────────
