@@ -9,8 +9,10 @@
 // So a catalogued franchise book always uses its Open Library work id from
 // data/franchiseCommunities.ts (the same id the website stores). The hub uses
 // it directly with no lookup. A Search result is mapped onto it only when the
-// edition is verified: the same title and Suzanne Collins as an author, and
-// not a study guide or summary. Anything else keeps its own volume id.
+// edition is verified: Suzanne Collins as an author, and a title that is the
+// book's own title plus nothing but edition wording ("(eBook)", "Movie Tie-In
+// Edition"), not a guide, summary, box set or teaching unit. Anything else
+// keeps its own volume id.
 //
 // No network access and no React Native imports, so the id never depends on
 // a lookup succeeding, and scripts/test-book-identity.mjs can run it in Node.
@@ -34,20 +36,38 @@ const WORK_ALIASES: Record<string, string> = {
 const FRANCHISE_AUTHOR = 'suzanne collins';
 
 /** Titles and subtitles that mark a book about the book, not the book. */
-const NOT_THE_BOOK = /\b(study guide|summary|analysis|companion|workbook|sparknotes|cliffsnotes|quiz|trivia|unofficial|guide to|lesson plan|activities|coloring|colouring|box(ed)? set|collection|trilogy|series set)\b/i;
+const NOT_THE_BOOK = /\b(study guide|summary|analysis|companion|workbook|sparknotes|cliffsnotes|quiz|trivia|unofficial|guide to|lesson plan|teaching|teacher|novel units|journal|activities|coloring|colouring|box(ed)? set|collection|trilogy|series set)\b/i;
 
+/** Lowercase, accents and punctuation dropped, no leading "the":
+ *  "The Ballad of Songbirds & Snakes" → "ballad of songbirds and snakes". */
 const normalise = (s: string) =>
-  s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/^the /, '');
 
-/** "Catching Fire (Hunger Games, Book Two)" → "Catching Fire". Only drops a
- *  trailing bracket that names the series and a book number, nothing else. */
-function stripSeriesMarker(title: string) {
-  return title.replace(/\s*[([]\s*(the )?hunger games[^)\]]*\b(book|#|vol)[^)\]]*[)\]]\s*$/i, '');
-}
+/** Edition wording that can follow the book's title (in brackets, after a
+ *  colon, or straight after it) without making it a different book:
+ *  "(a Hunger Games Novel): Movie Tie-In Edition", "(eBook)",
+ *  "(Hunger Games, Book Three)", "(Large Print)". Matched against the
+ *  normalised remainder, so it must be made of these phrases and nothing else. */
+const EDITION_WORDS = [
+  'a hunger games novel', 'hunger games novel', 'the hunger games', 'hunger games prequel', 'hunger games',
+  'book (?:one|two|three|four|five|[1-5])', 'prequel', 'novel',
+  'e ?book', 'large print', 'hardcover', 'paperback', 'audiobook',
+  'movie tie in edition', 'movie tie in', 'tie in edition', 'tie in',
+  '(?:deluxe|special|collector s|collectors|anniversary|illustrated|international|uk|us|canadian|film|movie) edition',
+  'edition', 'svensk utgava',
+];
+const ONLY_EDITION_WORDS = new RegExp(`^(?:\\s*(?:${EDITION_WORDS.join('|')})\\b)*\\s*$`);
 
-const catalogueByTitle = new Map<string, string>(
-  [...catalogue.values()].map((t) => [normalise(t.title), t.id]),
-);
+const catalogueTitles = [...catalogue.values()]
+  .map((t) => ({ id: t.id, title: normalise(t.title) }))
+  .sort((a, b) => b.title.length - a.title.length); // longest first
 
 export interface BookEditionHint {
   title:     string;
@@ -56,12 +76,21 @@ export interface BookEditionHint {
 }
 
 /** Open Library work id of the catalogue book this edition verifiably is, or
- *  null. Requires an exact title match and Suzanne Collins as an author. */
+ *  null. Requires Suzanne Collins as an author, a title that is the catalogue
+ *  title plus (optionally) edition wording only, and a subtitle that is
+ *  edition wording only. */
 export function matchFranchiseEdition(edition: BookEditionHint): string | null {
   const authors = (edition.authors ?? []).map(normalise);
   if (!authors.some((a) => a === FRANCHISE_AUTHOR)) return null;
   if (NOT_THE_BOOK.test(edition.title) || (edition.subtitle && NOT_THE_BOOK.test(edition.subtitle))) return null;
-  return catalogueByTitle.get(normalise(stripSeriesMarker(edition.title))) ?? null;
+  if (edition.subtitle && !ONLY_EDITION_WORDS.test(normalise(edition.subtitle))) return null;
+
+  const title = normalise(edition.title);
+  for (const entry of catalogueTitles) {
+    if (title !== entry.title && !title.startsWith(`${entry.title} `)) continue;
+    return ONLY_EDITION_WORDS.test(title.slice(entry.title.length)) ? entry.id : null;
+  }
+  return null;
 }
 
 /** The route id a book should be opened and logged under.

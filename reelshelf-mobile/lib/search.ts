@@ -2,7 +2,7 @@
 // books-search Edge Function when deployed, else the public endpoint), and Supabase
 // (collections, user_lists, profiles) — all respecting existing RLS, no new
 // policies.
-import { canonicalBookRouteId } from './bookIdentity';
+import { canonicalBookRouteId, getFranchiseBookForRouteId } from './bookIdentity';
 import { fetchWithTimeout } from './fetchWithTimeout';
 import { resolveImageUrl } from './resolveImageUrl';
 import { supabase } from './supabase/client';
@@ -90,12 +90,15 @@ export async function searchBooks(query: string): Promise<BookSearchResult[]> {
     const id = canonicalBookRouteId(`book-${item.id}`, { title: info.title, subtitle: info.subtitle, authors });
     if (seen.has(id)) continue;
     seen.add(id);
+    // A verified edition shows (and logs) under the book's own title and
+    // first-publication year, not "… (a Hunger Games Novel) (eBook)", 2025.
+    const catalogued = getFranchiseBookForRouteId(id);
     const year = info.publishedDate ? Number(String(info.publishedDate).slice(0, 4)) : undefined;
     results.push({
       id,
-      title:     info.title,
+      title:     catalogued?.title ?? info.title,
       author:    authors[0] ?? null,
-      year:      Number.isNaN(year) ? undefined : year,
+      year:      catalogued?.year ?? (Number.isNaN(year) ? undefined : year),
       posterUrl: resolveImageUrl(info.imageLinks?.thumbnail ?? null, 'poster'),
     });
   }

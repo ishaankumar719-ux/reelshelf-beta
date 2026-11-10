@@ -47,6 +47,33 @@ ok('box sets and other titles are left alone', () => {
   assert.equal(matchFranchiseEdition({ title: 'The Hunger Games Collection', authors: collins }), null);
   assert.equal(matchFranchiseEdition({ title: 'Gregor the Overlander', authors: collins }), null);
 });
+// Real Google Books listings seen through books-search on 2026-11-10.
+ok('real editions with edition wording verify', () => {
+  for (const title of [
+    'Sunrise on the Reaping (a Hunger Games Novel)', 'Sunrise on the Reaping (eBook)',
+    'Sunrise on the Reaping (The Hunger Games)', 'Sunrise on the Reaping Movie Tie-In',
+    'Sunrise on the Reaping (a Hunger Games Novel): Movie Tie-In Edition', 'Sunrise on the Reaping (Deluxe Edition)',
+    "Sunrise on the Reaping: Collector's Edition (a Hunger Games Novel)", 'Sunrise on the Reaping (svensk utgåva)',
+  ]) assert.equal(canonicalBookRouteId('book-x', { title, authors: collins }), SUNRISE, title);
+  assert.equal(canonicalBookRouteId('book-x', { title: 'Sunrise on the Reaping', subtitle: 'A Hunger Games Novel', authors: collins }), SUNRISE);
+  assert.equal(canonicalBookRouteId('book-x', { title: 'Mockingjay (Large Print)', authors: collins }), 'book-OL14908941W');
+  assert.equal(canonicalBookRouteId('book-x', { title: 'Hunger games', authors: collins }), 'book-OL5735363W');
+  assert.equal(canonicalBookRouteId('book-x', { title: 'Ballad of Songbirds and Snakes', authors: collins }), 'book-OL20716197W');
+  assert.equal(canonicalBookRouteId('book-x', { title: 'BALLAD OF SONGBIRDS AND SNAKES', subtitle: 'A Hunger Games Novel', authors: ['SUZANNE. COLLINS'] }), 'book-OL20716197W');
+});
+ok('real non-novels by Collins stay unverified', () => {
+  for (const [title, subtitle] of [
+    ['Catching Fire', 'Teaching Unit'], ['The Hunger Games Complete Trilogy'], ['The Hunger Games Movie'],
+    ['The Hunger Games Official Illustrated Movie Companion'], ['The World of the Hunger Games'],
+    ['The Hunger Games 4 Book eBook Box Set'], ['Mockingjay - Classic De-specced Special Sales Exclusive'],
+    ['Sinsajo / Mockingjay'], ['The Hunger Games / druk 1', 'Film editie'],
+  ]) assert.equal(matchFranchiseEdition({ title, subtitle, authors: collins }), null, title);
+});
+ok('lookalike titles by other authors stay unverified', () => {
+  assert.equal(matchFranchiseEdition({ title: 'Sunrise on the Reaping', subtitle: 'Hunger Game', authors: ['J. PEACE'] }), null);
+  assert.equal(matchFranchiseEdition({ title: 'Catching Fire', authors: ['Kay Nolte Smith'] }), null);
+  assert.equal(matchFranchiseEdition({ title: 'Hunger Games: Sunrise on the Reaping Unisex T-Shirt Large', authors: ['Out of Print'] }), null);
+});
 ok('films and TV are never touched', () => {
   assert.equal(canonicalBookRouteId('film-1300968', { title: 'Sunrise on the Reaping', authors: collins }), 'film-1300968');
   assert.equal(canonicalBookRouteId('tv-1'), 'tv-1');
