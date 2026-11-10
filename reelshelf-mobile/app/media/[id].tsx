@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
@@ -50,7 +50,21 @@ import { canonicalBookRouteId } from '@/lib/bookIdentity';
 import { fetchRelatedBooks } from '@/lib/relatedBooks';
 import type { PosterRowItem } from '@/components/MediaPosterRow';
 
+/** Opened from Search, this screen is pushed inside Search's modal sheet,
+ *  which starts below the status bar. The app-wide safe-area insets still
+ *  report the status-bar height there, so the pinned back arrow and TopScrim
+ *  sat ~60pt lower than the (correctly unpadded) content and covered the
+ *  book cover. A provider per screen measures this screen's own position:
+ *  full insets when pushed normally, no top inset inside a sheet. */
 export default function MediaDetailScreen() {
+  return (
+    <SafeAreaProvider>
+      <MediaDetailContent />
+    </SafeAreaProvider>
+  );
+}
+
+function MediaDetailContent() {
   const { id: routeId, title, posterUrl, mediaType } = useLocalSearchParams<{
     id:        string;
     title:     string;
