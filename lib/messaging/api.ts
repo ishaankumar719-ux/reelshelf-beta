@@ -256,6 +256,15 @@ export function isAdmin(client: SupabaseClient) {
 // inserts for conversations you're an active member of, and changes to your
 // own membership rows.
 
+/** Logs realtime problems (the clients refetch on focus/foreground, so a
+ *  dropped channel degrades to "updates when you come back", not data loss). */
+function logChannelStatus(label: string) {
+  return (status: string, error?: Error) => {
+    if (status === "SUBSCRIBED") return
+    console.warn(`[messaging] realtime ${label}: ${status}`, error?.message ?? "")
+  }
+}
+
 /** New messages in one conversation. */
 export function subscribeToConversation(
   client: SupabaseClient,
@@ -269,7 +278,7 @@ export function subscribeToConversation(
       { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
       (payload) => onMessage(payload.new as ChatMessage),
     )
-    .subscribe()
+    .subscribe(logChannelStatus(`messages:${conversationId}`))
   return () => {
     void client.removeChannel(channel)
   }
@@ -286,7 +295,7 @@ export function subscribeToInbox(client: SupabaseClient, userId: string, onChang
       { event: "*", schema: "public", table: "conversation_members", filter: `user_id=eq.${userId}` },
       () => onChange(),
     )
-    .subscribe()
+    .subscribe(logChannelStatus(`inbox:${userId}`))
   return () => {
     void client.removeChannel(channel)
   }
