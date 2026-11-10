@@ -19,6 +19,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
 import { EditProfileModal } from '@/components/EditProfileModal';
 import { FollowListModal } from '@/components/FollowListModal';
+import { MessageProfileButton } from '@/components/messaging/MessageProfileButton';
 import { PosterCard } from '@/components/poster-card';
 import { AchievementsRow } from '@/components/profile/AchievementsRow';
 import { ActivityCard } from '@/components/profile/ActivityCard';
@@ -586,6 +587,7 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                   <Text style={[styles.editLabel, following && styles.followingLabel]}>{following ? 'Following' : 'Follow'}</Text>
                 </Pressable>
               )}
+              {!isOwnProfile ? <MessageProfileButton profileId={userId} following={following} /> : null}
             </View>
 
             {/* ── Glass segmented tab strip ────────────────────────────── */}

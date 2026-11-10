@@ -79,6 +79,9 @@ export default function RootLayout() {
                     <Stack.Screen name="settings/report-bug"     options={{ headerShown: false, presentation: 'modal' }} />
                     <Stack.Screen name="settings/delete-account" options={{ headerShown: false }} />
                     <Stack.Screen name="list-discover"           options={{ headerShown: false }} />
+                    <Stack.Screen name="messages/index"          options={{ headerShown: false }} />
+                    <Stack.Screen name="messages/[id]"           options={{ headerShown: false }} />
+                    <Stack.Screen name="messages/new"            options={{ headerShown: false, presentation: 'modal' }} />
                   </Stack>
                   <OfflineBanner />
                   <StatusBar style="light" />

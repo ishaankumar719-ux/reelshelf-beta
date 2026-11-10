@@ -6,10 +6,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NotificationsSheet } from '@/components/notifications/NotificationsSheet';
 import { RS } from '@/constants/theme';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useMessagingBadge } from '@/hooks/useMessagingBadge';
 
 export function Header() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { unreadCount, markAllRead } = useNotifications();
+  const messagesUnread = useMessagingBadge();
 
   const handleOpenNotifications = () => {
     setNotificationsOpen(true);
@@ -23,13 +25,28 @@ export function Header() {
       {/* Left: wordmark only — minimal Sprint 3 nav */}
       <Text style={styles.wordmark}>ReelShelf</Text>
 
-      {/* Right: search icon, notification bell, avatar */}
+      {/* Right: search icon, messages, notification bell, avatar */}
       <View style={styles.right}>
         <Pressable
           hitSlop={10}
           onPress={() => router.push('/search')}
         >
           <MaterialIcons name="search" size={24} color={RS.colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          hitSlop={10}
+          style={styles.bellWrap}
+          accessibilityRole="button"
+          accessibilityLabel={messagesUnread > 0 ? `Messages, ${messagesUnread} unread` : 'Messages'}
+          onPress={() => router.push('/messages')}
+          testID="messages-button"
+        >
+          <MaterialIcons name="chat-bubble-outline" size={22} color={RS.colors.textSecondary} />
+          {messagesUnread > 0 ? (
+            <View style={[styles.badge, styles.messagesBadge]} testID="messages-badge">
+              <Text style={[styles.badgeLabel, styles.messagesBadgeLabel]}>{messagesUnread > 9 ? '9+' : messagesUnread}</Text>
+            </View>
+          ) : null}
         </Pressable>
         <Pressable
           hitSlop={10}
@@ -98,6 +115,13 @@ const styles = StyleSheet.create({
     fontSize:   9,
     fontWeight: '700',
     color:      RS.colors.base,
+  },
+  // Unread messages use the action colour so they read apart from the bell.
+  messagesBadge: {
+    backgroundColor: RS.colors.accent,
+  },
+  messagesBadgeLabel: {
+    color: '#ffffff',
   },
   avatar: {
     width:           32,
