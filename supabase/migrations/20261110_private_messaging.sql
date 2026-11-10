@@ -432,7 +432,9 @@ $$;
 
 -- The inbox: one row per conversation the caller is active in or invited to.
 -- Message previews and unread counts are only computed for active members.
-create or replace function public.list_conversations()
+-- With p_conversation, returns just that conversation, including a DM that
+-- has no messages yet (the inbox hides those, but the thread must open).
+create or replace function public.list_conversations(p_conversation uuid default null)
 returns table (
   conversation_id   uuid,
   kind              text,
@@ -484,8 +486,9 @@ language sql stable security definer set search_path = '' as $$
      where m.conversation_id = c.id order by m.seq desc limit 1
   ) lm on true
   where me.user_id = auth.uid() and me.status in ('active', 'invited')
+    and (p_conversation is null or c.id = p_conversation)
     -- An empty DM nobody has written in yet stays out of the inbox.
-    and (c.kind = 'group' or lm.created_at is not null)
+    and (p_conversation is not null or c.kind = 'group' or lm.created_at is not null)
   order by 14 desc nulls last;
 $$;
 
@@ -625,7 +628,7 @@ begin
     'get_or_create_direct_conversation(uuid)', 'can_message(uuid)', 'create_group_conversation(text,uuid[])',
     'invite_to_group(uuid,uuid[])', 'respond_to_group_invite(uuid,boolean)', 'leave_group(uuid)',
     'remove_group_member(uuid,uuid)', 'send_message(uuid,text,uuid)', 'mark_conversation_read(uuid,bigint)',
-    'list_conversations()', 'messaging_badge_count()', 'list_conversation_members(uuid)',
+    'list_conversations(uuid)', 'messaging_badge_count()', 'list_conversation_members(uuid)',
     'list_messageable_users(text)', 'block_user(uuid)', 'unblock_user(uuid)',
     'report_message(uuid,text,text)', 'list_message_reports(text)', 'review_message_report(uuid,text,text)'
   ] loop
