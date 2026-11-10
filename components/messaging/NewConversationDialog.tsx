@@ -31,7 +31,9 @@ export default function NewConversationDialog({
   const [mode, setMode] = useState<Mode>(initialMode)
   const [search, setSearch] = useState("")
   const [people, setPeople] = useState<MessageableUser[]>([])
-  const [loading, setLoading] = useState(true)
+  // The search the current results belong to; loading while it lags behind.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const loading = loadedFor !== search
   const [selected, setSelected] = useState<string[]>([])
   const [title, setTitle] = useState("")
   const [busy, setBusy] = useState(false)
@@ -41,12 +43,11 @@ export default function NewConversationDialog({
     const client = createClient()
     if (!client) return
     let cancelled = false
-    setLoading(true)
     const handle = window.setTimeout(() => {
       listMessageableUsers(client, search)
         .then((rows) => { if (!cancelled) setPeople(rows) })
         .catch((e: Error) => { if (!cancelled) setError(e.message) })
-        .finally(() => { if (!cancelled) setLoading(false) })
+        .finally(() => { if (!cancelled) setLoadedFor(search) })
     }, 200)
     return () => { cancelled = true; window.clearTimeout(handle) }
   }, [search])

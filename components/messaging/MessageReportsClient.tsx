@@ -21,7 +21,6 @@ export default function MessageReportsClient() {
   const load = useCallback(() => {
     const client = createClient()
     if (!client) return
-    setReports(null)
     listReports(client, status).then(setReports).catch((e: Error) => setError(e.message))
   }, [status])
 
@@ -47,7 +46,7 @@ export default function MessageReportsClient() {
       <div role="tablist" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {TABS.map((t) => (
           <button key={t.value} type="button" role="tab" aria-selected={status === t.value} style={pillButton(status === t.value)}
-            onClick={() => setStatus(t.value)}>
+            onClick={() => { if (t.value !== status) { setReports(null); setStatus(t.value) } }}>
             {t.label}
           </button>
         ))}
