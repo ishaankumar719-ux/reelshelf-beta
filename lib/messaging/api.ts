@@ -182,10 +182,11 @@ export function listMembers(client: SupabaseClient, conversationId: string) {
   )
 }
 
-/** One conversation's inbox row (title, other person, my status), or null if you can't see it. */
+/** One conversation's summary (title, other person, my status), or null if
+ *  you can't see it. Unlike the inbox, includes a DM with no messages yet. */
 export async function getConversation(client: SupabaseClient, conversationId: string) {
-  const rows = await listConversations(client)
-  return rows.find((row) => row.conversation_id === conversationId) ?? null
+  const rows = await rpc<ConversationSummary[]>(client, "list_conversations", { p_conversation: conversationId })
+  return rows?.[0] ?? null
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────
