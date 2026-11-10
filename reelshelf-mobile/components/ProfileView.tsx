@@ -539,6 +539,37 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                 </Pressable>
               </View>
 
+              <View style={styles.profileProgress}>
+                <Text style={styles.profileProgressLabel}>Stats</Text>
+                <View style={styles.statsStrip}>
+                  {([
+                    ['Movies', stats.moviesWatched], ['TV', stats.tvWatched], ['Books', stats.booksRead],
+                    ['Reviews', stats.reviews], ['Lists', stats.lists],
+                  ] as const).map(([label, value]) => (
+                    <View key={getMediaKey('profile-stat', label)} style={styles.statTile}>
+                      <Text style={styles.statValue}>{value}</Text>
+                      <Text style={styles.statLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.profileAchievementHeader}>
+                  <Text style={styles.profileProgressLabel}>Achievements</Text>
+                  <View style={styles.tierRow}>
+                    <View style={styles.tierPill}>
+                      <Text style={styles.tierPillLabel}>{tier}</Text>
+                    </View>
+                    <Text style={styles.xpText}>{totalXP} XP</Text>
+                    {(badges?.length ?? 0) > 0 && (
+                      <Pressable onPress={() => router.push(`/achievements/${userId}`)} hitSlop={8}>
+                        <Text style={styles.editSmallLabel}>View all</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+                <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} limit={4} />
+              </View>
+
               {isOwnProfile ? (
                 <Pressable style={styles.editBtn} onPress={() => setEditOpen(true)}>
                   <Text style={styles.editLabel}>Edit Profile</Text>
@@ -653,47 +684,6 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
                         ))}
                       </View>
                     )}
-                  </View>
-
-                  {/* ── Stats — de-emphasized: quieter type, no border, visually secondary to Mount Rushmore above. Followers/Following removed (now Hero-only). ── */}
-                  <View style={styles.overviewSubsection}>
-                    <Text style={styles.subheading}>Stats</Text>
-                    <View style={styles.statsStrip}>
-                      {([
-                        ['Movies', stats.moviesWatched], ['TV', stats.tvWatched], ['Books', stats.booksRead],
-                        ['Reviews', stats.reviews], ['Lists', stats.lists],
-                      ] as const).map(([label, value]) => (
-                        <View key={getMediaKey('stat', label)} style={styles.statTile}>
-                          <Text style={styles.statValue}>{value}</Text>
-                          <Text style={styles.statLabel}>{label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* ── Achievements — 3-4 card preview + View All ──
-                      XP/tier line is a mobile-only addition — real formula
-                      ported from the website's lib/supabase/badges.ts
-                      (computeTotalXP/getTier), which computes it but never
-                      displays it anywhere (see WEBSITE_ACHIEVEMENTS_AUDIT.md §3). */}
-                  <View style={styles.overviewSubsection}>
-                    <View style={styles.sectionHeaderRow}>
-                      <Text style={styles.subheading}>Achievements</Text>
-                      {(badges?.length ?? 0) > 0 && (
-                        <Pressable onPress={() => router.push(`/achievements/${userId}`)}>
-                          <Text style={styles.editSmallLabel}>View All</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                    {(badges?.length ?? 0) > 0 && (
-                      <View style={styles.tierRow}>
-                        <View style={styles.tierPill}>
-                          <Text style={styles.tierPillLabel}>{tier}</Text>
-                        </View>
-                        <Text style={styles.xpText}>{totalXP} XP</Text>
-                      </View>
-                    )}
-                    <AchievementsRow badges={badges} loading={badgesStatus === 'loading'} limit={4} />
                   </View>
 
                   {profile.favouriteGenres.length > 0 && (
@@ -1015,6 +1005,9 @@ const styles = StyleSheet.create({
   followRowText: { fontSize: RS.typography.caption, color: RS.colors.textSecondary },
   followRowValue: { fontWeight: '700', color: RS.colors.textPrimary },
   followRowDivider: { fontSize: RS.typography.caption, color: RS.colors.textMuted },
+  profileProgress: { width: '100%', gap: RS.spacing.xs, marginTop: RS.spacing.md },
+  profileProgressLabel: { alignSelf: 'flex-start', fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide },
+  profileAchievementHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: RS.spacing.xs },
   editBtn: { marginTop: RS.spacing.sm, borderRadius: RS.button.radius, borderWidth: 1, borderColor: RS.button.secondaryBorder, paddingHorizontal: RS.spacing.lg, paddingVertical: RS.spacing.sm + 2 },
   followingBtn: { borderColor: RS.button.primaryBorder, backgroundColor: RS.button.primaryFill },
   editLabel: { fontSize: RS.typography.body, fontWeight: '700', color: RS.colors.textPrimary },
@@ -1029,6 +1022,7 @@ const styles = StyleSheet.create({
   // title is a bare <Text> or a sectionHeaderRow (title + "See All"/"Edit").
   overviewSubsection: { gap: RS.spacing.sm },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm },
   sectionTitle: { fontSize: RS.typography.subheading, fontWeight: '700', color: RS.colors.textPrimary },
   editSmallLabel: { fontSize: RS.typography.caption, fontWeight: '700', color: RS.colors.accent },
   subheading: { fontSize: RS.typography.overline, fontWeight: '700', color: RS.colors.textMuted, textTransform: 'uppercase', letterSpacing: RS.letterSpacing.wide, marginTop: RS.spacing.sm },

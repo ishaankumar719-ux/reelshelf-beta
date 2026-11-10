@@ -22,6 +22,7 @@ export function MediaReviewCard({ entry }: { entry: MediaReviewEntry }) {
   const name = entry.displayName || entry.username || 'ReelShelf Member';
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [attachmentBroken, setAttachmentBroken] = useState(false);
+  const [coverBroken, setCoverBroken] = useState(false);
 
   const openProfile = () => router.push(`/profile/${entry.userId}`);
 
@@ -54,6 +55,10 @@ export function MediaReviewCard({ entry }: { entry: MediaReviewEntry }) {
           <Text style={styles.reviewText} numberOfLines={5}>{entry.review}</Text>
         </SpoilerBlur>
       ) : null}
+
+      {entry.reviewCoverUrl && !coverBroken && (
+        <Image source={{ uri: entry.reviewCoverUrl }} style={styles.reviewCover} contentFit="cover" onError={() => setCoverBroken(true)} />
+      )}
 
       {(entry.favourite || entry.rewatch) && (
         <View style={styles.badgeRow}>
@@ -105,6 +110,7 @@ const styles = StyleSheet.create({
   cinemaBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 4, backgroundColor: RS.colors.accentGlow, paddingHorizontal: 6, paddingVertical: 2 },
   cinemaBadgeLabel: { fontSize: RS.typography.micro, fontWeight: '700', color: RS.colors.accent, textTransform: 'uppercase', letterSpacing: 0.3 },
   reviewText: { fontSize: RS.typography.body, color: RS.colors.textSecondary, lineHeight: 20 },
+  reviewCover: { width: '100%', height: 130, borderRadius: RS.card.radius - 4 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: RS.button.radius, backgroundColor: RS.colors.elevated, paddingHorizontal: 8, paddingVertical: 3 },
   badgeLabel: { fontSize: 10, fontWeight: '600', color: RS.colors.textSecondary },

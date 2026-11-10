@@ -7,6 +7,7 @@ import { MediaReviewCard } from '@/components/MediaReviewCard';
 import { SignInPrompt } from '@/components/SignInPrompt';
 import { SpoilerBlur } from '@/components/SpoilerBlur';
 import { UniversalReviewComposer } from '@/components/UniversalReviewComposer';
+import { CommentPanel } from '@/components/activity/ActivityCard';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MediaType } from '@/data/seedHomeContent';
@@ -16,6 +17,7 @@ import {
   fetchFriendReviewsForMedia,
   type MediaReviewEntry,
 } from '@/lib/supabase/mediaReviews';
+import { fetchDiaryEntryId } from '@/lib/supabase/mediaActions';
 import { getMediaKey } from '@/utils/listKeys';
 
 interface MediaReviewsProps {
@@ -57,6 +59,7 @@ export function MediaReviews({
 
   const [communityStatus, setCommunityStatus] = useState<ListStatus>('loading');
   const [communityReviews, setCommunityReviews] = useState<MediaReviewEntry[]>([]);
+  const [ownDiaryEntryId, setOwnDiaryEntryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -95,6 +98,18 @@ export function MediaReviews({
     // avoids a request with a still-empty friend list racing the real one.
   }, [id, mediaType, user, friendStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!user || !review) {
+      setOwnDiaryEntryId(null);
+      return;
+    }
+    let cancelled = false;
+    fetchDiaryEntryId(user.id, { id, mediaType })
+      .then((entryId) => { if (!cancelled) setOwnDiaryEntryId(entryId); })
+      .catch(() => { if (!cancelled) setOwnDiaryEntryId(null); });
+    return () => { cancelled = true; };
+  }, [id, mediaType, review, user]);
+
   const openComposer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setComposerOpen(true);
@@ -105,15 +120,23 @@ export function MediaReviews({
       <View style={styles.subSection}>
         <Text style={styles.heading}>Your Review</Text>
         {review ? (
-          <Pressable style={styles.reviewCard} onPress={openComposer}>
-            <SpoilerBlur active={containsSpoilers}>
-              <Text style={styles.reviewText}>{review}</Text>
-            </SpoilerBlur>
-            <View style={styles.editRow}>
-              <MaterialIcons name="edit" size={14} color={RS.colors.textMuted} />
-              <Text style={styles.editLabel}>Edit</Text>
-            </View>
-          </Pressable>
+          <>
+            <Pressable style={styles.reviewCard} onPress={openComposer}>
+              <SpoilerBlur active={containsSpoilers}>
+                <Text style={styles.reviewText}>{review}</Text>
+              </SpoilerBlur>
+              <View style={styles.editRow}>
+                <MaterialIcons name="edit" size={14} color={RS.colors.textMuted} />
+                <Text style={styles.editLabel}>Edit</Text>
+              </View>
+            </Pressable>
+            {ownDiaryEntryId ? (
+              <View style={styles.commentThread}>
+                <Text style={styles.commentThreadHeading}>Comments</Text>
+                <CommentPanel diaryEntryId={ownDiaryEntryId} onCommentAdded={() => {}} />
+              </View>
+            ) : null}
+          </>
         ) : (
           <Text style={styles.emptyText}>Add your review using the Review button above.</Text>
         )}
@@ -180,6 +203,16 @@ const styles = StyleSheet.create({
   },
   subSection: {
     gap: RS.spacing.xs,
+  },
+  commentThread: {
+    gap: RS.spacing.xs,
+  },
+  commentThreadHeading: {
+    color: RS.colors.textSecondary,
+    fontSize:  RS.typography.caption,
+    fontWeight: '700',
+    letterSpacing: RS.letterSpacing.wide,
+    textTransform: 'uppercase',
   },
   heading: {
     fontSize:      RS.typography.subheading,

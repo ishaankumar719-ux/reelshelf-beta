@@ -41,6 +41,7 @@ import type { MediaType, SeedCardItem, SeedCollectionItem } from '@/data/seedHom
 import { mediaDetails, type MediaDetailRecord } from '@/data/mediaDetails';
 import { useMediaDetail } from '@/hooks/useMediaDetail';
 import { getMediaKey } from '@/utils/listKeys';
+import { getEasterEgg } from '@/lib/easterEggs';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { goBackOrDiscover } from '@/hooks/useCommunityNavigation';
 import { useTabBarClearance } from '@/hooks/useTabBarClearance';
@@ -220,11 +221,23 @@ function MediaDetailContent() {
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY   = useScrollViewOffset(scrollRef);
+  const easterEgg = getEasterEgg(id, title ?? '', resolvedMediaType);
 
   return (
     <AtmosphereProvider initialBaseColors={detail.dominantColors}>
       <View style={styles.screen}>
-        <AmbientAtmosphere scrollY={scrollY} />
+        <AmbientAtmosphere scrollY={scrollY} easterEgg={easterEgg} />
+
+        <Pressable
+          style={[styles.backButton, { top: insets.top + RS.spacing.sm }]}
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
+          <MaterialIcons name="arrow-back" size={20} color={RS.colors.textPrimary} />
+        </Pressable>
 
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.ScrollView
@@ -248,14 +261,19 @@ function MediaDetailContent() {
                   <NetworkErrorState message="Couldn't load this title — check your connection and try again." onRetry={live.retry} />
                 ) : (
                   <MediaHero
+                    id={id}
                     title={title ?? '—'}
                     year={detail.year || undefined}
                     mediaType={resolvedMediaType}
                     posterUrl={posterUrl || null}
                     detail={detail}
+                    ratingRefreshKey={persistence.rating}
+                    easterEgg={easterEgg}
                   />
                 )}
 
+                {!detailsError && !unresolvableBook && (
+                  <>
                 <RevealOnMount delay={60}>
                   <MediaPrimaryActions
                     id={id}
@@ -473,6 +491,8 @@ function MediaDetailContent() {
                     Detail (full-file read + repo-wide grep, zero matches).
                     MediaTrivia.tsx/MediaAwards.tsx remain in the codebase,
                     just unrendered, in case real data is sourced later. */}
+                  </>
+                )}
               </View>
             </ExpandEntrance>
           </Animated.ScrollView>

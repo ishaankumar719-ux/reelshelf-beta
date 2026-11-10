@@ -124,6 +124,13 @@ export default function ListsScreen() {
             <SkeletonBlock key={getMediaKey('lists-skeleton', i)} height={220} radius={RS.card.radius} style={{ marginHorizontal: RS.spacing.md }} />
           ))}
         </View>
+      ) : status === 'error' ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>Couldn&apos;t load your lists.</Text>
+          <Pressable style={styles.emptyCta} onPress={load}>
+            <Text style={styles.emptyCtaLabel}>Retry</Text>
+          </Pressable>
+        </View>
       ) : lists.length === 0 ? (
         <View style={styles.centered}>
           {activeTab === 'mine' ? (

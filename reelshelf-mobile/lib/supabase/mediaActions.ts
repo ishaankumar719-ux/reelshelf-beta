@@ -107,6 +107,27 @@ export interface DiaryEntryState {
   containsSpoilers: boolean;
 }
 
+/** Returns the title-level diary row id so its social thread can be shown
+ * alongside the owner's review on the media detail screen. */
+export async function fetchDiaryEntryId(
+  userId: string,
+  meta: Pick<MediaMeta, 'id' | 'mediaType'>,
+): Promise<string | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('diary_entries')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('media_type', toDbMediaType(meta.mediaType))
+    .eq('media_id', toDbMediaId(meta.id))
+    .eq('review_scope', DIARY_SCOPE_DEFAULTS.review_scope)
+    .eq('season_number', DIARY_SCOPE_DEFAULTS.season_number)
+    .eq('episode_number', DIARY_SCOPE_DEFAULTS.episode_number)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
 /** Title-level scope for movie/tv/book alike — exported so every other diary
  *  writer (the Universal Review Composer included) targets the exact same
  *  row as the simple Watched/Rate toggles here, rather than a second

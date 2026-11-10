@@ -25,6 +25,9 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
       "ios": {
         "resourceClass": "m-medium"
       },
@@ -34,6 +37,10 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6805145821"
+      }
+    }
   }
 }

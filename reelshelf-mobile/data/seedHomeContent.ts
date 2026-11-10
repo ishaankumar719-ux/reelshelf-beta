@@ -28,12 +28,6 @@ export interface SeedFeaturedItem extends SeedCardItem {
   reason: string;
 }
 
-export interface SeedContinueItem extends SeedCardItem {
-  /** 0–1 viewing/reading progress */
-  progress: number;
-  subtitle: string;
-}
-
 /** Daily Reel pick — the signature recommendation; supersedes FeaturedToday. */
 export interface SeedDailyReelItem extends SeedCardItem {
   /** Editorial body copy about the pick (1–2 sentences). */
@@ -153,17 +147,6 @@ export const trendingToday: SeedCardItem[] = [
     "posterUrl": "https://image.tmdb.org/t/p/w342/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg"
   }
 ];
-
-// ── Continue Watching (static example — replace with user state in Phase 4) ──
-export const continueWatching: SeedContinueItem = {
-  "id": "continue-the-bear-s3",
-  "title": "The Bear",
-  "year": 2022,
-  "mediaType": "tv",
-  "posterUrl": "https://image.tmdb.org/t/p/w342/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
-  "progress": 0.55,
-  "subtitle": "Season 3 · Episode 1"
-};
 
 // ── Because You Loved (static example anchored to "Babylon") ─────────────────
 // Anchor title and list become personalized in Phase 4.

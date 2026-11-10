@@ -242,6 +242,9 @@ export default function ActivityScreen() {
       ) : status === 'error' ? (
         <View style={styles.centered}>
           <Text style={styles.emptyText}>Couldn&apos;t load activity — check your connection.</Text>
+          <Pressable style={styles.retryBtn} onPress={() => (activeTab === 'mine' ? loadMine() : loadFollowing())}>
+            <Text style={styles.retryLabel}>Retry</Text>
+          </Pressable>
         </View>
       ) : activeTab === 'following' && noFollows ? (
         <EmptyState message="You're not following anyone yet." />
@@ -275,7 +278,9 @@ export default function ActivityScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: RS.colors.base },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: RS.spacing.lg },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: RS.spacing.lg, gap: RS.spacing.md },
+  retryBtn: { paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.xs },
+  retryLabel: { fontSize: RS.typography.body, fontWeight: '600', color: RS.colors.accent },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: RS.spacing.md, paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.xs,

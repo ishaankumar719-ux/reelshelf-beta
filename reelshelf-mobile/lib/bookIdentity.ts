@@ -31,6 +31,13 @@ const catalogue = new Map<string, FranchiseTitle>(
  *  share its diary. Checked against openlibrary.org/works/<id>.json. */
 const WORK_ALIASES: Record<string, string> = {
   OL42360848W: 'OL43426400W', // Sunrise on the Reaping (merged duplicate)
+  // Built-in search entries that TestFlight build 23 opened as
+  // "book-local-<slug>" (no rows were ever saved under them; checked
+  // 2026-11-10), so any link from that build lands on the same diary.
+  'local-the-hunger-games':                   'OL5735363W',
+  'local-catching-fire':                      'OL5735360W',
+  'local-mockingjay':                         'OL14908941W',
+  'local-the-ballad-of-songbirds-and-snakes': 'OL20716197W',
 };
 
 const FRANCHISE_AUTHOR = 'suzanne collins';

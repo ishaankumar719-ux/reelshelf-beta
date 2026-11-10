@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +15,7 @@ import {
   View,
 } from 'react-native';
 
+import { KeyboardDismissButton } from '@/components/KeyboardDismissButton';
 import { RS } from '@/constants/theme';
 import type { ListEditFields, ListVisibility } from '@/lib/supabase/lists';
 import { getMediaKey } from '@/utils/listKeys';
@@ -82,11 +84,18 @@ export function ListEditorModal({ visible, onClose, initial, onSave }: ListEdito
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.sheet}
+            onPress={(e) => { e.stopPropagation(); Keyboard.dismiss(); }}
+          >
             <BlurView tint="dark" intensity={RS.blur.cardInfo} style={StyleSheet.absoluteFill} />
             <View style={styles.grabber} />
 
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+            >
               <Text style={styles.headerTitle}>{isEditing ? 'Edit List' : 'New List'}</Text>
 
               <View style={styles.field}>
@@ -106,7 +115,10 @@ export function ListEditorModal({ visible, onClose, initial, onSave }: ListEdito
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Description</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Description</Text>
+                  <KeyboardDismissButton />
+                </View>
                 <TextInput
                   style={[styles.input, styles.descInput]}
                   value={description}
@@ -191,7 +203,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: RS.spacing.md, paddingBottom: RS.spacing.xl, gap: RS.spacing.md },
   headerTitle: { fontSize: RS.typography.heading, fontWeight: '700', color: RS.colors.textPrimary, textAlign: 'center', marginBottom: RS.spacing.xs },
   field: { gap: RS.spacing.xs },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: RS.typography.caption, fontWeight: '600', color: RS.colors.textSecondary },
   counter: { fontSize: RS.typography.overline, color: RS.colors.textMuted },
   input: { borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.elevated, paddingHorizontal: RS.spacing.sm + 2, paddingVertical: RS.spacing.sm, fontSize: RS.typography.body, color: RS.colors.textPrimary },

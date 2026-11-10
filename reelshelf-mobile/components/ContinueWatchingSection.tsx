@@ -19,8 +19,9 @@ import { fetchCurrentlyEnjoying, type EnjoyingItem } from '@/lib/supabase/curren
 // TV titles on the watchlist with no completed diary_entries watched_date
 // yet). Its own header comment is explicit that this is an honest proxy,
 // not fabricated progress tracking — no percentage is invented here either;
-// ContinueWatchingCard's progress prop is left at its existing decorative
-// default rather than backing it with a number nothing in the schema tracks.
+// no `progress` prop is passed to ContinueWatchingCard, which (per its own
+// header comment) only renders a progress bar when given a real value, never
+// a fabricated default.
 //
 // The query is gated on a real authenticated user id and keyed on it, so
 // switching accounts on the same device re-fetches for the new user rather

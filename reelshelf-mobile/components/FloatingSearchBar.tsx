@@ -17,12 +17,8 @@ import { RS } from '@/constants/theme';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 
 const PLACEHOLDERS = [
-  'Search films…',
-  'Search TV shows…',
-  'Search books…',
-  'Search people…',
-  'Search collections…',
-  'Search lists…',
+  'Search films, shows & books…',
+  'Find people, lists & collections…',
 ] as const;
 
 const ROTATE_INTERVAL_MS = 2800;

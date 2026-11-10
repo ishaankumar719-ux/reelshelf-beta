@@ -74,6 +74,14 @@ ok('lookalike titles by other authors stay unverified', () => {
   assert.equal(matchFranchiseEdition({ title: 'Catching Fire', authors: ['Kay Nolte Smith'] }), null);
   assert.equal(matchFranchiseEdition({ title: 'Hunger Games: Sunrise on the Reaping Unisex T-Shirt Large', authors: ['Out of Print'] }), null);
 });
+ok('build-21 built-in entries resolve to the stable ids', () => {
+  assert.equal(canonicalBookRouteId('book-local-the-hunger-games'), 'book-OL5735363W');
+  assert.equal(canonicalBookRouteId('book-local-mockingjay'), 'book-OL14908941W');
+  assert.equal(canonicalBookRouteId('book-local-catching-fire', { title: 'Catching Fire', authors: collins }), 'book-OL5735360W');
+  assert.equal(canonicalBookRouteId('book-local-the-ballad-of-songbirds-and-snakes', { title: 'The Ballad of Songbirds and Snakes', authors: collins }), 'book-OL20716197W');
+  // Other built-in books keep their own ids.
+  assert.equal(canonicalBookRouteId('book-local-circe', { title: 'Circe', authors: ['Madeline Miller'] }), 'book-local-circe');
+});
 ok('films and TV are never touched', () => {
   assert.equal(canonicalBookRouteId('film-1300968', { title: 'Sunrise on the Reaping', authors: collins }), 'film-1300968');
   assert.equal(canonicalBookRouteId('tv-1'), 'tv-1');

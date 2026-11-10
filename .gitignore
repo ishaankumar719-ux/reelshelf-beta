@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Full-resolution source art (app ships compressed WebP copies)
+/design-originals/

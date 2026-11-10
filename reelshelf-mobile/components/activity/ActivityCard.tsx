@@ -16,6 +16,9 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AttachmentPicker, type AttachmentValue } from '@/components/AttachmentPicker';
+import { KeyboardDismissButton } from '@/components/KeyboardDismissButton';
+import { ReactionTray } from '@/components/activity/ReactionTray';
 import { SpoilerBlur } from '@/components/SpoilerBlur';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,8 +98,11 @@ function SmallAvatar({ url, name }: { url: string | null; name: string }) {
 // ── poster thumbnail ─────────────────────────────────────────────────────
 function PosterThumb({ event, onPress }: { event: ActivityEvent; onPress: (() => void) | null }) {
   const [broken, setBroken] = useState(false);
-  const inner = event.poster && !broken ? (
-    <Image source={{ uri: event.poster }} style={StyleSheet.absoluteFill} contentFit="cover" onError={() => setBroken(true)} />
+  // A review can have its own artwork without changing the title artwork for
+  // anyone else. Activity is the main place that creative choice is seen.
+  const artwork = event.reviewCoverUrl ?? event.poster;
+  const inner = artwork && !broken ? (
+    <Image source={{ uri: artwork }} style={StyleSheet.absoluteFill} contentFit="cover" onError={() => setBroken(true)} />
   ) : (
     <View style={[StyleSheet.absoluteFill, styles.posterFallback]}>
       <Text style={styles.posterFallbackLetter}>{event.title.charAt(0).toUpperCase()}</Text>
@@ -110,11 +116,51 @@ function PosterThumb({ event, onPress }: { event: ActivityEvent; onPress: (() =>
   );
 }
 
+// ── single comment/reply row ────────────────────────────────────────────
+function CommentLine({
+  comment,
+  indented,
+  onReply,
+}: {
+  comment: ActivityComment;
+  indented: boolean;
+  onReply?: () => void;
+}) {
+  return (
+    <View style={[styles.commentRow, indented && styles.commentRowIndented]}>
+      <SmallAvatar url={comment.avatarUrl} name={comment.displayName ?? comment.username ?? 'Someone'} />
+      <View style={styles.commentBody}>
+        <View style={styles.commentHeaderRow}>
+          <Text style={styles.commentName}>{comment.displayName ?? comment.username ?? 'Someone'}</Text>
+          <Text style={styles.commentMeta}>{timeAgo(comment.createdAt)}</Text>
+        </View>
+        {comment.body ? <Text style={styles.commentText}>{comment.body}</Text> : null}
+        {comment.attachmentUrl ? (
+          <AttachmentImage url={comment.attachmentUrl} isGif={comment.attachmentType === 'gif'} />
+        ) : null}
+        {onReply ? (
+          <Pressable onPress={onReply} hitSlop={6}>
+            <Text style={styles.commentReplyLabel}>Reply</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 // ── comment panel ────────────────────────────────────────────────────────
-function CommentPanel({ diaryEntryId, onCommentAdded }: { diaryEntryId: string; onCommentAdded: () => void }) {
+// Inline-expanding on the card (commentsOpen toggles this in place — never
+// navigates elsewhere). Comments load flat (getCommentsForEntry returns
+// roots + replies together, same as the real website's
+// getCommentsForDiaryEntries) and are split into roots/replies here by
+// parentCommentId, matching ReviewCard.tsx's CommentThread grouping.
+export function CommentPanel({ diaryEntryId, onCommentAdded }: { diaryEntryId: string; onCommentAdded: () => void }) {
   const { user } = useAuth();
   const [comments, setComments] = useState<ActivityComment[] | null>(null);
   const [body, setBody] = useState('');
+  const [attachment, setAttachment] = useState<AttachmentValue | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,13 +170,22 @@ function CommentPanel({ diaryEntryId, onCommentAdded }: { diaryEntryId: string; 
     return () => { cancelled = true; };
   }, [diaryEntryId]);
 
-  const canSubmit = body.trim().length > 0 && !submitting;
+  // Blocked while an image upload is in flight — same convention as
+  // UniversalReviewComposer's attachmentUploading gate.
+  const canSubmit = (body.trim().length > 0 || attachment !== null) && !submitting && !attachmentUploading;
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
     setSubmitting(true);
     setError(null);
-    const result = await createDiaryEntryComment({ diaryEntryId, body, currentUserId: user.id });
+    const result = await createDiaryEntryComment({
+      diaryEntryId,
+      body,
+      currentUserId: user.id,
+      parentCommentId: replyingTo?.id ?? null,
+      attachmentUrl: attachment?.url ?? null,
+      attachmentType: attachment?.type ?? null,
+    });
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
@@ -139,36 +194,53 @@ function CommentPanel({ diaryEntryId, onCommentAdded }: { diaryEntryId: string; 
     if (result.comment) {
       setComments((prev) => [...(prev ?? []), result.comment!]);
       setBody('');
+      setAttachment(null);
+      setReplyingTo(null);
       onCommentAdded();
     }
   };
+
+  const startReply = (comment: ActivityComment) => {
+    setReplyingTo({ id: comment.id, name: comment.displayName ?? comment.username ?? 'Someone' });
+  };
+
+  const rootComments = (comments ?? []).filter((c) => !c.parentCommentId);
+  const repliesFor = (parentId: string) => (comments ?? []).filter((c) => c.parentCommentId === parentId);
 
   return (
     <View style={styles.commentPanel}>
       {comments === null ? (
         <Text style={styles.commentMeta}>Loading…</Text>
-      ) : comments.length === 0 ? (
+      ) : rootComments.length === 0 ? (
         <Text style={styles.commentEmpty}>No comments yet — be the first.</Text>
       ) : (
-        comments.map((c) => (
-          <View key={c.id} style={styles.commentRow}>
-            <SmallAvatar url={c.avatarUrl} name={c.displayName ?? c.username ?? 'Someone'} />
-            <View style={styles.commentBody}>
-              <View style={styles.commentHeaderRow}>
-                <Text style={styles.commentName}>{c.displayName ?? c.username ?? 'Someone'}</Text>
-                <Text style={styles.commentMeta}>{timeAgo(c.createdAt)}</Text>
-              </View>
-              <Text style={styles.commentText}>{c.body}</Text>
-            </View>
+        rootComments.map((c) => (
+          <View key={c.id}>
+            <CommentLine comment={c} indented={false} onReply={() => startReply(c)} />
+            {repliesFor(c.id).map((r) => (
+              <CommentLine key={r.id} comment={r} indented />
+            ))}
           </View>
         ))
       )}
 
+      {replyingTo ? (
+        <View style={styles.replyingBar}>
+          <Text style={styles.replyingText}>Replying to {replyingTo.name}</Text>
+          <Pressable onPress={() => setReplyingTo(null)} hitSlop={6}>
+            <Text style={styles.replyingCancel}>Cancel</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={styles.commentToolbarRow}>
+        <KeyboardDismissButton />
+      </View>
       <View style={styles.commentComposerRow}>
         <TextInput
           value={body}
           onChangeText={setBody}
-          placeholder="Add a comment…"
+          placeholder={replyingTo ? `Reply to ${replyingTo.name}…` : 'Add a comment…'}
           placeholderTextColor={RS.colors.textMuted}
           style={styles.commentInput}
           multiline
@@ -183,6 +255,7 @@ function CommentPanel({ diaryEntryId, onCommentAdded }: { diaryEntryId: string; 
           </Text>
         </Pressable>
       </View>
+      <AttachmentPicker value={attachment} onChange={setAttachment} onUploadingChange={setAttachmentUploading} />
       {error ? <Text style={styles.commentError}>{error}</Text> : null}
     </View>
   );
@@ -333,6 +406,17 @@ export function ActivityCard({ event, initialLikeCount = 0, initialCommentCount 
                 </Text>
               </Pressable>
             </View>
+          ) : null}
+
+          {/* New row, additive alongside the like/comment row above — never
+              replaces it. Gated on the same isDiaryEvent + real diaryEntryId
+              this whole interaction area already requires. */}
+          {isDiaryEvent && event.diaryEntryId ? (
+            <ReactionTray
+              diaryEntryId={event.diaryEntryId}
+              currentUserId={user?.id ?? null}
+              isOwn={user?.id === event.userId}
+            />
           ) : null}
 
           {commentsOpen && event.diaryEntryId ? (
@@ -561,6 +645,16 @@ const styles = StyleSheet.create({
     gap:           8,
     alignItems:    'flex-start',
   },
+  commentRowIndented: {
+    marginLeft:  34,
+    marginTop:   6,
+  },
+  commentReplyLabel: {
+    marginTop:  4,
+    fontSize:   RS.typography.micro,
+    fontWeight: '600',
+    color:      RS.colors.textMuted,
+  },
   commentAvatarImg: {
     width:        26,
     height:       26,
@@ -589,6 +683,25 @@ const styles = StyleSheet.create({
     fontSize:   RS.typography.caption,
     color:      RS.colors.textSecondary,
     lineHeight: 16,
+  },
+  replyingBar: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: RS.spacing.xs,
+  },
+  replyingText: {
+    fontSize: RS.typography.micro,
+    color:    RS.colors.textMuted,
+  },
+  replyingCancel: {
+    fontSize:   RS.typography.micro,
+    fontWeight: '700',
+    color:      RS.colors.accent,
+  },
+  commentToolbarRow: {
+    flexDirection:  'row',
+    justifyContent: 'flex-end',
   },
   commentComposerRow: {
     flexDirection: 'row',

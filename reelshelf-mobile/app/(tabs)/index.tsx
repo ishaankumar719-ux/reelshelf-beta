@@ -7,14 +7,16 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AmbientAtmosphere } from '@/components/AmbientAtmosphere';
-import { BookOfTheWeek } from '@/components/BookOfTheWeek';
 import { ContinueWatchingSection } from '@/components/ContinueWatchingSection';
+import { CollectionsSection } from '@/components/CollectionsSection';
 import { DailyReel } from '@/components/DailyReel';
 import { EditorialHeadline } from '@/components/EditorialHeadline';
 import { FadingHeader } from '@/components/FadingHeader';
 import { FloatingSearchBar } from '@/components/FloatingSearchBar';
-import { HomeDiscoverSections } from '@/components/HomeDiscoverSections';
+import { HomeFriendsActivityCarousel } from '@/components/HomeFriendsActivityCarousel';
+import { HomeLeaderboardPreview } from '@/components/HomeLeaderboardPreview';
 import { HomeSignUpCTA } from '@/components/HomeSignUpCTA';
+import { RandomPickRow } from '@/components/HomeDiscoverSections';
 import { RevealOnMount } from '@/components/RevealOnMount';
 import { WelcomeBlock } from '@/components/WelcomeBlock';
 import { AtmosphereProvider } from '@/contexts/AtmosphereContext';
@@ -91,48 +93,55 @@ export default function HomeScreen() {
                   shelf already uses); renders nothing of its own accord when
                   the user has no qualifying title, so no wrapping View/
                   SectionHeader is needed here. */}
-              <RevealOnMount delay={100}>
-                <ContinueWatchingSection refreshSignal={refreshSignal} />
-              </RevealOnMount>
+              {/* This section deliberately manages its own empty state. Keeping
+                  it outside the animation wrapper prevents a blank animated
+                  View from leaving an extra gap when there is nothing to resume. */}
+              <ContinueWatchingSection refreshSignal={refreshSignal} />
 
-              {/* 5 ── Daily Reel — signature recommendation, ONE filled button */}
-              <RevealOnMount delay={140}>
+              {/* 5 ── Daily Pick — the page's single discovery focus. Putting
+                  it before social activity gives Home a clear first action:
+                  find one great story, then catch up with friends. */}
+              <RevealOnMount delay={120}>
                 <DailyReel />
               </RevealOnMount>
 
-              {/* 6-10 ── The real website's unified 10-section Home/Discover
-                  structure (Trending Today, Because You Loved, New in Cinemas,
-                  Trending TV, Trending Books, Hidden Gems, Award Winners,
-                  Browse by Genre, Pick Something Random, Collections) —
-                  identical shared component to Discover, see
-                  components/HomeDiscoverSections.tsx. Because You Loved is
-                  the one genuinely personalized row in this block — included
-                  here via the default isAuthenticated=true, excluded
-                  entirely (not just internally-hidden) in the guest branch
-                  below. Home's own additional real mobile-only sections
-                  (Continue Watching, Daily Reel above; Book of the Week
-                  below) are NOT part of the real website's 10 sections and
-                  keep their existing positions around this block. (Friends
-                  Activity — previously here — was removed: the new
-                  dedicated Activity screen's Following tab, reached via
-                  Header's bell icon, is now the sole place for this.) */}
-              <RevealOnMount delay={180}>
-                <HomeDiscoverSections refreshSignal={refreshSignal} />
+              {/* 6 ── Friends Activity carousel — horizontal, swipeable
+                  teaser for the dedicated Activity screen's real "Following"
+                  feed (same fetchFollowingActivityFeed call, capped to 10
+                  here). Each item is the real, unmodified ActivityCard —
+                  poster, reaction tray, inline expand-to-comment, replies,
+                  attachments, all already working on the Activity screen.
+                  Renders its own empty-state fallback (Find Friends / Invite
+                  Friends) when the user follows nobody or has no data yet —
+                  never null, unlike Continue Watching/Daily Reel above.
+                  Authenticated tree only — absent from the guest branch
+                  below, matching Because You Loved. See
+                  components/HomeFriendsActivityCarousel.tsx. */}
+              <RevealOnMount delay={150}>
+                <HomeFriendsActivityCarousel />
               </RevealOnMount>
 
-              {/* 11 ── Book of the Week */}
-              <RevealOnMount delay={360}>
-                <BookOfTheWeek />
+              {/* 7 ── A compact community moment, with the full leaderboard
+                  one tap away instead of hidden in Profile. */}
+              <RevealOnMount delay={180}>
+                <HomeLeaderboardPreview />
+              </RevealOnMount>
+
+              {/* 8 ── A quick way out of decision paralysis. These two tools
+                  are intentionally the only Discover features retained on
+                  Home: one instant random choice and one editorial deep-dive. */}
+              <RevealOnMount delay={210}>
+                <RandomPickRow />
+              </RevealOnMount>
+
+              <RevealOnMount delay={240}>
+                <CollectionsSection refreshSignal={refreshSignal} />
               </RevealOnMount>
             </Animated.ScrollView>
           ) : (
-            // Guest Home — confirmed-real public sections only (Trending/New
-            // in Cinemas/Trending TV/Trending Books/Hidden Gems/Award
-            // Winners/Browse by Genre/Pick Something Random/Collections, via
-            // the same shared HomeDiscoverSections used above), with every
-            // personalized section (Continue Watching, Daily Reel, Because
-            // You Loved) fully absent from this tree — not internally
-            // null-returning, not a placeholder — genuinely never mounted.
+            // Guest Home is deliberately a quiet introduction. The complete
+            // browse catalogue lives in Discover; Home only gets users to
+            // search or sign in, rather than repeating the same shelves.
             <Animated.ScrollView
               ref={scrollRef}
               showsVerticalScrollIndicator={false}
@@ -155,20 +164,10 @@ export default function HomeScreen() {
               </RevealOnMount>
 
               <RevealOnMount delay={140}>
-                <HomeDiscoverSections
-                  refreshSignal={refreshSignal}
-                  isAuthenticated={false}
-                  guestCTA={(
-                    <HomeSignUpCTA
-                      headline="Make it yours"
-                      body="Create a free account to track what you've watched and read, rate and review, and get picks made for your taste."
-                    />
-                  )}
+                <HomeSignUpCTA
+                  headline="Make it yours"
+                  body="Create a free account to track what you've watched and read, rate and review, and get picks made for your taste."
                 />
-              </RevealOnMount>
-
-              <RevealOnMount delay={360}>
-                <BookOfTheWeek />
               </RevealOnMount>
             </Animated.ScrollView>
           )}
@@ -188,7 +187,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',   // let atmosphere gradient show through top content
   },
   content: {
-    gap:           RS.spacing.xxxl,
+    // Home is editorial, but 72px between every block made the opening feel
+    // unfinished before a tester reached the first useful content.
+    gap:           RS.spacing.xl,
     paddingBottom: RS.tabBar.contentBottomPad,  // floating tab bar is position:absolute — must pad manually
   },
 });
