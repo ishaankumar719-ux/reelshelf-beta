@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MediaCard } from "../src/components/ui/MediaCard";
 import { useAuth } from "./AuthProvider";
 import NotificationsBell from "./NotificationsBell";
+import MessagesNavLink from "./messaging/MessagesNavLink";
 import { getProfileInitials } from "../lib/profile";
 import {
   searchAllMedia,
@@ -722,6 +723,7 @@ export default function Header() {
 
           <div className="header-right">
             <SearchTriggerButton onClick={() => setOpen(true)} />
+            {user ? <MessagesNavLink /> : null}
             {user ? <NotificationsBell /> : null}
             {configured ? (
               user ? (

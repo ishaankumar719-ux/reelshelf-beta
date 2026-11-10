@@ -10,6 +10,7 @@ import type { DisplayBadge } from "@/lib/supabase/badges"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/AuthProvider"
 import BadgeShelf from "@/src/components/profile/BadgeShelf"
+import MessageProfileButton from "@/components/messaging/MessageProfileButton"
 import type {
   CinemaStats,
   MountRushmoreSlot,
@@ -1309,7 +1310,10 @@ export default function ProfileShowcase({
               @{profile.username} has a private profile
             </p>
           </div>
-          <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+            <MessageProfileButton profileId={profile.id} />
+          </div>
         </div>
       </section>
     )
@@ -1468,7 +1472,10 @@ export default function ProfileShowcase({
                   Edit profile
                 </Link>
               ) : (
-                <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+                <>
+                  <FollowButton profileId={profile.id} initialIsFollowing={initialIsFollowing} />
+                  <MessageProfileButton profileId={profile.id} />
+                </>
               )}
               {!isOwner && tasteMatchScore !== null && (
                 <div
