@@ -264,7 +264,7 @@ export function mediaTypeLabel(type: SharedMediaType): string {
  *  optimistic row matches the stored one. */
 export function titleFallback(title: Pick<SharedTitle, "media_type" | "title">, note?: string | null): string {
   const cleanNote = note?.trim()
-  return `Shared a ${FALLBACK_LABEL[title.media_type]}: ${title.title.trim()}${cleanNote ? `\n${cleanNote}` : ""}`
+  return `Shared a ${FALLBACK_LABEL[title.media_type]}: ${title.title.trim()}${cleanNote ? ` · ${cleanNote}` : ""}`
 }
 
 /** Open Library work ids that the catalogue knows under another id: retired
