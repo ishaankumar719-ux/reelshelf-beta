@@ -10,7 +10,8 @@
 --                                     novels, otherwise the id Search uses,
 --                                     title, year, poster_url, note }
 --   messages.body       readable fallback for clients that predate cards:
---                       "Shared a film: Catching Fire" (+ "\n" + note)
+--                       "Shared a film: Catching Fire" (+ " · " + note), which
+--                       is also what every inbox shows as the preview
 --
 -- Every share goes through the same insert path as a text message
 -- (_post_message), so membership, blocking, deleted-account, idempotent
@@ -142,7 +143,7 @@ begin
 
   return public._post_message(
     p_conversation,
-    'Shared a ' || v_label || ': ' || v_title || coalesce(E'\n' || v_note, ''),
+    'Shared a ' || v_label || ': ' || v_title || coalesce(' · ' || v_note, ''),
     p_client_id,
     'title',
     jsonb_build_object(

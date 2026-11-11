@@ -300,7 +300,7 @@ begin
       and s1.attachment->>'note' = 'watch this',
     s1.attachment::text);
   perform msgtest.ok('Share: older apps get a readable fallback with the note',
-    s1.body = E'Shared a film: The Hunger Games: Catching Fire\nwatch this', s1.body);
+    s1.body = 'Shared a film: The Hunger Games: Catching Fire · watch this', s1.body);
   s2 := public.share_title(dm_ab, cid, 'film', '101299', 'The Hunger Games: Catching Fire', 2013, null, 'watch this');
   select count(*) into n from public.messages where sender_id = alice and client_id = cid;
   perform msgtest.ok('Share: a retry with the same client id stores one message', s2.id = s1.id and n = 1);
@@ -324,12 +324,16 @@ begin
 
   select last_message_body into prev from public.list_conversations() where conversation_id = dm_ab;
   perform msgtest.ok('Share: inbox preview uses the readable fallback', prev like 'Shared a %', prev);
+  perform public.share_title(dm_ab, gen_random_uuid(), 'tv', '1399', 'Game of Thrones', 2011, null, 'Worth a watch');
+  select last_message_body into prev from public.list_conversations() where conversation_id = dm_ab;
+  perform msgtest.ok('Share: preview separates title and note with a middle dot',
+    prev = 'Shared a TV show: Game of Thrones · Worth a watch', prev);
 
   perform msgtest.act(bob);
   select count(*) into n from public.messages where conversation_id = dm_ab and kind = 'title';
-  perform msgtest.ok('Share: recipient can read the shares (the retry made no extra row)', n = 3, n::text);
+  perform msgtest.ok('Share: recipient can read the shares (the retry made no extra row)', n = 4, n::text);
   perform msgtest.ok('Share: shares count as unread for the recipient',
-    (select unread_count from public.list_conversations() where conversation_id = dm_ab) >= 3);
+    (select unread_count from public.list_conversations() where conversation_id = dm_ab) >= 4);
 
   perform msgtest.act(mallory);
   perform msgtest.expect_error('Share: non-member cannot share into a DM',

@@ -8,14 +8,15 @@ import { C } from "./ui"
 /** Where a shared title opens on the website. Films and TV use their TMDB id;
  *  books open by Open Library work id (the id the website's book pages and
  *  Diary use) or a built-in book's slug. A book the website has no page for
- *  (the iPhone app can share Google Books results) opens Search for it. */
+ *  (the iPhone app can share Google Books results) is looked up by title on
+ *  Open Library via /books/find, which falls back to Search. */
 export function sharedTitleHref(title: Pick<SharedTitle, "media_type" | "media_id" | "title">): string {
   if (title.media_type === "film") return `/films/${title.media_id}`
   if (title.media_type === "tv") return `/series/${title.media_id}`
   if (isOpenLibraryWorkId(title.media_id) || /^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(title.media_id)) {
     return `/books/${title.media_id}`
   }
-  return `/search?q=${encodeURIComponent(title.title)}`
+  return `/books/find?title=${encodeURIComponent(title.title)}`
 }
 
 /** A shared film, TV show or book: artwork, title, year and type. */
@@ -23,11 +24,15 @@ export default function TitleCard({ title, compact = false }: { title: SharedTit
   const [artFailed, setArtFailed] = useState(false)
   const art = title.poster_url && !artFailed ? title.poster_url : null
   const width = compact ? 44 : 64
+  const href = sharedTitleHref(title)
+  // A book the website has no page for is looked up by title first, so say so.
+  const findsInSearch = href.startsWith("/books/find")
   return (
     <Link
-      href={sharedTitleHref(title)}
+      href={href}
       data-testid="title-card"
-      aria-label={`${title.title}${title.year ? ` (${title.year})` : ""}, ${mediaTypeLabel(title.media_type)}. Open details`}
+      data-opens={findsInSearch ? "search" : "detail"}
+      aria-label={`${title.title}${title.year ? ` (${title.year})` : ""}, ${mediaTypeLabel(title.media_type)}. ${findsInSearch ? "Find on ReelShelf" : "Open details"}`}
       style={{
         display: "flex", gap: 12, alignItems: "center", padding: 8, borderRadius: 14,
         background: "rgba(0,0,0,0.25)", border: `1px solid ${C.line}`, color: C.text,
@@ -55,6 +60,9 @@ export default function TitleCard({ title, compact = false }: { title: SharedTit
         </span>
         <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, overflowWrap: "anywhere" }}>{title.title}</span>
         {title.year ? <span style={{ fontSize: 12, color: C.muted }}>{title.year}</span> : null}
+        {findsInSearch ? (
+          <span style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>Find on ReelShelf ›</span>
+        ) : null}
       </span>
     </Link>
   )
