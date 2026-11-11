@@ -4,6 +4,9 @@ import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -19,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { DiaryEntryFull } from '@/lib/supabase/diaryComposer';
 import type { MediaType } from '@/data/seedHomeContent';
 import { BETA_LINE } from '@/lib/webUrl';
+import { canonicalBookId } from '@/lib/messaging/api';
+import { parseMediaRouteId } from '@/lib/tmdb';
 
 interface MediaPrimaryActionsProps {
   id:              string;
@@ -118,12 +123,48 @@ export function MediaPrimaryActions({
     console.log('[Movie Detail] Add to List pressed — no-op (Lists is a placeholder)');
   };
 
-  const share = () => {
-    haptic();
+  const shareViaSystem = () => {
     Share.share({
       title,
       message: buildMediaShareMessage(title, year, synopsis),
     }).catch(() => {});
+  };
+
+  // Send to chat: the same title format the website sends (TMDB id for films
+  // and TV, the canonical book id for books), so either app opens it.
+  const sendToChat = () => {
+    if (!requireAuth()) return;
+    const parsed = parseMediaRouteId(id);
+    const mediaId = parsed ? parsed.tmdbId : canonicalBookId(id);
+    router.push({
+      pathname: '/messages/share',
+      params: {
+        mediaType,
+        mediaId,
+        title,
+        year: year ? String(year) : '',
+        posterUrl: posterUrl ?? '',
+      },
+    });
+  };
+
+  const share = () => {
+    haptic();
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Send to chat', 'Share via…', 'Cancel'], cancelButtonIndex: 2, title },
+        (index) => {
+          if (index === 0) sendToChat();
+          else if (index === 1) shareViaSystem();
+        },
+      );
+    } else {
+      Alert.alert(title, undefined, [
+        { text: 'Send to chat', onPress: sendToChat },
+        { text: 'Share via…', onPress: shareViaSystem },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
   };
 
   return (

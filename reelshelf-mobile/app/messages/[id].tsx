@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, GroupGlyph } from '@/components/messaging/Avatars';
+import { TitleCard } from '@/components/messaging/TitleCard';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -27,6 +28,7 @@ import {
   conversationName,
   fetchMessages,
   getConversation,
+  getTitleAttachment,
   leaveGroup,
   listMembers,
   markRead,
@@ -36,6 +38,7 @@ import {
   reportMessage,
   respondToInvite,
   sendMessage,
+  shareTitle,
   subscribeToConversation,
   unblockUser,
   type ChatMessage,
@@ -157,7 +160,10 @@ export default function ConversationScreen() {
     if (!supabase) return;
     setMessages((prev) => prev.map((m) => (m.client_id === local.client_id ? { ...m, state: 'sending' } : m)));
     try {
-      const stored = await sendMessage(supabase, conversationId!, local.body, local.client_id);
+      const shared = getTitleAttachment(local);
+      const stored = shared
+        ? await shareTitle(supabase, conversationId!, shared, shared.note, local.client_id)
+        : await sendMessage(supabase, conversationId!, local.body, local.client_id);
       setMessages((prev) => mergeMessages(prev, [{ ...stored, state: 'sent' }]));
     } catch (e) {
       setMessages((prev) => prev.map((m) => (m.client_id === local.client_id ? { ...m, state: 'failed' } : m)));
@@ -358,12 +364,21 @@ function Bubble({ message, mine, senderName, onRetry, onLongPress }: {
   message: LocalMessage; mine: boolean; senderName: string | null; onRetry: () => void; onLongPress: () => void;
 }) {
   const time = new Date(message.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const shared = getTitleAttachment(message);
   return (
     <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', opacity: message.state === 'sending' ? 0.6 : 1 }} testID="message">
       {senderName && !mine ? <Text style={styles.sender}>{senderName}</Text> : null}
       <Pressable onLongPress={onLongPress} delayLongPress={350}
-        style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, message.state === 'failed' && styles.bubbleFailed]}>
-        <Text style={styles.bubbleText}>{message.body}</Text>
+        style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, message.state === 'failed' && styles.bubbleFailed,
+          shared && styles.bubbleShared]}>
+        {shared ? (
+          <>
+            <TitleCard title={shared} onLongPress={onLongPress} />
+            {shared.note ? <Text style={[styles.bubbleText, styles.sharedNote]}>{shared.note}</Text> : null}
+          </>
+        ) : (
+          <Text style={styles.bubbleText}>{message.body}</Text>
+        )}
       </Pressable>
       {message.state === 'failed' ? (
         <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sending">
@@ -452,6 +467,8 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: RS.colors.elevated },
   bubbleFailed: { borderColor: '#ff8a8a' },
   bubbleText: { color: RS.colors.textPrimary, fontSize: 15, lineHeight: 20 },
+  bubbleShared: { width: 270, padding: 6 },
+  sharedNote: { paddingHorizontal: 6, paddingTop: 8, paddingBottom: 2 },
   sender: { fontSize: 11, color: RS.colors.textSecondary, marginLeft: 4, marginBottom: 2 },
   meta: { fontSize: 10, color: RS.colors.textMuted, marginTop: 2, marginHorizontal: 4 },
   failed: { fontSize: 11, color: '#ff8a8a', marginTop: 2, marginHorizontal: 4 },

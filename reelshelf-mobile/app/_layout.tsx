@@ -82,6 +82,7 @@ export default function RootLayout() {
                     <Stack.Screen name="messages/index"          options={{ headerShown: false }} />
                     <Stack.Screen name="messages/[id]"           options={{ headerShown: false }} />
                     <Stack.Screen name="messages/new"            options={{ headerShown: false, presentation: 'modal' }} />
+                    <Stack.Screen name="messages/share"          options={{ headerShown: false, presentation: 'modal' }} />
                   </Stack>
                   <OfflineBanner />
                   <StatusBar style="light" />

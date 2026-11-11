@@ -33,14 +33,36 @@ export interface ConversationSummary {
   can_send: boolean
 }
 
+export type SharedMediaType = "film" | "tv" | "book"
+
+/** A film, TV show or book as sent to a chat. `media_id` is the stable
+ *  catalogue id: the TMDB id for films and TV; for books the id Search and
+ *  the Diary use (an Open Library work id such as "OL5735360W" for
+ *  catalogued books, see canonicalBookId). */
+export interface SharedTitle {
+  media_type: SharedMediaType
+  media_id: string
+  title: string
+  year: number | null
+  poster_url: string | null
+}
+
+export interface TitleAttachment extends SharedTitle {
+  note: string | null
+}
+
 export interface ChatMessage {
   id: string
   conversation_id: string
   sender_id: string | null
+  /** For a title share: the readable fallback older apps show. */
   body: string
   client_id: string
   seq: number
   created_at: string
+  /** Missing on rows from before title sharing; treat as "text". */
+  kind?: "text" | "title"
+  attachment?: TitleAttachment | null
 }
 
 export interface ConversationMember {
@@ -93,6 +115,11 @@ const ERROR_COPY: Record<string, string> = {
   message_not_found: "That message isn't available.",
   cannot_report_own_message: "You can't report your own message.",
   not_admin: "You don't have access to reports.",
+  invalid_media_type: "That title can't be shared.",
+  invalid_media_id: "That title can't be shared.",
+  invalid_media_title: "That title can't be shared.",
+  invalid_year: "That title can't be shared.",
+  note_too_long: "Keep the note under 500 characters.",
 }
 
 export class MessagingError extends Error {
@@ -200,7 +227,7 @@ export async function fetchMessages(
   const limit = options.limit ?? MESSAGE_PAGE_SIZE
   let query = client
     .from("messages")
-    .select("id, conversation_id, sender_id, body, client_id, seq, created_at")
+    .select("id, conversation_id, sender_id, body, client_id, seq, created_at, kind, attachment")
     .eq("conversation_id", conversationId)
     .order("seq", { ascending: false })
     .limit(limit + 1)
@@ -218,6 +245,102 @@ export function sendMessage(client: SupabaseClient, conversationId: string, body
     p_body: body,
     p_client_id: clientId,
   })
+}
+
+// ── Title shares ─────────────────────────────────────────────────────────────
+// Format and server checks: supabase/migrations/20261111_message_title_shares.sql.
+
+export const SHARE_NOTE_MAX_LENGTH = 500
+
+const MEDIA_LABEL: Record<SharedMediaType, string> = { film: "Film", tv: "TV", book: "Book" }
+const FALLBACK_LABEL: Record<SharedMediaType, string> = { film: "film", tv: "TV show", book: "book" }
+
+/** "Film", "TV" or "Book" for the card. */
+export function mediaTypeLabel(type: SharedMediaType): string {
+  return MEDIA_LABEL[type]
+}
+
+/** The text older apps show, built exactly as the server builds it, so an
+ *  optimistic row matches the stored one. */
+export function titleFallback(title: Pick<SharedTitle, "media_type" | "title">, note?: string | null): string {
+  const cleanNote = note?.trim()
+  return `Shared a ${FALLBACK_LABEL[title.media_type]}: ${title.title.trim()}${cleanNote ? `\n${cleanNote}` : ""}`
+}
+
+/** Open Library work ids that the catalogue knows under another id: retired
+ *  work ids Open Library redirects, and the "local-<slug>" ids an older build
+ *  used for the Hunger Games novels. Same table as WORK_ALIASES in the iPhone
+ *  app's lib/bookIdentity.ts, so a shared book opens the diary Search and the
+ *  franchise hub use. */
+const BOOK_ID_ALIASES: Record<string, string> = {
+  OL42360848W: "OL43426400W", // Sunrise on the Reaping (merged duplicate)
+  "local-the-hunger-games": "OL5735363W",
+  "local-catching-fire": "OL5735360W",
+  "local-mockingjay": "OL14908941W",
+  "local-the-ballad-of-songbirds-and-snakes": "OL20716197W",
+}
+
+/** The id a book is shared and opened under: route prefixes stripped
+ *  ("book-", "ol-", "/works/") and known aliases resolved. */
+export function canonicalBookId(id: string): string {
+  let clean = id.trim()
+  if (clean.startsWith("book-")) clean = clean.slice(5)
+  if (clean.startsWith("ol-")) clean = clean.slice(3)
+  if (clean.startsWith("/works/")) clean = clean.slice(7)
+  return BOOK_ID_ALIASES[clean] ?? clean
+}
+
+export function isOpenLibraryWorkId(id: string): boolean {
+  return /^OL\d+W$/.test(id)
+}
+
+/** The title card on a message, or null for a plain message (or a card this
+ *  app version doesn't understand, which then shows its readable body). */
+export function getTitleAttachment(message: Pick<ChatMessage, "kind" | "attachment">): TitleAttachment | null {
+  if (message.kind !== "title" || !message.attachment) return null
+  const a = message.attachment
+  if (a.media_type !== "film" && a.media_type !== "tv" && a.media_type !== "book") return null
+  if (typeof a.media_id !== "string" || typeof a.title !== "string" || !a.title) return null
+  return {
+    media_type: a.media_type,
+    media_id: a.media_id,
+    title: a.title,
+    year: typeof a.year === "number" ? a.year : null,
+    poster_url: typeof a.poster_url === "string" && a.poster_url.startsWith("https://") ? a.poster_url : null,
+    note: typeof a.note === "string" && a.note ? a.note : null,
+  }
+}
+
+/** Sends one title (and an optional note) to one conversation. Same
+ *  membership, blocking and retry rules as sendMessage: resending with the
+ *  same clientId returns the stored message. */
+export function shareTitle(
+  client: SupabaseClient,
+  conversationId: string,
+  title: SharedTitle,
+  note: string | null,
+  clientId: string,
+) {
+  const mediaId = title.media_type === "book" ? canonicalBookId(title.media_id) : title.media_id
+  // Google Books hands out http:// thumbnails; the server only keeps https.
+  const poster = title.poster_url?.trim().replace(/^http:\/\//, "https://") || null
+  return rpc<ChatMessage>(client, "share_title", {
+    p_conversation: conversationId,
+    p_client_id: clientId,
+    p_media_type: title.media_type,
+    p_media_id: mediaId,
+    p_title: title.title,
+    p_year: title.year,
+    p_poster_url: poster,
+    p_note: note?.trim() ? note.trim() : null,
+  })
+}
+
+/** Destinations for a share: conversations you can post in right now
+ *  (joined groups and DMs that aren't blocked), most recent first. */
+export async function listShareDestinations(client: SupabaseClient) {
+  const rows = await listConversations(client)
+  return rows.filter((c) => c.my_status === "active" && c.can_send)
 }
 
 export function markRead(client: SupabaseClient, conversationId: string, uptoSeq?: number) {
