@@ -382,6 +382,12 @@ begin
   end if;
 
   select kind into v_kind from public.conversations where id = p_conversation;
+  -- A DM whose other person deleted their account stays readable, not writable.
+  if v_kind = 'direct' and not exists (
+    select 1 from public.conversation_members m where m.conversation_id = p_conversation and m.user_id <> v_me
+  ) then
+    raise exception 'recipient_unavailable' using errcode = '42501';
+  end if;
   if v_kind = 'direct' and exists (
     select 1 from public.conversation_members m
     where m.conversation_id = p_conversation and m.user_id <> v_me
@@ -473,7 +479,9 @@ language sql stable security definer set search_path = '' as $$
     case when c.kind = 'direct' then exists (
       select 1 from public.user_blocks b where b.blocker_id = me.user_id and b.blocked_id = other.user_id
     ) else false end,
-    me.status = 'active' and (c.kind = 'group' or not public.is_blocked_between(me.user_id, other.user_id))
+    me.status = 'active' and (c.kind = 'group' or (
+      other.user_id is not null and not public.is_blocked_between(me.user_id, other.user_id)
+    ))
   from public.conversation_members me
   join public.conversations c on c.id = me.conversation_id
   left join lateral (

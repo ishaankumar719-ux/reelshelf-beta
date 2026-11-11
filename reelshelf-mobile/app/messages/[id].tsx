@@ -307,7 +307,11 @@ export default function ConversationScreen() {
           </View>
         ) : (
           <Text style={[styles.notice, styles.composerNotice]}>
-            {summary.i_blocked ? 'You blocked this account. Unblock it from the menu to send messages.' : "You can't send messages in this conversation."}
+            {summary.i_blocked
+              ? 'You blocked this account. Unblock it from the menu to send messages.'
+              : summary.kind === 'direct' && !summary.other_user_id
+                ? 'This account no longer exists.'
+                : "You can't send messages in this conversation."}
           </Text>
         )}
       </KeyboardAvoidingView>
