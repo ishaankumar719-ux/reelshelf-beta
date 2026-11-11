@@ -222,7 +222,7 @@ export default function ConversationClient({ conversationId }: { conversationId:
             <span style={{ color: C.text, fontSize: 16 }}>{name}</span>
           )}
           <span style={{ color: C.muted, fontSize: 12 }}>
-            {summary.kind === "group" ? `Private group · ${summary.member_count} members` : summary.other_username ? `@${summary.other_username}` : ""}
+            {summary.kind === "group" ? `Private group · ${summary.member_count} ${summary.member_count === 1 ? "member" : "members"}` : summary.other_username ? `@${summary.other_username}` : ""}
           </span>
         </span>
         {summary.kind === "group" ? (
