@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import NotificationsBell from "@/components/NotificationsBell"
+import MessagesNavLink from "@/components/messaging/MessagesNavLink"
 import { useAuth } from "@/components/AuthProvider"
 import AccountDropdown from "@/components/layout/AccountDropdown"
 
@@ -259,7 +260,8 @@ export default function AppNav() {
             >
               <SearchIcon />
             </button>
-            {/* Notifications visible on all screen sizes when logged in */}
+            {/* Messages + notifications visible on all screen sizes when logged in */}
+            {user ? <MessagesNavLink /> : null}
             {user ? <NotificationsBell /> : null}
 
             {user ? (

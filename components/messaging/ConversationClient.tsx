@@ -464,12 +464,18 @@ function ReportDialog({ message, onClose }: { message: ChatMessage; onClose: () 
   )
 }
 
+// On phones the site has a fixed bottom nav (~90px); keep the composer above it.
+const FRAME_CSS = `@media (max-width: 760px) {
+  .messages-thread { height: calc(100dvh - 64px - 96px - env(safe-area-inset-bottom, 0px)) !important; padding-bottom: 8px !important; }
+}`
+
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <main style={{
+    <main className="messages-thread" style={{
       maxWidth: 720, margin: "0 auto", padding: "16px 16px 24px", height: "calc(100dvh - 72px)",
       display: "flex", flexDirection: "column", boxSizing: "border-box",
     }}>
+      <style>{FRAME_CSS}</style>
       {children}
     </main>
   )
