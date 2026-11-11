@@ -177,7 +177,9 @@ function DetailPill({ label }: { label: string }) {
 
 function ActionButtons({
   series,
+  tmdbId,
 }: {
+  tmdbId: number;
   series: {
     id: string;
     mediaType: "tv";
@@ -203,7 +205,16 @@ function ActionButtons({
     >
       <AddToDiaryButton movie={series} />
       <AddToWatchlistButton movie={series} />
-      <ShareButton style={{ borderRadius: 10 }} />
+      <ShareButton
+        style={{ borderRadius: 10 }}
+        title={{
+          media_type: "tv",
+          media_id: String(tmdbId),
+          title: series.title,
+          year: series.year > 0 ? series.year : null,
+          poster_url: series.poster ?? null,
+        }}
+      />
     </div>
   );
 }
@@ -293,7 +304,9 @@ function SeriesHero({
   runtimeLabel,
   actionSeries,
   flatrate,
+  tmdbId,
 }: {
+  tmdbId: number;
   title: string;
   year: string;
   creator: string;
@@ -536,7 +549,7 @@ function SeriesHero({
             ))}
           </div>
 
-          <ActionButtons series={actionSeries} />
+          <ActionButtons series={actionSeries} tmdbId={tmdbId} />
 
           <WhereToWatch providers={flatrate} title={title} />
 
@@ -714,6 +727,7 @@ function SeriesDetailContent({
       <BackButton />
 
       <SeriesHero
+        tmdbId={tmdbId}
         title={title}
         year={year}
         creator={creator}

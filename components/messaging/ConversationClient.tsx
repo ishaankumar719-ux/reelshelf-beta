@@ -11,6 +11,7 @@ import {
   conversationName,
   fetchMessages,
   getConversation,
+  getTitleAttachment,
   leaveGroup,
   listMembers,
   markRead,
@@ -20,6 +21,7 @@ import {
   reportMessage,
   respondToInvite,
   sendMessage,
+  shareTitle,
   subscribeToConversation,
   unblockUser,
   type ChatMessage,
@@ -28,6 +30,7 @@ import {
   type ReportReason,
 } from "@/lib/messaging/api"
 import NewConversationDialog from "./NewConversationDialog"
+import TitleCard from "./TitleCard"
 import { Avatar, C, GroupGlyph, Modal, pillButton, textInput } from "./ui"
 
 type LocalMessage = ChatMessage & { state: "sent" | "sending" | "failed" }
@@ -138,7 +141,10 @@ export default function ConversationClient({ conversationId }: { conversationId:
     if (!client) return
     setMessages((prev) => prev.map((m) => (m.client_id === local.client_id ? { ...m, state: "sending" } : m)))
     try {
-      const stored = await sendMessage(client, conversationId, local.body, local.client_id)
+      const shared = getTitleAttachment(local)
+      const stored = shared
+        ? await shareTitle(client, conversationId, shared, shared.note, local.client_id)
+        : await sendMessage(client, conversationId, local.body, local.client_id)
       setMessages((prev) => mergeMessages(prev, [{ ...stored, state: "sent" }]))
     } catch (e) {
       setMessages((prev) => prev.map((m) => (m.client_id === local.client_id ? { ...m, state: "failed" } : m)))
@@ -321,16 +327,23 @@ function Bubble({ message, mine, senderName, onRetry, onReport }: {
   onReport: () => void
 }) {
   const time = new Date(message.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+  const shared = getTitleAttachment(message)
   return (
     <div data-testid="message" data-state={message.state}
       style={{ display: "grid", justifyItems: mine ? "end" : "start", gap: 2, opacity: message.state === "sending" ? 0.6 : 1 }}>
       {senderName && !mine ? <span style={{ fontSize: 11, color: C.muted, paddingLeft: 4 }}>{senderName}</span> : null}
       <div style={{
-        maxWidth: "78%", padding: "8px 12px", borderRadius: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere",
+        maxWidth: "78%", padding: shared ? 6 : "8px 12px", borderRadius: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere",
         background: mine ? C.mine : C.theirs, color: C.text, fontSize: 15, lineHeight: 1.4,
         border: message.state === "failed" ? "1px solid #ff8a8a" : "1px solid transparent",
+        width: shared ? 280 : undefined, boxSizing: "border-box",
       }}>
-        {message.body}
+        {shared ? (
+          <>
+            <TitleCard title={shared} />
+            {shared.note ? <div style={{ padding: "8px 6px 2px" }}>{shared.note}</div> : null}
+          </>
+        ) : message.body}
       </div>
       <span style={{ display: "flex", gap: 8, fontSize: 11, color: C.faint }}>
         {message.state === "failed" ? (

@@ -197,7 +197,18 @@ function ActionButtons({
     >
       <AddToDiaryButton movie={book} />
       <AddToWatchlistButton movie={book} />
-      <ShareButton style={{ borderRadius: 10 }} />
+      <ShareButton
+        style={{ borderRadius: 10 }}
+        title={{
+          media_type: "book",
+          // Open Library work id (or a built-in book's slug): the id this page,
+          // its Diary entry and Search use. shareTitle resolves known aliases.
+          media_id: book.id,
+          title: book.title,
+          year: book.year > 0 ? book.year : null,
+          poster_url: book.poster ?? null,
+        }}
+      />
     </div>
   );
 }

@@ -537,7 +537,16 @@ export default function FilmDetailClient({
                   </button>
 
                   {/* Share */}
-                  <ShareButton style={{ borderRadius: 10, fontFamily: SANS }} />
+                  <ShareButton
+                    style={{ borderRadius: 10, fontFamily: SANS }}
+                    title={{
+                      media_type: "film",
+                      media_id: String(film.id),
+                      title: film.title,
+                      year: year ? Number(year) : null,
+                      poster_url: posterUrl,
+                    }}
+                  />
                 </div>
               </div>
             </div>
