@@ -83,6 +83,7 @@ export const MESSAGE_MAX_LENGTH = 4000
 const ERROR_COPY: Record<string, string> = {
   not_mutual_followers: "You can only message people who follow you back.",
   blocked: "You can't message this account.",
+  recipient_unavailable: "This account no longer exists.",
   not_active_member: "You're no longer in this conversation.",
   not_group_owner: "Only the group owner can do that.",
   no_pending_invite: "This invitation is no longer available.",

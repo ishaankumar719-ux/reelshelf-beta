@@ -286,7 +286,11 @@ export default function ConversationClient({ conversationId }: { conversationId:
         </form>
       ) : (
         <p style={{ color: C.muted, fontSize: 13, textAlign: "center", paddingTop: 8, borderTop: `1px solid ${C.line}` }}>
-          {summary.i_blocked ? "You blocked this account. Unblock to send messages." : "You can't send messages in this conversation."}
+          {summary.i_blocked
+            ? "You blocked this account. Unblock to send messages."
+            : summary.kind === "direct" && !summary.other_user_id
+              ? "This account no longer exists."
+              : "You can't send messages in this conversation."}
         </p>
       )}
 
