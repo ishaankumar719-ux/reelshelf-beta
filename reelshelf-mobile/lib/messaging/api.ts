@@ -261,7 +261,8 @@ export function isAdmin(client: SupabaseClient) {
  *  dropped channel degrades to "updates when you come back", not data loss). */
 function logChannelStatus(label: string) {
   return (status: string, error?: Error) => {
-    if (status === "SUBSCRIBED") return
+    // CLOSED is a normal unsubscribe (leaving a screen); only errors matter.
+    if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT") return
     console.warn(`[messaging] realtime ${label}: ${status}`, error?.message ?? "")
   }
 }

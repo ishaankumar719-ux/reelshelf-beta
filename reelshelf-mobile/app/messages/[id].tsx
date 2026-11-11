@@ -47,6 +47,9 @@ import { supabase } from '@/lib/supabase/client';
 
 type LocalMessage = ChatMessage & { state: 'sent' | 'sending' | 'failed' };
 let pendingSeq = Number.MAX_SAFE_INTEGER / 2;
+// A single word appearing this soon after a send is iOS re-inserting its
+// autocorrect suggestion into the just-cleared field, not the user typing.
+const AUTOCORRECT_ECHO_MS = 600;
 
 const REASONS: { value: ReportReason; label: string }[] = [
   { value: 'spam', label: 'Spam' },
@@ -86,6 +89,9 @@ export default function ConversationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const mounted = useRef(true);
+  const inputRef = useRef<TextInput>(null);
+  // When the last send happened (ms), to recognise iOS's autocorrect re-insert.
+  const sentAt = useRef(0);
 
   const refreshSummary = useCallback(async () => {
     if (!supabase || !conversationId) return null;
@@ -173,6 +179,11 @@ export default function ConversationScreen() {
       created_at: new Date().toISOString(),
       state: 'sending',
     };
+    // iOS commits a pending autocorrect suggestion back into the box right
+    // after it's cleared, leaving e.g. "ok" behind (and a second tap would
+    // send it). The TextInput's onChangeText drops that re-insert.
+    sentAt.current = Date.now();
+    inputRef.current?.clear();
     setDraft('');
     setError(null);
     setMessages((prev) => [...prev, local]);
@@ -255,7 +266,7 @@ export default function ConversationScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.topTitle} numberOfLines={1}>{name}</Text>
           <Text style={styles.topSub} numberOfLines={1}>
-            {summary.kind === 'group' ? `Private group · ${summary.member_count} members` : summary.other_username ? `@${summary.other_username}` : ''}
+            {summary.kind === 'group' ? `Private group · ${summary.member_count} ${summary.member_count === 1 ? 'member' : 'members'}` : summary.other_username ? `@${summary.other_username}` : ''}
           </Text>
         </View>
         <Pressable hitSlop={10} onPress={openMenu} accessibilityRole="button"
@@ -290,8 +301,13 @@ export default function ConversationScreen() {
         {summary.can_send ? (
           <View style={styles.composer}>
             <TextInput
+              ref={inputRef}
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={(text) => {
+                const echo = Date.now() - sentAt.current < AUTOCORRECT_ECHO_MS && /^\S+$/.test(text);
+                if (echo) { inputRef.current?.clear(); setDraft(''); return; }
+                setDraft(text);
+              }}
               placeholder="Message"
               placeholderTextColor={RS.colors.textMuted}
               multiline
