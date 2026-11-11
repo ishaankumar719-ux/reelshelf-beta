@@ -265,40 +265,60 @@ function logChannelStatus(label: string) {
   }
 }
 
+/** Joins a channel only after realtime has the signed-in user's token.
+ *  On a fresh page load the session is still being restored when components
+ *  mount; a channel joined then uses the anonymous key, RLS filters out every
+ *  event, and supabase-js never upgrades it (it only re-auths realtime on
+ *  SIGNED_IN / TOKEN_REFRESHED). Returns an unsubscribe that also cancels a
+ *  join that hasn't happened yet. */
+function joinAuthenticated(client: SupabaseClient, build: () => RealtimeChannel): () => void {
+  let channel: RealtimeChannel | null = null
+  let cancelled = false
+  void client.auth
+    .getSession()
+    .then(({ data }) => (data.session?.access_token ? client.realtime.setAuth(data.session.access_token) : undefined))
+    .catch(() => undefined)
+    .then(() => {
+      if (!cancelled) channel = build()
+    })
+  return () => {
+    cancelled = true
+    if (channel) void client.removeChannel(channel)
+  }
+}
+
 /** New messages in one conversation. */
 export function subscribeToConversation(
   client: SupabaseClient,
   conversationId: string,
   onMessage: (message: ChatMessage) => void,
 ): () => void {
-  const channel: RealtimeChannel = client
-    .channel(`messages:${conversationId}:${newClientId()}`)
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-      (payload) => onMessage(payload.new as ChatMessage),
-    )
-    .subscribe(logChannelStatus(`messages:${conversationId}`))
-  return () => {
-    void client.removeChannel(channel)
-  }
+  return joinAuthenticated(client, () =>
+    client
+      .channel(`messages:${conversationId}:${newClientId()}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        (payload) => onMessage(payload.new as ChatMessage),
+      )
+      .subscribe(logChannelStatus(`messages:${conversationId}`)),
+  )
 }
 
 /** Anything that can change your inbox or badge: a new message anywhere you
  *  belong, or your own read marker / membership changing on another device. */
 export function subscribeToInbox(client: SupabaseClient, userId: string, onChange: () => void): () => void {
-  const channel: RealtimeChannel = client
-    .channel(`inbox:${userId}:${newClientId()}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => onChange())
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "conversation_members", filter: `user_id=eq.${userId}` },
-      () => onChange(),
-    )
-    .subscribe(logChannelStatus(`inbox:${userId}`))
-  return () => {
-    void client.removeChannel(channel)
-  }
+  return joinAuthenticated(client, () =>
+    client
+      .channel(`inbox:${userId}:${newClientId()}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => onChange())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_members", filter: `user_id=eq.${userId}` },
+        () => onChange(),
+      )
+      .subscribe(logChannelStatus(`inbox:${userId}`)),
+  )
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
