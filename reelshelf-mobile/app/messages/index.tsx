@@ -59,22 +59,26 @@ export default function MessagesInboxScreen() {
 
   const invites = (rows ?? []).filter((r) => r.my_status === 'invited');
   const conversations = (rows ?? []).filter((r) => r.my_status === 'active');
+  const unreadChats = conversations.filter((c) => c.unread_count > 0).length;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
-        <Pressable hitSlop={10} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back">
-          <MaterialIcons name="arrow-back" size={24} color={RS.colors.textPrimary} />
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" style={styles.iconBtn}>
+          <MaterialIcons name="arrow-back-ios-new" size={22} color={RS.colors.textPrimary} />
         </Pressable>
-        <Text style={styles.title}>Messages</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Messages</Text>
+          {unreadChats > 0 ? <Text style={styles.unreadSummary}>{unreadChats} unread</Text> : null}
+        </View>
         <Pressable
-          hitSlop={10}
           onPress={() => router.push('/messages/new')}
           accessibilityRole="button"
           accessibilityLabel="New message or group"
           testID="new-message"
+          style={[styles.iconBtn, styles.newBtn]}
         >
-          <MaterialIcons name="edit-square" size={22} color={RS.colors.textPrimary} />
+          <MaterialIcons name="edit-square" size={22} color={RS.colors.accent} />
         </Pressable>
       </View>
 
@@ -144,17 +148,19 @@ function InboxRow({ c, userId }: { c: ConversationSummary; userId: string | null
   return (
     <Pressable style={styles.row} onPress={() => router.push(`/messages/${c.conversation_id}`)} testID="inbox-row"
       accessibilityLabel={`${name}${unread ? `, ${c.unread_count} unread` : ''}`}>
-      {c.kind === 'group' ? <GroupGlyph /> : <Avatar url={c.other_avatar_url} name={name} />}
+      {c.kind === 'group' ? <GroupGlyph size={52} /> : <Avatar url={c.other_avatar_url} name={name} size={52} />}
       <View style={styles.rowBody}>
         <View style={styles.rowTop}>
           <Text style={[styles.rowTitle, unread && styles.bold]} numberOfLines={1}>{name}</Text>
           <Text style={[styles.time, unread && styles.timeUnread]}>{shortTimestamp(c.last_message_at)}</Text>
         </View>
-        <Text style={[styles.rowSub, unread && styles.rowSubUnread]} numberOfLines={1}>{preview}</Text>
+        <View style={styles.rowBottom}>
+          <Text style={[styles.rowSub, unread && styles.rowSubUnread]} numberOfLines={2}>{preview}</Text>
+          {unread ? (
+            <View style={styles.unreadPill}><Text style={styles.unreadLabel}>{c.unread_count > 99 ? '99+' : c.unread_count}</Text></View>
+          ) : null}
+        </View>
       </View>
-      {unread ? (
-        <View style={styles.unreadPill}><Text style={styles.unreadLabel}>{c.unread_count > 99 ? '99+' : c.unread_count}</Text></View>
-      ) : null}
     </Pressable>
   );
 }
@@ -162,40 +168,44 @@ function InboxRow({ c, userId }: { c: ConversationSummary; userId: string | null
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: RS.colors.base },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.sm,
+    flexDirection: 'row', alignItems: 'center', gap: RS.spacing.xs,
+    paddingHorizontal: RS.spacing.xs, paddingVertical: RS.spacing.xs,
   },
-  title: { fontSize: RS.typography.heading, fontWeight: '700', color: RS.colors.textPrimary },
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
+  newBtn: { backgroundColor: RS.colors.accentGlow, marginRight: RS.spacing.sm },
+  title: { fontSize: RS.typography.heading + 6, fontWeight: '700', color: RS.colors.textPrimary },
+  unreadSummary: { fontSize: 12, fontWeight: '600', color: RS.colors.accent, marginTop: 1 },
   section: { paddingTop: RS.spacing.sm, paddingBottom: RS.spacing.md },
   overline: {
     fontSize: RS.typography.overline, letterSpacing: RS.letterSpacing.widest, color: RS.colors.textMuted,
     paddingHorizontal: RS.spacing.md, paddingBottom: RS.spacing.xs,
   },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm + 4,
+    flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm + 4, minHeight: 76,
     paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.sm + 2,
   },
-  rowBody: { flex: 1, minWidth: 0, gap: 2 },
+  rowBody: { flex: 1, minWidth: 0, gap: 3 },
+  rowBottom: { flexDirection: 'row', alignItems: 'center', gap: RS.spacing.sm },
   rowTop: { flexDirection: 'row', alignItems: 'baseline', gap: RS.spacing.sm },
-  rowTitle: { flexShrink: 1, fontSize: RS.typography.subheading, color: RS.colors.textPrimary, fontWeight: '500' },
+  rowTitle: { flexShrink: 1, fontSize: RS.typography.subheading + 1, color: RS.colors.textPrimary, fontWeight: '500' },
   bold: { fontWeight: '700' },
-  rowSub: { fontSize: 13, color: RS.colors.textSecondary },
-  rowSubUnread: { color: RS.colors.textPrimary },
+  rowSub: { flex: 1, fontSize: 14, lineHeight: 19, color: RS.colors.textSecondary },
+  rowSubUnread: { color: RS.colors.textPrimary, fontWeight: '500' },
   time: { marginLeft: 'auto', fontSize: 12, color: RS.colors.textMuted },
-  timeUnread: { color: RS.colors.textPrimary },
+  timeUnread: { color: RS.colors.accent, fontWeight: '600' },
   unreadPill: {
-    minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: RS.colors.accent,
+    minWidth: 22, height: 22, paddingHorizontal: 7, borderRadius: 11, backgroundColor: RS.colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   unreadLabel: { color: '#fff', fontSize: 11, fontWeight: '700' },
   primaryBtn: {
     backgroundColor: RS.button.filledBg, borderRadius: RS.button.radius,
-    paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.xs + 2,
+    paddingHorizontal: RS.spacing.md, minHeight: 44, justifyContent: 'center',
   },
   primaryLabel: { color: RS.button.filledText, fontWeight: '700', fontSize: 13 },
   secondaryBtn: {
     borderWidth: 1, borderColor: RS.button.secondaryBorder, borderRadius: RS.button.radius,
-    paddingHorizontal: RS.spacing.sm + 4, paddingVertical: RS.spacing.xs + 2,
+    paddingHorizontal: RS.spacing.sm + 4, minHeight: 44, justifyContent: 'center',
   },
   secondaryLabel: { color: RS.button.secondaryText, fontSize: 13 },
   empty: { color: RS.colors.textSecondary, padding: RS.spacing.lg },
