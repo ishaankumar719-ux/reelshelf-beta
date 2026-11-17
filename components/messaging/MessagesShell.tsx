@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import type { ReactNode } from "react"
+import { useLayoutEffect, useRef, type ReactNode } from "react"
 import InboxClient from "./InboxClient"
 import { C } from "./ui"
 
@@ -21,12 +21,18 @@ const SHELL_CSS = `
   background: ${C.base};
   font-family: ${C.font};
 }
-.msg-inbox { border-right: 1px solid ${C.line}; min-height: 0; display: flex; flex-direction: column; background: ${C.base}; }
+.msg-inbox { border-right: 1px solid ${C.line}; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; background: ${C.base}; }
 .msg-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; background: ${C.base}; }
 .msg-only-narrow { display: none !important; }
+/* The floating beta Feedback button would sit on the composer here. */
+.beta-feedback-trigger { display: none !important; }
 .msg-row .msg-report { opacity: 0; transition: opacity 120ms ease; }
 .msg-row:hover .msg-report, .msg-row:focus-within .msg-report { opacity: 1; }
-@media (hover: none) { .msg-row .msg-report { opacity: 1; } }
+/* Touch screens: one Report link per run of messages, always visible. */
+@media (hover: none) {
+  .msg-row .msg-report { display: none; }
+  .msg-row .msg-report.msg-report-end { display: inline; opacity: 1; }
+}
 @media (max-width: 900px) {
   .msg-shell { grid-template-columns: minmax(0, 1fr); }
   .msg-shell[data-mode="thread"] .msg-inbox { display: none; }
@@ -47,8 +53,32 @@ export default function MessagesShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/messages"
   const match = pathname.match(/^\/messages\/([^/]+)/)
   const activeId = match ? decodeURIComponent(match[1]) : null
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  // Fill exactly the space left under whatever sits above (site header,
+  // search bar) and above the phone tab bar, so the composer is always on
+  // screen. The CSS height is the fallback before this runs.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY
+      // The phone tab bar is position: fixed (no offsetParent), so check its box.
+      const tabBar = document.querySelector<HTMLElement>('nav[aria-label="Main navigation"]')
+      const barBox = tabBar && getComputedStyle(tabBar).display !== "none" ? tabBar.getBoundingClientRect() : null
+      const tabBarHeight = barBox && barBox.height > 0 ? barBox.height : 0
+      const gap = tabBarHeight ? tabBarHeight + 8 : 20
+      el.style.height = `${Math.max(360, window.innerHeight - top - gap)}px`
+    }
+    fit()
+    window.addEventListener("resize", fit)
+    const observer = new ResizeObserver(fit)
+    observer.observe(document.body)
+    return () => { window.removeEventListener("resize", fit); observer.disconnect() }
+  }, [])
+
   return (
-    <div className="msg-shell" data-mode={activeId ? "thread" : "inbox"}>
+    <div ref={ref} className="msg-shell" data-mode={activeId ? "thread" : "inbox"}>
       <style>{SHELL_CSS}</style>
       <aside className="msg-inbox" aria-label="Conversations">
         <InboxClient activeId={activeId} />

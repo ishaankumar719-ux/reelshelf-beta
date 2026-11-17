@@ -102,7 +102,7 @@ export default function InboxClient({ activeId = null }: { activeId?: string | n
             {invites.map((invite) => (
               <div key={invite.conversation_id} style={{ ...rowStyle, background: C.panel, border: `1px solid ${C.line}` }}>
                 <GroupGlyph size={44} />
-                <span style={{ display: "grid", flex: 1, minWidth: 0, gap: 2 }}>
+                <span style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", flex: 1, minWidth: 0, gap: 2 }}>
                   <span style={{ color: C.text, fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{invite.title}</span>
                   <span style={{ color: C.muted, fontSize: 13 }}>
                     {invite.member_count} {invite.member_count === 1 ? "member" : "members"}
@@ -165,8 +165,8 @@ function InboxRow({ c, userId, active }: { c: ConversationSummary; userId: strin
       }}
     >
       {c.kind === "group" ? <GroupGlyph size={44} /> : <Avatar url={c.other_avatar_url} name={name} size={44} />}
-      <span style={{ display: "grid", flex: 1, minWidth: 0, gap: 3 }}>
-        <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+      <span style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", flex: 1, minWidth: 0, gap: 3 }}>
+        <span style={{ display: "flex", gap: 8, alignItems: "baseline", minWidth: 0 }}>
           <span style={{ color: C.text, fontSize: 15, fontWeight: unread ? 700 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {name}
           </span>
@@ -175,7 +175,7 @@ function InboxRow({ c, userId, active }: { c: ConversationSummary; userId: strin
             {shortTimestamp(c.last_message_at)}
           </time>
         </span>
-        <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
           <span style={{ flex: 1, minWidth: 0, color: unread ? C.text : C.muted, fontSize: 13, fontWeight: unread ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {preview}
           </span>

@@ -149,6 +149,22 @@ export default function ConversationClient({ conversationId }: { conversationId:
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [messages, staged])
 
+  // With unread messages, open at the "new messages" divider instead (once).
+  const jumpedToDivider = useRef(false)
+  useLayoutEffect(() => {
+    const el = listRef.current
+    if (!el || !divider || jumpedToDivider.current) return
+    const mark = el.querySelector<HTMLElement>('[data-testid="unread-divider"]')
+    if (!mark) return
+    jumpedToDivider.current = true
+    if (el.scrollHeight - el.clientHeight <= 0) return
+    const target = mark.offsetTop - el.offsetTop - 8
+    if (target < el.scrollHeight - el.clientHeight) {
+      el.scrollTop = target
+      stickToBottom.current = false
+    }
+  }, [divider, messages])
+
   // Free local previews when they're no longer shown.
   useEffect(() => () => { if (staged) URL.revokeObjectURL(staged.previewUrl) }, [staged])
 
@@ -368,11 +384,11 @@ export default function ConversationClient({ conversationId }: { conversationId:
           </span>
         </span>
         {isGroup ? (
-          <button type="button" style={pillButton()} onClick={() => setPanel("members")}>Members</button>
+          <button type="button" style={{ ...pillButton(), height: 44 }} onClick={() => setPanel("members")}>Members</button>
         ) : summary.other_user_id ? (
           <button
             type="button"
-            style={pillButton()}
+            style={{ ...pillButton(), height: 44 }}
             onClick={() => client && summary.other_user_id && act(
               () => (summary.i_blocked ? unblockUser(client, summary.other_user_id!) : blockUser(client, summary.other_user_id!)),
               () => void refreshSummary(),
@@ -473,7 +489,7 @@ export default function ConversationClient({ conversationId }: { conversationId:
                 }}
                 maxLength={staged ? CAPTION_MAX_LENGTH : MESSAGE_MAX_LENGTH}
                 rows={1}
-                placeholder={staged ? "Add a caption (optional)" : `Message ${name}`}
+                placeholder={staged ? "Add a caption (optional)" : "Message"}
                 aria-label={staged ? "Caption" : "Message"}
                 style={{ ...textInput, border: "none", background: "transparent", resize: "none", maxHeight: 160, minHeight: 42, padding: "11px 14px", fontFamily: C.font }}
               />
@@ -597,7 +613,7 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
     content = <PhotoView src={pending.previewUrl} width={pending.width} height={pending.height} />
     if (pending.kind === "video") {
       content = (
-        <span style={{ position: "relative", display: "block" }}>
+        <span style={{ position: "relative", display: "block", maxWidth: "100%" }}>
           <VideoView src={null} poster={null} width={pending.width} height={pending.height} durationMs={pending.durationMs} />
           <video src={pending.previewUrl} muted playsInline preload="metadata" aria-hidden="true"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} />
@@ -626,7 +642,7 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
   const status = message.state === "failed" ? (
     <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
       <span style={{ color: C.danger }}>{pending ? "Upload failed" : "Not sent"}</span>
-      <button type="button" onClick={onRetry} style={linkButton}>Retry</button>
+      <button type="button" onClick={onRetry} style={{ ...linkButton, padding: "12px 6px", margin: "-12px -6px" }}>Retry</button>
     </span>
   ) : message.state === "sending" ? (
     pending ? (pending.progress === "uploading" ? `Uploading ${pending.kind === "video" ? "video" : "photo"}…` : "Sending…") : "Sending…"
@@ -638,7 +654,7 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
       {showAvatar ? (
         endsRun ? <Avatar url={senderAvatar} name={senderName} size={30} /> : <span style={{ width: 30, flexShrink: 0 }} />
       ) : null}
-      <div style={{ display: "grid", justifyItems: mine ? "end" : "start", gap: 3, minWidth: 0, maxWidth: "min(78%, 560px)", opacity: message.state === "sending" && !pending ? 0.7 : 1 }}>
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 3, minWidth: 0, maxWidth: "min(78%, 560px)", opacity: message.state === "sending" && !pending ? 0.7 : 1 }}>
         {isGroup && !mine && startsRun ? (
           <span style={{ fontSize: 12, fontWeight: 700, color: C.text, paddingLeft: 12 }}>{senderName}</span>
         ) : null}
@@ -649,7 +665,7 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
             border: message.state === "failed" ? `1px solid ${C.danger}` : "1px solid transparent",
           }}>{content}</div>
         ) : (
-          <div style={{ borderRadius: 18, outline: message.state === "failed" ? `1px solid ${C.danger}` : "none", position: "relative" }}>
+          <div style={{ borderRadius: 18, outline: message.state === "failed" ? `1px solid ${C.danger}` : "none", position: "relative", maxWidth: "100%" }}>
             {content}
             {pending && message.state === "sending" ? (
               <span style={{ position: "absolute", inset: 0, borderRadius: 16, background: "rgba(7,7,11,0.45)", display: "grid", placeItems: "center" }}>
@@ -665,13 +681,14 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
             background: mine ? C.mine : C.theirs, color: C.text, fontSize: 15, lineHeight: 1.42,
           }}>{caption}</div>
         ) : null}
-        {status || (!mine && message.state === "sent") ? (
-          <span style={{ display: "flex", gap: 10, fontSize: 11, color: C.faint, padding: "0 6px", minHeight: status ? undefined : 0 }}>
-            {status}
-            {!mine && message.state === "sent" ? (
-              <button type="button" onClick={onReport} className="msg-report" style={linkButton}>Report</button>
-            ) : null}
-          </span>
+        {status ? (
+          <span style={{ display: "flex", gap: 10, fontSize: 11, color: C.faint, padding: "0 6px" }}>{status}</span>
+        ) : null}
+        {!mine && message.state === "sent" ? (
+          <button type="button" onClick={onReport} className={endsRun ? "msg-report msg-report-end" : "msg-report"}
+            style={{ ...linkButton, position: "absolute", left: "100%", bottom: status ? 8 : -8, marginLeft: 2, padding: "14px 8px", whiteSpace: "nowrap" }}>
+            Report
+          </button>
         ) : null}
       </div>
     </div>

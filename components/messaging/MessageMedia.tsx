@@ -70,7 +70,7 @@ const MAX_H = 340
 export function GifView({ gif }: { gif: GifAttachment }) {
   const box = fitMedia(gif.width, gif.height, 260, 260)
   return (
-    <span style={{ position: "relative", display: "block", width: box.width, height: box.height, borderRadius: 16, overflow: "hidden", background: C.elevated }}>
+    <span style={{ position: "relative", display: "block", width: box.width, maxWidth: "100%", aspectRatio: `${box.width} / ${box.height}`, borderRadius: 16, overflow: "hidden", background: C.elevated }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- animated GIPHY media */}
       <img src={gif.url} alt={gif.title ? `GIF: ${gif.title}` : "GIF"} width={box.width} height={box.height}
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -92,7 +92,7 @@ export function PhotoView({ src, width, height, onOpen }: {
       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
   )
   const frame: React.CSSProperties = {
-    display: "block", width: box.width, height: box.height, borderRadius: 16, overflow: "hidden",
+    display: "block", width: box.width, maxWidth: "100%", aspectRatio: `${box.width} / ${box.height}`, borderRadius: 16, overflow: "hidden",
     background: C.elevated, border: "none", padding: 0, cursor: onOpen ? "zoom-in" : "default",
   }
   return onOpen && !failed
@@ -106,7 +106,7 @@ export function VideoView({ src, poster, width, height, durationMs }: {
   const [playing, setPlaying] = useState(false)
   const box = fitMedia(width, height, MAX_W, MAX_H)
   const frame: React.CSSProperties = {
-    position: "relative", display: "block", width: box.width, height: box.height, borderRadius: 16,
+    position: "relative", display: "block", width: box.width, maxWidth: "100%", aspectRatio: `${box.width} / ${box.height}`, borderRadius: 16,
     overflow: "hidden", background: "#000",
   }
   if (playing && src) {
