@@ -61,8 +61,32 @@ export interface ChatMessage {
   seq: number
   created_at: string
   /** Missing on rows from before title sharing; treat as "text". */
-  kind?: "text" | "title"
-  attachment?: TitleAttachment | null
+  kind?: MessageKind
+  attachment?: TitleAttachment | GifAttachment | MediaAttachment | Record<string, unknown> | null
+}
+
+export type MessageKind = "text" | "title" | "gif" | "image" | "video"
+
+/** A GIF picked from GIPHY. `url` is always on GIPHY's own media hosts. */
+export interface GifAttachment {
+  giphy_id: string
+  url: string
+  width: number
+  height: number
+  title: string | null
+}
+
+/** A photo or video in the private message-media bucket. Never a public URL:
+ *  read it with the reader's own session (see mediaRequest). */
+export interface MediaAttachment {
+  path: string
+  thumb_path: string | null
+  width: number | null
+  height: number | null
+  duration_ms: number | null
+  mime: string | null
+  size: number | null
+  caption: string | null
 }
 
 export interface ConversationMember {
@@ -120,6 +144,11 @@ const ERROR_COPY: Record<string, string> = {
   invalid_media_title: "That title can't be shared.",
   invalid_year: "That title can't be shared.",
   note_too_long: "Keep the note under 500 characters.",
+  invalid_gif: "That GIF can't be sent.",
+  invalid_media: "That file can't be sent. Photos: JPEG, PNG, WebP or GIF. Videos: MP4 or MOV.",
+  media_too_large: "That file is too big. Photos up to 10 MB, videos up to 50 MB.",
+  media_not_uploaded: "The upload didn't finish. Try again.",
+  caption_too_long: "Keep the caption under 1,000 characters.",
 }
 
 export class MessagingError extends Error {
@@ -298,7 +327,7 @@ export function isOpenLibraryWorkId(id: string): boolean {
  *  app version doesn't understand, which then shows its readable body). */
 export function getTitleAttachment(message: Pick<ChatMessage, "kind" | "attachment">): TitleAttachment | null {
   if (message.kind !== "title" || !message.attachment) return null
-  const a = message.attachment
+  const a = message.attachment as Partial<TitleAttachment>
   if (a.media_type !== "film" && a.media_type !== "tv" && a.media_type !== "book") return null
   if (typeof a.media_id !== "string" || typeof a.title !== "string" || !a.title) return null
   return {
@@ -341,6 +370,258 @@ export function shareTitle(
 export async function listShareDestinations(client: SupabaseClient) {
   const rows = await listConversations(client)
   return rows.filter((c) => c.my_status === "active" && c.can_send)
+}
+
+// ── GIFs, photos and videos ──────────────────────────────────────────────────
+// Format and server checks: supabase/migrations/20261117_message_media.sql.
+
+export const MEDIA_BUCKET = "message-media"
+export const IMAGE_MAX_BYTES = 10 * 1024 * 1024
+export const VIDEO_MAX_BYTES = 50 * 1024 * 1024
+export const CAPTION_MAX_LENGTH = 1000
+export const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const
+export const VIDEO_MIME = ["video/mp4", "video/quicktime"] as const
+
+const MIME_EXT: Record<string, string> = {
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  "video/mp4": "mp4", "video/quicktime": "mov",
+}
+
+/** Checks a picked or dropped file before anything is uploaded. Returns the
+ *  message kind, or the copy to show when it can't be sent. */
+export function classifyMediaFile(mime: string | null | undefined, size: number | null | undefined):
+  { kind: "image" | "video" } | { error: string } {
+  const type = (mime ?? "").toLowerCase()
+  if ((IMAGE_MIME as readonly string[]).includes(type)) {
+    if (size != null && size > IMAGE_MAX_BYTES) return { error: "Photos can be up to 10 MB." }
+    return { kind: "image" }
+  }
+  if ((VIDEO_MIME as readonly string[]).includes(type)) {
+    if (size != null && size > VIDEO_MAX_BYTES) return { error: "Videos can be up to 50 MB." }
+    return { kind: "video" }
+  }
+  return { error: "Send a photo (JPEG, PNG, WebP or GIF) or a video (MP4 or MOV)." }
+}
+
+/** Where an upload for this message goes: one fixed path per client id, so a
+ *  retry writes (or finds) the same object instead of a second copy. */
+export function mediaPaths(conversationId: string, userId: string, clientId: string, mime: string) {
+  const ext = MIME_EXT[mime.toLowerCase()] ?? "bin"
+  const base = `${conversationId}/${userId}/${clientId}`
+  return { path: `${base}.${ext}`, thumbPath: `${base}-thumb.jpg` }
+}
+
+/** Uploads one object. An object already at that path (an earlier attempt
+ *  that got that far) counts as uploaded. */
+export async function uploadMediaObject(
+  client: SupabaseClient,
+  path: string,
+  body: Blob | ArrayBuffer | Uint8Array,
+  contentType: string,
+): Promise<void> {
+  const { error } = await client.storage.from(MEDIA_BUCKET).upload(path, body, { contentType, upsert: false })
+  if (!error) return
+  const status = (error as { statusCode?: string | number }).statusCode
+  if (String(status) === "409" || /already exists|duplicate/i.test(error.message)) return
+  throw new MessagingError("upload_failed", "The upload didn't finish. Check your connection and try again.")
+}
+
+export interface MediaSend {
+  kind: "image" | "video"
+  path: string
+  thumbPath: string | null
+  width: number | null
+  height: number | null
+  durationMs: number | null
+  caption: string | null
+}
+
+/** Posts a photo or video whose file(s) are already uploaded. Idempotent on
+ *  clientId like every other send. */
+export function sendMedia(client: SupabaseClient, conversationId: string, media: MediaSend, clientId: string) {
+  return rpc<ChatMessage>(client, "send_media", {
+    p_conversation: conversationId,
+    p_client_id: clientId,
+    p_kind: media.kind,
+    p_path: media.path,
+    p_thumb_path: media.thumbPath,
+    p_width: media.width ? Math.round(media.width) : null,
+    p_height: media.height ? Math.round(media.height) : null,
+    p_duration_ms: media.durationMs != null ? Math.round(media.durationMs) : null,
+    p_caption: media.caption?.trim() ? media.caption.trim() : null,
+  })
+}
+
+export interface GifPick {
+  giphy_id: string
+  url: string
+  width: number
+  height: number
+  title: string | null
+}
+
+export function sendGif(client: SupabaseClient, conversationId: string, gif: GifPick, clientId: string) {
+  return rpc<ChatMessage>(client, "send_gif", {
+    p_conversation: conversationId,
+    p_client_id: clientId,
+    p_giphy_id: gif.giphy_id,
+    p_url: gif.url,
+    p_width: Math.round(gif.width),
+    p_height: Math.round(gif.height),
+    p_title: gif.title,
+  })
+}
+
+export function getGifAttachment(message: Pick<ChatMessage, "kind" | "attachment">): GifAttachment | null {
+  if (message.kind !== "gif" || !message.attachment) return null
+  const a = message.attachment as Partial<GifAttachment>
+  if (typeof a.url !== "string" || !/^https:\/\/(media[0-9]?\.giphy\.com|i\.giphy\.com)\//.test(a.url)) return null
+  return {
+    giphy_id: String(a.giphy_id ?? ""),
+    url: a.url,
+    width: typeof a.width === "number" && a.width > 0 ? a.width : 200,
+    height: typeof a.height === "number" && a.height > 0 ? a.height : 200,
+    title: typeof a.title === "string" ? a.title : null,
+  }
+}
+
+export function getMediaAttachment(message: Pick<ChatMessage, "kind" | "attachment">): (MediaAttachment & { kind: "image" | "video" }) | null {
+  if ((message.kind !== "image" && message.kind !== "video") || !message.attachment) return null
+  const a = message.attachment as Partial<MediaAttachment>
+  if (typeof a.path !== "string" || !a.path) return null
+  if (message.kind === "video" && typeof a.thumb_path !== "string") return null
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null)
+  return {
+    kind: message.kind,
+    path: a.path,
+    thumb_path: typeof a.thumb_path === "string" ? a.thumb_path : null,
+    width: num(a.width),
+    height: num(a.height),
+    duration_ms: num(a.duration_ms),
+    mime: typeof a.mime === "string" ? a.mime : null,
+    size: num(a.size),
+    caption: typeof a.caption === "string" && a.caption ? a.caption : null,
+  }
+}
+
+/** The request that reads a private photo or video with the reader's own
+ *  token. Storage checks current membership on every request, so someone who
+ *  left or was removed gets nothing even with an old link. */
+export function mediaRequest(supabaseUrl: string, apiKey: string, accessToken: string, path: string) {
+  return {
+    uri: `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/authenticated/${MEDIA_BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`,
+    headers: { Authorization: `Bearer ${accessToken}`, apikey: apiKey },
+  }
+}
+
+/** Box for a photo, video or GIF in the thread: fits within maxW × maxH and
+ *  keeps the aspect ratio (square when the size isn't known). */
+export function fitMedia(width: number | null, height: number | null, maxW: number, maxH: number) {
+  const w = width && width > 0 ? width : 1
+  const h = height && height > 0 ? height : 1
+  const scale = Math.min(maxW / w, maxH / h)
+  return { width: Math.round(w * scale), height: Math.round(h * scale) }
+}
+
+/** "0:24", "12:05". */
+export function formatDuration(ms: number | null): string {
+  if (ms == null || ms < 0) return ""
+  const total = Math.round(ms / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+}
+
+// ── Thread layout ────────────────────────────────────────────────────────────
+
+export type ThreadItem<T> =
+  | { type: "day"; key: string; label: string }
+  | { type: "unread"; key: string; count: number }
+  | {
+      type: "message"
+      key: string
+      message: T
+      mine: boolean
+      /** First message of a run from this sender: show their name (groups). */
+      startsRun: boolean
+      /** Last message of a run: show the avatar and the time. */
+      endsRun: boolean
+    }
+
+const RUN_GAP_MS = 5 * 60_000
+
+/** "Today", "Yesterday", "Monday", "12 Oct", "12 Oct 2024". */
+export function dayLabel(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso)
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((start(now) - start(d)) / 86_400_000)
+  if (days <= 0) return "Today"
+  if (days === 1) return "Yesterday"
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: "long" })
+  return d.toLocaleDateString(undefined, {
+    day: "numeric", month: "short", ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  })
+}
+
+/** Turns messages (oldest first) into what the thread draws: day headers,
+ *  one "new messages" divider before the first unread message, and runs of
+ *  messages from the same sender within five minutes. `firstUnreadSeq` is
+ *  fixed when the thread opens, so the divider doesn't move while you read. */
+export function buildThread<T extends { client_id: string; sender_id: string | null; created_at: string; seq: number }>(
+  messages: T[],
+  userId: string | null,
+  firstUnreadSeq: number | null,
+  unreadCount = 0,
+  now: Date = new Date(),
+): ThreadItem<T>[] {
+  const out: ThreadItem<T>[] = []
+  let lastDay = ""
+  let dividerDone = false
+  messages.forEach((m, i) => {
+    const day = new Date(m.created_at).toDateString()
+    if (day !== lastDay) {
+      out.push({ type: "day", key: `day-${day}`, label: dayLabel(m.created_at, now) })
+      lastDay = day
+    }
+    if (!dividerDone && firstUnreadSeq != null && m.seq >= firstUnreadSeq && m.sender_id !== userId) {
+      out.push({ type: "unread", key: "unread", count: unreadCount })
+      dividerDone = true
+    }
+    const prev = messages[i - 1]
+    const next = messages[i + 1]
+    const sameRun = (a: T | undefined, b: T | undefined) =>
+      !!a && !!b && a.sender_id === b.sender_id &&
+      new Date(a.created_at).toDateString() === new Date(b.created_at).toDateString() &&
+      Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < RUN_GAP_MS
+    const nextIsDivider = !dividerDone && !!next && firstUnreadSeq != null && next.seq >= firstUnreadSeq && next.sender_id !== userId
+    out.push({
+      type: "message",
+      key: m.client_id,
+      message: m,
+      mine: m.sender_id === userId,
+      startsRun: !sameRun(prev, m) || out[out.length - 1]?.type === "unread",
+      endsRun: !sameRun(m, next) || nextIsDivider,
+    })
+  })
+  return out
+}
+
+/** The seq of the first unread message when a thread opens: the
+ *  `unreadCount`-th newest message from someone else. Null when all read. */
+export function firstUnreadSeq<T extends { sender_id: string | null; seq: number }>(
+  messages: T[], userId: string | null, unreadCount: number,
+): number | null {
+  if (unreadCount <= 0) return null
+  let seen = 0
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].sender_id === userId) continue
+    seen += 1
+    if (seen === unreadCount) return messages[i].seq
+  }
+  return messages.find((m) => m.sender_id !== userId)?.seq ?? null
+}
+
+/** Time under a message: "14:05". */
+export function messageTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
 export function markRead(client: SupabaseClient, conversationId: string, uptoSeq?: number) {

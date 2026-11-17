@@ -2,15 +2,25 @@
 
 import type { CSSProperties, ReactNode } from "react"
 
+// The site's own tokens (app/globals.css --rs-*), the same values the iPhone
+// app's constants/theme.ts mirrors. Accent green is for actions and live
+// state only: Send, unread counts, the new-messages divider.
 export const C = {
   text: "rgba(255,255,255,0.92)",
   muted: "rgba(255,255,255,0.55)",
-  faint: "rgba(255,255,255,0.35)",
+  faint: "rgba(255,255,255,0.40)",
   line: "rgba(255,255,255,0.08)",
+  lineStrong: "rgba(255,255,255,0.18)",
   panel: "rgba(255,255,255,0.03)",
-  accent: "#e5484d",
-  mine: "rgba(255,255,255,0.14)",
-  theirs: "rgba(255,255,255,0.05)",
+  base: "#07070b",
+  card: "#0d0d14",
+  elevated: "#131320",
+  accent: "#1d9e75",
+  accentSoft: "rgba(29,158,117,0.14)",
+  mine: "rgba(29,158,117,0.22)",
+  theirs: "#131320",
+  danger: "#ff8a8a",
+  font: 'var(--rs-font, "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif)',
 }
 
 export const pillButton = (primary = false): CSSProperties => ({
