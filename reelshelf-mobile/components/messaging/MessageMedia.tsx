@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RS } from '@/constants/theme';
 import { fitMedia, formatDuration, type GifAttachment } from '@/lib/messaging/api';
@@ -66,28 +66,35 @@ export function VideoThumb({ poster, width, height, durationMs, onPlay, onLongPr
 
 /** Full-screen photo. */
 export function PhotoViewer({ source, onClose }: { source: Source | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={!!source} animationType="fade" onRequestClose={onClose} presentationStyle="overFullScreen" transparent>
-      <SafeAreaView style={styles.viewer}>
-        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo" style={styles.close} hitSlop={8}>
-          <MaterialIcons name="close" size={26} color="#fff" />
-        </Pressable>
+      <View style={[styles.viewer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.bar}>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo" style={styles.close}>
+            <MaterialIcons name="close" size={26} color="#fff" />
+          </Pressable>
+        </View>
         {source ? <Image source={source} style={{ flex: 1 }} contentFit="contain" /> : null}
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 /** Full-screen player with the system playback controls. */
 export function VideoPlayerModal({ source, onClose }: { source: Source | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={!!source} animationType="slide" onRequestClose={onClose} presentationStyle="fullScreen">
-      <SafeAreaView style={styles.viewer}>
-        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close video" style={styles.close} hitSlop={8}>
-          <MaterialIcons name="close" size={26} color="#fff" />
-        </Pressable>
+      <View style={[styles.viewer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* Its own bar, so it never sits on top of the player's controls. */}
+        <View style={styles.bar}>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close video" style={styles.close}>
+            <MaterialIcons name="close" size={26} color="#fff" />
+          </Pressable>
+        </View>
         {source ? <Player source={source} /> : null}
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -110,8 +117,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   viewer: { flex: 1, backgroundColor: '#000' },
+  bar: { height: 56, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 12 },
   close: {
-    position: 'absolute', top: 54, right: 16, zIndex: 2, width: 44, height: 44, borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center',
   },
 });
