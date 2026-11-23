@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider"
 import { createClient } from "@/lib/supabase/client"
 import {
   conversationName,
+  inboxPreview,
   listConversations,
   respondToInvite,
   shortTimestamp,
@@ -149,9 +150,7 @@ export default function InboxClient({ activeId = null }: { activeId?: string | n
 function InboxRow({ c, userId, active }: { c: ConversationSummary; userId: string | null; active: boolean }) {
   const name = conversationName(c)
   const unread = c.unread_count > 0 && !active
-  const preview = c.last_message_body
-    ? `${c.last_message_sender_id === userId ? "You: " : ""}${c.last_message_body}`
-    : c.kind === "group" ? "No messages yet" : ""
+  const preview = inboxPreview(c, userId)
   return (
     <Link
       href={`/messages/${c.conversation_id}`}

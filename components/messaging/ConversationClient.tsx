@@ -12,6 +12,7 @@ import {
   buildThread,
   classifyMediaFile,
   conversationName,
+  discardMediaUpload,
   fetchMessages,
   firstUnreadSeq,
   getConversation,
@@ -237,6 +238,17 @@ export default function ConversationClient({ conversationId }: { conversationId:
     }
   }
 
+  /** Drops a photo or video that failed to send, and deletes whatever part
+   *  of it reached storage. */
+  async function discard(local: LocalMessage) {
+    setMessages((prev) => prev.filter((m) => m.client_id !== local.client_id))
+    if (local.pending) URL.revokeObjectURL(local.pending.previewUrl)
+    const client = createClient()
+    if (!client || !userId || !local.pending) return
+    const paths = mediaPaths(conversationId, userId, local.client_id, local.pending.file.type)
+    await discardMediaUpload(client, local.pending.kind === "video" ? [paths.path, paths.thumbPath] : [paths.path])
+  }
+
   function enqueue(partial: Pick<LocalMessage, "body"> & Partial<LocalMessage>) {
     if (!userId) return
     const local: LocalMessage = {
@@ -447,6 +459,7 @@ export default function ConversationClient({ conversationId }: { conversationId:
                 senderName={memberName(m.sender_id)}
                 senderAvatar={m.sender_id ? members[m.sender_id]?.avatar_url ?? null : null}
                 onRetry={() => void deliver(m)}
+                onDiscard={() => void discard(m)}
                 onReport={() => setReporting(m)}
                 onOpenPhoto={setLightbox}
               />
@@ -588,7 +601,7 @@ function StagedPreview({ media, onRemove }: { media: PreparedMedia; onRemove: ()
   )
 }
 
-function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, senderAvatar, onRetry, onReport, onOpenPhoto }: {
+function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, senderAvatar, onRetry, onDiscard, onReport, onOpenPhoto }: {
   message: LocalMessage
   mine: boolean
   isGroup: boolean
@@ -597,6 +610,7 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
   senderName: string
   senderAvatar: string | null
   onRetry: () => void
+  onDiscard: () => void
   onReport: () => void
   onOpenPhoto: (src: string) => void
 }) {
@@ -642,7 +656,10 @@ function MessageRow({ message, mine, isGroup, startsRun, endsRun, senderName, se
   const status = message.state === "failed" ? (
     <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
       <span style={{ color: C.danger }}>{pending ? "Upload failed" : "Not sent"}</span>
-      <button type="button" onClick={onRetry} style={{ ...linkButton, padding: "12px 6px", margin: "-12px -6px" }}>Retry</button>
+      <button type="button" onClick={onRetry} data-testid="retry" style={{ ...linkButton, padding: "12px 6px", margin: "-12px -6px" }}>Retry</button>
+      {pending ? (
+        <button type="button" onClick={onDiscard} data-testid="discard" style={{ ...linkButton, padding: "12px 6px", margin: "-12px -6px" }}>Discard</button>
+      ) : null}
     </span>
   ) : message.state === "sending" ? (
     pending ? (pending.progress === "uploading" ? `Uploading ${pending.kind === "video" ? "video" : "photo"}…` : "Sending…") : "Sending…"
