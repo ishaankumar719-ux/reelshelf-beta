@@ -8,6 +8,7 @@ import { Avatar, GroupGlyph } from '@/components/messaging/Avatars';
 import { RS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  inboxPreview,
   conversationName,
   listConversations,
   respondToInvite,
@@ -142,9 +143,7 @@ export default function MessagesInboxScreen() {
 function InboxRow({ c, userId }: { c: ConversationSummary; userId: string | null }) {
   const name = conversationName(c);
   const unread = c.unread_count > 0;
-  const preview = c.last_message_body
-    ? `${c.last_message_sender_id === userId ? 'You: ' : ''}${c.last_message_body}`
-    : c.kind === 'group' ? 'No messages yet' : '';
+  const preview = inboxPreview(c, userId);
   return (
     <Pressable style={styles.row} onPress={() => router.push(`/messages/${c.conversation_id}`)} testID="inbox-row"
       accessibilityLabel={`${name}${unread ? `, ${c.unread_count} unread` : ''}`}>

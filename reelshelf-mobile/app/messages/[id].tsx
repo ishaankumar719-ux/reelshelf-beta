@@ -32,6 +32,7 @@ import {
   blockUser,
   buildThread,
   conversationName,
+  discardMediaUpload,
   fetchMessages,
   firstUnreadSeq,
   getConversation,
@@ -250,6 +251,15 @@ export default function ConversationScreen() {
     }
   }
 
+  /** Drops a photo or video that failed to send, and deletes whatever part
+   *  of it reached storage. */
+  async function discard(local: LocalMessage) {
+    setMessages((prev) => prev.filter((m) => m.client_id !== local.client_id));
+    if (!supabase || !userId || !local.pending || !conversationId) return;
+    const paths = mediaPaths(conversationId, userId, local.client_id, local.pending.mime);
+    await discardMediaUpload(supabase, local.pending.kind === 'video' ? [paths.path, paths.thumbPath] : [paths.path]);
+  }
+
   function enqueue(partial: Pick<LocalMessage, 'body'> & Partial<LocalMessage>) {
     if (!userId || !conversationId) return;
     const local: LocalMessage = {
@@ -425,6 +435,7 @@ export default function ConversationScreen() {
               memberAvatar={(id) => (id ? members[id]?.avatar_url ?? null : null)}
               src={src}
               onRetry={(m) => void deliver(m)}
+              onDiscard={(m) => void discard(m)}
               onLongPress={(m) => void onMessageLongPress(m)}
               onOpenPhoto={setViewPhoto}
               onPlayVideo={setPlayVideo}
@@ -529,13 +540,14 @@ function TopBar({ title, onBack }: { title: string; onBack: () => void }) {
   );
 }
 
-function ThreadRow({ item, isGroup, memberName, memberAvatar, src, onRetry, onLongPress, onOpenPhoto, onPlayVideo }: {
+function ThreadRow({ item, isGroup, memberName, memberAvatar, src, onRetry, onDiscard, onLongPress, onOpenPhoto, onPlayVideo }: {
   item: ThreadItem<LocalMessage>;
   isGroup: boolean;
   memberName: (id: string | null) => string;
   memberAvatar: (id: string | null) => string | null;
   src: (path: string) => { uri: string; headers: Record<string, string> } | null;
   onRetry: (m: LocalMessage) => void;
+  onDiscard: (m: LocalMessage) => void;
   onLongPress: (m: LocalMessage) => void;
   onOpenPhoto: (path: string) => void;
   onPlayVideo: (path: string) => void;
@@ -619,9 +631,18 @@ function ThreadRow({ item, isGroup, memberName, memberAvatar, src, onRetry, onLo
           </View>
         ) : null}
         {failed ? (
-          <Pressable onPress={() => onRetry(message)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry sending" style={styles.retry}>
-            <Text style={styles.failed}>{pending ? 'Upload failed · Tap to retry' : 'Not sent · Tap to retry'}</Text>
-          </Pressable>
+          <View style={styles.failedRow}>
+            <Pressable onPress={() => onRetry(message)} accessibilityRole="button" accessibilityLabel="Retry sending"
+              style={styles.retry} testID="retry-send">
+              <Text style={styles.failed}>{pending ? 'Upload failed · Retry' : 'Not sent · Retry'}</Text>
+            </Pressable>
+            {pending ? (
+              <Pressable onPress={() => onDiscard(message)} accessibilityRole="button" accessibilityLabel="Discard this upload"
+                style={styles.retry} testID="discard-send">
+                <Text style={styles.discard}>Discard</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : message.state === 'sending' ? (
           <Text style={styles.meta}>{pending ? (pending.progress === 'uploading' ? `Uploading ${pending.kind === 'video' ? 'video' : 'photo'}…` : 'Sending…') : 'Sending…'}</Text>
         ) : endsRun ? (
@@ -720,7 +741,9 @@ const styles = StyleSheet.create({
   sharedNote: { paddingHorizontal: 6, paddingTop: 8, paddingBottom: 2 },
   uploading: { borderRadius: 16, backgroundColor: 'rgba(7,7,7,0.45)', alignItems: 'center', justifyContent: 'center' },
   meta: { fontSize: 11, color: RS.colors.textMuted, marginHorizontal: 6 },
-  retry: { minHeight: 28, justifyContent: 'center' },
+  failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  retry: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  discard: { fontSize: 12, color: RS.colors.textSecondary, fontWeight: '600', textDecorationLine: 'underline' },
   failed: { fontSize: 12, color: '#ff8a8a', marginHorizontal: 6, fontWeight: '600' },
   composer: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 6,

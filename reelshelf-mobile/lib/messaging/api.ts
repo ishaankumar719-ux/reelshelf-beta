@@ -31,6 +31,21 @@ export interface ConversationSummary {
   unread_count: number
   i_blocked: boolean
   can_send: boolean
+  /** Display name (else username) of whoever sent the last message. Missing
+   *  from servers older than 20261123_message_previews_and_media_cleanup. */
+  last_message_sender_name?: string | null
+}
+
+/** The inbox's one-line preview: "You: …" for your own last message, and in
+ *  groups the sender's name ("Maya: …") so you know who said it. */
+export function inboxPreview(c: ConversationSummary, userId: string | null): string {
+  if (!c.last_message_body) return c.kind === "group" ? "No messages yet" : ""
+  if (c.last_message_sender_id && c.last_message_sender_id === userId) return `You: ${c.last_message_body}`
+  if (c.kind === "group") {
+    const name = c.last_message_sender_id ? c.last_message_sender_name?.trim() : null
+    return `${name || (c.last_message_sender_id ? "Someone" : "Former member")}: ${c.last_message_body}`
+  }
+  return c.last_message_body
 }
 
 export type SharedMediaType = "film" | "tv" | "book"
@@ -424,6 +439,18 @@ export async function uploadMediaObject(
   const status = (error as { statusCode?: string | number }).statusCode
   if (String(status) === "409" || /already exists|duplicate/i.test(error.message)) return
   throw new MessagingError("upload_failed", "The upload didn't finish. Check your connection and try again.")
+}
+
+/** Deletes the file(s) of a photo or video that was never posted (Discard
+ *  after a failed send). Storage only allows this for your own upload while
+ *  no message uses it; anything left over is removed by the hourly
+ *  message-media-sweeper after 24 hours. Never throws. */
+export async function discardMediaUpload(client: SupabaseClient, paths: string[]): Promise<void> {
+  try {
+    await client.storage.from(MEDIA_BUCKET).remove(paths)
+  } catch {
+    // The sweeper catches whatever is left.
+  }
 }
 
 export interface MediaSend {
