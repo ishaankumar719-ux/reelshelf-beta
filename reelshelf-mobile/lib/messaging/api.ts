@@ -534,9 +534,14 @@ export function getMediaAttachment(message: Pick<ChatMessage, "kind" | "attachme
 /** The request that reads a private photo or video with the reader's own
  *  token. Storage checks current membership on every request, so someone who
  *  left or was removed gets nothing even with an old link. */
-export function mediaRequest(supabaseUrl: string, apiKey: string, accessToken: string, path: string) {
+// Supabase's CDN caches authenticated downloads per URL and token, so someone
+// removed from a chat could keep loading a URL they already opened until their
+// token expires. A `cacheNonce` makes the request go to storage, where the
+// membership policy runs. Pass a new nonce each time a chat is opened.
+export function mediaRequest(supabaseUrl: string, apiKey: string, accessToken: string, path: string, nonce?: string) {
+  const query = nonce ? `?cacheNonce=${encodeURIComponent(nonce)}` : ""
   return {
-    uri: `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/authenticated/${MEDIA_BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`,
+    uri: `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/authenticated/${MEDIA_BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}${query}`,
     headers: { Authorization: `Bearer ${accessToken}`, apikey: apiKey },
   }
 }
@@ -688,70 +693,117 @@ export function isAdmin(client: SupabaseClient) {
 // inserts for conversations you're an active member of, and changes to your
 // own membership rows.
 
-/** Logs realtime problems (the clients refetch on focus/foreground, so a
- *  dropped channel degrades to "updates when you come back", not data loss). */
-function logChannelStatus(label: string) {
-  return (status: string, error?: Error) => {
-    // CLOSED is a normal unsubscribe (leaving a screen); only errors matter.
-    if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT") return
-    console.warn(`[messaging] realtime ${label}: ${status}`, error?.message ?? "")
-  }
-}
+/** Joins a realtime channel with the signed-in user's CURRENT token and keeps
+ *  it joined.
+ *
+ *  Why not just .subscribe(): when the socket drops (laptop sleep, network
+ *  change, the iPhone app backgrounded — close code 1001) supabase-js rejoins
+ *  with the token the channel was first joined with. After an hour that token
+ *  has expired, every rejoin is refused, and the channel loops on
+ *  CHANNEL_ERROR without ever recovering, while messages sent meanwhile are
+ *  never fetched.
+ *
+ *  Here, on CHANNEL_ERROR / TIMED_OUT / an unexpected CLOSED the channel is
+ *  dropped and rebuilt with a freshly read session token (getSession refreshes
+ *  an expired one), backing off 1 s → 30 s. Once it's SUBSCRIBED again,
+ *  `onResync` runs so the caller refetches whatever it missed (thread, inbox,
+ *  badge). Returns an unsubscribe that also stops any pending rejoin. */
+/** Catch-up after a reconnect. Return (or resolve) `false` if it failed so
+ *  it is retried. */
+export type Resync = () => unknown
 
-/** Joins a channel only after realtime has the signed-in user's token.
- *  On a fresh page load the session is still being restored when components
- *  mount; a channel joined then uses the anonymous key, RLS filters out every
- *  event, and supabase-js never upgrades it (it only re-auths realtime on
- *  SIGNED_IN / TOKEN_REFRESHED). Returns an unsubscribe that also cancels a
- *  join that hasn't happened yet. */
-function joinAuthenticated(client: SupabaseClient, build: () => RealtimeChannel): () => void {
+function keepChannel(
+  client: SupabaseClient,
+  label: string,
+  configure: (channel: RealtimeChannel) => RealtimeChannel,
+  onResync?: Resync,
+): () => void {
   let channel: RealtimeChannel | null = null
   let cancelled = false
-  void client.auth
-    .getSession()
-    .then(({ data }) => (data.session?.access_token ? client.realtime.setAuth(data.session.access_token) : undefined))
-    .catch(() => undefined)
-    .then(() => {
-      if (!cancelled) channel = build()
+  let attempt = 0
+  let recovering = false
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const connect = async () => {
+    if (cancelled) return
+    try {
+      const { data } = await client.auth.getSession()
+      if (data.session?.access_token) await client.realtime.setAuth(data.session.access_token)
+    } catch {
+      // offline: the join below fails and we back off
+    }
+    if (cancelled) return
+    const current = configure(client.channel(`${label}:${newClientId()}`))
+    channel = current
+    current.subscribe((status, error) => {
+      if (cancelled || channel !== current) return
+      if (status === "SUBSCRIBED") {
+        attempt = 0
+        if (recovering) {
+          recovering = false
+          void resync(0)
+        }
+        return
+      }
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        if (status !== "CLOSED") console.warn(`[messaging] realtime ${label}: ${status}, rejoining`, error?.message ?? "")
+        recovering = true
+        channel = null
+        void client.removeChannel(current)
+        const delay = Math.min(30_000, 1_000 * 2 ** attempt) + Math.floor(Math.random() * 400)
+        attempt += 1
+        timer = setTimeout(() => void connect(), delay)
+      }
     })
+  }
+
+  // The catch-up fetch can fail if the socket is back before the rest of the
+  // network is; retry it a few times instead of silently missing messages.
+  const resync = async (tries: number): Promise<void> => {
+    if (cancelled || !onResync) return
+    let ok = false
+    try { ok = (await onResync()) !== false } catch { ok = false }
+    if (ok || cancelled || tries >= 5) return
+    timer = setTimeout(() => void resync(tries + 1), 1_000 * 2 ** tries)
+  }
+
+  void connect()
   return () => {
     cancelled = true
+    if (timer) clearTimeout(timer)
     if (channel) void client.removeChannel(channel)
+    channel = null
   }
 }
 
-/** New messages in one conversation. */
+/** New messages in one conversation. `onResync` runs after a dropped
+ *  connection comes back, to fetch anything sent in the meantime. */
 export function subscribeToConversation(
   client: SupabaseClient,
   conversationId: string,
   onMessage: (message: ChatMessage) => void,
+  onResync?: Resync,
 ): () => void {
-  return joinAuthenticated(client, () =>
-    client
-      .channel(`messages:${conversationId}:${newClientId()}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        (payload) => onMessage(payload.new as ChatMessage),
-      )
-      .subscribe(logChannelStatus(`messages:${conversationId}`)),
-  )
+  return keepChannel(client, `messages:${conversationId}`, (channel) =>
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+      (payload) => onMessage(payload.new as ChatMessage),
+    ), onResync)
 }
 
 /** Anything that can change your inbox or badge: a new message anywhere you
- *  belong, or your own read marker / membership changing on another device. */
-export function subscribeToInbox(client: SupabaseClient, userId: string, onChange: () => void): () => void {
-  return joinAuthenticated(client, () =>
-    client
-      .channel(`inbox:${userId}:${newClientId()}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => onChange())
+ *  belong, or your own read marker / membership changing on another device.
+ *  `onChange` also runs after a dropped connection comes back. */
+export function subscribeToInbox(client: SupabaseClient, userId: string, onChange: Resync): () => void {
+  return keepChannel(client, `inbox:${userId}`, (channel) =>
+    channel
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => void onChange())
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversation_members", filter: `user_id=eq.${userId}` },
-        () => onChange(),
-      )
-      .subscribe(logChannelStatus(`inbox:${userId}`)),
-  )
+        () => void onChange(),
+      ), onChange)
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────

@@ -139,6 +139,8 @@ export default function ConversationScreen() {
   const sentAt = useRef(0);
   // Unread count as the thread opened, before it's marked read.
   const openedUnread = useRef<number | null>(null);
+  // New per visit so media requests skip the CDN and recheck membership.
+  const mediaNonce = useRef(newClientId()).current;
 
   const refreshSummary = useCallback(async () => {
     if (!supabase || !conversationId) return null;
@@ -173,6 +175,7 @@ export default function ConversationScreen() {
       markSeen();
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
+      return false;
     }
   }, [conversationId, refreshSummary, markSeen, userId]);
 
@@ -183,7 +186,7 @@ export default function ConversationScreen() {
     const unsubscribe = subscribeToConversation(supabase, conversationId, (incoming) => {
       setMessages((prev) => mergeMessages(prev, [{ ...incoming, state: 'sent' }]));
       if (incoming.sender_id !== userId) markSeen();
-    });
+    }, loadLatest);
     // Catch up after the app was backgrounded (realtime may have dropped).
     const sub = AppState.addEventListener('change', (s) => { if (s === 'active') void loadLatest(); });
     return () => { mounted.current = false; unsubscribe(); sub.remove(); };
@@ -396,7 +399,7 @@ export default function ConversationScreen() {
     ? groupSubtitle(Object.values(members), userId, summary.member_count)
     : summary.other_username ? `@${summary.other_username}` : '';
   const sendReady = staged ? true : !!draft.trim();
-  const src = (path: string) => (token ? mediaSource(path, token) : null);
+  const src = (path: string) => (token ? mediaSource(path, token, mediaNonce) : null);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

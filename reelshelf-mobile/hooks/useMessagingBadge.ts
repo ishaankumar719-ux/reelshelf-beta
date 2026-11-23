@@ -17,14 +17,13 @@ export function useMessagingBadge(): number {
     if (!supabase || !userId) { setCount(0); return; }
     const client = supabase;
     let cancelled = false;
-    const refresh = () => {
+    const refresh = () =>
       getBadgeCount(client)
-        .then((n) => { if (!cancelled) setCount(n); })
-        .catch(() => { /* keep the last known count */ });
-    };
-    refresh();
+        .then((n) => { if (!cancelled) setCount(n); return true; })
+        .catch(() => false); // keep the last known count
+    void refresh();
     const unsubscribe = subscribeToInbox(client, userId, refresh);
-    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') void refresh(); });
     return () => { cancelled = true; unsubscribe(); sub.remove(); };
   }, [userId]);
 

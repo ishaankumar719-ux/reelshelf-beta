@@ -28,8 +28,8 @@ export function useAccessToken(): string | null {
 
 /** Source for expo-image / expo-video: storage checks the token's owner is
  *  still an active member of the conversation on every request. */
-export function mediaSource(path: string, token: string) {
-  return mediaRequest(SUPABASE_URL, SUPABASE_KEY, token, path);
+export function mediaSource(path: string, token: string, nonce?: string) {
+  return mediaRequest(SUPABASE_URL, SUPABASE_KEY, token, path, nonce);
 }
 
 export interface PickedMedia {

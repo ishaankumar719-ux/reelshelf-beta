@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -54,3 +54,14 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured()
       },
     })
   : null;
+
+// Supabase's React Native guidance: only auto-refresh the session while the
+// app is in the foreground. iOS suspends timers in the background, so without
+// this the token can be stale when the app returns and realtime rejoins are
+// refused (messaging's keepChannel also re-reads the session before rejoining).
+if (supabase && Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') void supabase.auth.startAutoRefresh();
+    else void supabase.auth.stopAutoRefresh();
+  });
+}

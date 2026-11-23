@@ -28,12 +28,14 @@ export default function MessagesInboxScreen() {
   const [busyInvite, setBusyInvite] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase) return false;
     try {
       setRows(await listConversations(supabase));
       setError(null);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     }
   }, []);
 
@@ -41,7 +43,7 @@ export default function MessagesInboxScreen() {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
   useEffect(() => {
     if (!supabase || !userId) return;
-    return subscribeToInbox(supabase, userId, () => { void load(); });
+    return subscribeToInbox(supabase, userId, load);
   }, [userId, load]);
 
   async function answer(conversationId: string, accept: boolean) {
