@@ -110,13 +110,4 @@ $$;
 revoke all on function public.message_media_sweeper_check(text) from public, anon, authenticated;
 grant execute on function public.message_media_sweeper_check(text) to service_role;
 
--- Hourly schedule. Per environment, once:
---   create extension if not exists pg_cron; create extension if not exists pg_net;
---   select vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'), 'message_media_sweeper_secret');
---   select cron.schedule('message-media-sweeper', '17 * * * *', $cron$
---     select net.http_post(
---       url := '<project url>/functions/v1/message-media-sweeper',
---       headers := jsonb_build_object('Content-Type', 'application/json',
---         'x-sweeper-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'message_media_sweeper_secret')),
---       body := '{}'::jsonb)
---   $cron$);
+-- The hourly schedule is in 20261123_message_media_sweeper_schedule.sql.
