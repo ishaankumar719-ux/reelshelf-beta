@@ -1,6 +1,6 @@
 // Removes message-media uploads that never became a message (the sender
 // discarded them, closed the app mid-send, or the post never happened).
-// Runs hourly from pg_cron; see supabase/migrations/20261123_message_previews_and_media_cleanup.sql.
+// Runs hourly from pg_cron; see supabase/migrations/20261123_message_media_sweeper_schedule.sql.
 //
 // Only files that no message uses AND that are older than the minimum age
 // (24 hours by default, never under 10 minutes) are removed, so an upload a
