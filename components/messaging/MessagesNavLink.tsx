@@ -25,15 +25,14 @@ export default function MessagesNavLink() {
     const client = createClient()
     if (!client || !userId) return
     let cancelled = false
-    const refresh = () => {
+    const refresh = () =>
       getBadgeCount(client)
-        .then((n) => { if (!cancelled) setCount(n) })
-        .catch(() => { /* keep the last known count */ })
-    }
-    refresh()
+        .then((n) => { if (!cancelled) setCount(n); return true })
+        .catch(() => false) // keep the last known count
+    void refresh()
     const unsubscribe = subscribeToInbox(client, userId, refresh)
     // Realtime can drop while a tab sleeps; catch up when it's visible again.
-    const onVisible = () => { if (document.visibilityState === "visible") refresh() }
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh() }
     document.addEventListener("visibilitychange", onVisible)
     return () => {
       cancelled = true

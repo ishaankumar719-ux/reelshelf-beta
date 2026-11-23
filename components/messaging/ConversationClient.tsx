@@ -124,6 +124,7 @@ export default function ConversationClient({ conversationId }: { conversationId:
         markSeen()
       } catch (e) {
         if (!cancelled) setError((e as Error).message)
+        return false
       }
     }
 
@@ -131,7 +132,7 @@ export default function ConversationClient({ conversationId }: { conversationId:
     const unsubscribe = subscribeToConversation(client, conversationId, (incoming) => {
       setMessages((prev) => mergeMessages(prev, [{ ...incoming, state: "sent" }]))
       if (incoming.sender_id !== userId) markSeen()
-    })
+    }, loadLatest)
     // Catch up on anything missed while the tab was hidden or offline.
     const onVisible = () => { if (document.visibilityState === "visible") void loadLatest() }
     document.addEventListener("visibilitychange", onVisible)

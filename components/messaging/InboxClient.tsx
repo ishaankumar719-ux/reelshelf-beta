@@ -30,18 +30,18 @@ export default function InboxClient({ activeId = null }: { activeId?: string | n
 
   const load = useCallback(() => {
     const client = createClient()
-    if (!client) return
-    listConversations(client)
-      .then((next) => { setRows(next); setError(null) })
-      .catch((e: Error) => setError(e.message))
+    if (!client) return Promise.resolve(false)
+    return listConversations(client)
+      .then((next) => { setRows(next); setError(null); return true })
+      .catch((e: Error) => { setError(e.message); return false })
   }, [])
 
   useEffect(() => {
     const client = createClient()
     if (!client || !userId) return
-    load()
+    void load()
     const unsubscribe = subscribeToInbox(client, userId, load)
-    const onVisible = () => { if (document.visibilityState === "visible") load() }
+    const onVisible = () => { if (document.visibilityState === "visible") void load() }
     document.addEventListener("visibilitychange", onVisible)
     return () => { unsubscribe(); document.removeEventListener("visibilitychange", onVisible) }
   }, [userId, load])

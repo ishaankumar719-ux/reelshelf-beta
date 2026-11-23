@@ -33,8 +33,12 @@ async function serve(request: NextRequest, params: Promise<{ path: string[] }>, 
   const range = request.headers.get("range")
   if (range) headers.Range = range
 
+  // cacheNonce: Supabase's CDN caches authenticated downloads per URL and
+  // token, which would let someone just removed from the chat keep loading
+  // media until their token expires. A fresh nonce sends every request to
+  // storage so the membership policy runs each time.
   const upstream = await fetch(
-    `${url.replace(/\/$/, "")}/storage/v1/object/authenticated/${MEDIA_BUCKET}/${path.map(encodeURIComponent).join("/")}`,
+    `${url.replace(/\/$/, "")}/storage/v1/object/authenticated/${MEDIA_BUCKET}/${path.map(encodeURIComponent).join("/")}?cacheNonce=${crypto.randomUUID()}`,
     { method, headers, cache: "no-store" },
   )
   if (!upstream.ok && upstream.status !== 206) {
