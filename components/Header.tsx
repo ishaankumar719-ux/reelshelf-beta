@@ -386,7 +386,7 @@ export default function Header() {
   const mobileNavItems = [
     { href: "/", label: "Home", icon: <HomeIcon /> },
     { href: "/diary", label: "Diary", icon: <DiaryIcon /> },
-    { href: "/watchlist", label: "Watchlist", icon: <BookmarkIcon /> },
+    { href: "/shelves", label: "Shelves", icon: <BookmarkIcon /> },
     { href: "/discover", label: "Discover", icon: <CompassIcon /> },
     { href: user ? "/profile" : "/auth", label: "Profile", icon: <ProfileIcon /> },
   ];
@@ -659,7 +659,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/watchlist"
+                href="/shelves"
                 style={{
                   color: "#9ca3af",
                   textDecoration: "none",
@@ -667,19 +667,7 @@ export default function Header() {
                   fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
                 }}
               >
-                Watchlist
-              </Link>
-
-              <Link
-                href="/reading-shelf"
-                style={{
-                  color: "#9ca3af",
-                  textDecoration: "none",
-                  fontSize: 13,
-                  fontFamily: '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif',
-                }}
-              >
-                Reading Shelf
+                Shelves
               </Link>
 
               <Link
