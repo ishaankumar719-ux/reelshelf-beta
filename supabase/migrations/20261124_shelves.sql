@@ -95,11 +95,12 @@ declare
   v_vis text := public.shelf_visibility(p_user, p_shelf);
   v_ok boolean;
 begin
-  v_ok := p_user = auth.uid()
+  -- coalesce: for signed-out viewers auth.uid() is null, and "null or false" must not let them through.
+  v_ok := coalesce(p_user = auth.uid(), false)
        or v_vis = 'public'
        or (v_vis = 'unlisted' and p_token is not null
            and exists (select 1 from public.shelf_settings s where s.user_id = p_user and s.share_token = p_token));
-  if not v_ok then return; end if;
+  if v_ok is not true then return; end if;
   return query
     select * from public.saved_items s
      where s.user_id = p_user
@@ -116,7 +117,7 @@ language sql stable security definer set search_path = '' as $$
          (select count(*)::int from public.saved_items s
            where s.user_id = p_user and public.saved_item_shelf(s.list_type, s.media_type) = k.shelf)
     from (values ('film'), ('tv'), ('reading')) as k(shelf)
-   where p_user = auth.uid() or public.shelf_visibility(p_user, k.shelf) = 'public';
+   where coalesce(p_user = auth.uid(), false) or public.shelf_visibility(p_user, k.shelf) = 'public';
 $$;
 
 revoke all on function public.shelf_visibility(uuid, text) from public;
