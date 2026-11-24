@@ -23,6 +23,7 @@ const MAPPING = {
   'magnifyingglass':                        'search',
   'calendar':                               'calendar-today',
   'list.bullet':                            'list',
+  'books.vertical.fill':                    'shelves',
   'person.fill':                            'person',
 } as IconMapping;
 

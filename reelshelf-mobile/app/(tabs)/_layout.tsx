@@ -136,9 +136,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="lists"
         options={{
-          title: 'Lists',
+          title: 'Shelves',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="list.bullet" color={color} focused={focused} />
+            <TabIcon name="books.vertical.fill" color={color} focused={focused} />
           ),
         }}
       />
