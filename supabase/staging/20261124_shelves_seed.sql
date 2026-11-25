@@ -170,3 +170,39 @@ insert into user_list_items(list_id,media_type,media_id,title,poster_url,year,ra
 ('5e1f0000-0000-4000-8000-00000000b003','movie','8066','Stay','https://image.tmdb.org/t/p/w500/nrLZVP8jG0KBcabahRPp6UP7Oy2.jpg','2005',1,null,null),
 ('5e1f0000-0000-4000-8000-00000000b003','movie','tmdb-546121','Run','https://image.tmdb.org/t/p/w342/ilHG4EayOVoYeKqslspY3pR4wzC.jpg','2020',2,null,null);
 commit;
+
+-- Books that aren't in the local catalogue are stored by Open Library work id (as the app does).
+begin;
+update saved_items set media_id='OL59038W', poster='https://covers.openlibrary.org/b/id/1047334-L.jpg' where media_type='book' and media_id='never-let-me-go';
+update user_list_items set media_id='OL59038W', poster_url='https://covers.openlibrary.org/b/id/1047334-L.jpg' where media_type='book' and media_id='never-let-me-go';
+update saved_items set media_id='OL59048W', poster='https://covers.openlibrary.org/b/id/95742-L.jpg' where media_type='book' and media_id='the-remains-of-the-day';
+update user_list_items set media_id='OL59048W', poster_url='https://covers.openlibrary.org/b/id/95742-L.jpg' where media_type='book' and media_id='the-remains-of-the-day';
+update saved_items set media_id='OL20883297W', poster='https://covers.openlibrary.org/b/id/10648686-L.jpg' where media_type='book' and media_id='klara-and-the-sun';
+update user_list_items set media_id='OL20883297W', poster_url='https://covers.openlibrary.org/b/id/10648686-L.jpg' where media_type='book' and media_id='klara-and-the-sun';
+update saved_items set media_id='OL20893680W', poster='https://covers.openlibrary.org/b/id/10226290-L.jpg' where media_type='book' and media_id='piranesi';
+update user_list_items set media_id='OL20893680W', poster_url='https://covers.openlibrary.org/b/id/10226290-L.jpg' where media_type='book' and media_id='piranesi';
+update saved_items set media_id='OL40873W', poster='https://covers.openlibrary.org/b/id/198120-L.jpg' where media_type='book' and media_id='the-road';
+update user_list_items set media_id='OL40873W', poster_url='https://covers.openlibrary.org/b/id/198120-L.jpg' where media_type='book' and media_id='the-road';
+update saved_items set media_id='OL43108828W', poster='https://covers.openlibrary.org/b/id/15185412-L.jpg' where media_type='book' and media_id='one-hundred-years-of-solitude';
+update user_list_items set media_id='OL43108828W', poster_url='https://covers.openlibrary.org/b/id/15185412-L.jpg' where media_type='book' and media_id='one-hundred-years-of-solitude';
+update saved_items set media_id='OL7990014W', poster='https://covers.openlibrary.org/b/id/12451659-L.jpg' where media_type='book' and media_id='oscar-wao';
+update user_list_items set media_id='OL7990014W', poster_url='https://covers.openlibrary.org/b/id/12451659-L.jpg' where media_type='book' and media_id='oscar-wao';
+update saved_items set media_id='OL2163649W', poster='https://covers.openlibrary.org/b/id/12986869-L.jpg' where media_type='book' and media_id='hitchhikers-guide';
+update user_list_items set media_id='OL2163649W', poster_url='https://covers.openlibrary.org/b/id/12986869-L.jpg' where media_type='book' and media_id='hitchhikers-guide';
+update saved_items set media_id='OL21745884W', poster='https://covers.openlibrary.org/b/id/11200092-L.jpg' where media_type='book' and media_id='project-hail-mary-book';
+update user_list_items set media_id='OL21745884W', poster_url='https://covers.openlibrary.org/b/id/11200092-L.jpg' where media_type='book' and media_id='project-hail-mary-book';
+update saved_items set media_id='OL26004554W', poster='https://covers.openlibrary.org/b/id/12859975-L.jpg' where media_type='book' and media_id='tomorrow-and-tomorrow';
+update user_list_items set media_id='OL26004554W', poster_url='https://covers.openlibrary.org/b/id/12859975-L.jpg' where media_type='book' and media_id='tomorrow-and-tomorrow';
+update saved_items set media_id='OL2965102W', poster='https://covers.openlibrary.org/b/id/7890719-L.jpg' where media_type='book' and media_id='curious-incident';
+update user_list_items set media_id='OL2965102W', poster_url='https://covers.openlibrary.org/b/id/7890719-L.jpg' where media_type='book' and media_id='curious-incident';
+update saved_items set media_id='OL716850W', poster='https://covers.openlibrary.org/b/id/14368453-L.jpg' where media_type='book' and media_id='geb';
+update user_list_items set media_id='OL716850W', poster_url='https://covers.openlibrary.org/b/id/14368453-L.jpg' where media_type='book' and media_id='geb';
+update saved_items set media_id='OL17075811W', poster='https://covers.openlibrary.org/b/id/8634250-L.jpg' where media_type='book' and media_id='sapiens';
+update user_list_items set media_id='OL17075811W', poster_url='https://covers.openlibrary.org/b/id/8634250-L.jpg' where media_type='book' and media_id='sapiens';
+update saved_items set media_id='OL18203673W', poster='https://covers.openlibrary.org/b/id/8354226-L.jpg' where media_type='book' and media_id='evelyn-hugo';
+update user_list_items set media_id='OL18203673W', poster_url='https://covers.openlibrary.org/b/id/8354226-L.jpg' where media_type='book' and media_id='evelyn-hugo';
+update saved_items set media_id='OL17202418W', poster='https://covers.openlibrary.org/b/id/7369961-L.jpg' where media_type='book' and media_id='station-eleven';
+update user_list_items set media_id='OL17202418W', poster_url='https://covers.openlibrary.org/b/id/7369961-L.jpg' where media_type='book' and media_id='station-eleven';
+update saved_items set media_id='OL8479867W', poster='https://covers.openlibrary.org/b/id/11480483-L.jpg' where media_type='book' and media_id='name-of-the-wind';
+update user_list_items set media_id='OL8479867W', poster_url='https://covers.openlibrary.org/b/id/11480483-L.jpg' where media_type='book' and media_id='name-of-the-wind';
+commit;
