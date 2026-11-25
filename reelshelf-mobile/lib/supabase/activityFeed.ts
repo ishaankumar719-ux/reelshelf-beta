@@ -362,6 +362,8 @@ export function mergeMyActivityEvents({
 // working code being ported per explicit instruction.
 export async function fetchMyActivity(userId: string, profile: ActivityProfile, limit = 50): Promise<ActivityEvent[]> {
   const client = requireClient();
+  const { data: { session } } = await client.auth.getSession();
+  const listVisibility = session?.user.id === userId ? ['public', 'unlisted', 'private'] : ['public'];
 
   const [diaryRes, savedRes, rushmoreRes, listRes] = await Promise.all([
     client
@@ -388,6 +390,7 @@ export async function fetchMyActivity(userId: string, profile: ActivityProfile, 
       .from('user_lists')
       .select('id, title, created_at')
       .eq('user_id', userId)
+      .in('visibility', listVisibility)
       .order('created_at', { ascending: false })
       .limit(20),
   ]);

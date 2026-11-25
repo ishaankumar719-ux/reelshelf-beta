@@ -36,6 +36,9 @@ function toRouteId(dbMediaType: string, dbMediaId: string): string {
 
 export async function fetchRecentActivity(userId: string, limit = 20): Promise<ActivityItem[]> {
   const client = requireClient();
+  // Other people only see activity from public lists (unlisted lists open by link only).
+  const { data: { session } } = await client.auth.getSession();
+  const listVisibility = session?.user.id === userId ? ['public', 'unlisted', 'private'] : ['public'];
 
   const [diaryRes, savedRes, listItemsRes] = await Promise.all([
     client
@@ -55,6 +58,7 @@ export async function fetchRecentActivity(userId: string, limit = 20): Promise<A
       .from('user_list_items')
       .select('title, poster_url, created_at, list_id, user_lists!inner(user_id, title)')
       .eq('user_lists.user_id', userId)
+      .in('user_lists.visibility', listVisibility)
       .order('created_at', { ascending: false })
       .limit(limit),
   ]);

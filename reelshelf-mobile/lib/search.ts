@@ -239,7 +239,8 @@ export async function searchLists(query: string): Promise<ListSearchResult[]> {
     .from('user_lists')
     .select('id, title, description, user_id, like_count, profiles(username, display_name)')
     .ilike('title', `%${query}%`)
-    .in('visibility', ['public', 'unlisted'])
+    // Unlisted lists open by link only; they must never be discoverable.
+    .eq('visibility', 'public')
     .limit(15);
   if (error) throw error;
 
