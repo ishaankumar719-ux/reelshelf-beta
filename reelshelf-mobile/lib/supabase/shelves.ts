@@ -53,16 +53,6 @@ interface ListRow {
 
 const LIST_SELECT = 'id, title, is_ranked, visibility, user_list_items(id, media_id, media_type, title, poster_url, year, author, notes, rank_order)';
 
-/** The legacy local-watchlist sync can store one title as both "tmdb-123" and "123"; show it once. */
-function dedupe(items: ShelfItem[]) {
-  const seen = new Set<string>();
-  return items.filter((i) => {
-    const k = `${i.mediaType}:${i.mediaId.replace(/^tmdb-/, '')}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
 
 async function systemShelf(userId: string, shelf: SystemShelf, visibility: Visibility, token: string | null): Promise<Shelf> {
   const { data, error } = await client().rpc('get_shelf_items', { p_user: userId, p_shelf: shelf, p_token: token });
@@ -80,7 +70,7 @@ async function systemShelf(userId: string, shelf: SystemShelf, visibility: Visib
     note: null,
     rank: null,
   }));
-  return { id: shelf, kind: 'system', title: def.title, visibility, ranked: false, items: dedupe(items) };
+  return { id: shelf, kind: 'system', title: def.title, visibility, ranked: false, items };
 }
 
 function fromList(l: ListRow): Shelf {

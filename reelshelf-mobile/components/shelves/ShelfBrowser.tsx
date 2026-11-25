@@ -21,9 +21,11 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   LinearTransition,
+  runOnJS,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -86,22 +88,60 @@ type SpineProps = {
   editing: boolean;
   onPress: (index: number) => void;
   onMove: (index: number, delta: number) => void;
+  dragging: boolean;
+  onDragStart: (index: number) => void;
+  onDragMove: (index: number, dx: number) => void;
+  onDragEnd: (index: number) => void;
 };
 
-const Spine = memo(function Spine({ item, index, total, left, width, selected, editing, onPress, onMove }: SpineProps) {
+const Spine = memo(function Spine({ item, index, total, left, width, selected, editing, onPress, onMove, dragging, onDragStart, onDragMove, onDragEnd }: SpineProps) {
   const h = spineHeight(item.key);
   const fs = item.title.length <= 18 ? 12 : item.title.length <= 32 ? 11 : 10;
+
+  // Arrange mode: press and hold a spine, then drag it along the shelf. A quick swipe
+  // still scrolls the shelf, and nothing can be dragged outside Arrange mode.
+  const tx = useSharedValue(0);
+  const lift = useSharedValue(0);
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(editing)
+        .activateAfterLongPress(220)
+        .onStart(() => {
+          lift.value = withTiming(1, { duration: 120 });
+          runOnJS(onDragStart)(index);
+        })
+        .onUpdate((e) => {
+          tx.value = e.translationX;
+          runOnJS(onDragMove)(index, e.translationX);
+        })
+        .onEnd(() => {
+          runOnJS(onDragEnd)(index);
+        })
+        .onFinalize(() => {
+          tx.value = 0;
+          lift.value = withTiming(0, { duration: 120 });
+        }),
+    [editing, index, onDragStart, onDragMove, onDragEnd, tx, lift]
+  );
+  const dragStyle = useAnimatedStyle(() => ({
+    zIndex: lift.value > 0 ? 8 : 0,
+    transform: [{ translateX: tx.value }, { translateY: -14 * lift.value }, { scale: 1 + 0.05 * lift.value }],
+    shadowOpacity: 0.7 * lift.value,
+  }));
+
   return (
+    <GestureDetector gesture={pan}>
     <Animated.View
-      layout={LinearTransition.duration(220)}
-      style={[styles.spine, { left, width, height: h, top: HEADROOM + SPINE_H - h, opacity: selected ? 0 : 1 }]}
+      layout={dragging ? undefined : LinearTransition.duration(220)}
+      style={[styles.spine, styles.spineShadow, { left, width, height: h, top: HEADROOM + SPINE_H - h, opacity: selected && !dragging ? 0 : 1 }, dragStyle]}
     >
       <Pressable
         onPress={() => onPress(index)}
         style={StyleSheet.absoluteFill}
         accessibilityRole={editing ? 'adjustable' : 'button'}
         accessibilityLabel={`${item.title}${item.year ? `, ${item.year}` : ''}`}
-        accessibilityHint={editing ? 'Swipe up or down to move' : 'Shows a preview'}
+        accessibilityHint={editing ? 'Swipe up or down to move. Or hold and drag.' : 'Shows a preview'}
         accessibilityValue={{ text: `${index + 1} of ${total}` }}
         accessibilityState={{ selected }}
         accessibilityActions={editing ? [{ name: 'increment' }, { name: 'decrement' }] : undefined}
@@ -141,6 +181,7 @@ const Spine = memo(function Spine({ item, index, total, left, width, selected, e
         {editing ? <View style={styles.spineEditing} /> : null}
       </Pressable>
     </Animated.View>
+    </GestureDetector>
   );
 });
 
@@ -335,17 +376,67 @@ type RowProps = {
   preview: React.ReactNode;
 };
 
+function moved<T>(arr: T[], from: number, to: number) {
+  if (from === to) return arr;
+  const next = [...arr];
+  const [it] = next.splice(from, 1);
+  next.splice(to, 0, it);
+  return next;
+}
+
 const ShelfRow = memo(function ShelfRow(p: RowProps) {
   const { shelf } = p;
-  const geo = useMemo(() => layout(shelf.items), [shelf.items]);
+  const baseGeo = useMemo(() => layout(shelf.items), [shelf.items]);
+  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
+  const dragRef = useRef<{ from: number; to: number } | null>(null);
+  const justDragged = useRef(false);
+  const order = useMemo(() => (drag ? moved(shelf.items, drag.from, drag.to) : shelf.items), [shelf.items, drag]);
+  const geo = useMemo(() => (drag ? layout(order) : baseGeo), [drag, order, baseGeo]);
+
+  const onDragStart = useCallback((i: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    justDragged.current = true;
+    dragRef.current = { from: i, to: i };
+    setDrag(dragRef.current);
+  }, []);
+  const onDragMove = useCallback(
+    (i: number, dx: number) => {
+      const centre = baseGeo.lefts[i] + baseGeo.widths[i] / 2 + dx;
+      const rest = baseGeo.lefts.map((l, j) => ({ c: l + baseGeo.widths[j] / 2, j })).filter((x) => x.j !== i);
+      let to = rest.findIndex((x) => x.c > centre);
+      if (to === -1) to = rest.length;
+      if (dragRef.current && dragRef.current.to !== to) {
+        Haptics.selectionAsync().catch(() => {});
+        dragRef.current = { from: i, to };
+        setDrag(dragRef.current);
+      }
+    },
+    [baseGeo]
+  );
+  const onDragEnd = useCallback(
+    (i: number) => {
+      const st = dragRef.current;
+      dragRef.current = null;
+      setDrag(null);
+      if (st && st.to !== st.from) p.onMove(shelf.id, i, st.to - st.from);
+      setTimeout(() => (justDragged.current = false), 250);
+    },
+    [p, shelf.id]
+  );
+
   const sel = p.selectedIndex;
   const selItem = sel != null ? shelf.items[sel] : null;
+  // Where the shelf ends, so the preview sits just under it whatever the header height.
+  const [trackBottom, setTrackBottom] = useState(46 + TRACK_H);
   let coverLeft = 0;
   if (sel != null && geo.lefts[sel] != null) {
     const centre = geo.lefts[sel] + geo.widths[sel] / 2;
     coverLeft = Math.min(Math.max(centre - COVER_W / 2, 6), geo.width - COVER_W - 6);
   }
-  const onPress = useCallback((i: number) => p.onSelect(shelf.id, i), [p, shelf.id]);
+  const onPress = useCallback((i: number) => {
+    if (justDragged.current) return;
+    p.onSelect(shelf.id, i);
+  }, [p, shelf.id]);
   const onMove = useCallback((i: number, d: number) => p.onMove(shelf.id, i, d), [p, shelf.id]);
 
   return (
@@ -373,39 +464,52 @@ const ShelfRow = memo(function ShelfRow(p: RowProps) {
           </View>
         ) : null}
       </View>
+      {p.editing ? (
+        <Text style={styles.editHint}>Hold a title and drag it, or select it and use the Move buttons.</Text>
+      ) : null}
       {shelf.items.length === 0 ? (
         <Text style={styles.empty}>Nothing here yet.</Text>
       ) : (
+        <View onLayout={(e) => setTrackBottom(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
         <ScrollView
           ref={(r) => p.registerTrack(shelf.id, r)}
           horizontal
           showsHorizontalScrollIndicator={false}
           decelerationRate="normal"
           scrollEventThrottle={64}
+          scrollEnabled={!drag}
           onScroll={(e) => p.onTrackScroll(shelf.id, e.nativeEvent.contentOffset.x)}
           contentContainerStyle={{ width: geo.width, height: TRACK_H }}
           accessibilityRole="list"
           accessibilityLabel={shelf.title}
         >
-          {shelf.items.map((it, i) => (
-            <Spine
-              key={it.key}
-              item={it}
-              index={i}
-              total={shelf.items.length}
-              left={geo.lefts[i]}
-              width={geo.widths[i]}
-              selected={sel === i}
-              editing={p.editing}
-              onPress={onPress}
-              onMove={onMove}
-            />
-          ))}
-          {selItem ? <LiftedCover key={shelf.id} item={selItem} left={coverLeft} reduced={p.reduced} onPress={() => openTitle(selItem)} /> : null}
+          {shelf.items.map((it, i) => {
+            const isDragged = drag?.from === i;
+            return (
+              <Spine
+                key={it.key}
+                item={it}
+                index={i}
+                total={shelf.items.length}
+                left={isDragged ? baseGeo.lefts[i] : geo.lefts[drag ? order.indexOf(it) : i]}
+                width={baseGeo.widths[i]}
+                selected={sel === i}
+                editing={p.editing}
+                onPress={onPress}
+                onMove={onMove}
+                dragging={isDragged}
+                onDragStart={onDragStart}
+                onDragMove={onDragMove}
+                onDragEnd={onDragEnd}
+              />
+            );
+          })}
+          {selItem && !drag ? <LiftedCover key={shelf.id} item={selItem} left={coverLeft} reduced={p.reduced} onPress={() => openTitle(selItem)} /> : null}
           <View style={[styles.plank, { width: geo.width }]} />
         </ScrollView>
+        </View>
       )}
-      {p.preview}
+      {p.preview ? <View style={[styles.previewSlot, { top: trackBottom - 6 }]}>{p.preview}</View> : null}
     </View>
   );
 });
@@ -668,6 +772,8 @@ const styles = StyleSheet.create({
   headTitle: { fontSize: 17, fontWeight: '700', color: RS.colors.textPrimary, letterSpacing: -0.2 },
   headSub: { fontSize: 12.5, color: RS.colors.textSecondary, marginTop: 2 },
   headActions: { flexDirection: 'row', gap: 6 },
+  editHint: { marginHorizontal: 16, marginTop: 4, fontSize: 12, color: 'rgba(232,195,122,0.9)' },
+  spineShadow: { shadowColor: '#000', shadowRadius: 12, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0 },
   empty: { marginHorizontal: 16, marginTop: 10, fontSize: 13, color: RS.colors.textMuted },
 
   spine: { position: 'absolute', borderTopLeftRadius: 3, borderTopRightRadius: 3, overflow: 'hidden', backgroundColor: '#26211d' },
@@ -685,8 +791,8 @@ const styles = StyleSheet.create({
   coverFallback: { justifyContent: 'flex-end', padding: 10, borderRadius: 5 },
   coverFallbackText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
+  previewSlot: { position: 'absolute', left: 12, right: 12, zIndex: 20 },
   preview: {
-    position: 'absolute', left: 12, right: 12, top: 46 + TRACK_H - 6, zIndex: 20,
     backgroundColor: '#1c1916', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 14, paddingTop: 6, paddingBottom: 14,
     shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 10 },
@@ -696,13 +802,13 @@ const styles = StyleSheet.create({
   pvNav: { flexDirection: 'row' },
   iconBtn: { width: 44, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   iconGlyph: { fontSize: 24, color: 'rgba(255,255,255,0.8)', lineHeight: 26 },
-  pvCard: { minHeight: 92, paddingRight: 8 },
+  pvCard: { minHeight: 70, paddingRight: 8 },
   pvMeta: { flexDirection: 'row', gap: 8 },
   pvMetaText: { fontSize: 11, letterSpacing: 0.6, color: RS.colors.textSecondary, fontWeight: '600' },
   pvTitle: { marginTop: 5, fontSize: 18, lineHeight: 23, fontWeight: '700', color: '#fff' },
   pvCreator: { marginTop: 3, fontSize: 13, color: RS.colors.textSecondary },
   pvNote: { marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' },
-  pvActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 8 },
+  pvActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 },
   openBtn: { minHeight: 44, paddingHorizontal: 22, borderRadius: 22, backgroundColor: '#f4f1ea', justifyContent: 'center' },
   openLabel: { color: '#141210', fontWeight: '700', fontSize: 15 },
   moveRow: { flexDirection: 'row', gap: 6 },

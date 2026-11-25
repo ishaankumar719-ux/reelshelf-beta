@@ -74,12 +74,24 @@ async function attachCoversAndCounts(
 ): Promise<UserListSummary[]> {
   if (lists.length === 0) return [];
   const listIds = lists.map((l) => l.id);
-  const { data: items, error: itemsErr } = await client
-    .from('user_list_items')
-    .select('list_id, poster_url')
-    .in('list_id', listIds)
-    .order('rank_order', { ascending: true });
-  if (itemsErr) throw itemsErr;
+  let items: { list_id: unknown; poster_url: unknown }[] | null;
+  if (ownerNameById) {
+    // Someone else's lists may be unlisted: their items are only readable by id.
+    const perList = await Promise.all(
+      listIds.map((id) => client.rpc('get_list_items', { p_list: id }).select('list_id, poster_url')),
+    );
+    const failed = perList.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+    items = perList.flatMap((r) => (r.data ?? []) as { list_id: unknown; poster_url: unknown }[]);
+  } else {
+    const res = await client
+      .from('user_list_items')
+      .select('list_id, poster_url')
+      .in('list_id', listIds)
+      .order('rank_order', { ascending: true });
+    if (res.error) throw res.error;
+    items = res.data;
+  }
 
   const itemsByList = new Map<string, string[]>();
   const countByList = new Map<string, number>();
@@ -120,15 +132,21 @@ export async function fetchSavedLists(userId: string): Promise<UserListSummary[]
   if (!saves || saves.length === 0) return [];
 
   const listIds = saves.map((s) => s.list_id as string);
-  const { data: lists, error: listsErr } = await client
-    .from('user_lists')
-    .select('id, title, description, visibility, is_ranked, like_count, save_count, user_id, profiles(username, display_name)')
-    .in('id', listIds);
+  // get_saved_lists: saved lists the viewer can still open (public or unlisted).
+  const { data: savedData, error: listsErr } = await client
+    .rpc('get_saved_lists')
+    .select('id, title, description, visibility, is_ranked, like_count, save_count, user_id');
   if (listsErr) throw listsErr;
+  const lists = (Array.isArray(savedData) ? savedData : savedData ? [savedData] : []) as (RawListRow & { user_id: string })[];
 
+  const ownerIds = Array.from(new Set((lists ?? []).map((l) => l.user_id as string)));
+  const { data: owners } = ownerIds.length
+    ? await client.from('public_profiles').select('id, username, display_name').in('id', ownerIds)
+    : { data: [] as { id: string; username: string | null; display_name: string | null }[] };
+  const ownerById = new Map((owners ?? []).map((o) => [o.id as string, o]));
   const ownerNameById = new Map<string, string | null>();
   for (const l of lists ?? []) {
-    const owner = Array.isArray(l.profiles) ? l.profiles[0] : (l.profiles as any);
+    const owner = ownerById.get(l.user_id as string);
     ownerNameById.set(l.id as string, (owner?.display_name || owner?.username) ?? null);
   }
 
@@ -216,10 +234,10 @@ export interface ListDetail {
  *  error to work around. */
 export async function fetchListDetail(listId: string, viewerId: string | null): Promise<ListDetail | null> {
   const client = requireClient();
+  // get_list: by-id access, so unlisted lists open from a link without being listable.
   const { data: list, error: listErr } = await client
-    .from('user_lists')
-    .select('id, title, description, user_id, visibility, is_ranked, like_count, save_count, profiles(username, display_name, avatar_url)')
-    .eq('id', listId)
+    .rpc('get_list', { p_list: listId })
+    .select('id, title, description, user_id, visibility, is_ranked, like_count, save_count')
     .maybeSingle();
   if (listErr) throw listErr;
   if (!list) return null;
@@ -227,14 +245,13 @@ export async function fetchListDetail(listId: string, viewerId: string | null): 
   const owned = viewerId === list.user_id;
   if (list.visibility === 'private' && !owned) return null;
 
-  const { data: items, error: itemsErr } = await client
-    .from('user_list_items')
-    .select('id, media_id, media_type, title, poster_url, year, rank_order, notes')
-    .eq('list_id', listId)
-    .order('rank_order', { ascending: true });
+  const [{ data: itemsData, error: itemsErr }, { data: owner }] = await Promise.all([
+    client.rpc('get_list_items', { p_list: listId }).select('id, media_id, media_type, title, poster_url, year, rank_order, notes'),
+    client.from('public_profiles').select('username, display_name, avatar_url').eq('id', list.user_id).maybeSingle(),
+  ]);
   if (itemsErr) throw itemsErr;
-
-  const owner = Array.isArray(list.profiles) ? list.profiles[0] : (list.profiles as any);
+  type ItemRow = { id: string; media_id: string; media_type: string; title: string; poster_url: string | null; year: string | null; rank_order: number; notes: string | null };
+  const items = (Array.isArray(itemsData) ? itemsData : itemsData ? [itemsData] : []) as ItemRow[];
 
   return {
     id:             list.id,
@@ -414,6 +431,9 @@ async function recalculateListEngagement(listId: string): Promise<{ likeCount: n
   });
   if (error) throw error;
 
+  // The RPC recounts server-side (likes on unlisted lists aren't readable to others).
+  const { data: stored } = await client.rpc('get_list', { p_list: listId }).select('like_count, save_count').maybeSingle();
+  if (stored) return { likeCount: stored.like_count ?? 0, saveCount: stored.save_count ?? 0 };
   return { likeCount, saveCount };
 }
 

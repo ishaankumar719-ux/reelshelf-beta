@@ -63,7 +63,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'tv',       label: 'TV' },
   { key: 'books',    label: 'Books' },
   { key: 'reviews',  label: 'Reviews' },
-  { key: 'lists',    label: 'Lists' },
+  { key: 'lists',    label: 'Shelves' },
   { key: 'diary',    label: 'Diary' },
 ];
 
@@ -851,6 +851,25 @@ export function ProfileView({ userId, showBackButton }: ProfileViewProps) {
               )}
 
               {activeTab === 'lists' && (
+                <Pressable
+                  style={({ pressed }) => [styles.shelvesLink, pressed && { opacity: 0.85 }]}
+                  onPress={() =>
+                    isOwnProfile
+                      ? router.push('/(tabs)/lists')
+                      : router.push(`/shelves/${userId}?name=${encodeURIComponent(profile.displayName || profile.username || '')}`)
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={isOwnProfile ? 'Open your shelves' : `Browse ${profile.displayName || profile.username || 'their'} shelves`}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.shelvesLinkLabel}>{isOwnProfile ? 'Open your shelves' : 'Browse shelves'}</Text>
+                    <Text style={styles.shelvesLinkSub}>Watchlist, shows, reading list and lists{isOwnProfile ? '' : ' they’ve made public'}</Text>
+                  </View>
+                  <Text style={styles.shelvesLinkChevron}>›</Text>
+                </Pressable>
+              )}
+
+              {activeTab === 'lists' && (
                 tabLoading && lists === null ? (
                   <ActivityIndicator color={RS.colors.accent} />
                 ) : (lists?.length ?? 0) === 0 ? (
@@ -1069,6 +1088,10 @@ const styles = StyleSheet.create({
   attachmentPreview: { width: '100%', height: 140, borderRadius: RS.card.radius - 4, marginTop: 4 },
   gifBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 6, paddingVertical: 2 },
   gifBadgeLabel: { fontSize: RS.typography.micro, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  shelvesLink: { flexDirection: 'row', alignItems: 'center', minHeight: 64, borderRadius: RS.card.radius, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 0.5, borderColor: RS.colors.border, paddingHorizontal: RS.spacing.md, paddingVertical: RS.spacing.sm, marginBottom: RS.spacing.md },
+  shelvesLinkLabel: { fontSize: 15, fontWeight: '700', color: RS.colors.textPrimary },
+  shelvesLinkSub: { fontSize: 12.5, color: RS.colors.textSecondary, marginTop: 2 },
+  shelvesLinkChevron: { fontSize: 26, color: RS.colors.textSecondary, marginLeft: 8 },
   listCard: { flexDirection: 'row', gap: RS.spacing.sm, borderRadius: RS.card.radius, borderWidth: 0.5, borderColor: RS.colors.border, backgroundColor: RS.colors.card, padding: RS.spacing.sm, marginBottom: RS.spacing.sm },
   listCollage: { width: 84, height: 84, borderRadius: 10, overflow: 'hidden', flexDirection: 'row', flexWrap: 'wrap' },
   listCollageCell: { width: '50%', height: '50%' },
