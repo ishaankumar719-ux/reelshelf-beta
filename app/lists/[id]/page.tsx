@@ -225,11 +225,11 @@ export default function ListDetailPage() {
       { data: listData, error: listErr },
     ] = await Promise.all([
       supabase.auth.getUser(),
+      // By id through get_list: unlisted lists open by link but can't be listed.
       supabase
-        .from("user_lists")
+        .rpc("get_list", { p_list: listId })
         .select("id, user_id, title, description, visibility, is_ranked, like_count, save_count, created_at")
-        .eq("id", listId)
-        .single(),
+        .maybeSingle(),
     ])
 
     if (listErr || !listData) { setNotFound(true); setLoading(false); return }
@@ -245,10 +245,8 @@ export default function ListDetailPage() {
       { data: followRow },
     ] = await Promise.all([
       supabase
-        .from("user_list_items")
-        .select("id, media_type, media_id, title, poster_url, year, rank_order, notes")
-        .eq("list_id", listId)
-        .order("rank_order", { ascending: true }),
+        .rpc("get_list_items", { p_list: listId })
+        .select("id, media_type, media_id, title, poster_url, year, rank_order, notes"),
       supabase
         .from("public_profiles")
         .select("username, display_name, avatar_url")

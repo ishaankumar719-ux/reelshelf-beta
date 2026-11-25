@@ -1,12 +1,12 @@
 import Link from "next/link"
 
-export type ProfileTab = "films" | "series" | "reviews" | "watchlist" | "followers" | "following"
+export type ProfileTab = "films" | "series" | "reviews" | "watchlist" | "shelves" | "followers" | "following"
 
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: "films",     label: "Films"     },
   { key: "series",    label: "Series"    },
   { key: "reviews",   label: "Reviews"   },
-  { key: "watchlist", label: "Watchlist" },
+  { key: "shelves",   label: "Shelves"   },
   { key: "followers", label: "Followers" },
   { key: "following", label: "Following" },
 ]

@@ -137,9 +137,11 @@ type SpineProps = {
   total: number;
   onSelect: (index: number) => void;
   onKey: (e: ReactKeyboardEvent<HTMLButtonElement>, index: number) => void;
+  dragging?: boolean;
+  onDragStart?: (e: React.PointerEvent<HTMLButtonElement>, index: number) => void;
 };
 
-const Spine = memo(function Spine({ item, index, left, width, height, selected, tabbable, editing, total, onSelect, onKey }: SpineProps) {
+const Spine = memo(function Spine({ item, index, left, width, height, selected, tabbable, editing, total, onSelect, onKey, dragging, onDragStart }: SpineProps) {
   const [broken, setBroken] = useState(false);
   const thumb = posterAt(item.poster, "w154");
   const len = item.title.length;
@@ -153,8 +155,10 @@ const Spine = memo(function Spine({ item, index, left, width, height, selected, 
       aria-label={`${item.title}${item.year ? `, ${item.year}` : ""}. ${index + 1} of ${total}`}
       tabIndex={tabbable ? 0 : -1}
       data-index={index}
-      className={`sb-spine${selected ? " is-selected" : ""}${editing ? " is-editing" : ""}`}
+      className={`sb-spine${selected && !dragging ? " is-selected" : ""}${editing ? " is-editing" : ""}${dragging ? " is-dragging" : ""}`}
       style={{ left, width, height: h, top: HEADROOM + (height - h) }}
+      aria-roledescription={editing ? "Draggable title" : undefined}
+      onPointerDown={editing && onDragStart ? (e) => onDragStart(e, index) : undefined}
       onClick={() => onSelect(index)}
       onKeyDown={(e) => onKey(e, index)}
     >
@@ -309,13 +313,132 @@ type RowProps = {
   onKey: (e: ReactKeyboardEvent<HTMLButtonElement>, shelfIndex: number, index: number) => void;
   onToggleEdit: () => void;
   onVisibility: (v: Visibility) => void;
+  onDragReorder: (shelfIndex: number, from: number, to: number) => void;
   preview: React.ReactNode;
 };
 
+type DragState = { from: number; to: number; dx: number; startScroll: number; scroll: number };
+
+function moved<T>(arr: T[], from: number, to: number) {
+  if (from === to) return arr;
+  const next = [...arr];
+  const [it] = next.splice(from, 1);
+  next.splice(to, 0, it);
+  return next;
+}
+
 function ShelfRow(p: RowProps) {
   const { shelf, metrics } = p;
-  const geo = useMemo(() => layout(shelf.items), [shelf.items]);
   const trackEl = useRef<HTMLDivElement | null>(null);
+
+  /* ── drag to reorder (Arrange mode only) ──
+     Mouse: press and move. Touch: hold briefly, then move — a quick swipe still
+     scrolls the shelf. The other spines slide aside to show where it will land. */
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClick = useRef(false);
+  const baseGeo = useMemo(() => layout(shelf.items), [shelf.items]);
+  const order = useMemo(() => (drag ? moved(shelf.items, drag.from, drag.to) : shelf.items), [shelf.items, drag]);
+  const geo = useMemo(() => (drag ? layout(order) : baseGeo), [drag, order, baseGeo]);
+
+  const onDragStart = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>, index: number) => {
+      if (e.button !== 0) return;
+      const track = trackEl.current;
+      if (!track) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const touch = e.pointerType !== "mouse";
+      let active = false;
+      let timer = 0;
+      let raf = 0;
+      let lastX = startX;
+
+      const targetFor = (clientX: number) => {
+        const rect = track.getBoundingClientRect();
+        const x = clientX - rect.left + track.scrollLeft;
+        const rest = baseGeo.lefts.map((l, i) => ({ c: l + baseGeo.widths[i] / 2, i })).filter((s) => s.i !== index);
+        let to = rest.findIndex((s) => s.c > x);
+        if (to === -1) to = rest.length;
+        return to;
+      };
+      const update = () => {
+        const st: DragState = {
+          from: index,
+          to: targetFor(lastX),
+          dx: lastX - startX,
+          startScroll: dragRef.current?.startScroll ?? track.scrollLeft,
+          scroll: track.scrollLeft,
+        };
+        dragRef.current = st;
+        setDrag(st);
+      };
+      const edgeScroll = () => {
+        const rect = track.getBoundingClientRect();
+        const edge = 48;
+        let v = 0;
+        if (lastX < rect.left + edge) v = -Math.ceil((rect.left + edge - lastX) / 6);
+        else if (lastX > rect.right - edge) v = Math.ceil((lastX - (rect.right - edge)) / 6);
+        if (v) {
+          track.scrollLeft += v;
+          update();
+        }
+        raf = requestAnimationFrame(edgeScroll);
+      };
+      const activate = () => {
+        active = true;
+        suppressClick.current = true;
+        try {
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        update();
+        raf = requestAnimationFrame(edgeScroll);
+      };
+      const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== e.pointerId) return;
+        lastX = ev.clientX;
+        const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (!active) {
+          if (touch) {
+            if (dist > 8) cleanup(); // it's a scroll, not a drag
+          } else if (dist > 6) activate();
+          return;
+        }
+        update();
+      };
+      const onTouchMove = (ev: TouchEvent) => {
+        if (active) ev.preventDefault();
+      };
+      const finish = (ev: PointerEvent) => {
+        if (ev.pointerId !== e.pointerId) return;
+        const st = dragRef.current;
+        cleanup();
+        if (active && st && st.to !== st.from) p.onDragReorder(p.shelfIndex, st.from, st.to);
+        // Let the click that follows a drag through to nothing.
+        setTimeout(() => (suppressClick.current = false), 0);
+      };
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        cancelAnimationFrame(raf);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", finish);
+        window.removeEventListener("pointercancel", finish);
+        track.removeEventListener("touchmove", onTouchMove);
+        dragRef.current = null;
+        setDrag(null);
+        if (!active) suppressClick.current = false;
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", finish);
+      window.addEventListener("pointercancel", finish);
+      track.addEventListener("touchmove", onTouchMove, { passive: false });
+      if (touch) timer = window.setTimeout(activate, 240);
+    },
+    [baseGeo, p]
+  );
+
   const [edges, setEdges] = useState({ start: true, end: false });
   const sel = p.selectedIndex;
   const selItem = sel != null ? shelf.items[sel] : null;
@@ -385,6 +508,7 @@ function ShelfRow(p: RowProps) {
         ) : null}
       </header>
 
+      {p.editing ? <p className="sb-edit-hint">Drag a title to move it, or select one and use the Move buttons (Alt + ← / → on a keyboard).</p> : null}
       {shelf.items.length === 0 ? (
         <p className="sb-empty">Nothing here yet.</p>
       ) : (
@@ -401,23 +525,33 @@ function ShelfRow(p: RowProps) {
             onScroll={updateEdges}
           >
             <div className="sb-track-inner" style={{ width: geo.width, height: metrics.spineH + HEADROOM + 14 }}>
-              {shelf.items.map((it, i) => (
-                <Spine
-                  key={it.key}
-                  item={it}
-                  index={i}
-                  left={geo.lefts[i]}
-                  width={geo.widths[i]}
-                  height={metrics.spineH}
-                  selected={sel === i}
-                  tabbable={tabIndex === i}
-                  editing={p.editing}
-                  total={shelf.items.length}
-                  onSelect={(i2) => p.onSelect(p.shelfIndex, i2)}
-                  onKey={(e, i2) => p.onKey(e, p.shelfIndex, i2)}
-                />
-              ))}
-              {selItem ? (
+              {shelf.items.map((it, i) => {
+                const isDragged = drag?.from === i;
+                const slot = drag ? order.indexOf(it) : i;
+                const left = isDragged ? baseGeo.lefts[i] + drag!.dx + (drag!.scroll - drag!.startScroll) : geo.lefts[slot];
+                return (
+                  <Spine
+                    key={it.key}
+                    item={it}
+                    index={i}
+                    left={left}
+                    width={baseGeo.widths[i]}
+                    height={metrics.spineH}
+                    selected={sel === i}
+                    tabbable={tabIndex === i}
+                    editing={p.editing}
+                    total={shelf.items.length}
+                    dragging={isDragged}
+                    onDragStart={onDragStart}
+                    onSelect={(i2) => {
+                      if (suppressClick.current) return;
+                      p.onSelect(p.shelfIndex, i2);
+                    }}
+                    onKey={(e, i2) => p.onKey(e, p.shelfIndex, i2)}
+                  />
+                );
+              })}
+              {selItem && !drag ? (
                 <div
                   className="sb-cover"
                   aria-hidden="true"
@@ -566,6 +700,19 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
       requestAnimationFrame(() => revealSpine(selShelf.id, to, true));
     },
     [selShelf, selIndex, onReorder, revealSpine]
+  );
+
+  const onDragReorder = useCallback(
+    (shelfIndex: number, from: number, to: number) => {
+      const shelf = shelves[shelfIndex];
+      if (!shelf || !onReorder) return;
+      const next = [...shelf.items];
+      const [it] = next.splice(from, 1);
+      next.splice(to, 0, it);
+      onReorder(shelf, next);
+      setAnnounce(`Moved ${it.title} to position ${to + 1}.`);
+    },
+    [shelves, onReorder]
   );
 
   const onKey = useCallback(
@@ -718,6 +865,7 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
                 onSelect={select}
                 onKey={onKey}
                 onToggleEdit={() => setEditingId((cur) => (cur === shelf.id ? null : shelf.id))}
+                onDragReorder={onDragReorder}
                 onVisibility={(v) => onVisibility?.(shelf, v)}
                 preview={!wide && selShelf?.id === shelf.id ? renderPreview() : null}
               />
@@ -853,7 +1001,10 @@ const CSS = `
 @media (hover:hover) and (pointer:fine) { .sb-spine:hover { transform: translateY(-6px); } }
 .sb-spine:focus-visible { outline:2px solid #e8c37a; outline-offset:2px; transform: translateY(-6px); }
 .sb-spine.is-selected { opacity:0; }
-.sb-spine.is-editing { box-shadow: inset 0 0 0 1px rgba(232,195,122,.45); }
+.sb-spine.is-editing { box-shadow: inset 0 0 0 1px rgba(232,195,122,.45); cursor: grab; }
+.sb-spine.is-dragging { z-index:4; cursor:grabbing; transition: transform 120ms var(--ease); transform: translateY(-14px) scale(1.04);
+  box-shadow: 0 16px 26px -6px rgba(0,0,0,.8), inset 0 0 0 1px rgba(232,195,122,.8); }
+.sb-edit-hint { margin:4px 4px 0; font-size:12px; color:rgba(232,195,122,.85); }
 
 .sb-cover { position:absolute; z-index:2; border-radius:5px; overflow:hidden; cursor:pointer; background:#1b1815;
   box-shadow: 0 18px 30px -8px rgba(0,0,0,.75), 0 4px 10px rgba(0,0,0,.4);

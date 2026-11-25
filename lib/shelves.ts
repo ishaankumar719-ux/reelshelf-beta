@@ -77,6 +77,11 @@ function hrefFor(mediaId: string, mediaType: MediaType) {
   }
 }
 
+/** Books carry their shelf cover to the detail page so it opens with artwork immediately. */
+function withCover(href: string, mediaType: MediaType, poster: string | null) {
+  return mediaType === "book" && poster && href !== "#" ? `${href}?cover=${encodeURIComponent(poster)}` : href;
+}
+
 function fromSaved(r: SavedRow): ShelfItem {
   return {
     key: r.id,
@@ -88,23 +93,10 @@ function fromSaved(r: SavedRow): ShelfItem {
     creator: r.creator,
     note: null,
     rank: null,
-    href: hrefFor(r.media_id, r.media_type),
+    href: withCover(hrefFor(r.media_id, r.media_type), r.media_type, r.poster),
   };
 }
 
-/**
- * The legacy local-watchlist sync can write the same title twice ("tmdb-123" and "123").
- * Show each title once, keeping the first (best-placed) copy.
- */
-function dedupe(items: ShelfItem[]) {
-  const seen = new Set<string>();
-  return items.filter((i) => {
-    const k = `${i.mediaType}:${i.mediaId.replace(/^tmdb-/, "")}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
 
 function fromList(l: ListRow): Shelf {
   const items = [...(l.user_list_items ?? [])]
@@ -119,7 +111,7 @@ function fromList(l: ListRow): Shelf {
       creator: i.author,
       note: i.notes,
       rank: l.is_ranked ? i.rank_order : null,
-      href: hrefFor(i.media_id, i.media_type),
+      href: withCover(hrefFor(i.media_id, i.media_type), i.media_type, i.poster_url),
     }));
   return {
     id: l.id,
@@ -158,7 +150,7 @@ async function systemShelf(
     description: null,
     visibility,
     ranked: false,
-    items: dedupe(((data ?? []) as SavedRow[]).map(fromSaved)),
+    items: ((data ?? []) as SavedRow[]).map(fromSaved),
     shareUrl: shareBase ? `${shareBase}?shelf=${shelf}${token ? `&t=${token}` : ""}` : null,
     listHref: null,
   };

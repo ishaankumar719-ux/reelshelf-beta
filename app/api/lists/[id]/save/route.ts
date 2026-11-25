@@ -17,10 +17,9 @@ export async function POST(
   const { id: listId } = await ctx.params
 
   const { data: list } = await supabase
-    .from("user_lists")
+    .rpc("get_list", { p_list: listId })
     .select("user_id")
-    .eq("id", listId)
-    .single()
+    .maybeSingle()
 
   if (!list) return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (list.user_id === user.id) return NextResponse.json({ error: "Cannot save own list" }, { status: 403 })

@@ -8,7 +8,17 @@ import { createClient } from "../../../../lib/supabase/client";
 import { loadProfileShelves, type Shelf } from "../../../../lib/shelves";
 import ShelvesSkeleton from "../../../../components/shelves/ShelvesSkeleton";
 
-export default function FriendShelvesClient({ username, shelf, token }: { username: string; shelf: string | null; token: string | null }) {
+export default function FriendShelvesClient({
+  username,
+  shelf,
+  token,
+  tabs,
+}: {
+  username: string;
+  shelf: string | null;
+  token: string | null;
+  tabs?: React.ReactNode;
+}) {
   const { user, loading } = useAuth();
   const [state, setState] = useState<{ shelves: Shelf[]; name: string; missing?: boolean } | null>(null);
 
@@ -39,6 +49,7 @@ export default function FriendShelvesClient({ username, shelf, token }: { userna
             {state ? `${state.name}’s shelves` : "Shelves"}
           </h1>
         </div>
+        {tabs ? <div style={{ margin: "0 4px" }}>{tabs}</div> : null}
         {state === null ? (
           <ShelvesSkeleton />
         ) : state.missing ? (

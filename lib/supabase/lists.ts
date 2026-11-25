@@ -135,10 +135,9 @@ export async function fetchListWithItems(
   listId: string
 ): Promise<ListWithItems | null> {
   const { data: listData, error: listError } = await supabase
-    .from("user_lists")
+    .rpc("get_list", { p_list: listId })
     .select("id, user_id, title, description, visibility, is_ranked, like_count, save_count, trending_score, created_at, updated_at")
-    .eq("id", listId)
-    .single()
+    .maybeSingle()
 
   if (listError || !listData) return null
 
@@ -146,10 +145,8 @@ export async function fetchListWithItems(
 
   const [{ data: itemsData }, { data: profileData }] = await Promise.all([
     supabase
-      .from("user_list_items")
-      .select("id, list_id, media_type, media_id, title, poster_url, year, rank_order, notes, created_at")
-      .eq("list_id", listId)
-      .order("rank_order", { ascending: true }),
+      .rpc("get_list_items", { p_list: listId })
+      .select("id, list_id, media_type, media_id, title, poster_url, year, rank_order, notes, created_at"),
     supabase
       .from("public_profiles")
       .select("id, username, display_name, avatar_url")

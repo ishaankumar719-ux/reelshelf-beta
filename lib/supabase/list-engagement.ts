@@ -39,5 +39,13 @@ export async function recalculateListScores(
     p_trending_score: trendingScore,
   })
 
+  // The RPC recounts on the server (likes on unlisted lists aren't readable to other
+  // users), so report what it stored rather than the client-side estimate.
+  const { data: stored } = await supabase
+    .rpc("get_list", { p_list: listId })
+    .select("like_count, save_count, trending_score")
+    .maybeSingle()
+  if (stored) return stored as EngagementCounts
+
   return { like_count: lc, save_count: sc, trending_score: trendingScore }
 }

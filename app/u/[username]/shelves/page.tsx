@@ -1,4 +1,5 @@
 import FriendShelvesClient from "./FriendShelvesClient";
+import ProfileTabStrip from "../_components/ProfileTabStrip";
 
 export default async function FriendShelvesPage({
   params,
@@ -9,5 +10,14 @@ export default async function FriendShelvesPage({
 }) {
   const { username } = await params;
   const { shelf, t } = await searchParams;
-  return <FriendShelvesClient username={decodeURIComponent(username)} shelf={shelf ?? null} token={t ?? null} />;
+  const name = decodeURIComponent(username);
+  return (
+    <FriendShelvesClient
+      username={name}
+      shelf={shelf ?? null}
+      token={t ?? null}
+      // A direct unlisted link shows just that shelf, without the profile tabs.
+      tabs={shelf ? null : <ProfileTabStrip username={name} activeTab="shelves" />}
+    />
+  );
 }

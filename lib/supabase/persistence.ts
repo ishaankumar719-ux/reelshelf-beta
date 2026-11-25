@@ -254,11 +254,28 @@ function getListType(mediaType: MediaType) {
   return mediaType === "book" ? "reading_shelf" : "watchlist";
 }
 
+/**
+ * One stored id per title. TMDB titles are stored as "tmdb-<id>" (the iPhone app and
+ * newer web rows already do this); the web app sometimes holds the bare "<id>" for films.
+ * Writing whichever form the page had is what created duplicate shelf rows. The database
+ * applies the same rule in a trigger (canonical_media_id), this keeps requests consistent.
+ */
+export function canonicalSavedItemId(mediaType: MediaType, mediaId: string): string {
+  if ((mediaType === "movie" || mediaType === "tv") && /^\d+$/.test(mediaId)) {
+    return `tmdb-${mediaId}`;
+  }
+  return mediaId;
+}
+
+function savedItemKey(entry: { id: string; mediaType: MediaType }) {
+  return `${entry.mediaType}:${canonicalSavedItemId(entry.mediaType, entry.id)}`;
+}
+
 function mapSavedItemToRow(userId: string, entry: PersistedSavedItem): SavedItemRow {
   return {
     user_id: userId,
     list_type: getListType(entry.mediaType),
-    media_id: entry.id,
+    media_id: canonicalSavedItemId(entry.mediaType, entry.id),
     media_type: entry.mediaType,
     title: entry.title,
     poster: entry.poster || null,
@@ -451,7 +468,8 @@ export async function syncSavedItemsWithBackend(localEntries: PersistedSavedItem
     .order("added_at", { ascending: false });
 
   const remoteEntries = ((data || []) as SavedItemRow[]).map(mapRowToSavedItem);
-  const merged = mergeByLatest(localEntries, remoteEntries, (entry) => entry.addedAt)
+  // Key on the canonical id so "123" (local) and "tmdb-123" (remote) are one title.
+  const merged = mergeByLatest(localEntries, remoteEntries, (entry) => entry.addedAt, savedItemKey)
     .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
 
   if (merged.length > 0) {
@@ -491,7 +509,8 @@ export async function deleteSavedItemFromBackend(id: string, mediaType: MediaTyp
     .from("saved_items")
     .delete()
     .eq("user_id", user.id)
-    .eq("media_id", id)
+    // Both spellings, so a row saved before ids were made consistent is removed too.
+    .in("media_id", Array.from(new Set([id, canonicalSavedItemId(mediaType, id), id.replace(/^tmdb-/, "")])))
     .eq("media_type", mediaType)
     .eq("list_type", getListType(mediaType));
 }

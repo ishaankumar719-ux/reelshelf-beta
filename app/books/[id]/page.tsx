@@ -533,12 +533,32 @@ async function fetchOpenLibraryWork(workId: string): Promise<OLWorkData | null> 
   }
 }
 
-async function OpenLibraryBookPage({ workId }: { workId: string }) {
-  const data = await fetchOpenLibraryWork(workId);
+/**
+ * A cover handed over by the page that linked here (a shelf already has the artwork
+ * loaded), so the book opens with its cover straight away instead of waiting on a
+ * live Open Library lookup that can be slow or come back empty. Only known image
+ * hosts are accepted.
+ */
+function trustedCoverHint(raw: string | string[] | undefined): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const allowed = ["covers.openlibrary.org", "books.google.com", "books.googleusercontent.com", "image.tmdb.org"];
+    return url.protocol === "https:" && allowed.includes(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
-  if (!data) {
+async function OpenLibraryBookPage({ workId, coverHint }: { workId: string; coverHint: string | null }) {
+  const fetched = await fetchOpenLibraryWork(workId);
+
+  if (!fetched) {
     notFound();
   }
+
+  const data = { ...fetched, coverUrl: fetched.coverUrl || coverHint };
 
   const book = {
     id: workId,
@@ -796,10 +816,13 @@ async function OpenLibraryBookPage({ workId }: { workId: string }) {
 
 export default async function BookDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cover?: string | string[] }>;
 }) {
   const { id } = await params;
+  const coverHint = trustedCoverHint((await searchParams).cover);
 
   if (!id) {
     notFound();
@@ -812,11 +835,11 @@ export default async function BookDetailPage({
   }
 
   if (normalizedId !== id) {
-    redirect(`/books/${normalizedId}`);
+    redirect(`/books/${normalizedId}${coverHint ? `?cover=${encodeURIComponent(coverHint)}` : ""}`);
   }
 
   if (isOpenLibraryId(normalizedId)) {
-    return <OpenLibraryBookPage workId={normalizedId} />;
+    return <OpenLibraryBookPage workId={normalizedId} coverHint={coverHint} />;
   }
 
   const book = getLocalBookByRouteId(normalizedId);
@@ -825,10 +848,11 @@ export default async function BookDetailPage({
     notFound();
   }
 
-  const [coverUrl, relatedBooks] = await Promise.all([
-    resolveBookCover(book),
+  const [resolvedCover, relatedBooks] = await Promise.all([
+    book.cover ? Promise.resolve(book.cover) : coverHint ? Promise.resolve(null) : resolveBookCover(book),
     resolveBooksWithCovers(getRelatedBooks(book)),
   ]);
+  const coverUrl = resolvedCover || coverHint;
 
   return (
     <main style={{ padding: "0 0 80px" }}>

@@ -621,7 +621,7 @@ export default async function PublicProfilePage({
     <div className="pb-24 md:pb-8">
       <ProfileShowcase profile={profile} isOwner={isOwner} isFollowing={isFollowing} activityEvents={activityEvents} recentReviews={recentReviews} badges={displayBadges} totalXP={totalXP} tasteMatchScore={tasteMatchScore} youMayLike={youMayLike} similarUsers={similarUsers} />
       <ProfileHighlights userId={profileRow.id} />
-      <UserListsSection userId={profileRow.id} isOwner={isOwner} />
+      <UserListsSection userId={profileRow.id} isOwner={isOwner} username={profileRow.username} />
     </div>
   )
 }

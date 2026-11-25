@@ -8,19 +8,28 @@ const FONT = '"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-seri
 interface UserListsSectionProps {
   userId: string
   isOwner: boolean
+  username?: string | null
 }
 
 export default async function UserListsSection({
   userId,
   isOwner,
+  username,
 }: UserListsSectionProps) {
   const supabase = await createClient()
   if (!supabase) return null
 
-  const lists = await fetchListsForProfile(supabase, userId, isOwner)
+  const [lists, { data: shelfRows }] = await Promise.all([
+    fetchListsForProfile(supabase, userId, isOwner),
+    // Public watchlist / TV / reading shelves (owner: all of them).
+    supabase.rpc("profile_shelves", { p_user: userId }),
+  ])
+  const shelfCount =
+    ((shelfRows ?? []) as { item_count: number }[]).filter((r) => r.item_count > 0).length + lists.length
+  const shelvesHref = isOwner ? "/shelves" : username ? `/u/${username}/shelves` : null
 
-  // Visitors with no public lists — hide the section entirely
-  if (lists.length === 0 && !isOwner) return null
+  // Visitors with nothing public — hide the section entirely
+  if (shelfCount === 0 && !isOwner) return null
 
   return (
     <section className="w-full py-4 md:py-5 md:px-6" style={{ fontFamily: FONT }}>
@@ -28,9 +37,31 @@ export default async function UserListsSection({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex justify-between items-center px-4 md:px-0 mb-4">
         <h2 className="text-xl font-bold text-white" style={{ letterSpacing: "-0.02em" }}>
-          Lists
+          Shelves
         </h2>
 
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        {shelvesHref && shelfCount > 0 && (
+          <Link
+            href={shelvesHref}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              height: 32,
+              padding: "0 14px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.92)",
+              color: "#111",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              textDecoration: "none",
+              fontFamily: FONT,
+            }}
+          >
+            Browse {shelfCount} {shelfCount === 1 ? "shelf" : "shelves"}
+          </Link>
+        )}
         {isOwner && (
           <Link
             href="/lists/create"
@@ -56,6 +87,7 @@ export default async function UserListsSection({
             + New List
           </Link>
         )}
+        </div>
       </div>
 
       {/* ── Owner empty state ───────────────────────────────────────────────── */}
