@@ -1,92 +1,108 @@
-# Shelves rollout (web + build 28)
+# Shelves release: web + iPhone build 28
 
-Status: **reviewed on staging only. Nothing below has been run on production.**
+Status: **staging only. Production unchanged.**
+Prepared iPhone build: **1.0.0 (28)**, EAS build `4881b279-8824-4aad-ab37-6583dd4f4860`, production profile, store distribution, from `claude/shelves-mobile` 6a77db0, built 25 Nov 13:00. Not submitted.
+Not in this release: Daily Pick / Discover (separate), **owned collections and editions (outstanding)**.
 
-Out of scope (separate release): Daily Pick, Discover.
-Outstanding (not in this release): **owned collections and editions.**
+## Why two database phases
 
-## Order
+Build 27 opens other people's lists with a plain table read. Removing table reads of unlisted
+lists (the fix for the enumeration leak) therefore breaks unlisted links in build 27. So:
 
-| # | Step | Reversible by |
-|---|------|---------------|
-| 1 | Apply `20261124_shelves.sql` (shelf_settings, `saved_items.shelf_position`, shelf RPCs, public-shelf read policy). All shelves default to private. | Drop new objects; build 27 never reads them |
-| 2 | Apply `20261125_saved_items_canonical_ids.sql` (canonical-ID triggers, `maintenance` schema, report + cleanup functions). Does **not** run the cleanup. | Drop the two triggers |
-| 3 | Apply `20261125_list_access.sql` (get_list / get_list_items / get_saved_lists RPCs, other people can only table-read public lists). | `alter policy … using (visibility in ('public','unlisted'))` on the 3 policies |
-| 4 | Deploy web `claude/shelves-web` immediately after step 3. Until it's live, production web can't open someone else's unlisted list. | Vercel rollback (the RPCs stay) |
-| 5 | Re-run the dry-run report, compare with the numbers below, then run `maintenance.cleanup_duplicate_media_ids()`. | Recovery SQL below |
-| 6 | Submit build 28 to TestFlight from `claude/shelves-mobile`. | — |
+- **Phase 1 – additive.** Everything build 27 needs keeps working; the new web and the new
+  iPhone build get the RPCs they need.
+- **Phase 2 – tighten.** Only after the new build is "Ready to Test" in every TestFlight group.
 
-Steps 1–3 must precede step 5: the cleanup reads `shelf_position`.
+The new iPhone build needs Phase 1 (shelf + list RPCs), so it is uploaded right after Phase 1, and
+Phase 2 waits on TestFlight processing and Beta App Review.
 
-## Build 27 against these changes (tested 25 Nov on staging, build-27 code from 8bd0f3e in the Simulator)
+## Timeline
 
-| Behaviour | Result |
-|---|---|
-| Own lists, own watchlist, add/remove, list item add | Unchanged |
-| Others' public lists: open, Saved Lists, like/unlike | Works; like count stored correctly (1 → 0) |
-| Others' **unlisted** list in Saved Lists | **Disappears** (the saved public list still shows) |
-| Others' **unlisted** list by direct link | **"Not found"** (build-27 query replayed as other user and signed out: 0 rows; owner: 1 row) |
-| Others' private lists | Hidden, as before |
-| Watchlists/TV shelf/reading list of others | Still hidden (were owner-only already; shelves default private) |
-| Saves with bare IDs | Stored as `tmdb-<id>`, no duplicate |
+| When | Step | Gate to continue |
+|---|---|---|
+| Day 0 | 0. Confirm Supabase PITR/daily backup is current | Backup timestamp noted |
+| Day 0 | 1. Phase 1 migrations: `20261124_shelves.sql`, `20261125_saved_items_canonical_ids.sql`, `20261125_list_access_rpcs.sql` | Smoke tests A pass |
+| Day 0 | 2. Deploy web `claude/shelves-web` | Smoke tests B pass |
+| Day 0 | 3. Submit the prepared iPhone build: `eas submit -p ios --id 4881b279-8824-4aad-ab37-6583dd4f4860` | App Store Connect: processing done (usually 10–30 min, can take a few hours) |
+| Day 0 | 4. Internal testers get it after processing; add it to the external group → Beta App Review (typically hours, allow up to 48 h) | Smoke tests C on the TestFlight build |
+| Day 0 | 5. Cleanup: report → `cleanup_duplicate_media_ids()` in a transaction | Counts 4 / 0 / 34, snapshot 31 + 11 rows |
+| Day 1–2 | 6. Build "Ready to Test" for every group; nudge testers to update | — |
+| Day 1–2 | 7. Phase 2: `20261126_list_access_tighten.sql` | Smoke tests D pass |
 
-**Unavoidable limitation:** build 27 opens lists with a plain table read by id. The database can't tell that read apart from listing every unlisted list, so keeping unlisted lists un-discoverable means build 27 can't open other people's unlisted lists. The alternative is to leave production's current leak open (today anyone can enumerate unlisted lists and their items). Fix for users: update to build 28.
+Nothing in steps 1–5 changes what build 27 users see. Step 7 is the only step that does.
 
-Production impact today: 1 unlisted list, 0 saves of it by other people, 0 likes on non-public lists.
+## Build 27 limitation (from step 7 onward)
 
-## Production dry-run (read-only, 25 Nov)
+Tested on staging with build 27's code (8bd0f3e) in the Simulator plus its exact query replayed
+as owner, other user and signed out:
 
-`saved_items`: 46 rows, 8 users. 4 duplicate groups, all one user's film watchlist (Birdman, Heart of the Beast, Taxi Driver, The Odyssey). Each keeps the `tmdb-` row and removes the bare-ID copy. Both copies have the same `added_at`, so order is unchanged. No groups of 3+. 23 bare IDs rewritten to `tmdb-` after the merge.
+- Someone else's **unlisted** list: direct link shows "not found"; it disappears from Saved Lists.
+- Unchanged: own lists and watchlist, adding/removing, other people's public lists (open, save,
+  like/unlike with correct counts), private lists stay hidden, other people's watchlists stay hidden.
 
-`user_list_items`: 31 rows, **0 duplicates**, 0 items with notes, 11 bare IDs rewritten. No rank renumbering needed.
+Unavoidable while keeping unlisted lists un-discoverable: the database can't tell build 27's
+by-id table read apart from listing all unlisted lists. Production today: 1 unlisted list,
+0 saves of it by others, 0 likes on non-public lists. Remedy: update to the new build.
 
-Staging cleanup for comparison: 31 watchlist rows + 1 list item removed, order and notes preserved.
+Also closed in the new build/web (they leaked unlisted lists before Phase 2): iPhone list
+search returned unlisted lists; iPhone activity and the web profile's list count/activity
+showed other people's unlisted list titles.
 
-## Recovery
+## Production dry run (read-only, 25 Nov)
 
-Every removed row is copied to `maintenance.*_duplicate_backup` (with `kept_id`) before deletion.
+- `saved_items`: 46 rows. 4 duplicate pairs, one user's film watchlist (Birdman, Heart of the
+  Beast, Taxi Driver, The Odyssey); bare-ID copy removed, `tmdb-` copy kept, same save date so
+  order unchanged. 23 more bare IDs rewritten.
+- `user_list_items`: 31 rows, 0 duplicates, 0 notes, 11 bare IDs rewritten, no renumbering.
+- Expected: removed 4 / 0, rewritten 34. Snapshot: 31 saved_items rows (8 pair rows + 23
+  rewritten) and 11 list items.
 
-```sql
-begin;
--- Restore rows exactly as stored (no id rewrite, no re-positioning).
-alter table public.saved_items     disable trigger user;
-alter table public.user_list_items disable trigger user;
+## Backup and recovery
 
-insert into public.saved_items
-  (id, user_id, list_type, media_id, media_type, title, poster, year, creator, genres,
-   runtime, vote_average, added_at, created_at, updated_at, shelf_position)
-select id, user_id, list_type, media_id, media_type, title, poster, year, creator, genres,
-       runtime, vote_average, added_at, created_at, updated_at, shelf_position
-  from maintenance.saved_items_duplicate_backup;
+`cleanup_duplicate_media_ids()` returns a `run_id` and, before changing anything, copies the
+full original row of every row it will touch into `maintenance.*_snapshot`:
+removed copies, kept copies it merges into (save date, position, notes), every row whose ID it
+rewrites, and every item in a list it renumbers.
 
--- Kept list items: drop notes merged in from copies, then restore the copies and their ranks.
-update public.user_list_items i
-   set notes = nullif(btrim(replace(i.notes, coalesce(b.notes, ''), '')), '')
-  from maintenance.user_list_items_duplicate_backup b
- where i.id = b.kept_id and b.notes is not null;
-insert into public.user_list_items
-  (id, list_id, media_type, media_id, title, poster_url, year, rank_order, notes, created_at, author)
-select id, list_id, media_type, media_id, title, poster_url, year, rank_order, notes, created_at, author
-  from maintenance.user_list_items_duplicate_backup;
+Undo: `select * from maintenance.restore_cleanup('<run_id>');` deletes the touched rows and
+re-inserts the snapshot exactly (IDs, media IDs, added/created/updated dates, shelf position,
+notes, rank) with triggers off. A title someone re-added since the run keeps the new row and is
+reported as skipped.
 
-alter table public.saved_items     enable trigger user;
-alter table public.user_list_items enable trigger user;
-commit;
-```
+Full rollback of the release: Vercel rollback; Phase 2 rollback SQL is at the bottom of
+`20261126_list_access_tighten.sql`; drop the two `*_canonical_id` triggers. Shelf tables and
+RPCs can stay (build 27 ignores them).
 
-Production has 0 list duplicates, so only the saved_items insert applies there. The 34 bare-ID rewrites aren't reverted: build 27 and the new clients already use the `tmdb-` form.
-If the whole release has to come out: Vercel rollback, revert the three list policies (step 3), drop the two canonical-ID triggers. Shelf tables can stay; build 27 ignores them.
+## Smoke tests
 
-Run the cleanup inside a transaction and check its returned counts (expected: 4, 0, 34) before `commit`.
+A. After Phase 1 (with build 27 on a phone): own watchlist and lists load; add and remove a
+film; open someone's public list, like/unlike; open an unlisted list by link (still works);
+`select count(*) from maintenance.duplicate_media_id_report()` = 4.
+
+B. After web deploy, signed in as two real accounts and signed out:
+- /shelves: own film watchlist, TV, reading list in the same order as before; arrange persists.
+- /u/<other>/shelves: only public shelves and public lists; private/unlisted absent.
+- Unlisted list: opens by link signed out and as another user; not in profile, search or
+  /lists; private list → "doesn't exist or is private".
+- Book detail from a shelf shows its cover. Daily Pick and Discover unchanged.
+
+C. New build from TestFlight (production data): Shelves tab loads own shelves; friend shelves
+screen; tap-to-preview and Open title; Arrange mode drag + Move buttons; unlisted link opens;
+list search excludes unlisted lists.
+
+D. After Phase 2: signed-out REST `user_lists?visibility=eq.unlisted` returns `[]`;
+`list_likes` shows nothing for non-public lists; unlisted link still opens on web and new
+build; build 27 shows the documented limitation and nothing else changes.
 
 ## Release checklist
 
-- [ ] Review recordings and this doc
-- [ ] Back up production (Supabase PITR or `pg_dump` of saved_items, user_lists, user_list_items, list_likes, list_saves)
-- [ ] Steps 1–3 (migrations)
-- [ ] Step 4 web deploy; smoke test: own shelves, friend shelves, unlisted link signed out, book cover
-- [ ] Re-run `maintenance.duplicate_media_id_report()`; expect 4 saved_items groups, 0 list groups
-- [ ] Step 5 cleanup in a transaction; counts 4 / 0 / 34
-- [ ] Step 6 build 28 to TestFlight
-- [ ] Tell testers on build 27 to update (unlisted lists of others won't open there)
-- [ ] Owned collections and editions: still outstanding
+- [ ] Review recordings, staging rehearsal and this doc
+- [ ] Backup confirmed
+- [ ] Phase 1 migrations → smoke tests A
+- [ ] Web deploy → smoke tests B
+- [ ] `eas submit` the prepared build → processing → internal testers → smoke tests C
+- [ ] Add build to external group; Beta App Review approved
+- [ ] Cleanup in a transaction: counts 4 / 0 / 34, snapshot 31 + 11; record run_id
+- [ ] Build "Ready to Test" in all groups; tell testers to update (unlisted links stop working on build 27)
+- [ ] Phase 2 → smoke tests D
+- [ ] Owned collections and editions: outstanding
