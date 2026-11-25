@@ -1,34 +1,8 @@
--- Unlisted lists must open by direct link but must not be discoverable.
---
--- Before: user_lists / user_list_items were readable whenever visibility was
--- 'public' OR 'unlisted', so `select * from user_lists where visibility = 'unlisted'`
--- (or the REST equivalent) listed everyone's unlisted lists. list_likes was readable
--- by anyone, which also leaked unlisted list ids.
---
--- After: table reads by other people are limited to public lists. Opening an
--- unlisted list goes through get_list / get_list_items, which need the exact id.
--- Owners keep full access through the existing owner policies.
---
--- ALTER POLICY is used (not drop/create) so the change is in-place and reversible.
-
-alter policy "Allow visibility-based read access to lists" on public.user_lists
-  using (visibility = 'public');
-
-alter policy "Allow visibility-based read access to list items" on public.user_list_items
-  using (exists (
-    select 1 from public.user_lists l
-     where l.id = user_list_items.list_id and l.visibility = 'public'
-  ));
-
-alter policy "Anyone can read list_likes" on public.list_likes
-  using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from public.user_lists l
-       where l.id = list_likes.list_id
-         and (l.visibility = 'public' or l.user_id = auth.uid())
-    )
-  );
+-- Step 1 of 2 (additive, safe for build 27): by-id access to lists through RPCs.
+-- The web and build 28 open lists with these. Nothing existing changes, so build 27
+-- keeps working exactly as today. Step 2 (20261126_list_access_tighten.sql) removes
+-- table reads of other people's unlisted lists and must wait until build 28 is
+-- available to testers.
 
 -- One list by id: public, unlisted (link holders), or the owner's own private list.
 create or replace function public.get_list(p_list uuid)

@@ -357,7 +357,8 @@ export default async function PublicProfilePage({
     supabase
       .from("user_lists")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", profileRow.id),
+      .eq("user_id", profileRow.id)
+      .in("visibility", isOwner ? ["public", "unlisted", "private"] : ["public"]),
     supabase
       .from("user_gamification")
       .select("longest_streak, comments_received, likes_received")
@@ -368,6 +369,7 @@ export default async function PublicProfilePage({
       .from("user_lists")
       .select("id, title, created_at")
       .eq("user_id", profileRow.id)
+      .in("visibility", isOwner ? ["public", "unlisted", "private"] : ["public"])
       .order("created_at", { ascending: false })
       .limit(20),
     supabase
