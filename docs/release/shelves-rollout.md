@@ -16,6 +16,67 @@ lists (the fix for the enumeration leak) therefore breaks unlisted links in buil
 The new iPhone build needs Phase 1 (shelf + list RPCs), so it is uploaded right after Phase 1, and
 Phase 2 waits on TestFlight processing and Beta App Review.
 
+## Next step: build 28 on a physical iPhone (proposed, not applied)
+
+Build 28 (store build) installs through TestFlight, so production must first have what it
+calls. Checked read-only against production on 26 Nov:
+
+| Build 28 calls | In production | Provided by |
+|---|---|---|
+| `shelf_settings`, `saved_items.shelf_position` | no | `20261124_shelves.sql` |
+| `get_shelf_items`, `profile_shelves`, `reorder_shelf` (+ helpers `shelf_visibility`, `saved_item_shelf`) | no | `20261124_shelves.sql` |
+| `get_list`, `get_list_items`, `get_saved_lists` | no | `20261125_list_access_rpcs.sql` |
+| `public_profiles`, `update_list_items_order`, `update_list_engagement_counts`, messaging tables | yes | already there |
+
+**Required: exactly those two migrations.** `20261125_saved_items_canonical_ids.sql` isn't
+needed by build 28 (it already writes `tmdb-` IDs); it goes with the web deploy, before the
+cleanup. `20261126_list_access_tighten.sql` stays last.
+
+Why these two keep build 27 exactly as it is (both tested with build-27 code on staging):
+- Only new tables, columns, functions, one index, one extra SELECT policy and one insert
+  trigger. No existing policy, column, function or row is changed; the two `drop … if exists`
+  lines only guard re-runs and match nothing in production.
+- The new `saved_items` read policy only opens shelves whose owner set them public. Nobody has
+  a `shelf_settings` row, so every shelf is private: same reads as today.
+- The insert trigger only fills `shelf_position` once someone has arranged a shelf in build 28;
+  build 27 never reads that column. Build 27 add/remove worked with it on staging.
+- List RPCs are new entry points; list tables and their policies are untouched, so build 27's
+  direct reads (including unlisted links) behave as today.
+
+Proposed sequence (for review):
+1. Read-only pre-check: the eight objects above still absent; note backup time.
+2. Apply `20261124_shelves.sql`, then `20261125_list_access_rpcs.sql` (apply_migration, names
+   `shelves`, `list_access_rpcs`).
+3. Read-only verify: objects exist; `select count(*) from shelf_settings` = 0; as another user,
+   a watchlist read of someone else still returns 0 rows; `get_list` returns a public and an
+   unlisted list, not a private one.
+4. On your iPhone still on build 27: watchlist add/remove, open a public and an unlisted list,
+   send a message. Nothing should differ.
+5. `eas submit -p ios --id 4881b279-8824-4aad-ab37-6583dd4f4860`; wait for processing
+   (10–30 min, sometimes longer). As an internal tester you get it without Beta App Review.
+6. Install build 28 from TestFlight; run the checklist below.
+
+Rollback if needed: drop the new functions, the `saved_items_place_new` trigger and the
+"Public shelves are readable" policy; the new table and column can stay (build 27 ignores them).
+
+### Physical iPhone checklist (build 28, production data)
+
+- **Browsing:** Shelves tab opens with film watchlist, TV, reading list and lists in the same
+  order as before; swipe sideways along a shelf and scroll down between shelves without
+  anything being picked up or moved.
+- **Selection:** tap a title: it lifts, preview appears below with "Open title"; swipe the
+  preview to neighbours; tap another title; tap outside to dismiss.
+- **Rearranging:** only in Arrange mode: long-press drag and the Move buttons; leave and
+  reopen, then check the same order on the web.
+- **Title page return:** Open title → back: same shelf, same scroll position, preview state sensible.
+- **Book covers:** open a book from the reading shelf; cover shows on the book page.
+- **Privacy:** a friend's shelves show only public shelves/lists; your unlisted list opens by
+  link from another account; list search doesn't return unlisted lists; private stays hidden.
+- **Accessibility:** VoiceOver reads titles and offers move actions in Arrange mode; Reduce
+  Motion removes the lift/slide.
+- **Messaging (unchanged from 27):** open a conversation, send text, a GIF and a photo,
+  share a title; realtime receive from another account.
+
 ## Timeline
 
 | When | Step | Gate to continue |
