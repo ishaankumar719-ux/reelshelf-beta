@@ -1,6 +1,7 @@
 # Shelves release: web + iPhone build 28
 
-Status: **staging only. Production unchanged.**
+Status: **Phase 1 for the iPhone applied to production 26 Nov 09:34** (`shelves`,
+`list_access_rpcs`). Website deploy, canonical-ID migration, cleanup and tightening not done.
 Prepared iPhone build: **1.0.0 (28)**, EAS build `4881b279-8824-4aad-ab37-6583dd4f4860`, production profile, store distribution, from `claude/shelves-mobile` 6a77db0, built 25 Nov 13:00. Not submitted.
 Not in this release: Daily Pick / Discover (separate), **owned collections and editions (outstanding)**.
 
@@ -16,7 +17,18 @@ lists (the fix for the enumeration leak) therefore breaks unlisted links in buil
 The new iPhone build needs Phase 1 (shelf + list RPCs), so it is uploaded right after Phase 1, and
 Phase 2 waits on TestFlight processing and Beta App Review.
 
-## Next step: build 28 on a physical iPhone (proposed, not applied)
+## Production log, 26 Nov
+
+- Backup: WAL archiving healthy (last archive 09:28, 0 failures since March). The daily-backup
+  list is only visible on the dashboard's Backups page.
+- Fingerprints before/after (row count + md5 of every row): saved_items 46 (original columns),
+  user_lists 6, user_list_items 31, list_saves 3, list_likes 1, messages 22, 86 existing
+  policies: all identical. shelf_settings 0 rows → every shelf private.
+- Access as owner / other user / signed out (build 27 queries and build 28 RPCs) as expected;
+  build 27 add + remove ran in a rolled-back transaction (new row gets shelf_position null).
+- Security advisor: no new errors; new RPCs appear only in the generic "callable" warnings.
+
+## Next step: build 28 on a physical iPhone
 
 Build 28 (store build) installs through TestFlight, so production must first have what it
 calls. Checked read-only against production on 26 Nov:
