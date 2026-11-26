@@ -1,11 +1,13 @@
 -- Staging only: production-shaped duplicates for rehearsing cleanup + restore.
--- Test user C. Triggers are off so the old-style ids are stored as-is.
+-- Test user C. Triggers are skipped for this transaction only (session_replication_role),
+-- so old-style ids are stored as-is and the triggers themselves are never altered.
+-- Run once: it is not idempotent for the watchlist rows.
 -- Shape: 4 watchlist pairs (bare + tmdb-, same save date, like production), 23 more
 -- bare ids, a list with 11 bare ids (like production), and a ranked list with two
 -- duplicate pairs carrying notes on both copies (not in production; exercises notes
 -- and renumbering).
-alter table public.saved_items disable trigger user;
-alter table public.user_list_items disable trigger user;
+begin;
+set local session_replication_role = replica;
 
 with c as (select 'c0000000-0000-4000-8000-0000000000c1'::uuid as u)
 insert into public.saved_items (id, user_id, list_type, media_id, media_type, title, year, added_at, created_at, updated_at, shelf_position)
@@ -54,5 +56,4 @@ values
   (gen_random_uuid(), '5e1f0000-0000-4000-8000-0000000000c2', 'movie', '680',       'Pulp Fiction', '', 1994, 5, 'Royale with cheese', timestamptz '2026-08-02 08:04+00'),
   (gen_random_uuid(), '5e1f0000-0000-4000-8000-0000000000c2', 'tv',    'tmdb-1396', 'Breaking Bad', '', 2008, 6, null, timestamptz '2026-08-02 08:05+00');
 
-alter table public.saved_items enable trigger user;
-alter table public.user_list_items enable trigger user;
+commit;

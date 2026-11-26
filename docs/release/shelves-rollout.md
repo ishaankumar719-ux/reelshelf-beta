@@ -69,6 +69,25 @@ re-inserts the snapshot exactly (IDs, media IDs, added/created/updated dates, sh
 notes, rank) with triggers off. A title someone re-added since the run keeps the new row and is
 reported as skipped.
 
+### Staging rehearsal (26 Nov, test user C)
+
+Seeded once in a single transaction with triggers skipped via `session_replication_role`
+(triggers themselves never altered; all four confirmed enabled before and after): 4 watchlist
+pairs (bare + `tmdb-`, same save date, mixed shelf positions), 23 more old-style IDs, a list
+of 11 old-style IDs, and a ranked list with two duplicate pairs carrying notes on both copies.
+Full copies of both tables taken before the run.
+
+| Step | Result |
+|---|---|
+| Cleanup | removed 4 + 2, rewritten 36 (as predicted); snapshot 31 + 17 rows covering every touched row (removed 4+2, merged 4+2, rewritten 23+11, renumbered 2) |
+| After cleanup | each pair kept its better shelf position (Fight Club kept 0.5 from the bare copy); notes merged ("Diner scene / Royale with cheese"); list renumbered 1–4; 0 old-style IDs, 0 duplicate groups |
+| Restore | 31 + 17 restored, 0 skipped |
+| Compare with pre-run copies | saved_items 199 = 199, list items 45 = 45, 0 rows missing, 0 extra (whole-row EXCEPT both ways); all 48 of C's rows identical in every column incl. bare IDs, added/created/updated dates, shelf positions, notes, ranks |
+| Other users | whole-row hash of every other user's rows identical before and after |
+| Triggers | all four enabled after the restore |
+
+Rehearsal rows then deleted; staging back to 168 / 28 rows, 0 duplicate groups.
+
 Full rollback of the release: Vercel rollback; Phase 2 rollback SQL is at the bottom of
 `20261126_list_access_tighten.sql`; drop the two `*_canonical_id` triggers. Shelf tables and
 RPCs can stay (build 27 ignores them).
