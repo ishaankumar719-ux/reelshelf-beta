@@ -1,6 +1,7 @@
 // Shelf browsing for iPhone: swipe sideways along a shelf, scroll down between shelves,
-// tap a spine to lift its cover forward with a compact preview below the shelf.
-// Rearranging only happens inside an explicit Arrange mode.
+// tap a spine to pull the title out and turn it to its front cover (CoverStage).
+// Pinch a shelf to fit more or fewer spines. Rearranging only happens in Arrange mode.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -9,7 +10,6 @@ import {
   AccessibilityInfo,
   ActionSheetIOS,
   Alert,
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
@@ -17,23 +17,21 @@ import {
   Text,
   View,
   useWindowDimensions,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   LinearTransition,
   runOnJS,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import { RS } from '@/constants/theme';
 import { posterAt, type Shelf, type ShelfItem, type Visibility } from '@/lib/supabase/shelves';
+import { CoverStage, type Rect } from './CoverStage';
 
 /* ───────── geometry ───────── */
 
@@ -41,10 +39,9 @@ const PAD_X = 16;
 const GAP = 4;
 const HEADROOM = 22;
 const SPINE_H = 186;
-const COVER_W = 128;
-const COVER_H = 192;
 const TRACK_H = HEADROOM + SPINE_H + 12;
-const EASE = Easing.bezier(0.2, 0.7, 0.2, 1);
+const EDGE = 48; // drag near a shelf edge to scroll it
+const VIRTUAL_FROM = 60; // render only nearby spines on shelves longer than this
 
 function hash(s: string) {
   let h = 2166136261;
@@ -53,27 +50,77 @@ function hash(s: string) {
 }
 const spineWidth = (key: string) => 38 + (hash(key) % 3) * 6;
 const spineHeight = (key: string) => Math.round(SPINE_H * (0.9 + ((hash(key) >> 3) % 11) / 100));
-function layout(items: ShelfItem[]) {
+type Geo = { lefts: number[]; widths: number[]; width: number };
+function layout(items: ShelfItem[], density: number): Geo {
   const lefts: number[] = [];
   const widths: number[] = [];
+  const gap = Math.max(2, Math.round(GAP * density));
   let x = PAD_X;
   for (const it of items) {
-    const w = spineWidth(it.key);
+    const w = Math.round(spineWidth(it.key) * density);
     lefts.push(x);
     widths.push(w);
-    x += w + GAP;
+    x += w + gap;
   }
-  return { lefts, widths, width: x - GAP + PAD_X };
+  return { lefts, widths, width: x - gap + PAD_X };
+}
+/** First index whose spine ends after x. */
+function firstAfter(geo: Geo, x: number) {
+  let lo = 0;
+  let hi = geo.lefts.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (geo.lefts[mid] + geo.widths[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 const fallbackColor = (seed: string) => `hsl(${hash(seed) % 360}, 26%, 22%)`;
 
-const MEDIA_LABEL: Record<string, string> = { movie: 'FILM', tv: 'SERIES', book: 'BOOK', short_film: 'SHORT' };
 const VIS_LABEL: Record<Visibility, string> = { public: 'Public', unlisted: 'Unlisted', private: 'Private' };
+const MEDIA_LABEL: Record<string, string> = { movie: 'FILM', tv: 'SERIES', book: 'BOOK', short_film: 'SHORT' };
 
 function openTitle(item: ShelfItem) {
   router.push(
     `/media/${item.routeId}?title=${encodeURIComponent(item.title)}&posterUrl=${encodeURIComponent(item.poster ?? '')}&mediaType=${item.mediaType}`
   );
+}
+
+/* ───────── spine density (pinch or the −/+ buttons), remembered on this device ───────── */
+
+const DENSITIES = [0.7, 0.85, 1, 1.2];
+const DENSITY_KEY = 'reelshelf.shelves.density';
+let densityIndex = 2;
+let densityLoaded = false;
+const densityListeners = new Set<(i: number) => void>();
+function setDensityIndex(i: number) {
+  const next = Math.max(0, Math.min(DENSITIES.length - 1, i));
+  if (next === densityIndex) return;
+  densityIndex = next;
+  densityListeners.forEach((l) => l(next));
+  AsyncStorage.setItem(DENSITY_KEY, String(next)).catch(() => {});
+}
+function useDensity(): [number, (i: number) => void] {
+  const [i, setI] = useState(densityIndex);
+  useEffect(() => {
+    densityListeners.add(setI);
+    if (!densityLoaded) {
+      densityLoaded = true;
+      AsyncStorage.getItem(DENSITY_KEY)
+        .then((v) => {
+          const n = v == null ? NaN : Number(v);
+          if (Number.isInteger(n) && n >= 0 && n < DENSITIES.length && n !== densityIndex) {
+            densityIndex = n;
+            densityListeners.forEach((l) => l(n));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      densityListeners.delete(setI);
+    };
+  }, []);
+  return [i, setDensityIndex];
 }
 
 /* ───────── spine ───────── */
@@ -84,19 +131,23 @@ type SpineProps = {
   total: number;
   left: number;
   width: number;
-  selected: boolean;
+  hidden: boolean;
   editing: boolean;
+  animateLayout: boolean;
   onPress: (index: number) => void;
   onMove: (index: number, delta: number) => void;
   dragging: boolean;
+  scrollAdj: SharedValue<number>;
   onDragStart: (index: number) => void;
-  onDragMove: (index: number, dx: number) => void;
+  onDragMove: (index: number, dx: number, absX: number) => void;
   onDragEnd: (index: number) => void;
 };
 
-const Spine = memo(function Spine({ item, index, total, left, width, selected, editing, onPress, onMove, dragging, onDragStart, onDragMove, onDragEnd }: SpineProps) {
+const Spine = memo(function Spine({
+  item, index, total, left, width, hidden, editing, animateLayout, onPress, onMove, dragging, scrollAdj, onDragStart, onDragMove, onDragEnd,
+}: SpineProps) {
   const h = spineHeight(item.key);
-  const fs = item.title.length <= 18 ? 12 : item.title.length <= 32 ? 11 : 10;
+  const fs = width < 32 ? 10 : item.title.length <= 18 ? 12 : item.title.length <= 32 ? 11 : 10;
 
   // Arrange mode: press and hold a spine, then drag it along the shelf. A quick swipe
   // still scrolls the shelf, and nothing can be dragged outside Arrange mode.
@@ -113,7 +164,7 @@ const Spine = memo(function Spine({ item, index, total, left, width, selected, e
         })
         .onUpdate((e) => {
           tx.value = e.translationX;
-          runOnJS(onDragMove)(index, e.translationX);
+          runOnJS(onDragMove)(index, e.translationX, e.absoluteX);
         })
         .onEnd(() => {
           runOnJS(onDragEnd)(index);
@@ -126,254 +177,81 @@ const Spine = memo(function Spine({ item, index, total, left, width, selected, e
   );
   const dragStyle = useAnimatedStyle(() => ({
     zIndex: lift.value > 0 ? 8 : 0,
-    transform: [{ translateX: tx.value }, { translateY: -14 * lift.value }, { scale: 1 + 0.05 * lift.value }],
+    transform: [
+      { translateX: tx.value + (dragging ? scrollAdj.value : 0) },
+      { translateY: -14 * lift.value },
+      { scale: 1 + 0.05 * lift.value },
+    ],
     shadowOpacity: 0.7 * lift.value,
   }));
 
   return (
     <GestureDetector gesture={pan}>
-    <Animated.View
-      layout={dragging ? undefined : LinearTransition.duration(220)}
-      style={[styles.spine, styles.spineShadow, { left, width, height: h, top: HEADROOM + SPINE_H - h, opacity: selected && !dragging ? 0 : 1 }, dragStyle]}
-    >
-      <Pressable
-        onPress={() => onPress(index)}
-        style={StyleSheet.absoluteFill}
-        accessibilityRole={editing ? 'adjustable' : 'button'}
-        accessibilityLabel={`${item.title}${item.year ? `, ${item.year}` : ''}`}
-        accessibilityHint={editing ? 'Swipe up or down to move. Or hold and drag.' : 'Shows a preview'}
-        accessibilityValue={{ text: `${index + 1} of ${total}` }}
-        accessibilityState={{ selected }}
-        accessibilityActions={editing ? [{ name: 'increment' }, { name: 'decrement' }] : undefined}
-        onAccessibilityAction={(e) => {
-          if (e.nativeEvent.actionName === 'increment') onMove(index, 1);
-          if (e.nativeEvent.actionName === 'decrement') onMove(index, -1);
-        }}
+      <Animated.View
+        layout={dragging || !animateLayout ? undefined : LinearTransition.duration(220)}
+        style={[styles.spine, styles.spineShadow, { left, width, height: h, top: HEADROOM + SPINE_H - h, opacity: hidden ? 0 : 1 }, dragStyle]}
       >
-        {item.poster ? (
-          <Image
-            source={posterAt(item.poster, 'w154')}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            contentPosition={{ top: '30%', left: '50%' }}
-            cachePolicy="memory-disk"
-            recyclingKey={item.key}
-            transition={0}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: fallbackColor(item.title) }]} />
-        )}
-        <View style={styles.spineShade} />
-        {/* Rotated title: a box as tall as the spine, turned on its side. */}
-        <View
-          style={[
-            styles.spineTitleBox,
-            { width: h - 34, height: width, left: (width - (h - 34)) / 2, top: (h - 34 - width) / 2 + 8 },
-          ]}
+        <Pressable
+          onPress={() => onPress(index)}
+          style={StyleSheet.absoluteFill}
+          accessibilityRole={editing ? 'adjustable' : 'button'}
+          accessibilityLabel={`${item.title}${item.year ? `, ${item.year}` : ''}`}
+          accessibilityHint={editing ? 'Swipe up or down to move. Or hold and drag.' : 'Shows the cover'}
+          accessibilityValue={{ text: `${index + 1} of ${total}` }}
+          accessibilityActions={editing ? [{ name: 'increment' }, { name: 'decrement' }] : undefined}
+          onAccessibilityAction={(e) => {
+            if (e.nativeEvent.actionName === 'increment') onMove(index, 1);
+            if (e.nativeEvent.actionName === 'decrement') onMove(index, -1);
+          }}
         >
-          <Text style={[styles.spineTitle, { fontSize: fs }]} numberOfLines={1} ellipsizeMode="tail">
-            {item.title}
+          {item.poster ? (
+            <Image
+              source={posterAt(item.poster, 'w154')}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              contentPosition={{ top: '30%', left: '50%' }}
+              cachePolicy="memory-disk"
+              recyclingKey={item.key}
+              priority="low"
+              transition={0}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: fallbackColor(item.title) }]} />
+          )}
+          <View style={styles.spineShade} />
+          {/* Rotated title: a box as tall as the spine, turned on its side. */}
+          <View style={[styles.spineTitleBox, { width: h - 34, height: width, left: (width - (h - 34)) / 2, top: (h - 34 - width) / 2 + 8 }]}>
+            <Text style={[styles.spineTitle, { fontSize: fs }]} numberOfLines={1} ellipsizeMode="tail">
+              {item.title}
+            </Text>
+          </View>
+          <Text style={[styles.spineFoot, item.rank != null && { color: RS.colors.gold }]}>
+            {item.rank != null ? item.rank : item.year ? item.year.slice(-2) : ''}
           </Text>
-        </View>
-        <Text style={[styles.spineFoot, item.rank != null && { color: RS.colors.gold }]}>
-          {item.rank != null ? item.rank : item.year ? item.year.slice(-2) : ''}
-        </Text>
-        {editing ? <View style={styles.spineEditing} /> : null}
-      </Pressable>
-    </Animated.View>
+          {editing ? <View style={styles.spineEditing} /> : null}
+        </Pressable>
+      </Animated.View>
     </GestureDetector>
   );
 });
-
-/* ───────── lifted cover ───────── */
-
-function LiftedCover({ item, left, reduced, onPress }: { item: ShelfItem; left: number; reduced: boolean; onPress: () => void }) {
-  const x = useSharedValue(left);
-  const lift = useSharedValue(reduced ? 1 : 0);
-  useEffect(() => {
-    lift.value = reduced ? 1 : withTiming(1, { duration: 200, easing: EASE });
-    // mount only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    x.value = reduced ? left : withTiming(left, { duration: 220, easing: EASE });
-  }, [left, reduced, x]);
-  const style = useAnimatedStyle(() => ({
-    left: x.value,
-    opacity: 0.4 + lift.value * 0.6,
-    transform: [{ translateY: -12 * lift.value }, { scale: 0.94 + 0.06 * lift.value }],
-  }));
-  return (
-    <Animated.View style={[styles.cover, style]} pointerEvents="box-none">
-      <Pressable onPress={onPress} style={StyleSheet.absoluteFill} accessible={false}>
-        {item.poster ? (
-          <Image
-            source={posterAt(item.poster, 'w342')}
-            placeholder={posterAt(item.poster, 'w154')}
-            placeholderContentFit="cover"
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={reduced ? 0 : 140}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.coverFallback, { backgroundColor: fallbackColor(item.title) }]}>
-            <Text style={styles.coverFallbackText}>{item.title}</Text>
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-/* ───────── preview ───────── */
-
-type PreviewProps = {
-  shelf: Shelf;
-  index: number;
-  editing: boolean;
-  canEdit: boolean;
-  reduced: boolean;
-  onIndex: (i: number) => void;
-  onClose: () => void;
-  onMove: (delta: number) => void;
-};
-
-function Preview({ shelf, index, editing, canEdit, reduced, onIndex, onClose, onMove }: PreviewProps) {
-  const listRef = useRef<FlatList<ShelfItem>>(null);
-  const [w, setW] = useState(0);
-  const shown = useRef(index);
-
-  // Follow selection changes made on the shelf.
-  useEffect(() => {
-    if (!w || shown.current === index) return;
-    const near = Math.abs(shown.current - index) === 1;
-    shown.current = index;
-    listRef.current?.scrollToIndex({ index, animated: near && !reduced });
-  }, [index, w, reduced]);
-
-  const onEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!w) return;
-    const i = Math.round(e.nativeEvent.contentOffset.x / w);
-    if (i !== shown.current && i >= 0 && i < shelf.items.length) {
-      shown.current = i;
-      onIndex(i);
-    }
-  };
-
-  const item = shelf.items[index];
-  return (
-    <View style={styles.preview} accessibilityViewIsModal={false}>
-      <View style={styles.pvTop}>
-        <Text style={styles.pvCount}>
-          {index + 1} / {shelf.items.length}
-        </Text>
-        <View style={styles.pvNav}>
-          <IconButton label="Previous title" glyph="‹" disabled={index === 0} onPress={() => onIndex(index - 1)} />
-          <IconButton label="Next title" glyph="›" disabled={index === shelf.items.length - 1} onPress={() => onIndex(index + 1)} />
-          <IconButton label="Close preview" glyph="×" onPress={onClose} />
-        </View>
-      </View>
-      <View onLayout={(e: LayoutChangeEvent) => setW(Math.round(e.nativeEvent.layout.width))}>
-        {w ? (
-          <FlatList
-            ref={listRef}
-            data={shelf.items}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(it) => it.key}
-            initialScrollIndex={index}
-            getItemLayout={(_, i) => ({ length: w, offset: w * i, index: i })}
-            initialNumToRender={3}
-            windowSize={3}
-            onMomentumScrollEnd={onEnd}
-            renderItem={({ item: it }) => (
-              <View style={[styles.pvCard, { width: w }]}>
-                <View style={styles.pvMeta}>
-                  {it.rank != null ? <Text style={[styles.pvMetaText, { color: RS.colors.gold }]}>#{it.rank}</Text> : null}
-                  <Text style={styles.pvMetaText}>{MEDIA_LABEL[it.mediaType] ?? 'TITLE'}</Text>
-                  {it.year ? <Text style={styles.pvMetaText}>{it.year}</Text> : null}
-                </View>
-                <Text style={styles.pvTitle} numberOfLines={3}>
-                  {it.title}
-                </Text>
-                {it.creator ? <Text style={styles.pvCreator} numberOfLines={1}>{it.creator}</Text> : null}
-                {it.note ? <Text style={styles.pvNote} numberOfLines={2}>“{it.note}”</Text> : null}
-              </View>
-            )}
-          />
-        ) : (
-          <View style={{ height: 96 }} />
-        )}
-      </View>
-      <View style={styles.pvActions}>
-        <Pressable
-          onPress={() => item && openTitle(item)}
-          style={({ pressed }) => [styles.openBtn, pressed && { opacity: 0.85 }]}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${item?.title ?? 'title'}`}
-        >
-          <Text style={styles.openLabel}>Open title</Text>
-        </Pressable>
-        {canEdit && editing ? (
-          <View style={styles.moveRow}>
-            <Chip label="← Move" disabled={index === 0} onPress={() => onMove(-1)} a11y="Move left" />
-            <Chip label="Move →" disabled={index === shelf.items.length - 1} onPress={() => onMove(1)} a11y="Move right" />
-          </View>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-function IconButton({ label, glyph, disabled, onPress }: { label: string; glyph: string; disabled?: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={4}
-      style={({ pressed }) => [styles.iconBtn, pressed && { backgroundColor: 'rgba(255,255,255,0.08)' }, disabled && { opacity: 0.25 }]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
-    >
-      <Text style={styles.iconGlyph}>{glyph}</Text>
-    </Pressable>
-  );
-}
-
-function Chip({ label, onPress, disabled, on, a11y }: { label: string; onPress: () => void; disabled?: boolean; on?: boolean; a11y?: string }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={[styles.chip, on && styles.chipOn, disabled && { opacity: 0.35 }]}
-      accessibilityRole="button"
-      accessibilityLabel={a11y ?? label}
-      accessibilityState={{ disabled: !!disabled, selected: !!on }}
-    >
-      <Text style={[styles.chipLabel, on && { color: '#141210' }]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 /* ───────── shelf row ───────── */
 
 type RowProps = {
   shelf: Shelf;
-  selectedIndex: number | null;
+  density: number;
+  densityIndex: number;
+  hiddenKey: string | null;
   editing: boolean;
   canEdit: boolean;
-  reduced: boolean;
   registerTrack: (id: string, ref: ScrollView | null) => void;
-  onSelect: (shelfId: string, index: number) => void;
+  getScrollX: (id: string) => number;
+  onOpen: (shelfId: string, key: string, rectFor: (key: string) => Rect | null) => void;
   onMove: (shelfId: string, index: number, delta: number) => void;
   onToggleEdit: (id: string) => void;
   onVisibility: (shelf: Shelf) => void;
-  onLayoutY: (id: string, y: number) => void;
   onTrackScroll: (id: string, x: number) => void;
-  preview: React.ReactNode;
+  onPinchDensity: (shelfId: string, next: number, focalX: number) => void;
 };
 
 function moved<T>(arr: T[], from: number, to: number) {
@@ -385,65 +263,188 @@ function moved<T>(arr: T[], from: number, to: number) {
 }
 
 const ShelfRow = memo(function ShelfRow(p: RowProps) {
-  const { shelf } = p;
-  const baseGeo = useMemo(() => layout(shelf.items), [shelf.items]);
+  const { shelf, density } = p;
+  const { width: screenW } = useWindowDimensions();
+  // Gestures call through refs so they are never rebuilt in the middle of a drag or pinch.
+  const pRef = useRef(p);
+  pRef.current = p;
+  const baseGeo = useMemo(() => layout(shelf.items, density), [shelf.items, density]);
+  const geoRef = useRef(baseGeo);
+  geoRef.current = baseGeo;
+  const itemsRef = useRef(shelf.items);
+  itemsRef.current = shelf.items;
+  const wrapRef = useRef<View>(null);
+
+  // Spines slide when the order changes, but snap when the density changes so the
+  // spine under your fingers stays put.
+  const [animateLayout, setAnimateLayout] = useState(true);
+  const lastDensity = useRef(density);
+  useEffect(() => {
+    if (lastDensity.current === density) return;
+    lastDensity.current = density;
+    setAnimateLayout(false);
+    const t = setTimeout(() => setAnimateLayout(true), 300);
+    return () => clearTimeout(t);
+  }, [density]);
+
+  /* ── which spines to render: long shelves only render what's near the screen ── */
+  const BUCKET = Math.max(160, Math.round(screenW / 2));
+  const [bucket, setBucket] = useState(0);
+  const range = useMemo<[number, number]>(() => {
+    if (shelf.items.length <= VIRTUAL_FROM) return [0, shelf.items.length - 1];
+    const x0 = bucket * BUCKET - screenW;
+    const x1 = bucket * BUCKET + BUCKET + 2 * screenW;
+    return [firstAfter(baseGeo, x0), Math.min(shelf.items.length - 1, firstAfter(baseGeo, x1))];
+  }, [bucket, BUCKET, screenW, baseGeo, shelf.items.length]);
+
+  /* ── drag to arrange ── */
   const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
-  const dragRef = useRef<{ from: number; to: number } | null>(null);
+  const dragRef = useRef<{ from: number; to: number; dx: number; absX: number; startScroll: number } | null>(null);
+  const shelfId = shelf.id;
+  const wrapBox = useRef({ x: 0, w: screenW });
+  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollAdj = useSharedValue(0);
   const justDragged = useRef(false);
   const order = useMemo(() => (drag ? moved(shelf.items, drag.from, drag.to) : shelf.items), [shelf.items, drag]);
-  const geo = useMemo(() => (drag ? layout(order) : baseGeo), [drag, order, baseGeo]);
+  const geo = useMemo(() => (drag ? layout(order, density) : baseGeo), [drag, order, baseGeo, density]);
+  const trackRef = useRef<ScrollView | null>(null);
 
-  const onDragStart = useCallback((i: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    justDragged.current = true;
-    dragRef.current = { from: i, to: i };
-    setDrag(dragRef.current);
-  }, []);
-  const onDragMove = useCallback(
-    (i: number, dx: number) => {
-      const centre = baseGeo.lefts[i] + baseGeo.widths[i] / 2 + dx;
-      const rest = baseGeo.lefts.map((l, j) => ({ c: l + baseGeo.widths[j] / 2, j })).filter((x) => x.j !== i);
-      let to = rest.findIndex((x) => x.c > centre);
-      if (to === -1) to = rest.length;
-      if (dragRef.current && dragRef.current.to !== to) {
-        Haptics.selectionAsync().catch(() => {});
-        dragRef.current = { from: i, to };
-        setDrag(dragRef.current);
-      }
+  const retarget = useCallback(() => {
+    const st = dragRef.current;
+    if (!st) return;
+    const adj = pRef.current.getScrollX(shelfId) - st.startScroll;
+    const g = geoRef.current;
+    const centre = g.lefts[st.from] + g.widths[st.from] / 2 + st.dx + adj;
+    const rest = g.lefts.map((l, j) => ({ c: l + g.widths[j] / 2, j })).filter((x) => x.j !== st.from);
+    let to = rest.findIndex((x) => x.c > centre);
+    if (to === -1) to = rest.length;
+    if (to !== st.to) {
+      st.to = to;
+      Haptics.selectionAsync().catch(() => {});
+      setDrag({ from: st.from, to });
+    }
+  }, [shelfId]);
+
+  const stopAuto = () => {
+    if (autoTimer.current) clearInterval(autoTimer.current);
+    autoTimer.current = null;
+  };
+  const onDragStart = useCallback(
+    (i: number) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      justDragged.current = true;
+      const startScroll = pRef.current.getScrollX(shelfId);
+      dragRef.current = { from: i, to: i, dx: 0, absX: 0, startScroll };
+      scrollAdj.value = 0;
+      setDrag({ from: i, to: i });
+      wrapRef.current?.measureInWindow((x, _y, w) => (wrapBox.current = { x, w }));
+      // Hold near an edge to keep scrolling the shelf while dragging.
+      stopAuto();
+      autoTimer.current = setInterval(() => {
+        const st = dragRef.current;
+        const track = trackRef.current;
+        if (!st || !track || !st.absX) return;
+        const { x, w } = wrapBox.current;
+        let v = 0;
+        if (st.absX < x + EDGE) v = -Math.ceil((x + EDGE - st.absX) / 4);
+        else if (st.absX > x + w - EDGE) v = Math.ceil((st.absX - (x + w - EDGE)) / 4);
+        if (!v) return;
+        const cur = pRef.current.getScrollX(shelfId);
+        const max = Math.max(0, geoRef.current.width - w);
+        const next = Math.max(0, Math.min(max, cur + v));
+        if (next === cur) return;
+        track.scrollTo({ x: next, animated: false });
+        pRef.current.onTrackScroll(shelfId, next);
+        scrollAdj.value = next - st.startScroll;
+        retarget();
+      }, 16);
     },
-    [baseGeo]
+    [shelfId, scrollAdj, retarget]
+  );
+  const onDragMove = useCallback(
+    (_i: number, dx: number, absX: number) => {
+      const st = dragRef.current;
+      if (!st) return;
+      st.dx = dx;
+      st.absX = absX;
+      retarget();
+    },
+    [retarget]
   );
   const onDragEnd = useCallback(
     (i: number) => {
-      const st = dragRef.current;
+      stopAuto();
+      const to = dragRef.current?.to ?? i;
       dragRef.current = null;
+      scrollAdj.value = 0;
       setDrag(null);
-      if (st && st.to !== st.from) p.onMove(shelf.id, i, st.to - st.from);
+      if (to !== i) pRef.current.onMove(shelfId, i, to - i);
       setTimeout(() => (justDragged.current = false), 250);
+    },
+    [shelfId, scrollAdj]
+  );
+  useEffect(() => stopAuto, []);
+
+  /* ── tap a spine: work out where every spine is on screen right now, then open ── */
+  const onPress = useCallback(
+    (i: number) => {
+      if (justDragged.current) return;
+      const key = itemsRef.current[i]?.key;
+      if (!key) return;
+      wrapRef.current?.measureInWindow((wx, wy, ww) => {
+        const scrollX = p.getScrollX(shelf.id);
+        const rectFor = (k: string): Rect | null => {
+          const idx = itemsRef.current.findIndex((it) => it.key === k);
+          const g = geoRef.current;
+          if (idx < 0 || g.lefts[idx] == null) return null;
+          const x = wx + g.lefts[idx] - scrollX;
+          const w = g.widths[idx];
+          if (x + w < wx + 2 || x > wx + ww - 2) return null;
+          const h = spineHeight(k);
+          return { x, y: wy + HEADROOM + SPINE_H - h, w, h };
+        };
+        p.onOpen(shelf.id, key, rectFor);
+      });
     },
     [p, shelf.id]
   );
-
-  const sel = p.selectedIndex;
-  const selItem = sel != null ? shelf.items[sel] : null;
-  // Where the shelf ends, so the preview sits just under it whatever the header height.
-  const [trackBottom, setTrackBottom] = useState(46 + TRACK_H);
-  let coverLeft = 0;
-  if (sel != null && geo.lefts[sel] != null) {
-    const centre = geo.lefts[sel] + geo.widths[sel] / 2;
-    coverLeft = Math.min(Math.max(centre - COVER_W / 2, 6), geo.width - COVER_W - 6);
-  }
-  const onPress = useCallback((i: number) => {
-    if (justDragged.current) return;
-    p.onSelect(shelf.id, i);
-  }, [p, shelf.id]);
   const onMove = useCallback((i: number, d: number) => p.onMove(shelf.id, i, d), [p, shelf.id]);
 
+  /* ── pinch to change spine density ── */
+  const pinchTo = useCallback((next: number, focalX: number) => pRef.current.onPinchDensity(shelfId, next, focalX), [shelfId]);
+  const pinchBase = useSharedValue(p.densityIndex);
+  const pinchLevel = useSharedValue(p.densityIndex);
+  const nativeScroll = useMemo(() => Gesture.Native(), []);
+  const pinch = useMemo(
+    () =>
+      Gesture.Pinch()
+        .simultaneousWithExternalGesture(nativeScroll)
+        .onStart(() => {
+          pinchBase.value = pinchLevel.value;
+        })
+        .onUpdate((e) => {
+          // Each ~25% of pinch steps one density level.
+          const steps = Math.round(Math.log(e.scale) / Math.log(1.25));
+          const next = Math.max(0, Math.min(DENSITIES.length - 1, pinchBase.value + steps));
+          if (next !== pinchLevel.value) {
+            pinchLevel.value = next;
+            runOnJS(pinchTo)(next, e.focalX);
+          }
+        }),
+    [nativeScroll, pinchTo, pinchBase, pinchLevel]
+  );
+  useEffect(() => {
+    pinchLevel.value = p.densityIndex;
+  }, [p.densityIndex, pinchLevel]);
+
+  const onScroll = (x: number) => {
+    p.onTrackScroll(shelf.id, x);
+    const b = Math.max(0, Math.floor(x / BUCKET));
+    if (b !== bucket) setBucket(b);
+  };
+
   return (
-    <View
-      style={[styles.shelf, sel != null && { zIndex: 10 }]}
-      onLayout={(e) => p.onLayoutY(shelf.id, e.nativeEvent.layout.y)}
-    >
+    <View style={styles.shelf}>
       <View style={styles.head}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headTitle} numberOfLines={1} accessibilityRole="header">
@@ -458,65 +459,69 @@ const ShelfRow = memo(function ShelfRow(p: RowProps) {
         {p.canEdit ? (
           <View style={styles.headActions}>
             <Chip label={VIS_LABEL[shelf.visibility]} onPress={() => p.onVisibility(shelf)} a11y={`Who can see ${shelf.title}: ${VIS_LABEL[shelf.visibility]}`} />
-            {shelf.items.length > 1 ? (
-              <Chip label={p.editing ? 'Done' : 'Arrange'} on={p.editing} onPress={() => p.onToggleEdit(shelf.id)} />
-            ) : null}
+            {shelf.items.length > 1 ? <Chip label={p.editing ? 'Done' : 'Arrange'} on={p.editing} onPress={() => p.onToggleEdit(shelf.id)} /> : null}
           </View>
         ) : null}
       </View>
-      {p.editing ? (
-        <Text style={styles.editHint}>Hold a title and drag it, or select it and use the Move buttons.</Text>
-      ) : null}
+      {p.editing ? <Text style={styles.editHint}>Hold a title and drag it, or tap it and use the Move buttons.</Text> : null}
       {shelf.items.length === 0 ? (
         <Text style={styles.empty}>Nothing here yet.</Text>
       ) : (
-        <View onLayout={(e) => setTrackBottom(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
-        <ScrollView
-          ref={(r) => p.registerTrack(shelf.id, r)}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="normal"
-          scrollEventThrottle={64}
-          scrollEnabled={!drag}
-          onScroll={(e) => p.onTrackScroll(shelf.id, e.nativeEvent.contentOffset.x)}
-          contentContainerStyle={{ width: geo.width, height: TRACK_H }}
-          accessibilityRole="list"
-          accessibilityLabel={shelf.title}
-        >
-          {shelf.items.map((it, i) => {
-            const isDragged = drag?.from === i;
-            return (
-              <Spine
-                key={it.key}
-                item={it}
-                index={i}
-                total={shelf.items.length}
-                left={isDragged ? baseGeo.lefts[i] : geo.lefts[drag ? order.indexOf(it) : i]}
-                width={baseGeo.widths[i]}
-                selected={sel === i}
-                editing={p.editing}
-                onPress={onPress}
-                onMove={onMove}
-                dragging={isDragged}
-                onDragStart={onDragStart}
-                onDragMove={onDragMove}
-                onDragEnd={onDragEnd}
-              />
-            );
-          })}
-          {selItem && !drag ? <LiftedCover key={shelf.id} item={selItem} left={coverLeft} reduced={p.reduced} onPress={() => openTitle(selItem)} /> : null}
-          <View style={[styles.plank, { width: geo.width }]} />
-        </ScrollView>
-        </View>
+        <GestureDetector gesture={pinch}>
+          <View ref={wrapRef} collapsable={false}>
+            <GestureDetector gesture={nativeScroll}>
+              <ScrollView
+                ref={(r) => {
+                  trackRef.current = r;
+                  p.registerTrack(shelf.id, r);
+                }}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="normal"
+                scrollEventThrottle={32}
+                scrollEnabled={!drag}
+                onScroll={(e) => onScroll(e.nativeEvent.contentOffset.x)}
+                contentContainerStyle={{ width: geo.width, height: TRACK_H }}
+                accessibilityRole="list"
+                accessibilityLabel={shelf.title}
+              >
+                {shelf.items.map((it, i) => {
+                  const isDragged = drag?.from === i;
+                  if (!isDragged && (i < range[0] || i > range[1])) return null;
+                  return (
+                    <Spine
+                      key={it.key}
+                      item={it}
+                      index={i}
+                      total={shelf.items.length}
+                      left={isDragged ? baseGeo.lefts[i] : geo.lefts[drag ? order.indexOf(it) : i]}
+                      width={baseGeo.widths[i]}
+                      hidden={p.hiddenKey === it.key}
+                      editing={p.editing}
+                      animateLayout={animateLayout}
+                      onPress={onPress}
+                      onMove={onMove}
+                      dragging={isDragged}
+                      scrollAdj={scrollAdj}
+                      onDragStart={onDragStart}
+                      onDragMove={onDragMove}
+                      onDragEnd={onDragEnd}
+                    />
+                  );
+                })}
+                <View style={[styles.plank, { width: geo.width }]} />
+              </ScrollView>
+            </GestureDetector>
+          </View>
+        </GestureDetector>
       )}
-      {p.preview ? <View style={[styles.previewSlot, { top: trackBottom - 6 }]}>{p.preview}</View> : null}
     </View>
   );
 });
 
 /* ───────── browser ───────── */
 
-type Selection = { shelfId: string; key: string } | null;
+type Stage = { shelfId: string; startKey: string; key: string; rectFor: (key: string) => Rect | null } | null;
 
 export type ShelfBrowserProps = {
   shelves: Shelf[];
@@ -529,76 +534,51 @@ export type ShelfBrowserProps = {
 
 export function ShelfBrowser({ shelves, canEdit, header, bottomInset = 0, onReorder, onVisibility }: ShelfBrowserProps) {
   const reduced = useReducedMotion();
-  const [selection, setSelection] = useState<Selection>(null);
+  const [stage, setStage] = useState<Stage>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<'shelf' | 'grid' | 'list'>('shelf');
+  const [dIndex, setDIndex] = useDensity();
+  const density = DENSITIES[dIndex];
   const tracks = useRef(new Map<string, ScrollView>());
   const trackX = useRef(new Map<string, number>());
-  const rowY = useRef(new Map<string, number>());
-  const outer = useRef<ScrollView>(null);
-  const outerY = useRef(0);
-  const viewportH = useRef(0);
-
-  const selShelf = selection ? shelves.find((s) => s.id === selection.shelfId) ?? null : null;
-  const selIndex = selShelf && selection ? selShelf.items.findIndex((i) => i.key === selection.key) : -1;
 
   const registerTrack = useCallback((id: string, ref: ScrollView | null) => {
     if (ref) tracks.current.set(id, ref);
     else tracks.current.delete(id);
   }, []);
-  const onLayoutY = useCallback((id: string, y: number) => rowY.current.set(id, y), []);
   const onTrackScroll = useCallback((id: string, x: number) => trackX.current.set(id, x), []);
-  const { width: screenW } = useWindowDimensions();
+  const getScrollX = useCallback((id: string) => trackX.current.get(id) ?? 0, []);
 
-  const reveal = useCallback(
-    (shelf: Shelf, index: number) => {
-      const track = tracks.current.get(shelf.id);
-      if (!track) return;
-      const geo = layout(shelf.items);
-      const centre = geo.lefts[index] + geo.widths[index] / 2;
-      // Centre the lifted cover when it would sit under an edge; otherwise leave the shelf still.
-      const x = trackX.current.get(shelf.id) ?? 0;
-      const half = COVER_W / 2 + 20;
-      const vw = screenW;
-      if (centre - half < x || centre + half > x + vw) {
-        track.scrollTo({ x: Math.max(0, centre - vw / 2), animated: !reduced });
-      }
-      // Bring the preview into view without a big jump.
-      const y = rowY.current.get(shelf.id);
-      if (y != null && viewportH.current) {
-        const bottom = y + 46 + TRACK_H + 196;
-        const top = y;
-        if (bottom > outerY.current + viewportH.current - bottomInset) {
-          outer.current?.scrollTo({ y: bottom - viewportH.current + bottomInset + 8, animated: !reduced });
-        } else if (top < outerY.current) {
-          outer.current?.scrollTo({ y: top, animated: !reduced });
-        }
-      }
-    },
-    [reduced, bottomInset, screenW]
-  );
+  const onOpen = useCallback((shelfId: string, key: string, rectFor: (key: string) => Rect | null) => {
+    setStage((cur) => cur ?? { shelfId, startKey: key, key, rectFor });
+  }, []);
 
-  const select = useCallback(
-    (shelfId: string, index: number) => {
-      const shelf = shelves.find((s) => s.id === shelfId);
-      const item = shelf?.items[index];
-      if (!shelf || !item) return;
-      setSelection((cur) => {
-        if (cur?.shelfId === shelfId && cur.key === item.key) return cur;
-        Haptics.selectionAsync().catch(() => {});
-        return { shelfId, key: item.key };
+  /* density: keep the spine under the pinch where it is; other shelves keep their place proportionally */
+  const changeDensity = useCallback(
+    (next: number, pinned?: { shelfId: string; focalX: number }) => {
+      const from = DENSITIES[dIndex];
+      const to = DENSITIES[Math.max(0, Math.min(DENSITIES.length - 1, next))];
+      if (from === to) return;
+      Haptics.selectionAsync().catch(() => {});
+      const ratio = to / from;
+      const nextX = new Map<string, number>();
+      tracks.current.forEach((_t, id) => {
+        const x = trackX.current.get(id) ?? 0;
+        const focal = pinned?.shelfId === id ? pinned.focalX : 0;
+        nextX.set(id, Math.max(0, PAD_X + (x + focal - PAD_X) * ratio - focal));
       });
-      AccessibilityInfo.announceForAccessibility(`${item.title}. ${index + 1} of ${shelf.items.length}.`);
-      // Warm the neighbouring covers so swiping never shows a blank.
-      Image.prefetch(
-        shelf.items.slice(Math.max(0, index - 2), index + 3).map((i) => posterAt(i.poster, 'w342')).filter(Boolean) as string[]
-      ).catch(() => {});
-      requestAnimationFrame(() => reveal(shelf, index));
+      setDIndex(next);
+      requestAnimationFrame(() =>
+        nextX.forEach((x, id) => {
+          tracks.current.get(id)?.scrollTo({ x, animated: false });
+          trackX.current.set(id, x);
+        })
+      );
+      AccessibilityInfo.announceForAccessibility(next < dIndex ? 'More titles per shelf' : 'Fewer titles per shelf');
     },
-    [shelves, reveal]
+    [dIndex, setDIndex]
   );
-
-  const clear = useCallback(() => setSelection(null), []);
+  const onPinchDensity = useCallback((shelfId: string, next: number, focalX: number) => changeDensity(next, { shelfId, focalX }), [changeDensity]);
 
   const move = useCallback(
     (shelfId: string, index: number, delta: number) => {
@@ -640,71 +620,109 @@ export function ShelfBrowser({ shelves, canEdit, header, bottomInset = 0, onReor
     [onVisibility]
   );
 
-  const preview =
-    selShelf && selIndex >= 0 ? (
-      <Preview
-        key={selShelf.id}
-        shelf={selShelf}
-        index={selIndex}
-        editing={editingId === selShelf.id}
-        canEdit={canEdit}
-        reduced={reduced}
-        onIndex={(i) => select(selShelf.id, i)}
-        onClose={clear}
-        onMove={(d) => move(selShelf.id, selIndex, d)}
-      />
-    ) : null;
+  const stageShelf = stage ? shelves.find((s) => s.id === stage.shelfId) ?? null : null;
 
   return (
-    <ScrollView
-      ref={outer}
-      onLayout={(e) => (viewportH.current = e.nativeEvent.layout.height)}
-      onScroll={(e) => (outerY.current = e.nativeEvent.contentOffset.y)}
-      scrollEventThrottle={32}
-      contentContainerStyle={{ paddingBottom: bottomInset + 220 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Tapping anywhere that isn't a title or a control closes the preview. */}
-      <Pressable onPress={clear} accessible={false} style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset + 40 }} keyboardShouldPersistTaps="handled">
         {header}
-        <View style={styles.segment} accessibilityRole="tablist">
-          {(['shelf', 'grid', 'list'] as const).map((v) => (
-            <Pressable
-              key={v}
-              onPress={() => {
-                setView(v);
-                setSelection(null);
-              }}
-              style={[styles.segBtn, view === v && styles.segOn]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: view === v }}
-            >
-              <Text style={[styles.segLabel, view === v && { color: '#fff' }]}>{v === 'shelf' ? 'Shelf' : v === 'grid' ? 'Grid' : 'List'}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.toolbar}>
+          <View style={styles.segment} accessibilityRole="tablist">
+            {(['shelf', 'grid', 'list'] as const).map((v) => (
+              <Pressable
+                key={v}
+                onPress={() => setView(v)}
+                style={[styles.segBtn, view === v && styles.segOn]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: view === v }}
+              >
+                <Text style={[styles.segLabel, view === v && { color: '#fff' }]}>{v === 'shelf' ? 'Shelf' : v === 'grid' ? 'Grid' : 'List'}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {view === 'shelf' ? (
+            <View style={styles.density} accessibilityLabel="Spine size">
+              <DensityBtn glyph="−" label="Fit more titles on each shelf" disabled={dIndex === 0} onPress={() => changeDensity(dIndex - 1)} />
+              <DensityBtn glyph="+" label="Show bigger spines" disabled={dIndex === DENSITIES.length - 1} onPress={() => changeDensity(dIndex + 1)} />
+            </View>
+          ) : null}
         </View>
         {view === 'shelf'
           ? shelves.map((shelf) => (
               <ShelfRow
                 key={shelf.id}
                 shelf={shelf}
-                selectedIndex={selShelf?.id === shelf.id && selIndex >= 0 ? selIndex : null}
+                density={density}
+                densityIndex={dIndex}
+                hiddenKey={stage?.shelfId === shelf.id ? stage.key : null}
                 editing={editingId === shelf.id}
                 canEdit={canEdit}
-                reduced={reduced}
                 registerTrack={registerTrack}
+                getScrollX={getScrollX}
                 onTrackScroll={onTrackScroll}
-                onSelect={select}
+                onOpen={onOpen}
                 onMove={move}
                 onToggleEdit={(id) => setEditingId((cur) => (cur === id ? null : id))}
                 onVisibility={chooseVisibility}
-                onLayoutY={onLayoutY}
-                preview={selShelf?.id === shelf.id ? preview : null}
+                onPinchDensity={onPinchDensity}
               />
             ))
           : shelves.map((shelf) => <FlatShelf key={shelf.id} shelf={shelf} view={view} />)}
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+
+      {stage && stageShelf ? (
+        <CoverStage
+          key={`${stage.shelfId}:${stage.startKey}`}
+          shelf={stageShelf}
+          startKey={stage.startKey}
+          spineRect={stage.rectFor}
+          reduced={reduced}
+          canEdit={canEdit}
+          editing={editingId === stage.shelfId}
+          onKeyChange={(k) => setStage((cur) => (cur ? { ...cur, key: k } : cur))}
+          onMove={(k, d) => {
+            const i = stageShelf.items.findIndex((it) => it.key === k);
+            if (i >= 0) move(stageShelf.id, i, d);
+          }}
+          onOpenTitle={(it) => {
+            setStage(null);
+            openTitle(it);
+          }}
+          onClosed={() => setStage(null)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function DensityBtn({ glyph, label, disabled, onPress }: { glyph: string; label: string; disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={4}
+      style={({ pressed }) => [styles.densityBtn, pressed && { backgroundColor: 'rgba(255,255,255,0.12)' }, disabled && { opacity: 0.3 }]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+    >
+      <Text style={styles.densityGlyph}>{glyph}</Text>
+    </Pressable>
+  );
+}
+
+function Chip({ label, onPress, disabled, on, a11y }: { label: string; onPress: () => void; disabled?: boolean; on?: boolean; a11y?: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.chip, on && styles.chipOn, disabled && { opacity: 0.35 }]}
+      accessibilityRole="button"
+      accessibilityLabel={a11y ?? label}
+      accessibilityState={{ disabled: !!disabled, selected: !!on }}
+    >
+      <Text style={[styles.chipLabel, on && { color: '#141210' }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -762,10 +780,14 @@ function FlatShelf({ shelf, view }: { shelf: Shelf; view: 'grid' | 'list' }) {
 /* ───────── styles ───────── */
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 16, marginBottom: 14, padding: 3, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)' },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 14 },
+  segment: { flexDirection: 'row', padding: 3, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)' },
   segBtn: { minHeight: 34, paddingHorizontal: 14, borderRadius: 8, justifyContent: 'center' },
   segOn: { backgroundColor: 'rgba(255,255,255,0.12)' },
   segLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+  density: { flexDirection: 'row', gap: 4 },
+  densityBtn: { width: 40, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  densityGlyph: { fontSize: 20, lineHeight: 22, color: 'rgba(255,255,255,0.85)' },
 
   shelf: { marginBottom: 22 },
   head: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, gap: 10 },
@@ -783,35 +805,6 @@ const styles = StyleSheet.create({
   spineFoot: { position: 'absolute', bottom: 7, left: 0, right: 0, textAlign: 'center', fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
   spineEditing: { ...StyleSheet.absoluteFillObject, borderWidth: 1, borderColor: 'rgba(232,195,122,0.5)', borderRadius: 3 },
   plank: { position: 'absolute', left: 0, top: HEADROOM + SPINE_H, height: 9, borderRadius: 2, backgroundColor: '#2d261f' },
-
-  cover: {
-    position: 'absolute', top: HEADROOM + SPINE_H - COVER_H, width: COVER_W, height: COVER_H, borderRadius: 5, backgroundColor: '#1b1815',
-    shadowColor: '#000', shadowOpacity: 0.65, shadowRadius: 14, shadowOffset: { width: 0, height: 12 }, zIndex: 5,
-  },
-  coverFallback: { justifyContent: 'flex-end', padding: 10, borderRadius: 5 },
-  coverFallbackText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
-  previewSlot: { position: 'absolute', left: 12, right: 12, zIndex: 20 },
-  preview: {
-    backgroundColor: '#1c1916', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 14, paddingTop: 6, paddingBottom: 14,
-    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 10 },
-  },
-  pvTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pvCount: { fontSize: 12, color: RS.colors.textMuted, fontVariant: ['tabular-nums'] },
-  pvNav: { flexDirection: 'row' },
-  iconBtn: { width: 44, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  iconGlyph: { fontSize: 24, color: 'rgba(255,255,255,0.8)', lineHeight: 26 },
-  pvCard: { minHeight: 70, paddingRight: 8 },
-  pvMeta: { flexDirection: 'row', gap: 8 },
-  pvMetaText: { fontSize: 11, letterSpacing: 0.6, color: RS.colors.textSecondary, fontWeight: '600' },
-  pvTitle: { marginTop: 5, fontSize: 18, lineHeight: 23, fontWeight: '700', color: '#fff' },
-  pvCreator: { marginTop: 3, fontSize: 13, color: RS.colors.textSecondary },
-  pvNote: { marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)', fontStyle: 'italic' },
-  pvActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 },
-  openBtn: { minHeight: 44, paddingHorizontal: 22, borderRadius: 22, backgroundColor: '#f4f1ea', justifyContent: 'center' },
-  openLabel: { color: '#141210', fontWeight: '700', fontSize: 15 },
-  moveRow: { flexDirection: 'row', gap: 6 },
 
   chip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center' },
   chipOn: { backgroundColor: '#e8c37a', borderColor: '#e8c37a' },

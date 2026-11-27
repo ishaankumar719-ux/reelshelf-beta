@@ -136,7 +136,7 @@ export async function setShelfVisibility(userId: string, shelf: Shelf, v: Visibi
   if (error) throw error;
 }
 
-export function posterAt(url: string | null, size: 'w154' | 'w342') {
+export function posterAt(url: string | null, size: 'w92' | 'w154' | 'w342' | 'w500') {
   if (!url) return null;
   return url.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${size}/`);
 }
