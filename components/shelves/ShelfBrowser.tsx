@@ -13,17 +13,19 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { posterAt, type Shelf, type ShelfItem, type Visibility } from "../../lib/shelves";
+import CoverStage, { type Rect } from "./CoverStage";
 
 /* ───────────────────────── geometry ───────────────────────── */
 
 const PAD_X = 20;
 const GAP = 5;
-const HEADROOM = 26; // room above the spines for the lift
+const HEADROOM = 26; // room above the spines for the hover lift
+const VIRTUAL_FROM = 60; // render only nearby spines on shelves longer than this
 
-type Metrics = { spineH: number; coverW: number; coverH: number };
+type Metrics = { spineH: number };
 const METRICS: Record<"compact" | "wide", Metrics> = {
-  compact: { spineH: 196, coverW: 136, coverH: 204 },
-  wide: { spineH: 232, coverW: 156, coverH: 234 },
+  compact: { spineH: 196 },
+  wide: { spineH: 232 },
 };
 
 function hash(s: string) {
@@ -34,17 +36,30 @@ function hash(s: string) {
 const spineWidth = (key: string) => 40 + (hash(key) % 3) * 6; // 40 / 46 / 52
 const spineHeightPct = (key: string) => 0.9 + ((hash(key) >> 3) % 11) / 100; // 90–100%
 
-function layout(items: ShelfItem[]) {
+type Geo = { lefts: number[]; widths: number[]; width: number };
+function layout(items: ShelfItem[], density: number): Geo {
   const lefts: number[] = [];
   const widths: number[] = [];
+  const gap = Math.max(2, Math.round(GAP * density));
   let x = PAD_X;
   for (const it of items) {
-    const w = spineWidth(it.key);
+    const w = Math.round(spineWidth(it.key) * density);
     lefts.push(x);
     widths.push(w);
-    x += w + GAP;
+    x += w + gap;
   }
-  return { lefts, widths, width: x - GAP + PAD_X };
+  return { lefts, widths, width: x - gap + PAD_X };
+}
+/** First index whose spine ends after x. */
+function firstAfter(geo: Geo, x: number) {
+  let lo = 0;
+  let hi = geo.lefts.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (geo.lefts[mid] + geo.widths[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 const MEDIA_LABEL: Record<string, string> = { movie: "Film", tv: "Series", book: "Book", short_film: "Short" };
@@ -64,13 +79,29 @@ function useMedia(query: string, initial = false) {
   return match;
 }
 
-const preloaded = new Set<string>();
-function preload(src: string | null) {
-  if (!src || preloaded.has(src) || typeof window === "undefined") return;
-  preloaded.add(src);
-  const img = new Image();
-  img.decoding = "async";
-  img.src = src;
+/* spine density: −/+ buttons, trackpad pinch (ctrl + wheel) or a two-finger pinch on a shelf */
+const DENSITIES = [0.7, 0.85, 1, 1.2];
+const DENSITY_KEY = "reelshelf.shelves.density";
+function useDensity(): [number, (i: number) => void] {
+  const [i, setI] = useState(2);
+  useEffect(() => {
+    try {
+      const n = Number(localStorage.getItem(DENSITY_KEY));
+      if (Number.isInteger(n) && n >= 0 && n < DENSITIES.length && localStorage.getItem(DENSITY_KEY) != null) setI(n);
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const set = useCallback((n: number) => {
+    const next = Math.max(0, Math.min(DENSITIES.length - 1, n));
+    setI(next);
+    try {
+      localStorage.setItem(DENSITY_KEY, String(next));
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  return [i, set];
 }
 
 /* ───────────────────────── cover (no flashing) ───────────────────────── */
@@ -131,35 +162,37 @@ type SpineProps = {
   left: number;
   width: number;
   height: number;
-  selected: boolean;
+  out: boolean;
   tabbable: boolean;
   editing: boolean;
   total: number;
-  onSelect: (index: number) => void;
+  onOpen: (index: number) => void;
   onKey: (e: ReactKeyboardEvent<HTMLButtonElement>, index: number) => void;
+  onFocusSpine: (index: number) => void;
   dragging?: boolean;
   onDragStart?: (e: React.PointerEvent<HTMLButtonElement>, index: number) => void;
 };
 
-const Spine = memo(function Spine({ item, index, left, width, height, selected, tabbable, editing, total, onSelect, onKey, dragging, onDragStart }: SpineProps) {
+const Spine = memo(function Spine({ item, index, left, width, height, out, tabbable, editing, total, onOpen, onKey, onFocusSpine, dragging, onDragStart }: SpineProps) {
   const [broken, setBroken] = useState(false);
   const thumb = posterAt(item.poster, "w154");
   const len = item.title.length;
-  const fs = len <= 18 ? 12 : len <= 32 ? 11 : 10;
+  const fs = width < 34 ? 10 : len <= 18 ? 12 : len <= 32 ? 11 : 10;
   const h = Math.round(height * spineHeightPct(item.key));
   return (
     <button
       type="button"
       role="option"
-      aria-selected={selected}
+      aria-selected={out}
       aria-label={`${item.title}${item.year ? `, ${item.year}` : ""}. ${index + 1} of ${total}`}
       tabIndex={tabbable ? 0 : -1}
       data-index={index}
-      className={`sb-spine${selected && !dragging ? " is-selected" : ""}${editing ? " is-editing" : ""}${dragging ? " is-dragging" : ""}`}
+      className={`sb-spine${out && !dragging ? " is-out" : ""}${editing ? " is-editing" : ""}${dragging ? " is-dragging" : ""}`}
       style={{ left, width, height: h, top: HEADROOM + (height - h) }}
       aria-roledescription={editing ? "Draggable title" : undefined}
       onPointerDown={editing && onDragStart ? (e) => onDragStart(e, index) : undefined}
-      onClick={() => onSelect(index)}
+      onClick={() => onOpen(index)}
+      onFocus={() => onFocusSpine(index)}
       onKeyDown={(e) => onKey(e, index)}
     >
       {thumb && !broken ? (
@@ -177,144 +210,28 @@ const Spine = memo(function Spine({ item, index, left, width, height, selected, 
   );
 });
 
-/* ───────────────────────── preview ───────────────────────── */
-
-type PreviewProps = {
-  shelf: Shelf;
-  index: number;
-  editing: boolean;
-  canEdit: boolean;
-  reduced: boolean;
-  onIndex: (i: number) => void;
-  onClose: () => void;
-  onOpen: (item: ShelfItem) => void;
-  onMove: (delta: number) => void;
-};
-
-function Preview({ shelf, index, editing, canEdit, reduced, onIndex, onClose, onOpen, onMove }: PreviewProps) {
-  const item = shelf.items[index];
-  const prev = useRef(index);
-  const dir = index > prev.current ? 1 : index < prev.current ? -1 : 0;
-  useEffect(() => {
-    prev.current = index;
-  }, [index]);
-
-  // Horizontal swipe on the card steps through neighbours; vertical movement is left to the page.
-  const drag = useRef<{ x: number; y: number; id: number; axis: "x" | "y" | null } | null>(null);
-  const [dx, setDx] = useState(0);
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === "mouse") return;
-    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, axis: null };
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d || d.id !== e.pointerId) return;
-    const mx = e.clientX - d.x;
-    const my = e.clientY - d.y;
-    if (!d.axis && Math.hypot(mx, my) > 8) d.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-    if (d.axis === "x") {
-      const atEdge = (mx > 0 && index === 0) || (mx < 0 && index === shelf.items.length - 1);
-      setDx(atEdge ? mx * 0.25 : mx);
-    }
-  };
-  const onPointerEnd = (e: React.PointerEvent) => {
-    const d = drag.current;
-    drag.current = null;
-    if (!d || d.axis !== "x") return setDx(0);
-    const mx = e.clientX - d.x;
-    setDx(0);
-    if (mx < -44 && index < shelf.items.length - 1) onIndex(index + 1);
-    else if (mx > 44 && index > 0) onIndex(index - 1);
-  };
-
-  return (
-    <div className="sb-preview" role="region" aria-label={`${shelf.title}: selected title`}>
-      <div className="sb-pv-top">
-        <span className="sb-pv-count">
-          {index + 1} / {shelf.items.length}
-        </span>
-        <div className="sb-pv-nav">
-          <button type="button" className="sb-icon" aria-label="Previous title" disabled={index === 0} onClick={() => onIndex(index - 1)}>
-            ‹
-          </button>
-          <button
-            type="button"
-            className="sb-icon"
-            aria-label="Next title"
-            disabled={index === shelf.items.length - 1}
-            onClick={() => onIndex(index + 1)}
-          >
-            ›
-          </button>
-          <button type="button" className="sb-icon" aria-label="Close preview" onClick={onClose}>
-            ×
-          </button>
-        </div>
-      </div>
-      <div
-        className="sb-pv-stage"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-      >
-        <article
-          key={item?.key}
-          className={`sb-pv-card${!reduced && dir ? (dir > 0 ? " from-right" : " from-left") : ""}`}
-          style={dx ? { transform: `translateX(${dx}px)`, transition: "none", opacity: 1 - Math.min(Math.abs(dx) / 400, 0.4) } : undefined}
-        >
-          {item ? (
-            <>
-              <div className="sb-pv-meta">
-                {item.rank != null ? <span className="sb-pv-rank">#{item.rank}</span> : null}
-                <span>{MEDIA_LABEL[item.mediaType] ?? "Title"}</span>
-                {item.year ? <span>{item.year}</span> : null}
-              </div>
-              <h3 className="sb-pv-title">{item.title}</h3>
-              {item.creator ? <p className="sb-pv-creator">{item.creator}</p> : null}
-              {item.note ? <p className="sb-pv-note">“{item.note}”</p> : null}
-            </>
-          ) : null}
-        </article>
-      </div>
-      <div className="sb-pv-actions">
-        <button type="button" className="sb-open" onClick={() => item && onOpen(item)}>
-          Open title
-        </button>
-        {canEdit && editing ? (
-          <div className="sb-move" role="group" aria-label="Move title">
-            <button type="button" className="sb-chip" disabled={index === 0} onClick={() => onMove(-1)} aria-label="Move left">
-              ← Move
-            </button>
-            <button type="button" className="sb-chip" disabled={index === shelf.items.length - 1} onClick={() => onMove(1)} aria-label="Move right">
-              Move →
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 /* ───────────────────────── shelf row ───────────────────────── */
 
 type RowProps = {
   shelf: Shelf;
   shelfIndex: number;
   metrics: Metrics;
-  selectedIndex: number | null;
+  density: number;
+  outKey: string | null;
+  focusIndex: number;
   editing: boolean;
   canEdit: boolean;
   wide: boolean;
   reduced: boolean;
-  trackRef: (el: HTMLDivElement | null) => void;
-  sectionRef: (el: HTMLElement | null) => void;
-  onSelect: (shelfIndex: number, index: number, opts?: { focus?: boolean }) => void;
+  setTrackEl: (el: HTMLDivElement | null) => void;
+  setSectionEl: (el: HTMLElement | null) => void;
+  onOpen: (shelfIndex: number, index: number, rectFor: (key: string) => Rect | null) => void;
   onKey: (e: ReactKeyboardEvent<HTMLButtonElement>, shelfIndex: number, index: number) => void;
+  onFocusSpine: (shelfIndex: number, index: number) => void;
   onToggleEdit: () => void;
   onVisibility: (v: Visibility) => void;
   onDragReorder: (shelfIndex: number, from: number, to: number) => void;
-  preview: React.ReactNode;
+  onDensityStep: (dir: number, shelfId: string, focalX: number) => void;
 };
 
 type DragState = { from: number; to: number; dx: number; startScroll: number; scroll: number };
@@ -328,18 +245,28 @@ function moved<T>(arr: T[], from: number, to: number) {
 }
 
 function ShelfRow(p: RowProps) {
-  const { shelf, metrics } = p;
+  const { shelf, metrics, density, setSectionEl, setTrackEl } = p;
   const trackEl = useRef<HTMLDivElement | null>(null);
+  // Latest props for event handlers; set after each render (handlers only run after mount).
+  const pRef = useRef<RowProps>(null as unknown as RowProps);
+  useLayoutEffect(() => {
+    pRef.current = p;
+  });
 
   /* ── drag to reorder (Arrange mode only) ──
      Mouse: press and move. Touch: hold briefly, then move — a quick swipe still
-     scrolls the shelf. The other spines slide aside to show where it will land. */
+     scrolls the shelf. The other spines slide aside to show where it will land;
+     holding near either end keeps the shelf scrolling. */
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const suppressClick = useRef(false);
-  const baseGeo = useMemo(() => layout(shelf.items), [shelf.items]);
+  const baseGeo = useMemo(() => layout(shelf.items, density), [shelf.items, density]);
+  const geoRef = useRef(baseGeo);
+  useLayoutEffect(() => {
+    geoRef.current = baseGeo;
+  }, [baseGeo]);
   const order = useMemo(() => (drag ? moved(shelf.items, drag.from, drag.to) : shelf.items), [shelf.items, drag]);
-  const geo = useMemo(() => (drag ? layout(order) : baseGeo), [drag, order, baseGeo]);
+  const geo = useMemo(() => (drag ? layout(order, density) : baseGeo), [drag, order, baseGeo, density]);
 
   const onDragStart = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>, index: number) => {
@@ -357,7 +284,8 @@ function ShelfRow(p: RowProps) {
       const targetFor = (clientX: number) => {
         const rect = track.getBoundingClientRect();
         const x = clientX - rect.left + track.scrollLeft;
-        const rest = baseGeo.lefts.map((l, i) => ({ c: l + baseGeo.widths[i] / 2, i })).filter((s) => s.i !== index);
+        const g = geoRef.current;
+        const rest = g.lefts.map((l, i) => ({ c: l + g.widths[i] / 2, i })).filter((s) => s.i !== index);
         let to = rest.findIndex((s) => s.c > x);
         if (to === -1) to = rest.length;
         return to;
@@ -415,7 +343,7 @@ function ShelfRow(p: RowProps) {
         if (ev.pointerId !== e.pointerId) return;
         const st = dragRef.current;
         cleanup();
-        if (active && st && st.to !== st.from) p.onDragReorder(p.shelfIndex, st.from, st.to);
+        if (active && st && st.to !== st.from) pRef.current.onDragReorder(pRef.current.shelfIndex, st.from, st.to);
         // Let the click that follows a drag through to nothing.
         setTimeout(() => (suppressClick.current = false), 0);
       };
@@ -436,25 +364,77 @@ function ShelfRow(p: RowProps) {
       track.addEventListener("touchmove", onTouchMove, { passive: false });
       if (touch) timer = window.setTimeout(activate, 240);
     },
-    [baseGeo, p]
+    []
   );
 
+  /* ── long shelves only render the spines near the visible part ── */
   const [edges, setEdges] = useState({ start: true, end: false });
-  const sel = p.selectedIndex;
-  const selItem = sel != null ? shelf.items[sel] : null;
-
-  const updateEdges = useCallback(() => {
+  const [view, setView] = useState({ x: 0, w: 1200 });
+  const onScroll = useCallback(() => {
     const t = trackEl.current;
     if (!t) return;
+    const bucket = Math.floor(t.scrollLeft / 400) * 400;
+    setView((v) => (v.x === bucket && v.w === t.clientWidth ? v : { x: bucket, w: t.clientWidth }));
     setEdges({ start: t.scrollLeft < 4, end: t.scrollLeft + t.clientWidth > t.scrollWidth - 4 });
   }, []);
-  useEffect(updateEdges, [updateEdges, geo.width]);
+  const range = useMemo<[number, number]>(() => {
+    const n = shelf.items.length;
+    if (n <= VIRTUAL_FROM) return [0, n - 1];
+    return [firstAfter(baseGeo, view.x - view.w), Math.min(n - 1, firstAfter(baseGeo, view.x + 400 + 2 * view.w))];
+  }, [shelf.items.length, baseGeo, view]);
 
-  // Preload a few covers around the selection so neighbouring swipes never flash.
+  useEffect(onScroll, [onScroll, geo.width]);
+
+  /* ── pinch to change density: trackpad (ctrl + wheel) or two fingers ── */
   useEffect(() => {
-    if (sel == null) return;
-    for (let i = Math.max(0, sel - 3); i <= Math.min(shelf.items.length - 1, sel + 3); i++) preload(posterAt(shelf.items[i].poster, "w342"));
-  }, [sel, shelf.items]);
+    const t = trackEl.current;
+    if (!t) return;
+    let acc = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault(); // otherwise the browser zooms the page
+      acc += e.deltaY;
+      if (Math.abs(acc) < 40) return;
+      const dir = acc < 0 ? 1 : -1;
+      acc = 0;
+      pRef.current.onDensityStep(dir, shelf.id, e.clientX - t.getBoundingClientRect().left);
+    };
+    let base = 0;
+    let applied = 0;
+    const dist = (e: TouchEvent) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        base = dist(e);
+        applied = 0;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !base) return;
+      e.preventDefault();
+      const steps = Math.round(Math.log(dist(e) / base) / Math.log(1.25));
+      if (steps !== applied) {
+        const dir = steps > applied ? 1 : -1;
+        applied = steps;
+        const mid = (e.touches[0].clientX + e.touches[1].clientX) / 2 - t.getBoundingClientRect().left;
+        pRef.current.onDensityStep(dir, shelf.id, mid);
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) base = 0;
+    };
+    t.addEventListener("wheel", onWheel, { passive: false });
+    t.addEventListener("touchstart", onTouchStart, { passive: true });
+    t.addEventListener("touchmove", onTouchMove, { passive: false });
+    t.addEventListener("touchend", onTouchEnd);
+    t.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      t.removeEventListener("wheel", onWheel);
+      t.removeEventListener("touchstart", onTouchStart);
+      t.removeEventListener("touchmove", onTouchMove);
+      t.removeEventListener("touchend", onTouchEnd);
+      t.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [shelf.id, shelf.items.length]);
 
   const page = (dir: number) => {
     const t = trackEl.current;
@@ -462,15 +442,32 @@ function ShelfRow(p: RowProps) {
     t.scrollBy({ left: dir * t.clientWidth * 0.8, behavior: p.reduced ? "auto" : "smooth" });
   };
 
-  let coverLeft = 0;
-  if (sel != null && geo.lefts[sel] != null) {
-    const centre = geo.lefts[sel] + geo.widths[sel] / 2;
-    coverLeft = Math.min(Math.max(centre - metrics.coverW / 2, 8), geo.width - metrics.coverW - 8);
-  }
-  const tabIndex = sel ?? 0;
+  /* ── open: where every spine is on screen right now, for the flight out and back ── */
+  const open = useCallback((i: number) => {
+    if (suppressClick.current) return;
+    const t = trackEl.current;
+    if (!t) return;
+    const r = t.getBoundingClientRect();
+    const sx = t.scrollLeft;
+    const P = pRef.current;
+    const items = () => pRef.current.shelf.items;
+    const rectFor = (k: string): Rect | null => {
+      const idx = items().findIndex((it) => it.key === k);
+      const g = geoRef.current;
+      if (idx < 0 || g.lefts[idx] == null) return null;
+      const x = r.left + g.lefts[idx] - sx;
+      const w = g.widths[idx];
+      if (x + w < r.left + 2 || x > r.right - 2) return null;
+      const h = Math.round(P.metrics.spineH * spineHeightPct(k));
+      return { x, y: r.top + HEADROOM + (P.metrics.spineH - h), w, h };
+    };
+    P.onOpen(P.shelfIndex, i, rectFor);
+  }, []);
+  const onKey = useCallback((e: ReactKeyboardEvent<HTMLButtonElement>, i: number) => pRef.current.onKey(e, pRef.current.shelfIndex, i), []);
+  const onFocusSpine = useCallback((i: number) => pRef.current.onFocusSpine(pRef.current.shelfIndex, i), []);
 
   return (
-    <section className={`sb-shelf${sel != null ? " has-selection" : ""}`} ref={p.sectionRef} aria-labelledby={`sb-h-${shelf.id}`}>
+    <section className="sb-shelf" ref={setSectionEl} aria-labelledby={`sb-h-${shelf.id}`}>
       <header className="sb-head">
         <div>
           <h2 id={`sb-h-${shelf.id}`}>{shelf.listHref ? <Link href={shelf.listHref}>{shelf.title}</Link> : shelf.title}</h2>
@@ -508,7 +505,9 @@ function ShelfRow(p: RowProps) {
         ) : null}
       </header>
 
-      {p.editing ? <p className="sb-edit-hint">Drag a title to move it, or select one and use the Move buttons (Alt + ← / → on a keyboard).</p> : null}
+      {p.editing ? (
+        <p className="sb-edit-hint">Drag a title to move it, or open it and use the Move buttons (Alt + ← / → on a keyboard).</p>
+      ) : null}
       {shelf.items.length === 0 ? (
         <p className="sb-empty">Nothing here yet.</p>
       ) : (
@@ -520,13 +519,14 @@ function ShelfRow(p: RowProps) {
             aria-orientation="horizontal"
             ref={(el) => {
               trackEl.current = el;
-              p.trackRef(el);
+              setTrackEl(el);
             }}
-            onScroll={updateEdges}
+            onScroll={onScroll}
           >
             <div className="sb-track-inner" style={{ width: geo.width, height: metrics.spineH + HEADROOM + 14 }}>
               {shelf.items.map((it, i) => {
                 const isDragged = drag?.from === i;
+                if (!isDragged && i !== p.focusIndex && (i < range[0] || i > range[1])) return null;
                 const slot = drag ? order.indexOf(it) : i;
                 const left = isDragged ? baseGeo.lefts[i] + drag!.dx + (drag!.scroll - drag!.startScroll) : geo.lefts[slot];
                 return (
@@ -537,30 +537,18 @@ function ShelfRow(p: RowProps) {
                     left={left}
                     width={baseGeo.widths[i]}
                     height={metrics.spineH}
-                    selected={sel === i}
-                    tabbable={tabIndex === i}
+                    out={p.outKey === it.key}
+                    tabbable={p.focusIndex === i}
                     editing={p.editing}
                     total={shelf.items.length}
                     dragging={isDragged}
                     onDragStart={onDragStart}
-                    onSelect={(i2) => {
-                      if (suppressClick.current) return;
-                      p.onSelect(p.shelfIndex, i2);
-                    }}
-                    onKey={(e, i2) => p.onKey(e, p.shelfIndex, i2)}
+                    onOpen={open}
+                    onKey={onKey}
+                    onFocusSpine={onFocusSpine}
                   />
                 );
               })}
-              {selItem && !drag ? (
-                <div
-                  className="sb-cover"
-                  aria-hidden="true"
-                  style={{ left: coverLeft, width: metrics.coverW, height: metrics.coverH, top: HEADROOM + metrics.spineH - metrics.coverH }}
-                  onClick={() => p.onSelect(p.shelfIndex, sel!)}
-                >
-                  <CoverArt src={posterAt(selItem.poster, "w342")} low={posterAt(selItem.poster, "w154")} title={selItem.title} />
-                </div>
-              ) : null}
               <div className="sb-plank" style={{ top: HEADROOM + metrics.spineH, width: geo.width }} />
             </div>
           </div>
@@ -576,14 +564,13 @@ function ShelfRow(p: RowProps) {
           ) : null}
         </div>
       )}
-      {p.preview}
     </section>
   );
 }
 
 /* ───────────────────────── browser ───────────────────────── */
 
-type Selection = { shelfId: string; key: string } | null;
+type Stage = { shelfId: string; startKey: string; key: string; rectFor: (key: string) => Rect | null } | null;
 
 export type ShelfBrowserProps = {
   shelves: Shelf[];
@@ -598,108 +585,65 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
   const wide = useMedia("(min-width: 900px)");
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
   const metrics = METRICS[wide ? "wide" : "compact"];
+  const [dIndex, setDIndex] = useDensity();
+  const density = DENSITIES[dIndex];
 
-  const [selection, setSelection] = useState<Selection>(null);
+  const [stage, setStage] = useState<Stage>(null);
+  const [focus, setFocus] = useState<{ shelfId: string; index: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<"shelf" | "grid" | "list">("shelf");
   const [announce, setAnnounce] = useState("");
 
-  const rootRef = useRef<HTMLDivElement>(null);
-  const asideRef = useRef<HTMLElement>(null);
   const tracks = useRef<Map<string, HTMLDivElement>>(new Map());
   const sections = useRef<Map<string, HTMLElement>>(new Map());
 
-  const selShelfIndex = selection ? shelves.findIndex((s) => s.id === selection.shelfId) : -1;
-  const selShelf = selShelfIndex >= 0 ? shelves[selShelfIndex] : null;
-  const selIndex = selShelf && selection ? selShelf.items.findIndex((i) => i.key === selection.key) : -1;
-
-  /* keep the selected spine in view, horizontally only */
+  /* keep a spine in view, horizontally only */
   const revealSpine = useCallback(
-    (shelfId: string, index: number, smooth: boolean) => {
+    (shelfId: string, index: number) => {
       const track = tracks.current.get(shelfId);
       const shelf = shelves.find((s) => s.id === shelfId);
       if (!track || !shelf) return;
-      const geo = layout(shelf.items);
-      const centre = geo.lefts[index] + geo.widths[index] / 2;
-      const half = metrics.coverW / 2 + 24;
-      const view0 = track.scrollLeft;
-      const view1 = view0 + track.clientWidth;
-      let next = view0;
-      if (centre - half < view0) next = centre - half;
-      else if (centre + half > view1) next = centre + half - track.clientWidth;
-      if (Math.abs(next - view0) > 1) track.scrollTo({ left: Math.max(0, next), behavior: smooth && !reduced ? "smooth" : "auto" });
+      const g = layout(shelf.items, density);
+      const l = g.lefts[index] - 24;
+      const r = g.lefts[index] + g.widths[index] + 24;
+      if (l < track.scrollLeft) track.scrollTo({ left: Math.max(0, l), behavior: reduced ? "auto" : "smooth" });
+      else if (r > track.scrollLeft + track.clientWidth) track.scrollTo({ left: r - track.clientWidth, behavior: reduced ? "auto" : "smooth" });
     },
-    [shelves, metrics.coverW, reduced]
+    [shelves, density, reduced]
   );
 
-  const focusSpine = (shelfId: string, index: number) => {
-    const el = tracks.current.get(shelfId)?.querySelector<HTMLButtonElement>(`[data-index="${index}"]`);
-    el?.focus({ preventScroll: true });
-  };
+  const focusSpine = useCallback((shelfId: string, index: number) => {
+    setFocus({ shelfId, index });
+    requestAnimationFrame(() => tracks.current.get(shelfId)?.querySelector<HTMLButtonElement>(`[data-index="${index}"]`)?.focus({ preventScroll: true }));
+  }, []);
 
-  const select = useCallback(
-    (shelfIndex: number, index: number, opts: { focus?: boolean; smooth?: boolean } = {}) => {
+  const onOpen = useCallback(
+    (shelfIndex: number, index: number, rectFor: (key: string) => Rect | null) => {
       const shelf = shelves[shelfIndex];
       const item = shelf?.items[index];
       if (!item) return;
-      setSelection({ shelfId: shelf.id, key: item.key });
-      setAnnounce(`${item.title}${item.year ? `, ${item.year}` : ""}. ${index + 1} of ${shelf.items.length} in ${shelf.title}.`);
-      revealSpine(shelf.id, index, opts.smooth ?? true);
-      if (opts.focus) focusSpine(shelf.id, index);
-      // Make sure the preview is visible below the shelf on phones without a big jump.
-      if (!wide) {
-        requestAnimationFrame(() => {
-          const pv = sections.current.get(shelf.id)?.querySelector(".sb-preview");
-          pv?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
-        });
-      }
+      setFocus({ shelfId: shelf.id, index });
+      setStage((cur) => cur ?? { shelfId: shelf.id, startKey: item.key, key: item.key, rectFor });
     },
-    [shelves, revealSpine, wide, reduced]
+    [shelves]
   );
 
-  const clear = useCallback(() => {
-    setSelection(null);
-    setAnnounce("Preview closed.");
-  }, []);
-
-  /* tap / click outside dismisses */
-  useEffect(() => {
-    if (!selection) return;
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (!t || t.closest(".sb-spine, .sb-cover, .sb-preview, .sb-head-actions, .sb-page, .sb-toolbar")) return;
-      setSelection(null);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        const id = selection.shelfId;
-        const idx = selIndex;
-        setSelection(null);
-        if (idx >= 0) focusSpine(id, idx);
-      }
-    };
-    document.addEventListener("click", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [selection, selIndex]);
-
   /* reorder (explicit Arrange mode only) */
-  const move = useCallback(
-    (delta: number) => {
-      if (!selShelf || selIndex < 0 || !onReorder) return;
-      const to = selIndex + delta;
-      if (to < 0 || to >= selShelf.items.length) return;
-      const next = [...selShelf.items];
-      const [it] = next.splice(selIndex, 1);
+  const moveKey = useCallback(
+    (shelfId: string, key: string, delta: number) => {
+      const shelf = shelves.find((s) => s.id === shelfId);
+      if (!shelf || !onReorder) return;
+      const from = shelf.items.findIndex((i) => i.key === key);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= shelf.items.length) return;
+      const next = [...shelf.items];
+      const [it] = next.splice(from, 1);
       next.splice(to, 0, it);
-      onReorder(selShelf, next);
+      onReorder(shelf, next);
       setAnnounce(`Moved ${it.title} to position ${to + 1}.`);
-      requestAnimationFrame(() => revealSpine(selShelf.id, to, true));
+      return to;
     },
-    [selShelf, selIndex, onReorder, revealSpine]
+    [shelves, onReorder]
   );
 
   const onDragReorder = useCallback(
@@ -715,21 +659,27 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
     [shelves, onReorder]
   );
 
+  /* keyboard on the shelves: arrows move between titles, Enter opens the cover */
   const onKey = useCallback(
     (e: ReactKeyboardEvent<HTMLButtonElement>, shelfIndex: number, index: number) => {
       const shelf = shelves[shelfIndex];
-      const isSel = selection?.shelfId === shelf.id && selection.key === shelf.items[index]?.key;
       const editing = editingId === shelf.id;
       const go = (si: number, i: number) => {
         e.preventDefault();
         const s = shelves[si];
         if (!s || !s.items.length) return;
-        select(si, Math.max(0, Math.min(s.items.length - 1, i)), { focus: true });
+        const n = Math.max(0, Math.min(s.items.length - 1, i));
+        revealSpine(s.id, n);
+        focusSpine(s.id, n);
+        setAnnounce(`${s.items[n].title}. ${n + 1} of ${s.items.length} in ${s.title}.`);
       };
       if (editing && e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
-        if (!isSel) select(shelfIndex, index);
-        move(e.key === "ArrowLeft" ? -1 : 1);
+        const to = moveKey(shelf.id, shelf.items[index].key, e.key === "ArrowLeft" ? -1 : 1);
+        if (to != null) {
+          revealSpine(shelf.id, to);
+          focusSpine(shelf.id, to);
+        }
         return;
       }
       switch (e.key) {
@@ -749,28 +699,60 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
           if (!shelves[si]) return;
           return go(si, Math.min(index, shelves[si].items.length - 1));
         }
-        case "Enter":
-          if (isSel) {
-            e.preventDefault();
-            openItem(shelf.items[index]);
-          }
-          return;
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shelves, selection, editingId, select, move]
+    [shelves, editingId, revealSpine, focusSpine, moveKey]
   );
+  const onFocusSpine = useCallback((shelfIndex: number, index: number) => {
+    const s = shelves[shelfIndex];
+    if (s) setFocus((cur) => (cur?.shelfId === s.id && cur.index === index ? cur : { shelfId: s.id, index }));
+  }, [shelves]);
 
-  /* scroll memory: rows, selection and page offset survive a trip to a title page */
+  /* density: keep the spine under the pinch where it is; other shelves keep their place proportionally */
+  const pendingScroll = useRef<Map<string, number> | null>(null);
+  // Spines snap to their new size (no sliding) so the one under the pinch stays put.
+  const [snap, setSnap] = useState(false);
+  const snapTimer = useRef(0);
+  const changeDensity = useCallback(
+    (next: number, pinned?: { shelfId: string; focalX: number }) => {
+      const n = Math.max(0, Math.min(DENSITIES.length - 1, next));
+      if (n === dIndex) return;
+      const ratio = DENSITIES[n] / DENSITIES[dIndex];
+      const m = new Map<string, number>();
+      tracks.current.forEach((t, id) => {
+        const focal = pinned?.shelfId === id ? pinned.focalX : 0;
+        m.set(id, Math.max(0, PAD_X + (t.scrollLeft + focal - PAD_X) * ratio - focal));
+      });
+      pendingScroll.current = m;
+      setSnap(true);
+      window.clearTimeout(snapTimer.current);
+      snapTimer.current = window.setTimeout(() => setSnap(false), 320);
+      setDIndex(n);
+      setAnnounce(n < dIndex ? "More titles per shelf." : "Fewer titles per shelf.");
+    },
+    [dIndex, setDIndex]
+  );
+  useLayoutEffect(() => {
+    const m = pendingScroll.current;
+    if (!m) return;
+    pendingScroll.current = null;
+    m.forEach((x, id) => {
+      const t = tracks.current.get(id);
+      if (t) t.scrollLeft = x;
+    });
+  }, [density]);
+  const onDensityStep = useCallback((dir: number, shelfId: string, focalX: number) => changeDensity(dIndex + dir, { shelfId, focalX }), [changeDensity, dIndex]);
+
+  /* scroll memory: rows and page offset survive a trip to a title page */
   const save = useCallback(() => {
     try {
       const rows: Record<string, number> = {};
       tracks.current.forEach((el, id) => (rows[id] = el.scrollLeft));
-      sessionStorage.setItem(storageKey, JSON.stringify({ rows, selection, y: window.scrollY, view }));
+      sessionStorage.setItem(storageKey, JSON.stringify({ rows, y: window.scrollY, view }));
     } catch {
       /* storage unavailable */
     }
-  }, [storageKey, selection, view]);
+  }, [storageKey, view]);
 
   const restored = useRef(false);
   useLayoutEffect(() => {
@@ -779,15 +761,12 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (!raw) return;
-      const s = JSON.parse(raw) as { rows: Record<string, number>; selection: Selection; y: number; view?: typeof view };
+      const s = JSON.parse(raw) as { rows: Record<string, number>; y: number; view?: typeof view };
       if (s.view) setView(s.view);
       Object.entries(s.rows ?? {}).forEach(([id, x]) => {
         const el = tracks.current.get(id);
         if (el) el.scrollLeft = x;
       });
-      if (s.selection && shelves.some((sh) => sh.id === s.selection!.shelfId && sh.items.some((i) => i.key === s.selection!.key))) {
-        setSelection(s.selection);
-      }
       requestAnimationFrame(() => window.scrollTo({ top: s.y ?? 0, behavior: "auto" }));
     } catch {
       /* ignore */
@@ -804,82 +783,89 @@ export default function ShelfBrowser({ shelves, canEdit, storageKey, onReorder, 
     router.push(item.href);
   }
 
-  /* desktop: the preview sits beside the selected shelf */
-  const [sideTop, setSideTop] = useState(0);
-  useLayoutEffect(() => {
-    if (!wide || !selShelf) return;
-    const sec = sections.current.get(selShelf.id);
-    const aside = asideRef.current;
-    if (sec && aside) setSideTop(Math.max(0, sec.getBoundingClientRect().top - aside.getBoundingClientRect().top + 44));
-  }, [wide, selShelf, shelves]);
-
-  const renderPreview = () =>
-    selShelf && selIndex >= 0 ? (
-      <Preview
-        key={selShelf.id}
-        shelf={selShelf}
-        index={selIndex}
-        editing={editingId === selShelf.id}
-        canEdit={canEdit}
-        reduced={reduced}
-        onIndex={(i) => select(selShelfIndex, i)}
-        onClose={() => {
-          const id = selShelf.id;
-          clear();
-          focusSpine(id, selIndex);
-        }}
-        onOpen={openItem}
-        onMove={move}
-      />
-    ) : null;
+  const stageShelf = stage ? shelves.find((s) => s.id === stage.shelfId) ?? null : null;
 
   return (
-    <div className={`sb${reduced ? " is-reduced" : ""}`} ref={rootRef}>
+    <div className={`sb${reduced ? " is-reduced" : ""}${snap ? " is-snap" : ""}`}>
       <style>{CSS}</style>
-      <div className="sb-toolbar" role="group" aria-label="View">
-        {(["shelf", "grid", "list"] as const).map((v) => (
-          <button key={v} type="button" aria-pressed={view === v} className={`sb-seg${view === v ? " is-on" : ""}`} onClick={() => setView(v)}>
-            {v === "shelf" ? "Shelf" : v === "grid" ? "Grid" : "List"}
-          </button>
-        ))}
+      <div className="sb-bar">
+        <div className="sb-toolbar" role="group" aria-label="View">
+          {(["shelf", "grid", "list"] as const).map((v) => (
+            <button key={v} type="button" aria-pressed={view === v} className={`sb-seg${view === v ? " is-on" : ""}`} onClick={() => setView(v)}>
+              {v === "shelf" ? "Shelf" : v === "grid" ? "Grid" : "List"}
+            </button>
+          ))}
+        </div>
+        {view === "shelf" ? (
+          <div className="sb-density" role="group" aria-label="Spine size">
+            <button type="button" className="sb-dbtn" aria-label="Fit more titles on each shelf" disabled={dIndex === 0} onClick={() => changeDensity(dIndex - 1)}>
+              −
+            </button>
+            <button type="button" className="sb-dbtn" aria-label="Show bigger spines" disabled={dIndex === DENSITIES.length - 1} onClick={() => changeDensity(dIndex + 1)}>
+              +
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {view !== "shelf" ? (
         <FlatViews shelves={shelves} view={view} onOpen={openItem} />
       ) : (
-        <div className={`sb-layout${wide ? " is-wide" : ""}`}>
-          <div className="sb-main">
-            {shelves.map((shelf, si) => (
-              <ShelfRow
-                key={shelf.id}
-                shelf={shelf}
-                shelfIndex={si}
-                metrics={metrics}
-                selectedIndex={selShelf?.id === shelf.id && selIndex >= 0 ? selIndex : null}
-                editing={editingId === shelf.id}
-                canEdit={canEdit}
-                wide={wide}
-                reduced={reduced}
-                trackRef={(el) => (el ? tracks.current.set(shelf.id, el) : tracks.current.delete(shelf.id))}
-                sectionRef={(el) => (el ? sections.current.set(shelf.id, el) : sections.current.delete(shelf.id))}
-                onSelect={select}
-                onKey={onKey}
-                onToggleEdit={() => setEditingId((cur) => (cur === shelf.id ? null : shelf.id))}
-                onDragReorder={onDragReorder}
-                onVisibility={(v) => onVisibility?.(shelf, v)}
-                preview={!wide && selShelf?.id === shelf.id ? renderPreview() : null}
-              />
-            ))}
-          </div>
-          {wide ? (
-            <aside className="sb-side" aria-label="Selected title" ref={asideRef}>
-              <div className={`sb-side-inner${selShelf ? " is-open" : ""}`} style={{ transform: `translateY(${sideTop}px)` }}>
-                {renderPreview() ?? <p className="sb-side-hint">Select a title to preview it.</p>}
-              </div>
-            </aside>
-          ) : null}
+        <div className="sb-main">
+          {shelves.map((shelf, si) => (
+            <ShelfRow
+              key={shelf.id}
+              shelf={shelf}
+              shelfIndex={si}
+              metrics={metrics}
+              density={density}
+              outKey={stage?.shelfId === shelf.id ? stage.key : null}
+              focusIndex={focus?.shelfId === shelf.id ? Math.min(focus.index, shelf.items.length - 1) : si === 0 && !focus ? 0 : -1}
+              editing={editingId === shelf.id}
+              canEdit={canEdit}
+              wide={wide}
+              reduced={reduced}
+              setTrackEl={(el) => (el ? tracks.current.set(shelf.id, el) : tracks.current.delete(shelf.id))}
+              setSectionEl={(el) => (el ? sections.current.set(shelf.id, el) : sections.current.delete(shelf.id))}
+              onOpen={onOpen}
+              onKey={onKey}
+              onFocusSpine={onFocusSpine}
+              onToggleEdit={() => setEditingId((cur) => (cur === shelf.id ? null : shelf.id))}
+              onDragReorder={onDragReorder}
+              onVisibility={(v) => onVisibility?.(shelf, v)}
+              onDensityStep={onDensityStep}
+            />
+          ))}
         </div>
       )}
+
+      {stage && stageShelf ? (
+        <CoverStage
+          key={`${stage.shelfId}:${stage.startKey}`}
+          shelf={stageShelf}
+          startKey={stage.startKey}
+          spineRect={stage.rectFor}
+          reduced={reduced}
+          canEdit={canEdit}
+          editing={editingId === stage.shelfId}
+          onKeyChange={(k) => {
+            setStage((cur) => (cur ? { ...cur, key: k } : cur));
+            const i = stageShelf.items.findIndex((it) => it.key === k);
+            if (i >= 0) setFocus({ shelfId: stageShelf.id, index: i });
+          }}
+          onMove={(k, d) => moveKey(stageShelf.id, k, d)}
+          onOpenTitle={(it) => {
+            setStage(null);
+            openItem(it);
+          }}
+          onClosed={(k) => {
+            setStage(null);
+            const i = stageShelf.items.findIndex((it) => it.key === k);
+            if (i >= 0) focusSpine(stageShelf.id, i);
+          }}
+        />
+      ) : null}
+
       <div className="sb-sr" aria-live="polite">
         {announce}
       </div>
@@ -960,15 +946,18 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { .sb { --dur: 0ms; } }
 .sb-sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
-.sb-toolbar { display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:rgba(255,255,255,.06); margin: 0 0 18px; }
+.sb-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 18px; }
+.sb-toolbar { display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:rgba(255,255,255,.06); }
+.sb-density { display:inline-flex; gap:4px; }
+.sb-dbtn { width:40px; height:36px; border:0; border-radius:8px; background:rgba(255,255,255,.06); color:rgba(255,255,255,.85); font-size:20px; line-height:1; cursor:pointer; }
+.sb-dbtn:hover { background:rgba(255,255,255,.12); } .sb-dbtn:disabled { opacity:.3; cursor:default; }
+.sb-dbtn:focus-visible { outline:2px solid #e8c37a; outline-offset:2px; }
 .sb-seg { min-height:36px; padding:0 14px; border:0; border-radius:8px; background:transparent; color:rgba(255,255,255,.6); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
 .sb-seg.is-on { background:rgba(255,255,255,.12); color:#fff; }
 .sb-seg:focus-visible, .sb-chip:focus-visible, .sb-icon:focus-visible, .sb-open:focus-visible, .sb-page:focus-visible { outline:2px solid #e8c37a; outline-offset:2px; }
 
-.sb-layout.is-wide { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:28px; align-items:start; }
 .sb-main { min-width:0; }
 .sb-shelf { position:relative; margin-bottom:26px; }
-.sb-shelf.has-selection { z-index:3; }
 .sb-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:2px; padding:0 4px; }
 .sb-head h2 { margin:0; font-size:17px; font-weight:650; letter-spacing:-.01em; }
 .sb-head h2 a { color:inherit; text-decoration:none; }
@@ -1000,17 +989,13 @@ const CSS = `
 .sb-spine-rank { color:#e8c37a; }
 @media (hover:hover) and (pointer:fine) { .sb-spine:hover { transform: translateY(-6px); } }
 .sb-spine:focus-visible { outline:2px solid #e8c37a; outline-offset:2px; transform: translateY(-6px); }
-.sb-spine.is-selected { opacity:0; }
+.sb-spine.is-out { opacity:0; transition:none; }
+.sb.is-snap .sb-spine { transition:none; }
 .sb-spine.is-editing { box-shadow: inset 0 0 0 1px rgba(232,195,122,.45); cursor: grab; }
 .sb-spine.is-dragging { z-index:4; cursor:grabbing; transition: transform 120ms var(--ease); transform: translateY(-14px) scale(1.04);
   box-shadow: 0 16px 26px -6px rgba(0,0,0,.8), inset 0 0 0 1px rgba(232,195,122,.8); }
 .sb-edit-hint { margin:4px 4px 0; font-size:12px; color:rgba(232,195,122,.85); }
 
-.sb-cover { position:absolute; z-index:2; border-radius:5px; overflow:hidden; cursor:pointer; background:#1b1815;
-  box-shadow: 0 18px 30px -8px rgba(0,0,0,.75), 0 4px 10px rgba(0,0,0,.4);
-  transform: translateY(-12px); transition: left 240ms var(--ease), transform var(--dur) var(--ease);
-  animation: sb-lift var(--dur) var(--ease); }
-@keyframes sb-lift { from { transform: translateY(0) scale(.94); opacity:.4; } to { transform: translateY(-12px) scale(1); opacity:1; } }
 .sb-cover img, .sb-grid-art img, .sb-list-art img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
 .sb-art-high { opacity:0; transition: opacity 160ms ease-out; }
 .sb-art-high.is-ready { opacity:1; }
@@ -1022,33 +1007,7 @@ const CSS = `
 .sb-page-l { left:-8px; } .sb-page-r { right:-8px; }
 .sb-track-wrap:hover .sb-page, .sb-page:focus-visible { opacity:1; }
 
-.sb-preview { scroll-margin-bottom:140px; scroll-margin-top:90px; background:#1c1916; border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:12px 14px 14px; box-shadow:0 14px 34px rgba(0,0,0,.45); }
-.sb-main .sb-preview { position:absolute; left:4px; right:4px; top:calc(100% - 8px); z-index:5; animation: sb-drop var(--dur) var(--ease); }
-@keyframes sb-drop { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
-.sb-pv-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
-.sb-pv-count { font-size:12px; color:rgba(255,255,255,.45); font-variant-numeric:tabular-nums; }
-.sb-pv-nav { display:flex; gap:2px; }
-.sb-icon { width:44px; height:36px; border:0; border-radius:8px; background:transparent; color:rgba(255,255,255,.75); font-size:22px; line-height:1; cursor:pointer; }
-.sb-icon:hover { background:rgba(255,255,255,.07); } .sb-icon:disabled { opacity:.25; cursor:default; }
-.sb-pv-stage { overflow:hidden; touch-action:pan-y; min-height:84px; }
-.sb-pv-card { transition: transform 160ms var(--ease), opacity 160ms var(--ease); }
-.sb-pv-card.from-right { animation: sb-in-r var(--dur) var(--ease); }
-.sb-pv-card.from-left { animation: sb-in-l var(--dur) var(--ease); }
-@keyframes sb-in-r { from { transform:translateX(18px); opacity:.2; } to { transform:none; opacity:1; } }
-@keyframes sb-in-l { from { transform:translateX(-18px); opacity:.2; } to { transform:none; opacity:1; } }
-.sb-pv-meta { display:flex; gap:8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.5); }
-.sb-pv-rank { color:#e8c37a; font-weight:700; }
-.sb-pv-title { margin:5px 0 0; font-size:18px; line-height:1.25; font-weight:650; letter-spacing:-.01em; overflow-wrap:anywhere; }
-.sb-pv-creator { margin:4px 0 0; font-size:13px; color:rgba(255,255,255,.6); }
-.sb-pv-note { margin:8px 0 0; font-size:13px; color:rgba(255,255,255,.75); font-style:italic; }
-.sb-pv-actions { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-top:12px; flex-wrap:wrap; }
-.sb-open { min-height:44px; padding:0 20px; border-radius:999px; border:0; background:#f4f1ea; color:#141210; font-weight:700; font-size:14px; cursor:pointer; }
-.sb-open:hover { background:#fff; }
-.sb-move { display:flex; gap:6px; }
 
-.sb-side { position:relative; min-height:1px; }
-.sb-side-inner { transition: transform 240ms var(--ease); }
-.sb-side-hint { margin:40px 0 0; font-size:13px; color:rgba(255,255,255,.35); }
 
 .sb-grid { list-style:none; margin:10px 0 26px; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:14px 12px; }
 .sb-grid a { color:inherit; text-decoration:none; display:block; }
@@ -1063,8 +1022,4 @@ const CSS = `
 .sb-list-text span { font-size:12px; color:rgba(255,255,255,.5); }
 .sb-list-text em { font-size:12.5px; color:rgba(255,255,255,.7); }
 
-@media (prefers-reduced-motion: reduce) {
-  .sb-cover, .sb-pv-card, .sb-main .sb-preview { animation:none !important; }
-  .sb-cover { transform: translateY(-12px); }
-}
 `;
